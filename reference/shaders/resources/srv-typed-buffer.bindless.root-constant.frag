@@ -1,6 +1,7 @@
 #version 460
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_samplerless_texture_functions : require
 
 layout(push_constant, std430) uniform RootConstants
 {

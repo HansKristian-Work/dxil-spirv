@@ -32,8 +32,8 @@ layout(location = 2) out mediump uvec4 SV_Target_2;
 
 void main()
 {
-    float16_t _82 = float16_t(UV.x);
-    float16_t _83 = float16_t(UV.y);
+    precise float16_t _82 = float16_t(UV.x);
+    precise float16_t _83 = float16_t(UV.y);
     uint _84 = uint(int(UV.x));
     uint _85 = uint(int(UV.y));
     imageStore(_28, ivec2(uvec2(_84, _85)), vec4(f16vec4(_82, _83, _82, _83)));

@@ -8,6 +8,7 @@
 #else
 #error No extension available for FP16.
 #endif
+#extension GL_EXT_samplerless_texture_functions : require
 
 layout(set = 0, binding = 0) uniform usamplerBuffer _8;
 layout(set = 0, binding = 1) uniform usamplerBuffer _9;

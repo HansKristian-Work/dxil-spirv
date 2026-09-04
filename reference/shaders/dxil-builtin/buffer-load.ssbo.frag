@@ -1,5 +1,6 @@
 #version 460
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_samplerless_texture_functions : require
 
 layout(set = 0, binding = 1, std430) restrict readonly buffer SSBO
 {

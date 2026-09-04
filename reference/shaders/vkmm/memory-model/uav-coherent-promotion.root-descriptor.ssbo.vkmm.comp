@@ -43,7 +43,8 @@ layout(push_constant, std430) uniform RootConstants
 void main()
 {
     PhysicalPointerFloat4Array(registers._m2).value[gl_LocalInvocationIndex] = vec4(0.0);
-    if (!(PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u].x == 0u))
+    uvec4 _52 = PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u];
+    if (!(_52.x == 0u))
     {
         uint _70 = 0u;
         uint _74;
@@ -59,11 +60,12 @@ void main()
             if (_83)
             {
                 vec4 _87 = uintBitsToFloat(_14._m0[_74]);
-                PhysicalPointerFloat4Array _92 = PhysicalPointerFloat4Array(registers._m2);
-                PhysicalPointerFloat4Array(registers._m2).value[_81] = vec4(_92.value[_81].x + _87.x, _92.value[_81].y + _87.y, _92.value[_81].z + _87.z, _92.value[_81].w + _87.w);
+                vec4 _94 = PhysicalPointerFloat4Array(registers._m2).value[_81];
+                PhysicalPointerFloat4Array(registers._m2).value[_81] = vec4(_94.x + _87.x, _94.y + _87.y, _94.z + _87.z, _94.w + _87.w);
             }
             uint _71 = _70 + 1u;
-            if (_71 < PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u].x)
+            uvec4 _108 = PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u];
+            if (_71 < _108.x)
             {
                 _70 = _71;
                 continue;
@@ -74,8 +76,8 @@ void main()
             }
         }
     }
-    PhysicalPointerFloat4Array _56 = PhysicalPointerFloat4Array(registers._m3);
-    _18._m0[gl_LocalInvocationIndex] = uvec4(floatBitsToUint(_56.value[gl_LocalInvocationIndex].x), floatBitsToUint(_56.value[gl_LocalInvocationIndex].y), floatBitsToUint(_56.value[gl_LocalInvocationIndex].z), floatBitsToUint(_56.value[gl_LocalInvocationIndex].w));
+    vec4 _58 = PhysicalPointerFloat4Array(registers._m3).value[gl_LocalInvocationIndex];
+    _18._m0[gl_LocalInvocationIndex] = uvec4(floatBitsToUint(_58.x), floatBitsToUint(_58.y), floatBitsToUint(_58.z), floatBitsToUint(_58.w));
 }
 
 

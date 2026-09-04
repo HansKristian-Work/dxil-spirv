@@ -101,14 +101,16 @@ void node_main()
     uint64_t _53 = NodeInputPayloadBDA;
     _50 _54 = _50(_53);
     uint _59 = atomicAdd(_54.data._m1, 1u);
-    _54.data._m1 += 3u;
+    uint _61 = _54.data._m1;
+    _54.data._m1 = _61 + 3u;
     groupMemoryBarrier();
     barrier();
     uint64_t _84 = NodeInputPayloadBDA;
     bool _87 = FinishCrossGroupSharing(_84 + 8ul);
     if (_87)
     {
-        uint _93 = imageAtomicAdd(RWBuf0, int(gl_LocalInvocationIndex), _54.data._m1);
+        uint _89 = _54.data._m1;
+        uint _93 = imageAtomicAdd(RWBuf0, int(gl_LocalInvocationIndex), _89);
     }
 }
 
@@ -121,8 +123,10 @@ void main()
         NodeInputStride = NodeDispatch.NodePayloadStrideOrOffsetsBDA.x;
         if (NodeEntryIndirectPayloadStride)
         {
-            NodeInputPayloadBDA = NodeReadonlyU64Ptr(NodeDispatch.PayloadLinearBDA).value;
-            NodeInputStride = NodeReadonlyU32Ptr(NodeDispatch.NodePayloadStrideOrOffsetsBDA).value;
+            uint64_t _119 = NodeReadonlyU64Ptr(NodeDispatch.PayloadLinearBDA).value;
+            NodeInputPayloadBDA = _119;
+            uint _122 = NodeReadonlyU32Ptr(NodeDispatch.NodePayloadStrideOrOffsetsBDA).value;
+            NodeInputStride = _122;
         }
     }
     if (DispatchGridIsUpperBound)
@@ -130,10 +134,10 @@ void main()
         if (NodeIsProgramEntry)
         {
             NodeInputPayloadBDA += uint64_t(_108 * NodeInputStride);
-            uintPointer _137 = uintPointer(NodeInputPayloadBDA + 0ul);
-            uint _139 = _137.value - 1u;
+            uint _138 = uintPointer(NodeInputPayloadBDA + 0ul).value;
+            uint _139 = _138 - 1u;
             uint _141 = uint(findMSB(_139)) + 1u;
-            uint _146 = (int(_139) < int(0u)) ? 0u : (_137.value << 0u);
+            uint _146 = (int(_139) < int(0u)) ? 0u : (_138 << 0u);
             for (uint amplification_index = gl_WorkGroupID.z; amplification_index < _146; amplification_index += gl_NumWorkGroups.z)
             {
                 uvec3 _151 = uvec3(bitfieldExtract(amplification_index, int(0u), int(_141)), 0u, 0u);
@@ -148,11 +152,12 @@ void main()
         }
         else
         {
-            NodeInputPayloadBDA += uint64_t(NodeReadonlyU32ArrayPtr(NodeDispatch.NodePayloadStrideOrOffsetsBDA).offsets[_108]);
-            uintPointer _202 = uintPointer(NodeInputPayloadBDA + 0ul);
-            uint _204 = _202.value - 1u;
+            uint _193 = NodeReadonlyU32ArrayPtr(NodeDispatch.NodePayloadStrideOrOffsetsBDA).offsets[_108];
+            NodeInputPayloadBDA += uint64_t(_193);
+            uint _203 = uintPointer(NodeInputPayloadBDA + 0ul).value;
+            uint _204 = _203 - 1u;
             uint _206 = uint(findMSB(_204)) + 1u;
-            uint _211 = (int(_204) < int(0u)) ? 0u : (_202.value << 0u);
+            uint _211 = (int(_204) < int(0u)) ? 0u : (_203 << 0u);
             for (uint amplification_index_1 = gl_WorkGroupID.z; amplification_index_1 < _211; amplification_index_1 += gl_NumWorkGroups.z)
             {
                 uvec3 _216 = uvec3(bitfieldExtract(amplification_index_1, int(0u), int(_206)), 0u, 0u);
@@ -192,7 +197,8 @@ void main()
         }
         else
         {
-            NodeInputPayloadBDA += uint64_t(NodeReadonlyU32ArrayPtr(NodeDispatch.NodePayloadStrideOrOffsetsBDA).offsets[_108]);
+            uint _229 = NodeReadonlyU32ArrayPtr(NodeDispatch.NodePayloadStrideOrOffsetsBDA).offsets[_108];
+            NodeInputPayloadBDA += uint64_t(_229);
             if (DispatchStaticPayload)
             {
                 WorkgroupID = gl_WorkGroupID;

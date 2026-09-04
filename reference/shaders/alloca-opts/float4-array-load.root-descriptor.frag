@@ -29,11 +29,21 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
+    vec4 _42 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[0u];
+    vec4 _49 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[1u];
+    vec4 _56 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[2u];
+    vec4 _63 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[3u];
+    vec4 _71 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[4u];
+    vec4 _79 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[5u];
     uint _84 = A % 6u;
-    SV_Target.x = PhysicalPointerFloatNonWriteCBVArray(registers._m0).value[_84 * 4u] * P.x;
-    SV_Target.y = PhysicalPointerFloatNonWriteCBVArray(registers._m0).value[(_84 * 4u) + 1u] * P.y;
-    SV_Target.z = PhysicalPointerFloatNonWriteCBVArray(registers._m0).value[(_84 * 4u) + 2u] * P.z;
-    SV_Target.w = PhysicalPointerFloatNonWriteCBVArray(registers._m0).value[(_84 * 4u) + 3u] * P.w;
+    float _106 = PhysicalPointerFloatNonWriteCBVArray(registers._m0).value[_84 * 4u];
+    float _107 = PhysicalPointerFloatNonWriteCBVArray(registers._m0).value[(_84 * 4u) + 1u];
+    float _108 = PhysicalPointerFloatNonWriteCBVArray(registers._m0).value[(_84 * 4u) + 2u];
+    float _109 = PhysicalPointerFloatNonWriteCBVArray(registers._m0).value[(_84 * 4u) + 3u];
+    SV_Target.x = _106 * P.x;
+    SV_Target.y = _107 * P.y;
+    SV_Target.z = _108 * P.z;
+    SV_Target.w = _109 * P.w;
 }
 
 

@@ -1,5 +1,6 @@
 #version 460
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_samplerless_texture_functions : require
 
 layout(set = 0, binding = 0) uniform usamplerBuffer _9[];
 layout(set = 0, binding = 0, r32ui) uniform coherent writeonly uimageBuffer _13[];

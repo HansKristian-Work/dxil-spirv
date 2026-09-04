@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_samplerless_texture_functions : require
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) uniform usamplerBuffer _8;
@@ -12,12 +13,15 @@ void main()
     uint _40 = _38.y;
     uint _41 = _38.z;
     uint _42 = _38.x;
+    uint _45 = 8u & 31u;
     uint _47 = 24u & 31u;
-    uint _53 = bitfieldInsert(_40 >> 8u, _41, int(_47), int(min((8u & 31u), (32u - _47))));
+    uint _53 = bitfieldInsert(_40 >> 8u, _41, int(_47), int(min(_45, (32u - _47))));
+    uint _56 = 16u & 31u;
     uint _57 = 16u & 31u;
-    uint _60 = bitfieldInsert(_40 >> 16u, _41, int(_57), int(min((16u & 31u), (32u - _57))));
+    uint _60 = bitfieldInsert(_40 >> 16u, _41, int(_57), int(min(_56, (32u - _57))));
+    uint _62 = 24u & 31u;
     uint _63 = 8u & 31u;
-    uint _66 = bitfieldInsert(_40 >> 24u, _41, int(_63), int(min((24u & 31u), (32u - _63))));
+    uint _66 = bitfieldInsert(_40 >> 24u, _41, int(_63), int(min(_62, (32u - _63))));
     uvec4 _77 = uvec4(bitfieldExtract(_42, int(0u), int(8u)), bitfieldExtract(_42, int(8u), int(8u)), bitfieldExtract(_42, int(16u), int(8u)), bitfieldExtract(_42, int(24u), int(8u)));
     uvec4 _83 = mix(uvec4(abs(ivec4(_77 - uvec4(bitfieldExtract(_40, int(0u), int(8u)), bitfieldExtract(_40, int(8u), int(8u)), bitfieldExtract(_40, int(16u), int(8u)), bitfieldExtract(_40, int(24u), int(8u)))))), uvec4(0u), equal(_77, uvec4(0u)));
     uvec4 _100 = uvec4(bitfieldExtract(_42, int(0u), int(8u)), bitfieldExtract(_42, int(8u), int(8u)), bitfieldExtract(_42, int(16u), int(8u)), bitfieldExtract(_42, int(24u), int(8u)));

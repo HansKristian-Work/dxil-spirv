@@ -47,8 +47,8 @@ void main()
 {
     uint _139 = registers._m0 + 2u;
     uint _145 = registers._m0 + 1u;
-    float16_t _168 = float16_t(UV.x);
-    float16_t _169 = float16_t(UV.y);
+    precise float16_t _168 = float16_t(UV.x);
+    precise float16_t _169 = float16_t(UV.y);
     uint _170 = uint(int(UV.x));
     uint _171 = uint(int(UV.y));
     imageStore(_38[registers._m3], ivec2(uvec2(_170, _171)), vec4(f16vec4(_168, _169, _168, _169)));

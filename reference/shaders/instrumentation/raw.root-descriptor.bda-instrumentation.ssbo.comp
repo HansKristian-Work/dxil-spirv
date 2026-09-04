@@ -222,15 +222,16 @@ void main()
     uint _443 = InvocationID;
     bool _442 = ValidateBDALoadStore(registers._m1, _47, 12u, 0u, _443, true);
     AssumeTrue(_442, 1u);
-    PhysicalPointerFloat3NonWrite _444 = PhysicalPointerFloat3NonWrite(uvec2(_56._m0, registers._m1.y + _56._m1));
+    vec3 _447 = PhysicalPointerFloat3NonWrite(uvec2(_56._m0, registers._m1.y + _56._m1)).value;
     uint _450 = gl_GlobalInvocationID.x << 2u;
     uint _464 = InvocationID;
     bool _463 = ValidateBDALoadStore(registers._m2, _450, 4u, 0u, _464, true);
     AssumeTrue(_463, 2u);
+    float _468 = PhysicalPointerFloatArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)];
     uint _475 = InvocationID;
     bool _474 = ValidateBDALoadStore(registers._m2, _450, 4u, 1u, _475, true);
     AssumeTrue(_474, 3u);
-    PhysicalPointerFloatArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)] = ((_444.value.x + 40.0) + _444.value.z) + PhysicalPointerFloatArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)];
+    PhysicalPointerFloatArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)] = ((_447.x + 40.0) + _447.z) + _468;
 }
 
 

@@ -1,5 +1,6 @@
 #version 460
 #extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_EXT_samplerless_texture_functions : require
 
 uvec4 _62;
 vec3 _92;

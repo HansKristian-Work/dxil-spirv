@@ -49,7 +49,8 @@ layout(push_constant, std430) uniform RootConstants
 void main()
 {
     PhysicalPointerFloat4CoherentArray(registers._m2).value[gl_LocalInvocationIndex] = vec4(0.0);
-    if (!(PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u].x == 0u))
+    uvec4 _53 = PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u];
+    if (!(_53.x == 0u))
     {
         uint _74 = 0u;
         uint _78;
@@ -65,11 +66,12 @@ void main()
             if (_87)
             {
                 vec4 _91 = uintBitsToFloat(_14._m0[_78]);
-                PhysicalPointerFloat4CoherentArray _96 = PhysicalPointerFloat4CoherentArray(registers._m2);
-                PhysicalPointerFloat4CoherentArray(registers._m2).value[_85] = vec4(_96.value[_85].x + _91.x, _96.value[_85].y + _91.y, _96.value[_85].z + _91.z, _96.value[_85].w + _91.w);
+                vec4 _98 = PhysicalPointerFloat4CoherentArray(registers._m2).value[_85];
+                PhysicalPointerFloat4CoherentArray(registers._m2).value[_85] = vec4(_98.x + _91.x, _98.y + _91.y, _98.z + _91.z, _98.w + _91.w);
             }
             uint _75 = _74 + 1u;
-            if (_75 < PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u].x)
+            uvec4 _112 = PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u];
+            if (_75 < _112.x)
             {
                 _74 = _75;
                 continue;
@@ -80,8 +82,8 @@ void main()
             }
         }
     }
-    PhysicalPointerFloat4Array _60 = PhysicalPointerFloat4Array(registers._m3);
-    _18._m0[gl_LocalInvocationIndex] = uvec4(floatBitsToUint(_60.value[gl_LocalInvocationIndex].x), floatBitsToUint(_60.value[gl_LocalInvocationIndex].y), floatBitsToUint(_60.value[gl_LocalInvocationIndex].z), floatBitsToUint(_60.value[gl_LocalInvocationIndex].w));
+    vec4 _62 = PhysicalPointerFloat4Array(registers._m3).value[gl_LocalInvocationIndex];
+    _18._m0[gl_LocalInvocationIndex] = uvec4(floatBitsToUint(_62.x), floatBitsToUint(_62.y), floatBitsToUint(_62.z), floatBitsToUint(_62.w));
 }
 
 

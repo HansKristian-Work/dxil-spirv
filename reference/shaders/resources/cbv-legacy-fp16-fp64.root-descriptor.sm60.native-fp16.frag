@@ -40,15 +40,17 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    PhysicalPointerFloat4NonWriteCBVArray _22 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0);
-    f16vec4 _36 = f16vec4(PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[1u]);
-    f16vec4 _53 = f16vec4(PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[2u]);
-    PhysicalPointerUint642NonWriteCBVArray _72 = PhysicalPointerUint642NonWriteCBVArray(registers._m0);
-    PhysicalPointerUint642NonWriteCBVArray _79 = PhysicalPointerUint642NonWriteCBVArray(registers._m0);
-    SV_Target.x = ((float(_36.x) + _22.value[0u].x) + float(_53.x)) + float(int64_t(_72.value[3u].x));
-    SV_Target.y = ((float(_36.y) + _22.value[0u].y) + float(_53.y)) + float(int64_t(_72.value[3u].y));
-    SV_Target.z = ((float(_36.z) + _22.value[0u].z) + float(_53.z)) + float(int64_t(_79.value[4u].x));
-    SV_Target.w = ((float(_36.w) + _22.value[0u].w) + float(_53.w)) + float(int64_t(_79.value[4u].y));
+    vec4 _25 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[0u];
+    vec4 _33 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[1u];
+    f16vec4 _36 = f16vec4(_33);
+    vec4 _52 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[2u];
+    f16vec4 _53 = f16vec4(_52);
+    u64vec2 _75 = PhysicalPointerUint642NonWriteCBVArray(registers._m0).value[3u];
+    u64vec2 _81 = PhysicalPointerUint642NonWriteCBVArray(registers._m0).value[4u];
+    SV_Target.x = ((float(_36.x) + _25.x) + float(_53.x)) + float(int64_t(_75.x));
+    SV_Target.y = ((float(_36.y) + _25.y) + float(_53.y)) + float(int64_t(_75.y));
+    SV_Target.z = ((float(_36.z) + _25.z) + float(_53.z)) + float(int64_t(_81.x));
+    SV_Target.w = ((float(_36.w) + _25.w) + float(_53.w)) + float(int64_t(_81.y));
 }
 
 

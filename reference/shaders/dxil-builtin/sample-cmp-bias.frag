@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_texture_shadow_lod : require
 
 layout(set = 1, binding = 0) uniform texture1D _8;
 layout(set = 1, binding = 1) uniform texture1DArray _11;

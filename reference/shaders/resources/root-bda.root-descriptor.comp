@@ -84,9 +84,9 @@ uint ByteAddressMask(uint index, uint stride)
 
 void main()
 {
-    PhysicalPointerFloat4NonWriteArray _34 = PhysicalPointerFloat4NonWriteArray(registers._m1);
-    PhysicalPointerFloat4NonWriteCBVArray _46 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0);
-    PhysicalPointerFloat4CoherentArray(registers._m2).value[gl_GlobalInvocationID.x] = vec4(_46.value[gl_GlobalInvocationID.x].x + _34.value[gl_GlobalInvocationID.x].x, _46.value[gl_GlobalInvocationID.x].y + _34.value[gl_GlobalInvocationID.x].y, _46.value[gl_GlobalInvocationID.x].z + _34.value[gl_GlobalInvocationID.x].z, _46.value[gl_GlobalInvocationID.x].w + _34.value[gl_GlobalInvocationID.x].w);
+    vec4 _37 = PhysicalPointerFloat4NonWriteArray(registers._m1).value[gl_GlobalInvocationID.x];
+    vec4 _48 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[gl_GlobalInvocationID.x];
+    PhysicalPointerFloat4CoherentArray(registers._m2).value[gl_GlobalInvocationID.x] = vec4(_48.x + _37.x, _48.y + _37.y, _48.z + _37.z, _48.w + _37.w);
     PhysicalPointerHalfArray(registers._m3).value[ByteAddressMask(gl_GlobalInvocationID.x, 2u)] = float16_t(1.0);
     PhysicalPointerHalf2Array(registers._m3).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)] = f16vec2(float16_t(1.0), float16_t(2.0));
     AddCarry _103;

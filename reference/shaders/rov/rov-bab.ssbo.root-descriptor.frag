@@ -40,10 +40,9 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     uint _29 = (uint(gl_FragCoord.y) * 1000u) + uint(gl_FragCoord.x);
-    uint _41 = ByteAddressMask(_29, 16u);
-    PhysicalPointerUint4CoherentArray _47 = PhysicalPointerUint4CoherentArray(registers._m2);
     SPIRV_Cross_beginInvocationInterlock();
-    PhysicalPointerUint4CoherentArray(registers._m2).value[ByteAddressMask(_29, 16u)] = uvec4(_47.value[_41].x + 1u, _47.value[_41].y + 2u, _47.value[_41].z + 3u, _47.value[_41].w + 4u);
+    uvec4 _50 = PhysicalPointerUint4CoherentArray(registers._m2).value[ByteAddressMask(_29, 16u)];
+    PhysicalPointerUint4CoherentArray(registers._m2).value[ByteAddressMask(_29, 16u)] = uvec4(_50.x + 1u, _50.y + 2u, _50.z + 3u, _50.w + 4u);
     SPIRV_Cross_endInvocationInterlock();
 }
 

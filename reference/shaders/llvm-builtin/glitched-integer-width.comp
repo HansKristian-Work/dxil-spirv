@@ -14,7 +14,9 @@ void main()
     bool _38;
     if (_24 < 11u)
     {
-        _38 = bitfieldExtract((bitfieldExtract(440u, int(0u), int(11u)) >> bitfieldExtract(bitfieldExtract(_24, int(0u), int(11u)), int(0u), int(11u))) & 1u, int(0u), int(11u)) != bitfieldExtract(0u, int(0u), int(11u));
+        uint _32 = bitfieldExtract(440u, int(0u), int(11u));
+        uint _37 = bitfieldExtract(0u, int(0u), int(11u));
+        _38 = bitfieldExtract((_32 >> bitfieldExtract(bitfieldExtract(_24, int(0u), int(11u)), int(0u), int(11u))) & 1u, int(0u), int(11u)) != _37;
     }
     else
     {
