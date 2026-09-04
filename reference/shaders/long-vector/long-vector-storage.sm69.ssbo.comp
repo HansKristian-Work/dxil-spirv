@@ -1,0 +1,976 @@
+#version 460
+#extension GL_EXT_long_vector : require
+layout(local_size_x = 4, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) buffer SSBO
+{
+    uint _m0[];
+} _9;
+
+layout(set = 0, binding = 1, std430) buffer _11_13
+{
+    uint _m0[];
+} _13;
+
+layout(set = 0, binding = 2, std430) buffer _15_17
+{
+    uint _m0[];
+} _17;
+
+layout(set = 0, binding = 3, std430) buffer _19_21
+{
+    uint _m0[];
+} _21;
+
+shared vector<float, 5> _27[16];
+vector<float, 6> _33[2] = vector<float, 6>[](vector<float, 6>(0), vector<float, 6>(0));
+shared vector<float, 6> _37[32];
+
+uint ByteAddressMask(uint index, uint stride)
+{
+    return index & (4294967295u / stride);
+}
+
+void main()
+{
+    uint _52 = gl_GlobalInvocationID.x * 17u;
+    vector<float, 6> _78 = uintBitsToFloat(vector<uint, 6>(_9._m0[_52], _9._m0[_52 + 1u], _9._m0[_52 + 2u], _9._m0[_52 + 3u], _9._m0[_52 + 4u], _9._m0[_52 + 5u]));
+    uint _81 = (gl_GlobalInvocationID.x * 17u) + 6u;
+    uint _103 = (gl_GlobalInvocationID.x * 17u) + 12u;
+    vector<float, 5> _120 = uintBitsToFloat(vector<uint, 5>(_9._m0[_103], _9._m0[_103 + 1u], _9._m0[_103 + 2u], _9._m0[_103 + 3u], _9._m0[_103 + 4u]));
+    uint _121 = gl_GlobalInvocationID.x * 68u;
+    uint _133 = ByteAddressMask(gl_GlobalInvocationID.x * 17u, 4u);
+    uint _157 = ByteAddressMask((gl_GlobalInvocationID.x * 17u) + 6u, 4u);
+    uint _181 = ByteAddressMask((gl_GlobalInvocationID.x * 17u) + 12u, 4u);
+    uint _198 = gl_GlobalInvocationID.x * 17u;
+    uint _219 = (gl_GlobalInvocationID.x * 17u) + 6u;
+    uint _240 = (gl_GlobalInvocationID.x * 17u) + 12u;
+    uint _258 = ByteAddressMask(gl_GlobalInvocationID.x * 17u, 4u);
+    uint _280 = ByteAddressMask((gl_GlobalInvocationID.x * 17u) + 6u, 4u);
+    uint _302 = ByteAddressMask((gl_GlobalInvocationID.x * 17u) + 12u, 4u);
+    _120[1] = _78[2];
+    _33[0u] = _78;
+    _33[1u] = uintBitsToFloat(vector<uint, 6>(_9._m0[_81], _9._m0[_81 + 1u], _9._m0[_81 + 2u], _9._m0[_81 + 3u], _9._m0[_81 + 4u], _9._m0[_81 + 5u]));
+    vector<float, 5> _48 = _120;
+    uint _324 = gl_LocalInvocationIndex ^ 1u;
+    _48[gl_LocalInvocationIndex] = _48[_324] + 1.0;
+    uint _331 = gl_LocalInvocationIndex & 1u;
+    uint _332 = _331 ^ 1u;
+    _33[_331] = _33[_332];
+    vector<float, 6> _50[2];
+    _50[0u] = _33[0u];
+    _50[1u] = _33[1u];
+    vector<float, 5> _51 = _48;
+    _51[gl_LocalInvocationIndex] = _51[_324] + 4.0;
+    _50[_331] = _50[_332];
+    vector<float, 6> _352 = _50[0u];
+    vector<float, 6> _353 = _50[1u];
+    vector<float, 5> _354 = _51;
+    uint _355 = gl_LocalInvocationIndex << 2u;
+    _37[0u + (_355 * 2u)] = _352;
+    _37[1u + (_355 * 2u)] = _353;
+    _27[_355] = _354;
+    uint _365 = _355 | 1u;
+    _37[0u + (_365 * 2u)] = uintBitsToFloat(vector<uint, 6>(_13._m0[_133], _13._m0[_133 + 1u], _13._m0[_133 + 2u], _13._m0[_133 + 3u], _13._m0[_133 + 4u], _13._m0[_133 + 5u]));
+    _37[1u + (_365 * 2u)] = uintBitsToFloat(vector<uint, 6>(_13._m0[_157], _13._m0[_157 + 1u], _13._m0[_157 + 2u], _13._m0[_157 + 3u], _13._m0[_157 + 4u], _13._m0[_157 + 5u]));
+    _27[_365] = uintBitsToFloat(vector<uint, 5>(_13._m0[_181], _13._m0[_181 + 1u], _13._m0[_181 + 2u], _13._m0[_181 + 3u], _13._m0[_181 + 4u]));
+    uint _373 = _355 | 2u;
+    _37[0u + (_373 * 2u)] = uintBitsToFloat(vector<uint, 6>(_17._m0[_198], _17._m0[_198 + 1u], _17._m0[_198 + 2u], _17._m0[_198 + 3u], _17._m0[_198 + 4u], _17._m0[_198 + 5u]));
+    _37[1u + (_373 * 2u)] = uintBitsToFloat(vector<uint, 6>(_17._m0[_219], _17._m0[_219 + 1u], _17._m0[_219 + 2u], _17._m0[_219 + 3u], _17._m0[_219 + 4u], _17._m0[_219 + 5u]));
+    _27[_373] = uintBitsToFloat(vector<uint, 5>(_17._m0[_240], _17._m0[_240 + 1u], _17._m0[_240 + 2u], _17._m0[_240 + 3u], _17._m0[_240 + 4u]));
+    uint _381 = _355 | 3u;
+    _37[0u + (_381 * 2u)] = uintBitsToFloat(vector<uint, 6>(_21._m0[_258], _21._m0[_258 + 1u], _21._m0[_258 + 2u], _21._m0[_258 + 3u], _21._m0[_258 + 4u], _21._m0[_258 + 5u]));
+    _37[1u + (_381 * 2u)] = uintBitsToFloat(vector<uint, 6>(_21._m0[_280], _21._m0[_280 + 1u], _21._m0[_280 + 2u], _21._m0[_280 + 3u], _21._m0[_280 + 4u], _21._m0[_280 + 5u]));
+    _27[_381] = uintBitsToFloat(vector<uint, 5>(_21._m0[_302], _21._m0[_302 + 1u], _21._m0[_302 + 2u], _21._m0[_302 + 3u], _21._m0[_302 + 4u]));
+    barrier();
+    uint _390 = gl_GlobalInvocationID.x * 17u;
+    vector<uint, 6> _391 = floatBitsToUint(_352);
+    _9._m0[_390] = _391[0];
+    _9._m0[_390 + 1u] = _391[1];
+    _9._m0[_390 + 2u] = _391[2];
+    _9._m0[_390 + 3u] = _391[3];
+    _9._m0[_390 + 4u] = _391[4];
+    _9._m0[_390 + 5u] = _391[5];
+    uint _410 = (gl_GlobalInvocationID.x * 17u) + 6u;
+    vector<uint, 6> _411 = floatBitsToUint(_353);
+    _9._m0[_410] = _411[0];
+    _9._m0[_410 + 1u] = _411[1];
+    _9._m0[_410 + 2u] = _411[2];
+    _9._m0[_410 + 3u] = _411[3];
+    _9._m0[_410 + 4u] = _411[4];
+    _9._m0[_410 + 5u] = _411[5];
+    uint _430 = (gl_GlobalInvocationID.x * 17u) + 12u;
+    vector<uint, 5> _431 = floatBitsToUint(_354);
+    _9._m0[_430] = _431[0];
+    _9._m0[_430 + 1u] = _431[1];
+    _9._m0[_430 + 2u] = _431[2];
+    _9._m0[_430 + 3u] = _431[3];
+    _9._m0[_430 + 4u] = _431[4];
+    uint _446 = _355 ^ 5u;
+    uint _458 = ByteAddressMask(gl_GlobalInvocationID.x * 17u, 4u);
+    vector<uint, 6> _459 = floatBitsToUint(_37[0u + (_446 * 2u)]);
+    _13._m0[_458] = _459[0];
+    _13._m0[_458 + 1u] = _459[1];
+    _13._m0[_458 + 2u] = _459[2];
+    _13._m0[_458 + 3u] = _459[3];
+    _13._m0[_458 + 4u] = _459[4];
+    _13._m0[_458 + 5u] = _459[5];
+    uint _479 = ByteAddressMask((gl_GlobalInvocationID.x * 17u) + 6u, 4u);
+    vector<uint, 6> _480 = floatBitsToUint(_37[1u + (_446 * 2u)]);
+    _13._m0[_479] = _480[0];
+    _13._m0[_479 + 1u] = _480[1];
+    _13._m0[_479 + 2u] = _480[2];
+    _13._m0[_479 + 3u] = _480[3];
+    _13._m0[_479 + 4u] = _480[4];
+    _13._m0[_479 + 5u] = _480[5];
+    uint _500 = ByteAddressMask((gl_GlobalInvocationID.x * 17u) + 12u, 4u);
+    vector<uint, 5> _501 = floatBitsToUint(_27[_446]);
+    _13._m0[_500] = _501[0];
+    _13._m0[_500 + 1u] = _501[1];
+    _13._m0[_500 + 2u] = _501[2];
+    _13._m0[_500 + 3u] = _501[3];
+    _13._m0[_500 + 4u] = _501[4];
+    uint _516 = _355 ^ 6u;
+    uint _527 = gl_GlobalInvocationID.x * 17u;
+    vector<uint, 6> _528 = floatBitsToUint(_37[0u + (_516 * 2u)]);
+    _17._m0[_527] = _528[0];
+    _17._m0[_527 + 1u] = _528[1];
+    _17._m0[_527 + 2u] = _528[2];
+    _17._m0[_527 + 3u] = _528[3];
+    _17._m0[_527 + 4u] = _528[4];
+    _17._m0[_527 + 5u] = _528[5];
+    uint _547 = (gl_GlobalInvocationID.x * 17u) + 6u;
+    vector<uint, 6> _548 = floatBitsToUint(_37[1u + (_516 * 2u)]);
+    _17._m0[_547] = _548[0];
+    _17._m0[_547 + 1u] = _548[1];
+    _17._m0[_547 + 2u] = _548[2];
+    _17._m0[_547 + 3u] = _548[3];
+    _17._m0[_547 + 4u] = _548[4];
+    _17._m0[_547 + 5u] = _548[5];
+    uint _567 = (gl_GlobalInvocationID.x * 17u) + 12u;
+    vector<uint, 5> _568 = floatBitsToUint(_27[_516]);
+    _17._m0[_567] = _568[0];
+    _17._m0[_567 + 1u] = _568[1];
+    _17._m0[_567 + 2u] = _568[2];
+    _17._m0[_567 + 3u] = _568[3];
+    _17._m0[_567 + 4u] = _568[4];
+    uint _583 = _355 ^ 7u;
+    uint _596 = ByteAddressMask(gl_GlobalInvocationID.x * 17u, 4u);
+    vector<uint, 6> _597 = floatBitsToUint(_37[0u + (_583 * 2u)]);
+    _21._m0[_596] = _597[0];
+    _21._m0[_596 + 1u] = _597[1];
+    _21._m0[_596 + 2u] = _597[2];
+    _21._m0[_596 + 3u] = _597[3];
+    _21._m0[_596 + 4u] = _597[4];
+    _21._m0[_596 + 5u] = _597[5];
+    uint _617 = ByteAddressMask((gl_GlobalInvocationID.x * 17u) + 6u, 4u);
+    vector<uint, 6> _618 = floatBitsToUint(_37[1u + (_583 * 2u)]);
+    _21._m0[_617] = _618[0];
+    _21._m0[_617 + 1u] = _618[1];
+    _21._m0[_617 + 2u] = _618[2];
+    _21._m0[_617 + 3u] = _618[3];
+    _21._m0[_617 + 4u] = _618[4];
+    _21._m0[_617 + 5u] = _618[5];
+    uint _638 = ByteAddressMask((gl_GlobalInvocationID.x * 17u) + 12u, 4u);
+    vector<uint, 5> _639 = floatBitsToUint(_27[_583]);
+    _21._m0[_638] = _639[0];
+    _21._m0[_638 + 1u] = _639[1];
+    _21._m0[_638 + 2u] = _639[2];
+    _21._m0[_638 + 3u] = _639[3];
+    _21._m0[_638 + 4u] = _639[4];
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 656
+; Schema: 0
+OpCapability Shader
+OpCapability LongVectorEXT
+OpExtension "SPV_EXT_long_vector"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %9 %13 %17 %21 %27 %33 %37 %40 %45
+OpExecutionMode %3 LocalSize 4 1 1
+OpName %3 "main"
+OpName %7 "SSBO"
+OpName %11 "SSBO"
+OpName %15 "SSBO"
+OpName %19 "SSBO"
+OpName %127 "ByteAddressMask"
+OpName %125 "index"
+OpName %126 "stride"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %10 ArrayStride 4
+OpMemberDecorate %11 0 Offset 0
+OpDecorate %11 Block
+OpDecorate %13 DescriptorSet 0
+OpDecorate %13 Binding 1
+OpDecorate %14 ArrayStride 4
+OpMemberDecorate %15 0 Offset 0
+OpDecorate %15 Block
+OpDecorate %17 DescriptorSet 0
+OpDecorate %17 Binding 2
+OpDecorate %18 ArrayStride 4
+OpMemberDecorate %19 0 Offset 0
+OpDecorate %19 Block
+OpDecorate %21 DescriptorSet 0
+OpDecorate %21 Binding 3
+OpDecorate %40 BuiltIn GlobalInvocationId
+OpDecorate %45 BuiltIn LocalInvocationIndex
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeRuntimeArray %5
+%11 = OpTypeStruct %10
+%12 = OpTypePointer StorageBuffer %11
+%13 = OpVariable %12 StorageBuffer
+%14 = OpTypeRuntimeArray %5
+%15 = OpTypeStruct %14
+%16 = OpTypePointer StorageBuffer %15
+%17 = OpVariable %16 StorageBuffer
+%18 = OpTypeRuntimeArray %5
+%19 = OpTypeStruct %18
+%20 = OpTypePointer StorageBuffer %19
+%21 = OpVariable %20 StorageBuffer
+%22 = OpConstant %5 16
+%23 = OpTypeFloat 32
+%24 = OpTypeVector %23 5
+%25 = OpTypeArray %24 %22
+%26 = OpTypePointer Workgroup %25
+%27 = OpVariable %26 Workgroup
+%28 = OpConstant %5 2
+%29 = OpTypeVector %23 6
+%30 = OpTypeArray %29 %28
+%31 = OpConstantNull %30
+%32 = OpTypePointer Private %30
+%33 = OpVariable %32 Private %31
+%34 = OpConstant %5 32
+%35 = OpTypeArray %29 %34
+%36 = OpTypePointer Workgroup %35
+%37 = OpVariable %36 Workgroup
+%38 = OpTypeVector %5 3
+%39 = OpTypePointer Input %38
+%40 = OpVariable %39 Input
+%41 = OpTypePointer Input %5
+%43 = OpConstant %5 0
+%45 = OpVariable %41 Input
+%47 = OpTypePointer Function %24
+%49 = OpTypePointer Function %30
+%53 = OpConstant %5 17
+%54 = OpTypePointer StorageBuffer %5
+%59 = OpConstant %5 1
+%66 = OpConstant %5 3
+%70 = OpConstant %5 4
+%74 = OpConstant %5 5
+%76 = OpTypeVector %5 6
+%80 = OpConstant %5 6
+%102 = OpConstant %5 12
+%118 = OpTypeVector %5 5
+%122 = OpConstant %5 68
+%124 = OpTypeFunction %5 %5 %5
+%130 = OpConstant %5 4294967295
+%154 = OpConstant %5 24
+%178 = OpConstant %5 48
+%321 = OpTypePointer Private %29
+%325 = OpTypePointer Function %23
+%329 = OpConstant %23 1
+%336 = OpTypePointer Function %29
+%347 = OpConstant %23 4
+%356 = OpTypePointer Workgroup %24
+%360 = OpTypePointer Workgroup %29
+%389 = OpConstant %5 264
+%584 = OpConstant %5 7
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%48 = OpVariable %47 Function
+%50 = OpVariable %49 Function
+%51 = OpVariable %47 Function
+OpBranch %654
+%654 = OpLabel
+%42 = OpAccessChain %41 %40 %43
+%44 = OpLoad %5 %42
+%46 = OpLoad %5 %45
+%52 = OpIMul %5 %44 %53
+%55 = OpAccessChain %54 %9 %43 %52
+%56 = OpLoad %5 %55
+%58 = OpIAdd %5 %52 %59
+%57 = OpAccessChain %54 %9 %43 %58
+%60 = OpLoad %5 %57
+%62 = OpIAdd %5 %52 %28
+%61 = OpAccessChain %54 %9 %43 %62
+%63 = OpLoad %5 %61
+%65 = OpIAdd %5 %52 %66
+%64 = OpAccessChain %54 %9 %43 %65
+%67 = OpLoad %5 %64
+%69 = OpIAdd %5 %52 %70
+%68 = OpAccessChain %54 %9 %43 %69
+%71 = OpLoad %5 %68
+%73 = OpIAdd %5 %52 %74
+%72 = OpAccessChain %54 %9 %43 %73
+%75 = OpLoad %5 %72
+%77 = OpCompositeConstruct %76 %56 %60 %63 %67 %71 %75
+%78 = OpBitcast %29 %77
+%79 = OpIMul %5 %44 %53
+%81 = OpIAdd %5 %79 %80
+%82 = OpAccessChain %54 %9 %43 %81
+%83 = OpLoad %5 %82
+%85 = OpIAdd %5 %81 %59
+%84 = OpAccessChain %54 %9 %43 %85
+%86 = OpLoad %5 %84
+%88 = OpIAdd %5 %81 %28
+%87 = OpAccessChain %54 %9 %43 %88
+%89 = OpLoad %5 %87
+%91 = OpIAdd %5 %81 %66
+%90 = OpAccessChain %54 %9 %43 %91
+%92 = OpLoad %5 %90
+%94 = OpIAdd %5 %81 %70
+%93 = OpAccessChain %54 %9 %43 %94
+%95 = OpLoad %5 %93
+%97 = OpIAdd %5 %81 %74
+%96 = OpAccessChain %54 %9 %43 %97
+%98 = OpLoad %5 %96
+%99 = OpCompositeConstruct %76 %83 %86 %89 %92 %95 %98
+%100 = OpBitcast %29 %99
+%101 = OpIMul %5 %44 %53
+%103 = OpIAdd %5 %101 %102
+%104 = OpAccessChain %54 %9 %43 %103
+%105 = OpLoad %5 %104
+%107 = OpIAdd %5 %103 %59
+%106 = OpAccessChain %54 %9 %43 %107
+%108 = OpLoad %5 %106
+%110 = OpIAdd %5 %103 %28
+%109 = OpAccessChain %54 %9 %43 %110
+%111 = OpLoad %5 %109
+%113 = OpIAdd %5 %103 %66
+%112 = OpAccessChain %54 %9 %43 %113
+%114 = OpLoad %5 %112
+%116 = OpIAdd %5 %103 %70
+%115 = OpAccessChain %54 %9 %43 %116
+%117 = OpLoad %5 %115
+%119 = OpCompositeConstruct %118 %105 %108 %111 %114 %117
+%120 = OpBitcast %24 %119
+%121 = OpIMul %5 %44 %122
+%123 = OpIMul %5 %44 %53
+%133 = OpFunctionCall %5 %127 %123 %70
+%134 = OpAccessChain %54 %13 %43 %133
+%135 = OpLoad %5 %134
+%137 = OpIAdd %5 %133 %59
+%136 = OpAccessChain %54 %13 %43 %137
+%138 = OpLoad %5 %136
+%140 = OpIAdd %5 %133 %28
+%139 = OpAccessChain %54 %13 %43 %140
+%141 = OpLoad %5 %139
+%143 = OpIAdd %5 %133 %66
+%142 = OpAccessChain %54 %13 %43 %143
+%144 = OpLoad %5 %142
+%146 = OpIAdd %5 %133 %70
+%145 = OpAccessChain %54 %13 %43 %146
+%147 = OpLoad %5 %145
+%149 = OpIAdd %5 %133 %74
+%148 = OpAccessChain %54 %13 %43 %149
+%150 = OpLoad %5 %148
+%151 = OpCompositeConstruct %76 %135 %138 %141 %144 %147 %150
+%152 = OpBitcast %29 %151
+%153 = OpIAdd %5 %121 %154
+%155 = OpIMul %5 %44 %53
+%156 = OpIAdd %5 %155 %80
+%157 = OpFunctionCall %5 %127 %156 %70
+%158 = OpAccessChain %54 %13 %43 %157
+%159 = OpLoad %5 %158
+%161 = OpIAdd %5 %157 %59
+%160 = OpAccessChain %54 %13 %43 %161
+%162 = OpLoad %5 %160
+%164 = OpIAdd %5 %157 %28
+%163 = OpAccessChain %54 %13 %43 %164
+%165 = OpLoad %5 %163
+%167 = OpIAdd %5 %157 %66
+%166 = OpAccessChain %54 %13 %43 %167
+%168 = OpLoad %5 %166
+%170 = OpIAdd %5 %157 %70
+%169 = OpAccessChain %54 %13 %43 %170
+%171 = OpLoad %5 %169
+%173 = OpIAdd %5 %157 %74
+%172 = OpAccessChain %54 %13 %43 %173
+%174 = OpLoad %5 %172
+%175 = OpCompositeConstruct %76 %159 %162 %165 %168 %171 %174
+%176 = OpBitcast %29 %175
+%177 = OpIAdd %5 %121 %178
+%179 = OpIMul %5 %44 %53
+%180 = OpIAdd %5 %179 %102
+%181 = OpFunctionCall %5 %127 %180 %70
+%182 = OpAccessChain %54 %13 %43 %181
+%183 = OpLoad %5 %182
+%185 = OpIAdd %5 %181 %59
+%184 = OpAccessChain %54 %13 %43 %185
+%186 = OpLoad %5 %184
+%188 = OpIAdd %5 %181 %28
+%187 = OpAccessChain %54 %13 %43 %188
+%189 = OpLoad %5 %187
+%191 = OpIAdd %5 %181 %66
+%190 = OpAccessChain %54 %13 %43 %191
+%192 = OpLoad %5 %190
+%194 = OpIAdd %5 %181 %70
+%193 = OpAccessChain %54 %13 %43 %194
+%195 = OpLoad %5 %193
+%196 = OpCompositeConstruct %118 %183 %186 %189 %192 %195
+%197 = OpBitcast %24 %196
+%198 = OpIMul %5 %44 %53
+%199 = OpAccessChain %54 %17 %43 %198
+%200 = OpLoad %5 %199
+%202 = OpIAdd %5 %198 %59
+%201 = OpAccessChain %54 %17 %43 %202
+%203 = OpLoad %5 %201
+%205 = OpIAdd %5 %198 %28
+%204 = OpAccessChain %54 %17 %43 %205
+%206 = OpLoad %5 %204
+%208 = OpIAdd %5 %198 %66
+%207 = OpAccessChain %54 %17 %43 %208
+%209 = OpLoad %5 %207
+%211 = OpIAdd %5 %198 %70
+%210 = OpAccessChain %54 %17 %43 %211
+%212 = OpLoad %5 %210
+%214 = OpIAdd %5 %198 %74
+%213 = OpAccessChain %54 %17 %43 %214
+%215 = OpLoad %5 %213
+%216 = OpCompositeConstruct %76 %200 %203 %206 %209 %212 %215
+%217 = OpBitcast %29 %216
+%218 = OpIMul %5 %44 %53
+%219 = OpIAdd %5 %218 %80
+%220 = OpAccessChain %54 %17 %43 %219
+%221 = OpLoad %5 %220
+%223 = OpIAdd %5 %219 %59
+%222 = OpAccessChain %54 %17 %43 %223
+%224 = OpLoad %5 %222
+%226 = OpIAdd %5 %219 %28
+%225 = OpAccessChain %54 %17 %43 %226
+%227 = OpLoad %5 %225
+%229 = OpIAdd %5 %219 %66
+%228 = OpAccessChain %54 %17 %43 %229
+%230 = OpLoad %5 %228
+%232 = OpIAdd %5 %219 %70
+%231 = OpAccessChain %54 %17 %43 %232
+%233 = OpLoad %5 %231
+%235 = OpIAdd %5 %219 %74
+%234 = OpAccessChain %54 %17 %43 %235
+%236 = OpLoad %5 %234
+%237 = OpCompositeConstruct %76 %221 %224 %227 %230 %233 %236
+%238 = OpBitcast %29 %237
+%239 = OpIMul %5 %44 %53
+%240 = OpIAdd %5 %239 %102
+%241 = OpAccessChain %54 %17 %43 %240
+%242 = OpLoad %5 %241
+%244 = OpIAdd %5 %240 %59
+%243 = OpAccessChain %54 %17 %43 %244
+%245 = OpLoad %5 %243
+%247 = OpIAdd %5 %240 %28
+%246 = OpAccessChain %54 %17 %43 %247
+%248 = OpLoad %5 %246
+%250 = OpIAdd %5 %240 %66
+%249 = OpAccessChain %54 %17 %43 %250
+%251 = OpLoad %5 %249
+%253 = OpIAdd %5 %240 %70
+%252 = OpAccessChain %54 %17 %43 %253
+%254 = OpLoad %5 %252
+%255 = OpCompositeConstruct %118 %242 %245 %248 %251 %254
+%256 = OpBitcast %24 %255
+%257 = OpIMul %5 %44 %53
+%258 = OpFunctionCall %5 %127 %257 %70
+%259 = OpAccessChain %54 %21 %43 %258
+%260 = OpLoad %5 %259
+%262 = OpIAdd %5 %258 %59
+%261 = OpAccessChain %54 %21 %43 %262
+%263 = OpLoad %5 %261
+%265 = OpIAdd %5 %258 %28
+%264 = OpAccessChain %54 %21 %43 %265
+%266 = OpLoad %5 %264
+%268 = OpIAdd %5 %258 %66
+%267 = OpAccessChain %54 %21 %43 %268
+%269 = OpLoad %5 %267
+%271 = OpIAdd %5 %258 %70
+%270 = OpAccessChain %54 %21 %43 %271
+%272 = OpLoad %5 %270
+%274 = OpIAdd %5 %258 %74
+%273 = OpAccessChain %54 %21 %43 %274
+%275 = OpLoad %5 %273
+%276 = OpCompositeConstruct %76 %260 %263 %266 %269 %272 %275
+%277 = OpBitcast %29 %276
+%278 = OpIMul %5 %44 %53
+%279 = OpIAdd %5 %278 %80
+%280 = OpFunctionCall %5 %127 %279 %70
+%281 = OpAccessChain %54 %21 %43 %280
+%282 = OpLoad %5 %281
+%284 = OpIAdd %5 %280 %59
+%283 = OpAccessChain %54 %21 %43 %284
+%285 = OpLoad %5 %283
+%287 = OpIAdd %5 %280 %28
+%286 = OpAccessChain %54 %21 %43 %287
+%288 = OpLoad %5 %286
+%290 = OpIAdd %5 %280 %66
+%289 = OpAccessChain %54 %21 %43 %290
+%291 = OpLoad %5 %289
+%293 = OpIAdd %5 %280 %70
+%292 = OpAccessChain %54 %21 %43 %293
+%294 = OpLoad %5 %292
+%296 = OpIAdd %5 %280 %74
+%295 = OpAccessChain %54 %21 %43 %296
+%297 = OpLoad %5 %295
+%298 = OpCompositeConstruct %76 %282 %285 %288 %291 %294 %297
+%299 = OpBitcast %29 %298
+%300 = OpIMul %5 %44 %53
+%301 = OpIAdd %5 %300 %102
+%302 = OpFunctionCall %5 %127 %301 %70
+%303 = OpAccessChain %54 %21 %43 %302
+%304 = OpLoad %5 %303
+%306 = OpIAdd %5 %302 %59
+%305 = OpAccessChain %54 %21 %43 %306
+%307 = OpLoad %5 %305
+%309 = OpIAdd %5 %302 %28
+%308 = OpAccessChain %54 %21 %43 %309
+%310 = OpLoad %5 %308
+%312 = OpIAdd %5 %302 %66
+%311 = OpAccessChain %54 %21 %43 %312
+%313 = OpLoad %5 %311
+%315 = OpIAdd %5 %302 %70
+%314 = OpAccessChain %54 %21 %43 %315
+%316 = OpLoad %5 %314
+%317 = OpCompositeConstruct %118 %304 %307 %310 %313 %316
+%318 = OpBitcast %24 %317
+%319 = OpCompositeExtract %23 %78 2
+%320 = OpCompositeInsert %24 %319 %120 1
+%322 = OpAccessChain %321 %33 %43
+OpStore %322 %78
+%323 = OpAccessChain %321 %33 %59
+OpStore %323 %100
+OpStore %48 %320
+%324 = OpBitwiseXor %5 %46 %59
+%326 = OpInBoundsAccessChain %325 %48 %324
+%327 = OpLoad %23 %326
+%328 = OpFAdd %23 %327 %329
+%330 = OpInBoundsAccessChain %325 %48 %46
+OpStore %330 %328
+%331 = OpBitwiseAnd %5 %46 %59
+%332 = OpBitwiseXor %5 %331 %59
+%333 = OpInBoundsAccessChain %321 %33 %332
+%334 = OpLoad %29 %333
+%335 = OpInBoundsAccessChain %321 %33 %331
+OpStore %335 %334
+%337 = OpInBoundsAccessChain %336 %50 %43
+%338 = OpAccessChain %321 %33 %43
+%339 = OpLoad %29 %338
+OpStore %337 %339
+%340 = OpInBoundsAccessChain %336 %50 %59
+%341 = OpAccessChain %321 %33 %59
+%342 = OpLoad %29 %341
+OpStore %340 %342
+%343 = OpLoad %24 %48
+OpStore %51 %343
+%344 = OpInBoundsAccessChain %325 %51 %324
+%345 = OpLoad %23 %344
+%346 = OpFAdd %23 %345 %347
+%348 = OpInBoundsAccessChain %325 %51 %46
+OpStore %348 %346
+%349 = OpInBoundsAccessChain %336 %50 %332
+%350 = OpLoad %29 %349
+%351 = OpInBoundsAccessChain %336 %50 %331
+OpStore %351 %350
+%352 = OpLoad %29 %337
+%353 = OpLoad %29 %340
+%354 = OpLoad %24 %51
+%355 = OpShiftLeftLogical %5 %46 %28
+%357 = OpAccessChain %356 %27 %355
+%358 = OpIMul %5 %355 %28
+%359 = OpIAdd %5 %43 %358
+%361 = OpAccessChain %360 %37 %359
+OpStore %361 %352
+%362 = OpIMul %5 %355 %28
+%363 = OpIAdd %5 %59 %362
+%364 = OpAccessChain %360 %37 %363
+OpStore %364 %353
+OpStore %357 %354
+%365 = OpBitwiseOr %5 %355 %59
+%366 = OpAccessChain %356 %27 %365
+%367 = OpIMul %5 %365 %28
+%368 = OpIAdd %5 %43 %367
+%369 = OpAccessChain %360 %37 %368
+OpStore %369 %152
+%370 = OpIMul %5 %365 %28
+%371 = OpIAdd %5 %59 %370
+%372 = OpAccessChain %360 %37 %371
+OpStore %372 %176
+OpStore %366 %197
+%373 = OpBitwiseOr %5 %355 %28
+%374 = OpAccessChain %356 %27 %373
+%375 = OpIMul %5 %373 %28
+%376 = OpIAdd %5 %43 %375
+%377 = OpAccessChain %360 %37 %376
+OpStore %377 %217
+%378 = OpIMul %5 %373 %28
+%379 = OpIAdd %5 %59 %378
+%380 = OpAccessChain %360 %37 %379
+OpStore %380 %238
+OpStore %374 %256
+%381 = OpBitwiseOr %5 %355 %66
+%382 = OpAccessChain %356 %27 %381
+%383 = OpIMul %5 %381 %28
+%384 = OpIAdd %5 %43 %383
+%385 = OpAccessChain %360 %37 %384
+OpStore %385 %277
+%386 = OpIMul %5 %381 %28
+%387 = OpIAdd %5 %59 %386
+%388 = OpAccessChain %360 %37 %387
+OpStore %388 %299
+OpStore %382 %318
+OpControlBarrier %28 %28 %389
+%390 = OpIMul %5 %44 %53
+%391 = OpBitcast %76 %352
+%392 = OpCompositeExtract %5 %391 0
+%393 = OpCompositeExtract %5 %391 1
+%394 = OpCompositeExtract %5 %391 2
+%395 = OpCompositeExtract %5 %391 3
+%396 = OpCompositeExtract %5 %391 4
+%397 = OpCompositeExtract %5 %391 5
+%398 = OpAccessChain %54 %9 %43 %390
+OpStore %398 %392
+%400 = OpIAdd %5 %390 %59
+%399 = OpAccessChain %54 %9 %43 %400
+OpStore %399 %393
+%402 = OpIAdd %5 %390 %28
+%401 = OpAccessChain %54 %9 %43 %402
+OpStore %401 %394
+%404 = OpIAdd %5 %390 %66
+%403 = OpAccessChain %54 %9 %43 %404
+OpStore %403 %395
+%406 = OpIAdd %5 %390 %70
+%405 = OpAccessChain %54 %9 %43 %406
+OpStore %405 %396
+%408 = OpIAdd %5 %390 %74
+%407 = OpAccessChain %54 %9 %43 %408
+OpStore %407 %397
+%409 = OpIMul %5 %44 %53
+%410 = OpIAdd %5 %409 %80
+%411 = OpBitcast %76 %353
+%412 = OpCompositeExtract %5 %411 0
+%413 = OpCompositeExtract %5 %411 1
+%414 = OpCompositeExtract %5 %411 2
+%415 = OpCompositeExtract %5 %411 3
+%416 = OpCompositeExtract %5 %411 4
+%417 = OpCompositeExtract %5 %411 5
+%418 = OpAccessChain %54 %9 %43 %410
+OpStore %418 %412
+%420 = OpIAdd %5 %410 %59
+%419 = OpAccessChain %54 %9 %43 %420
+OpStore %419 %413
+%422 = OpIAdd %5 %410 %28
+%421 = OpAccessChain %54 %9 %43 %422
+OpStore %421 %414
+%424 = OpIAdd %5 %410 %66
+%423 = OpAccessChain %54 %9 %43 %424
+OpStore %423 %415
+%426 = OpIAdd %5 %410 %70
+%425 = OpAccessChain %54 %9 %43 %426
+OpStore %425 %416
+%428 = OpIAdd %5 %410 %74
+%427 = OpAccessChain %54 %9 %43 %428
+OpStore %427 %417
+%429 = OpIMul %5 %44 %53
+%430 = OpIAdd %5 %429 %102
+%431 = OpBitcast %118 %354
+%432 = OpCompositeExtract %5 %431 0
+%433 = OpCompositeExtract %5 %431 1
+%434 = OpCompositeExtract %5 %431 2
+%435 = OpCompositeExtract %5 %431 3
+%436 = OpCompositeExtract %5 %431 4
+%437 = OpAccessChain %54 %9 %43 %430
+OpStore %437 %432
+%439 = OpIAdd %5 %430 %59
+%438 = OpAccessChain %54 %9 %43 %439
+OpStore %438 %433
+%441 = OpIAdd %5 %430 %28
+%440 = OpAccessChain %54 %9 %43 %441
+OpStore %440 %434
+%443 = OpIAdd %5 %430 %66
+%442 = OpAccessChain %54 %9 %43 %443
+OpStore %442 %435
+%445 = OpIAdd %5 %430 %70
+%444 = OpAccessChain %54 %9 %43 %445
+OpStore %444 %436
+%446 = OpBitwiseXor %5 %355 %74
+%447 = OpAccessChain %356 %27 %446
+%448 = OpIMul %5 %446 %28
+%449 = OpIAdd %5 %43 %448
+%450 = OpAccessChain %360 %37 %449
+%451 = OpLoad %29 %450
+%452 = OpIMul %5 %446 %28
+%453 = OpIAdd %5 %59 %452
+%454 = OpAccessChain %360 %37 %453
+%455 = OpLoad %29 %454
+%456 = OpLoad %24 %447
+%457 = OpIMul %5 %44 %53
+%458 = OpFunctionCall %5 %127 %457 %70
+%459 = OpBitcast %76 %451
+%460 = OpCompositeExtract %5 %459 0
+%461 = OpCompositeExtract %5 %459 1
+%462 = OpCompositeExtract %5 %459 2
+%463 = OpCompositeExtract %5 %459 3
+%464 = OpCompositeExtract %5 %459 4
+%465 = OpCompositeExtract %5 %459 5
+%466 = OpAccessChain %54 %13 %43 %458
+OpStore %466 %460
+%468 = OpIAdd %5 %458 %59
+%467 = OpAccessChain %54 %13 %43 %468
+OpStore %467 %461
+%470 = OpIAdd %5 %458 %28
+%469 = OpAccessChain %54 %13 %43 %470
+OpStore %469 %462
+%472 = OpIAdd %5 %458 %66
+%471 = OpAccessChain %54 %13 %43 %472
+OpStore %471 %463
+%474 = OpIAdd %5 %458 %70
+%473 = OpAccessChain %54 %13 %43 %474
+OpStore %473 %464
+%476 = OpIAdd %5 %458 %74
+%475 = OpAccessChain %54 %13 %43 %476
+OpStore %475 %465
+%477 = OpIMul %5 %44 %53
+%478 = OpIAdd %5 %477 %80
+%479 = OpFunctionCall %5 %127 %478 %70
+%480 = OpBitcast %76 %455
+%481 = OpCompositeExtract %5 %480 0
+%482 = OpCompositeExtract %5 %480 1
+%483 = OpCompositeExtract %5 %480 2
+%484 = OpCompositeExtract %5 %480 3
+%485 = OpCompositeExtract %5 %480 4
+%486 = OpCompositeExtract %5 %480 5
+%487 = OpAccessChain %54 %13 %43 %479
+OpStore %487 %481
+%489 = OpIAdd %5 %479 %59
+%488 = OpAccessChain %54 %13 %43 %489
+OpStore %488 %482
+%491 = OpIAdd %5 %479 %28
+%490 = OpAccessChain %54 %13 %43 %491
+OpStore %490 %483
+%493 = OpIAdd %5 %479 %66
+%492 = OpAccessChain %54 %13 %43 %493
+OpStore %492 %484
+%495 = OpIAdd %5 %479 %70
+%494 = OpAccessChain %54 %13 %43 %495
+OpStore %494 %485
+%497 = OpIAdd %5 %479 %74
+%496 = OpAccessChain %54 %13 %43 %497
+OpStore %496 %486
+%498 = OpIMul %5 %44 %53
+%499 = OpIAdd %5 %498 %102
+%500 = OpFunctionCall %5 %127 %499 %70
+%501 = OpBitcast %118 %456
+%502 = OpCompositeExtract %5 %501 0
+%503 = OpCompositeExtract %5 %501 1
+%504 = OpCompositeExtract %5 %501 2
+%505 = OpCompositeExtract %5 %501 3
+%506 = OpCompositeExtract %5 %501 4
+%507 = OpAccessChain %54 %13 %43 %500
+OpStore %507 %502
+%509 = OpIAdd %5 %500 %59
+%508 = OpAccessChain %54 %13 %43 %509
+OpStore %508 %503
+%511 = OpIAdd %5 %500 %28
+%510 = OpAccessChain %54 %13 %43 %511
+OpStore %510 %504
+%513 = OpIAdd %5 %500 %66
+%512 = OpAccessChain %54 %13 %43 %513
+OpStore %512 %505
+%515 = OpIAdd %5 %500 %70
+%514 = OpAccessChain %54 %13 %43 %515
+OpStore %514 %506
+%516 = OpBitwiseXor %5 %355 %80
+%517 = OpAccessChain %356 %27 %516
+%518 = OpIMul %5 %516 %28
+%519 = OpIAdd %5 %43 %518
+%520 = OpAccessChain %360 %37 %519
+%521 = OpLoad %29 %520
+%522 = OpIMul %5 %516 %28
+%523 = OpIAdd %5 %59 %522
+%524 = OpAccessChain %360 %37 %523
+%525 = OpLoad %29 %524
+%526 = OpLoad %24 %517
+%527 = OpIMul %5 %44 %53
+%528 = OpBitcast %76 %521
+%529 = OpCompositeExtract %5 %528 0
+%530 = OpCompositeExtract %5 %528 1
+%531 = OpCompositeExtract %5 %528 2
+%532 = OpCompositeExtract %5 %528 3
+%533 = OpCompositeExtract %5 %528 4
+%534 = OpCompositeExtract %5 %528 5
+%535 = OpAccessChain %54 %17 %43 %527
+OpStore %535 %529
+%537 = OpIAdd %5 %527 %59
+%536 = OpAccessChain %54 %17 %43 %537
+OpStore %536 %530
+%539 = OpIAdd %5 %527 %28
+%538 = OpAccessChain %54 %17 %43 %539
+OpStore %538 %531
+%541 = OpIAdd %5 %527 %66
+%540 = OpAccessChain %54 %17 %43 %541
+OpStore %540 %532
+%543 = OpIAdd %5 %527 %70
+%542 = OpAccessChain %54 %17 %43 %543
+OpStore %542 %533
+%545 = OpIAdd %5 %527 %74
+%544 = OpAccessChain %54 %17 %43 %545
+OpStore %544 %534
+%546 = OpIMul %5 %44 %53
+%547 = OpIAdd %5 %546 %80
+%548 = OpBitcast %76 %525
+%549 = OpCompositeExtract %5 %548 0
+%550 = OpCompositeExtract %5 %548 1
+%551 = OpCompositeExtract %5 %548 2
+%552 = OpCompositeExtract %5 %548 3
+%553 = OpCompositeExtract %5 %548 4
+%554 = OpCompositeExtract %5 %548 5
+%555 = OpAccessChain %54 %17 %43 %547
+OpStore %555 %549
+%557 = OpIAdd %5 %547 %59
+%556 = OpAccessChain %54 %17 %43 %557
+OpStore %556 %550
+%559 = OpIAdd %5 %547 %28
+%558 = OpAccessChain %54 %17 %43 %559
+OpStore %558 %551
+%561 = OpIAdd %5 %547 %66
+%560 = OpAccessChain %54 %17 %43 %561
+OpStore %560 %552
+%563 = OpIAdd %5 %547 %70
+%562 = OpAccessChain %54 %17 %43 %563
+OpStore %562 %553
+%565 = OpIAdd %5 %547 %74
+%564 = OpAccessChain %54 %17 %43 %565
+OpStore %564 %554
+%566 = OpIMul %5 %44 %53
+%567 = OpIAdd %5 %566 %102
+%568 = OpBitcast %118 %526
+%569 = OpCompositeExtract %5 %568 0
+%570 = OpCompositeExtract %5 %568 1
+%571 = OpCompositeExtract %5 %568 2
+%572 = OpCompositeExtract %5 %568 3
+%573 = OpCompositeExtract %5 %568 4
+%574 = OpAccessChain %54 %17 %43 %567
+OpStore %574 %569
+%576 = OpIAdd %5 %567 %59
+%575 = OpAccessChain %54 %17 %43 %576
+OpStore %575 %570
+%578 = OpIAdd %5 %567 %28
+%577 = OpAccessChain %54 %17 %43 %578
+OpStore %577 %571
+%580 = OpIAdd %5 %567 %66
+%579 = OpAccessChain %54 %17 %43 %580
+OpStore %579 %572
+%582 = OpIAdd %5 %567 %70
+%581 = OpAccessChain %54 %17 %43 %582
+OpStore %581 %573
+%583 = OpBitwiseXor %5 %355 %584
+%585 = OpAccessChain %356 %27 %583
+%586 = OpIMul %5 %583 %28
+%587 = OpIAdd %5 %43 %586
+%588 = OpAccessChain %360 %37 %587
+%589 = OpLoad %29 %588
+%590 = OpIMul %5 %583 %28
+%591 = OpIAdd %5 %59 %590
+%592 = OpAccessChain %360 %37 %591
+%593 = OpLoad %29 %592
+%594 = OpLoad %24 %585
+%595 = OpIMul %5 %44 %53
+%596 = OpFunctionCall %5 %127 %595 %70
+%597 = OpBitcast %76 %589
+%598 = OpCompositeExtract %5 %597 0
+%599 = OpCompositeExtract %5 %597 1
+%600 = OpCompositeExtract %5 %597 2
+%601 = OpCompositeExtract %5 %597 3
+%602 = OpCompositeExtract %5 %597 4
+%603 = OpCompositeExtract %5 %597 5
+%604 = OpAccessChain %54 %21 %43 %596
+OpStore %604 %598
+%606 = OpIAdd %5 %596 %59
+%605 = OpAccessChain %54 %21 %43 %606
+OpStore %605 %599
+%608 = OpIAdd %5 %596 %28
+%607 = OpAccessChain %54 %21 %43 %608
+OpStore %607 %600
+%610 = OpIAdd %5 %596 %66
+%609 = OpAccessChain %54 %21 %43 %610
+OpStore %609 %601
+%612 = OpIAdd %5 %596 %70
+%611 = OpAccessChain %54 %21 %43 %612
+OpStore %611 %602
+%614 = OpIAdd %5 %596 %74
+%613 = OpAccessChain %54 %21 %43 %614
+OpStore %613 %603
+%615 = OpIMul %5 %44 %53
+%616 = OpIAdd %5 %615 %80
+%617 = OpFunctionCall %5 %127 %616 %70
+%618 = OpBitcast %76 %593
+%619 = OpCompositeExtract %5 %618 0
+%620 = OpCompositeExtract %5 %618 1
+%621 = OpCompositeExtract %5 %618 2
+%622 = OpCompositeExtract %5 %618 3
+%623 = OpCompositeExtract %5 %618 4
+%624 = OpCompositeExtract %5 %618 5
+%625 = OpAccessChain %54 %21 %43 %617
+OpStore %625 %619
+%627 = OpIAdd %5 %617 %59
+%626 = OpAccessChain %54 %21 %43 %627
+OpStore %626 %620
+%629 = OpIAdd %5 %617 %28
+%628 = OpAccessChain %54 %21 %43 %629
+OpStore %628 %621
+%631 = OpIAdd %5 %617 %66
+%630 = OpAccessChain %54 %21 %43 %631
+OpStore %630 %622
+%633 = OpIAdd %5 %617 %70
+%632 = OpAccessChain %54 %21 %43 %633
+OpStore %632 %623
+%635 = OpIAdd %5 %617 %74
+%634 = OpAccessChain %54 %21 %43 %635
+OpStore %634 %624
+%636 = OpIMul %5 %44 %53
+%637 = OpIAdd %5 %636 %102
+%638 = OpFunctionCall %5 %127 %637 %70
+%639 = OpBitcast %118 %594
+%640 = OpCompositeExtract %5 %639 0
+%641 = OpCompositeExtract %5 %639 1
+%642 = OpCompositeExtract %5 %639 2
+%643 = OpCompositeExtract %5 %639 3
+%644 = OpCompositeExtract %5 %639 4
+%645 = OpAccessChain %54 %21 %43 %638
+OpStore %645 %640
+%647 = OpIAdd %5 %638 %59
+%646 = OpAccessChain %54 %21 %43 %647
+OpStore %646 %641
+%649 = OpIAdd %5 %638 %28
+%648 = OpAccessChain %54 %21 %43 %649
+OpStore %648 %642
+%651 = OpIAdd %5 %638 %66
+%650 = OpAccessChain %54 %21 %43 %651
+OpStore %650 %643
+%653 = OpIAdd %5 %638 %70
+%652 = OpAccessChain %54 %21 %43 %653
+OpStore %652 %644
+OpReturn
+OpFunctionEnd
+%127 = OpFunction %5 None %124
+%125 = OpFunctionParameter %5
+%126 = OpFunctionParameter %5
+%128 = OpLabel
+%129 = OpUDiv %5 %130 %126
+%131 = OpBitwiseAnd %5 %125 %129
+OpReturnValue %131
+OpFunctionEnd
+#endif
