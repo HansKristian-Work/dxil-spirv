@@ -99,6 +99,82 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	return true;
 }
 
+bool emit_isnormal_instruction(Converter::Impl &impl, const LLVMBC::CallInst *instruction)
+{
+	auto &builder = impl.builder();
+	auto bool_type = builder.makeBoolType();
+
+	unsigned vecsize = 1;
+
+	if (instruction->getType()->getTypeID() == llvm::Type::TypeID::VectorTyID)
+	{
+		vecsize = instruction->getType()->getVectorNumElements();
+		bool_type = builder.makeVectorType(bool_type, vecsize);
+	}
+
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	auto *abs_op = impl.allocate(spv::OpExtInst, impl.get_type_id(instruction->getOperand(1)->getType()));
+	abs_op->add_id(impl.glsl_std450_ext);
+	abs_op->add_literal(GLSLstd450FAbs);
+	abs_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	impl.add(abs_op);
+
+	spv::Id smallest_normal;
+	spv::Id pos_inf;
+	spv::Id scalar_type_id = impl.get_type_id(instruction->getOperand(1)->getType()->getScalarType());
+
+	switch (instruction->getOperand(1)->getType()->getScalarType()->getTypeID())
+	{
+	case llvm::Type::TypeID::HalfTyID:
+	{
+		if (impl.support_native_fp16_operations())
+		{
+			smallest_normal = impl.build_splat_constant_vector(scalar_type_id, builder.makeFloat16Constant(1 << 10), vecsize);
+			pos_inf = impl.build_splat_constant_vector(scalar_type_id, builder.makeFloat16Constant(0x7c00), vecsize);
+		}
+		else
+		{
+			smallest_normal = impl.build_splat_constant_vector(scalar_type_id, builder.makeFloatConstant(std::numeric_limits<float>::min()), vecsize);
+			pos_inf = impl.build_splat_constant_vector(scalar_type_id, builder.makeFloatConstant(std::numeric_limits<float>::infinity()), vecsize);
+		}
+		break;
+	}
+
+	case llvm::Type::TypeID::FloatTyID:
+		smallest_normal = impl.build_splat_constant_vector(scalar_type_id, builder.makeFloatConstant(std::numeric_limits<float>::min()), vecsize);
+		pos_inf = impl.build_splat_constant_vector(scalar_type_id, builder.makeFloatConstant(std::numeric_limits<float>::infinity()), vecsize);
+		break;
+
+	case llvm::Type::TypeID::DoubleTyID:
+		smallest_normal = impl.build_splat_constant_vector(scalar_type_id, builder.makeDoubleConstant(std::numeric_limits<double>::min()), vecsize);
+		pos_inf = impl.build_splat_constant_vector(scalar_type_id, builder.makeDoubleConstant(std::numeric_limits<double>::infinity()), vecsize);
+		break;
+
+	default:
+		return false;
+	}
+
+	// NaN will always fail this test.
+	auto *geq_smallest_normal = impl.allocate(spv::OpFOrdGreaterThanEqual, bool_type);
+	geq_smallest_normal->add_id(abs_op->id);
+	geq_smallest_normal->add_id(smallest_normal);
+	impl.add(geq_smallest_normal);
+
+	auto *less_inf = impl.allocate(spv::OpFOrdLessThan, bool_type);
+	less_inf->add_id(abs_op->id);
+	less_inf->add_id(pos_inf);
+	impl.add(less_inf);
+
+	auto *is_normal = impl.allocate(spv::OpLogicalAnd, instruction);
+	is_normal->add_id(geq_smallest_normal->id);
+	is_normal->add_id(less_inf->id);
+	impl.add(is_normal);
+
+	return true;
+}
+
 bool emit_isfinite_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
