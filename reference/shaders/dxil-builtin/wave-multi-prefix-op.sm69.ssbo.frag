@@ -9,6 +9,7 @@
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_KHR_shader_subgroup_ballot : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_EXT_shader_subgroup_extended_types_float16 : require
 
 vec3 _37;
 f16vec2 _45;

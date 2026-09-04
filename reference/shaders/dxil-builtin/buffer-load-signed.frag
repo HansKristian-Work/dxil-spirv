@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_samplerless_texture_functions : require
 
 layout(set = 0, binding = 0) uniform isamplerBuffer _8;
 layout(set = 0, binding = 0, r32i) uniform readonly iimageBuffer _11;

@@ -2,6 +2,7 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_EXT_samplerless_texture_functions : require
 
 layout(set = 15, binding = 0, std430) restrict readonly buffer SSBO_Offsets
 {

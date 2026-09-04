@@ -33,10 +33,11 @@ layout(location = 0) out int SV_Target;
 void main()
 {
     uint16_t _24 = uint16_t(A);
-    uint _25 = uint(int16_t(_24));
-    mediump float _35 = PhysicalPointerFloatNonWriteArray(registers._m1).value[_25];
-    mediump float _42 = PhysicalPointerFloatNonWriteArray(registers._m1).value[uint(int16_t(_24 + 1us))];
-    PhysicalPointerFloatArray(registers._m2).value[_25] = _42 + _35;
+    float _34 = PhysicalPointerFloatNonWriteArray(registers._m1).value[uint(int16_t(_24))];
+    mediump float _35 = _34;
+    float _41 = PhysicalPointerFloatNonWriteArray(registers._m1).value[uint(int16_t(_24 + 1us))];
+    mediump float _42 = _41;
+    PhysicalPointerFloatArray(registers._m2).value[uint(int16_t(_24))] = _42 + _35;
     SV_Target = int(10u);
 }
 

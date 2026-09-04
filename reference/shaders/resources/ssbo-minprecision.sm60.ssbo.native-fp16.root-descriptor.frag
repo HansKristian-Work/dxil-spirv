@@ -53,9 +53,10 @@ void main()
 {
     uint16_t _31 = uint16_t(A);
     uint _32 = uint(int16_t(_31));
-    uint _46 = uint(int16_t(_31 + 1us));
-    PhysicalPointerFloatArray(registers._m2).value[_32] = float(float16_t(PhysicalPointerFloatNonWriteArray(registers._m1).value[_46]) + float16_t(PhysicalPointerFloatNonWriteArray(registers._m1).value[_32]));
-    PhysicalPointerUintArray(registers._m3).value[_32] = uint(uint16_t(_13._m0[_46]) + uint16_t(_13._m0[_32]));
+    float _41 = PhysicalPointerFloatNonWriteArray(registers._m1).value[_32];
+    float _49 = PhysicalPointerFloatNonWriteArray(registers._m1).value[uint(int16_t(_31 + 1us))];
+    PhysicalPointerFloatArray(registers._m2).value[_32] = float(float16_t(_49) + float16_t(_41));
+    PhysicalPointerUintArray(registers._m3).value[_32] = uint(uint16_t(_13._m0[uint(int16_t(_31 + 1us))]) + uint16_t(_13._m0[_32]));
     SV_Target = int(10u);
 }
 

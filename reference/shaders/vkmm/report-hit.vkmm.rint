@@ -12,16 +12,18 @@ hitAttributeEXT _6 hit;
 
 void main()
 {
+    float _15 = gl_RayTmaxEXT;
     _6 _12;
-    _12._m0 = gl_RayTmaxEXT;
+    _12._m0 = _15;
     hit = _12;
     bool _24 = reportIntersectionEXT(4.0, 100u);
     _6 _11;
     _11._m0 = gl_RayTminEXT;
     hit = _11;
     bool _29 = reportIntersectionEXT(3.0, 50u);
+    uint _34 = gl_SubgroupInvocationID;
     _6 _10;
-    _10._m0 = float(gl_SubgroupInvocationID);
+    _10._m0 = float(_34);
     hit = _10;
     bool _38 = reportIntersectionEXT(2.0, 50u);
 }

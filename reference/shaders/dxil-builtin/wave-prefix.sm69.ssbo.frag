@@ -10,6 +10,7 @@
 #endif
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_EXT_shader_subgroup_extended_types_float16 : require
 
 uvec2 _39;
 uvec3 _62;

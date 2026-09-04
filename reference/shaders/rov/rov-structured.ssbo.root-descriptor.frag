@@ -34,10 +34,9 @@ layout(push_constant, std430) uniform RootConstants
 
 void main()
 {
-    uint _29 = (uint(gl_FragCoord.y) * 1000u) + uint(gl_FragCoord.x);
-    PhysicalPointerFloat4CoherentArray _33 = PhysicalPointerFloat4CoherentArray(registers._m2);
     SPIRV_Cross_beginInvocationInterlock();
-    PhysicalPointerFloat4CoherentArray(registers._m2).value[_29] = vec4(_33.value[_29].x + 1.0, _33.value[_29].y + 2.0, _33.value[_29].z + 3.0, _33.value[_29].w + 4.0);
+    vec4 _36 = PhysicalPointerFloat4CoherentArray(registers._m2).value[(uint(gl_FragCoord.y) * 1000u) + uint(gl_FragCoord.x)];
+    PhysicalPointerFloat4CoherentArray(registers._m2).value[(uint(gl_FragCoord.y) * 1000u) + uint(gl_FragCoord.x)] = vec4(_36.x + 1.0, _36.y + 2.0, _36.z + 3.0, _36.w + 4.0);
     SPIRV_Cross_endInvocationInterlock();
 }
 

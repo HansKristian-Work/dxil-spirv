@@ -42,7 +42,9 @@ void main()
     _21[1u] = _43.y;
     _21[2u] = _43.z;
     _21[3u] = _43.w;
-    imageStore(RWIMG, ivec2(uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y)), vec4(PhysicalPointerFloatNonWriteCBVArray(SBT._m6).value[gl_LaunchIDEXT.y & 3u] * _21[gl_LaunchIDEXT.x & 3u]));
+    vec4 _60 = PhysicalPointerFloat4NonWriteCBVArray(SBT._m6).value[0u];
+    float _84 = PhysicalPointerFloatNonWriteCBVArray(SBT._m6).value[gl_LaunchIDEXT.y & 3u];
+    imageStore(RWIMG, ivec2(uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y)), vec4(_84 * _21[gl_LaunchIDEXT.x & 3u]));
 }
 
 

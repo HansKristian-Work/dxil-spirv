@@ -52,19 +52,19 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    PhysicalPointerFloat4NonWriteCBVArray _22 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0);
-    PhysicalPointerFloat4NonWriteCBVArray _32 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0);
-    f16vec2 _40 = unpackFloat2x16(floatBitsToUint(_32.value[1u].x));
-    f16vec2 _43 = unpackFloat2x16(floatBitsToUint(_32.value[1u].y));
-    f16vec2 _46 = unpackFloat2x16(floatBitsToUint(_32.value[1u].z));
-    f16vec2 _49 = unpackFloat2x16(floatBitsToUint(_32.value[1u].w));
+    vec4 _25 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[0u];
+    vec4 _34 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[1u];
+    f16vec2 _40 = unpackFloat2x16(floatBitsToUint(_34.x));
+    f16vec2 _43 = unpackFloat2x16(floatBitsToUint(_34.y));
+    f16vec2 _46 = unpackFloat2x16(floatBitsToUint(_34.z));
+    f16vec2 _49 = unpackFloat2x16(floatBitsToUint(_34.w));
     CBVComposite16x8 _53 = CBVComposite16x8(_40.x, _40.y, _43.x, _43.y, _46.x, _46.y, _49.x, _49.y);
-    PhysicalPointerUint642NonWriteCBVArray _84 = PhysicalPointerUint642NonWriteCBVArray(registers._m0);
-    PhysicalPointerUint642NonWriteCBVArray _91 = PhysicalPointerUint642NonWriteCBVArray(registers._m0);
-    SV_Target.x = ((float(_53._m0) + _22.value[0u].x) + float(_53._m4)) + float(int64_t(_84.value[2u].x));
-    SV_Target.y = ((float(_53._m1) + _22.value[0u].y) + float(_53._m5)) + float(int64_t(_84.value[2u].y));
-    SV_Target.z = ((float(_53._m2) + _22.value[0u].z) + float(_53._m6)) + float(int64_t(_91.value[3u].x));
-    SV_Target.w = ((float(_53._m3) + _22.value[0u].w) + float(_53._m7)) + float(int64_t(_91.value[3u].y));
+    u64vec2 _87 = PhysicalPointerUint642NonWriteCBVArray(registers._m0).value[2u];
+    u64vec2 _93 = PhysicalPointerUint642NonWriteCBVArray(registers._m0).value[3u];
+    SV_Target.x = ((float(_53._m0) + _25.x) + float(_53._m4)) + float(int64_t(_87.x));
+    SV_Target.y = ((float(_53._m1) + _25.y) + float(_53._m5)) + float(int64_t(_87.y));
+    SV_Target.z = ((float(_53._m2) + _25.z) + float(_53._m6)) + float(int64_t(_93.x));
+    SV_Target.w = ((float(_53._m3) + _25.w) + float(_53._m7)) + float(int64_t(_93.y));
 }
 
 

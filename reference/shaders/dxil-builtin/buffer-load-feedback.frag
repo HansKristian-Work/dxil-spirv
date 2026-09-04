@@ -1,5 +1,6 @@
 #version 460
 #extension GL_ARB_sparse_texture2 : require
+#extension GL_EXT_samplerless_texture_functions : require
 
 struct SparseTexel
 {

@@ -76,22 +76,26 @@ uint ByteAddressMask(uint index, uint stride)
 
 void main()
 {
+    float _41 = PhysicalPointerFloatNonWriteArray(registers._m1).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)];
+    vec2 _57 = PhysicalPointerFloat2NonWriteArray(registers._m1).value[ByteAddressMask(gl_GlobalInvocationID.x + 32u, 8u)];
     uint _60 = (gl_GlobalInvocationID.x * 12u) + 768u;
     AddCarry _68;
     _68._m0 = uaddCarry(registers._m1.x, _60, _68._m1);
+    vec3 _76 = PhysicalPointerFloat3NonWrite(uvec2(_68._m0, registers._m1.y + _68._m1)).value;
     uint _77 = gl_GlobalInvocationID.x << 4u;
-    uint _103 = ByteAddressMask((gl_GlobalInvocationID.x * 4u) + 640u, 4u);
-    PhysicalPointerFloatNonWriteArray _104 = PhysicalPointerFloatNonWriteArray(registers._m1);
-    PhysicalPointerFloatArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)] = PhysicalPointerFloatNonWriteArray(registers._m1).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)];
-    PhysicalPointerFloatArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)] = _104.value[_103];
-    PhysicalPointerFloat2Array(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x + 32u, 8u)] = PhysicalPointerFloat2NonWriteArray(registers._m1).value[ByteAddressMask(gl_GlobalInvocationID.x + 32u, 8u)];
+    vec4 _91 = PhysicalPointerFloat4NonWriteArray(registers._m1).value[ByteAddressMask(gl_GlobalInvocationID.x + 96u, 16u)];
+    vec4 _99 = PhysicalPointerFloat4NonWriteArray(registers._m1).value[ByteAddressMask(gl_GlobalInvocationID.x + 160u, 16u)];
+    float _106 = PhysicalPointerFloatNonWriteArray(registers._m1).value[ByteAddressMask((gl_GlobalInvocationID.x * 4u) + 640u, 4u)];
+    PhysicalPointerFloatArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)] = _41;
+    PhysicalPointerFloatArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x, 4u)] = _106;
+    PhysicalPointerFloat2Array(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x + 32u, 8u)] = _57;
     AddCarry _136;
     _136._m0 = uaddCarry(registers._m2.x, _60, _136._m1);
-    PhysicalPointerFloat3(uvec2(_136._m0, registers._m2.y + _136._m1)).value = PhysicalPointerFloat3NonWrite(uvec2(_68._m0, registers._m1.y + _68._m1)).value;
-    PhysicalPointerFloat4Array(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x + 96u, 16u)] = PhysicalPointerFloat4NonWriteArray(registers._m1).value[ByteAddressMask(gl_GlobalInvocationID.x + 96u, 16u)];
+    PhysicalPointerFloat3(uvec2(_136._m0, registers._m2.y + _136._m1)).value = _76;
+    PhysicalPointerFloat4Array(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x + 96u, 16u)] = _91;
     vec4 _152;
-    _152.x = _104.value[_103];
-    PhysicalPointerFloat4Array(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x + 160u, 16u)] = _152.xxxx + PhysicalPointerFloat4NonWriteArray(registers._m1).value[ByteAddressMask(gl_GlobalInvocationID.x + 160u, 16u)];
+    _152.x = _106;
+    PhysicalPointerFloat4Array(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x + 160u, 16u)] = _152.xxxx + _99;
 }
 
 

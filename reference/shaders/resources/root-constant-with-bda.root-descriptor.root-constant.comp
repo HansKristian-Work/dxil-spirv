@@ -42,9 +42,9 @@ layout(push_constant, std430) uniform RootConstants
 
 void main()
 {
-    PhysicalPointerFloat4NonWriteArray _29 = PhysicalPointerFloat4NonWriteArray(registers._m1);
+    vec4 _32 = PhysicalPointerFloat4NonWriteArray(registers._m1).value[gl_GlobalInvocationID.x];
     float _85 = uintBitsToFloat(uvec4(registers._m12, registers._m13, registers._m14, registers._m15)).z + (uintBitsToFloat(uvec4(registers._m8, registers._m9, registers._m10, registers._m11)).y + uintBitsToFloat(uvec4(registers._m4, registers._m5, registers._m6, registers._m7)).x);
-    PhysicalPointerFloat4CoherentArray(registers._m2).value[gl_GlobalInvocationID.x] = vec4(_85 + _29.value[gl_GlobalInvocationID.x].x, _85 + _29.value[gl_GlobalInvocationID.x].y, _85 + _29.value[gl_GlobalInvocationID.x].z, _85 + _29.value[gl_GlobalInvocationID.x].w);
+    PhysicalPointerFloat4CoherentArray(registers._m2).value[gl_GlobalInvocationID.x] = vec4(_85 + _32.x, _85 + _32.y, _85 + _32.z, _85 + _32.w);
 }
 
 

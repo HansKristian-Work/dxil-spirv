@@ -52,19 +52,19 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    PhysicalPointerFloat4NonWriteCBVArray _22 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0);
-    PhysicalPointerUint642NonWriteCBVArray _36 = PhysicalPointerUint642NonWriteCBVArray(registers._m0);
-    PhysicalPointerUint642NonWriteCBVArray _43 = PhysicalPointerUint642NonWriteCBVArray(registers._m0);
-    PhysicalPointerFloat4NonWriteCBVArray _58 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0);
-    f16vec2 _66 = unpackFloat2x16(floatBitsToUint(_58.value[1u].x));
-    f16vec2 _69 = unpackFloat2x16(floatBitsToUint(_58.value[1u].y));
-    f16vec2 _72 = unpackFloat2x16(floatBitsToUint(_58.value[1u].z));
-    f16vec2 _75 = unpackFloat2x16(floatBitsToUint(_58.value[1u].w));
+    vec4 _25 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[0u];
+    u64vec2 _39 = PhysicalPointerUint642NonWriteCBVArray(registers._m0).value[2u];
+    u64vec2 _45 = PhysicalPointerUint642NonWriteCBVArray(registers._m0).value[3u];
+    vec4 _60 = PhysicalPointerFloat4NonWriteCBVArray(registers._m0).value[1u];
+    f16vec2 _66 = unpackFloat2x16(floatBitsToUint(_60.x));
+    f16vec2 _69 = unpackFloat2x16(floatBitsToUint(_60.y));
+    f16vec2 _72 = unpackFloat2x16(floatBitsToUint(_60.z));
+    f16vec2 _75 = unpackFloat2x16(floatBitsToUint(_60.w));
     CBVComposite16x8 _79 = CBVComposite16x8(_66.x, _66.y, _69.x, _69.y, _72.x, _72.y, _75.x, _75.y);
-    SV_Target.x = (float(int64_t(_36.value[2u].x)) + _22.value[0u].x) + float(_79._m0);
-    SV_Target.y = (float(int64_t(_36.value[2u].y)) + _22.value[0u].y) + float(_79._m1);
-    SV_Target.z = (float(int64_t(_43.value[3u].x)) + _22.value[0u].z) + float(_79._m2);
-    SV_Target.w = (float(int64_t(_43.value[3u].y)) + _22.value[0u].w) + float(_79._m3);
+    SV_Target.x = (float(int64_t(_39.x)) + _25.x) + float(_79._m0);
+    SV_Target.y = (float(int64_t(_39.y)) + _25.y) + float(_79._m1);
+    SV_Target.z = (float(int64_t(_45.x)) + _25.z) + float(_79._m2);
+    SV_Target.w = (float(int64_t(_45.y)) + _25.w) + float(_79._m3);
 }
 
 

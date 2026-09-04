@@ -1,6 +1,7 @@
 #version 460
 #extension GL_ARB_sparse_texture2 : require
 #extension GL_ARB_sparse_texture_clamp : require
+#extension GL_EXT_texture_shadow_lod : require
 
 struct SparseTexel
 {

@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_samplerless_texture_functions : require
 
 uint _116;
 uint _133;
