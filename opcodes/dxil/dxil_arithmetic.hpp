@@ -31,6 +31,7 @@ namespace dxil_spv
 bool emit_imad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_isfinite_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
+bool emit_isnormal_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool emit_saturate_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 
 bool emit_find_high_bit_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction);
