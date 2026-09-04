@@ -1375,99 +1375,199 @@ static bool emit_wmma_element_wise_arith(Converter::Impl &impl)
 
 static bool emit_float8_conversion(Converter::Impl &impl)
 {
-	auto &builder = impl.builder();
-	auto convert_op = AmdExtD3DShaderIntrinsicsFloat8CvtOp(impl.ags.instructions[0].immediate &
-	                                                       AmdExtD3DShaderIntrinsicsFloat8Conversion_CvtOpMask);
-	bool saturate = ((impl.ags.instructions[0].immediate >> AmdExtD3DShaderIntrinsicsFloat8Conversion_SatShift) &
-	                 AmdExtD3DShaderIntrinsicsFloat8Conversion_SatMask) != 0;
+auto &builder = impl.builder();
+uint32_t convert_op = (impl.ags.instructions[0].immediate >> AmdExtD3DShaderIntrinsicsFloat8Conversion_CvtOpShift) &
+                      AmdExtD3DShaderIntrinsicsFloat8Conversion_CvtOpMask;
+bool saturate = ((impl.ags.instructions[0].immediate >> AmdExtD3DShaderIntrinsicsFloat8Conversion_SatShift) &
+                 AmdExtD3DShaderIntrinsicsFloat8Conversion_SatMask) != 0;
 
-	builder.addExtension("SPV_EXT_float8");
-	builder.addCapability(spv::CapabilityFloat8EXT);
-	builder.addCapability(spv::CapabilityInt8);
-	bool is_bfloat = false;
+bool is_bfloat = false;
 
-	uint32_t dummy_value;
-	if (!get_constant_operand(impl.ags.backdoor_instructions[0], 6, &dummy_value) || dummy_value != 0)
-		return false;
+uint32_t dummy_value;
+if (!get_constant_operand(impl.ags.backdoor_instructions[0], 6, &dummy_value) || dummy_value != 0)
+return false;
 
-	switch (convert_op)
-	{
-	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_F32_2_BF8:
-		is_bfloat = true;
-		// fallthrough
-	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_F32_2_FP8:
-	{
-		auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(32));
-		bitcast->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
-		impl.add(bitcast);
+switch (convert_op)
+{
+case AmdExtD3DShaderIntrinsicsFloat8CvtOp_F32_2_BF8:
+is_bfloat = true;
+// fallthrough
+case AmdExtD3DShaderIntrinsicsFloat8CvtOp_F32_2_FP8:
+{
+if (impl.options.wmma_fp8)
+{
+builder.addExtension("SPV_EXT_float8");
+builder.addCapability(spv::CapabilityFloat8EXT);
+builder.addCapability(spv::CapabilityInt8);
 
-#if 0
-		// Native implementation seems to correctly treat saturated inf in this case.
-		if (saturate && !is_bfloat)
-		{
-			// Fixup for RDNA4 HW compat.
-			auto *is_inf = impl.allocate(spv::OpIsInf, builder.makeBoolType());
-			is_inf->add_id(bitcast->id);
-			impl.add(is_inf);
+auto *bitcast = impl.allocate(spv::OpBitcast, builder.makeFloatType(32));
+bitcast->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
+impl.add(bitcast);
 
-			auto *select = impl.allocate(spv::OpSelect, builder.makeFloatType(32));
-			select->add_id(is_inf->id);
-			select->add_id(builder.makeFloatConstant(std::numeric_limits<float>::quiet_NaN()));
-			select->add_id(bitcast->id);
-			impl.add(select);
+auto *conv = impl.allocate(spv::OpFConvert, builder.makeFloatType(8, is_bfloat ? spv::FPEncodingFloat8E5M2EXT :
+                                                                                 spv::FPEncodingFloat8E4M3EXT));
+conv->add_id(bitcast->id);
+impl.add(conv);
 
-			bitcast = select;
-		}
-#endif
+if (saturate)
+builder.addDecoration(conv->id, spv::DecorationSaturatedToLargestFloat8NormalConversionEXT);
 
-		auto *conv = impl.allocate(spv::OpFConvert, builder.makeFloatType(8, is_bfloat ? spv::FPEncodingFloat8E5M2EXT :
-		                                                                                 spv::FPEncodingFloat8E4M3EXT));
-		conv->add_id(bitcast->id);
-		impl.add(conv);
+bitcast = impl.allocate(spv::OpBitcast, builder.makeUintType(8));
+bitcast->add_id(conv->id);
+impl.add(bitcast);
 
-		if (saturate)
-			builder.addDecoration(conv->id, spv::DecorationSaturatedToLargestFloat8NormalConversionEXT);
+auto *ext = impl.allocate(spv::OpUConvert, impl.ags.backdoor_instructions[0]);
+ext->add_id(bitcast->id);
+impl.add(ext);
+}
+else
+{
+// Software emulation of Float32 -> FP8 (E4M3) conversion for RDNA 3.
+spv::Id val_id = impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5));
+auto *f32_val = impl.allocate(spv::OpBitcast, builder.makeFloatType(32));
+f32_val->add_id(val_id);
+impl.add(f32_val);
 
-		bitcast = impl.allocate(spv::OpBitcast, builder.makeUintType(8));
-		bitcast->add_id(conv->id);
-		impl.add(bitcast);
+auto *u32_val = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+u32_val->add_id(f32_val->id);
+impl.add(u32_val);
 
-		auto *ext = impl.allocate(spv::OpUConvert, impl.ags.backdoor_instructions[0]);
-		ext->add_id(bitcast->id);
-		impl.add(ext);
-		break;
-	}
+auto *sign_shift = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(32));
+sign_shift->add_id(u32_val->id);
+sign_shift->add_id(builder.makeUintConstant(24));
+impl.add(sign_shift);
 
-	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_BF8_2_F32:
-		is_bfloat = true;
-		// fallthrough
-	case AmdExtD3DShaderIntrinsicsFloat8CvtOp_FP8_2_F32:
-	{
-		auto *trunc = impl.allocate(spv::OpUConvert, builder.makeUintType(8));
-		trunc->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
-		impl.add(trunc);
+auto *sign_bit = impl.allocate(spv::OpBitwiseAnd, builder.makeUintType(32));
+sign_bit->add_id(sign_shift->id);
+sign_bit->add_id(builder.makeUintConstant(0x80));
+impl.add(sign_bit);
 
-		auto *bitcast =
-		    impl.allocate(spv::OpBitcast, builder.makeFloatType(8, is_bfloat ? spv::FPEncodingFloat8E5M2EXT :
-		                                                                       spv::FPEncodingFloat8E4M3EXT));
-		bitcast->add_id(trunc->id);
-		impl.add(bitcast);
+spv::Id glsl450 = builder.import("GLSL.std.450");
+auto *abs_val = impl.allocate(spv::OpExtInst, builder.makeFloatType(32));
+abs_val->add_id(glsl450);
+abs_val->add_literal(GLSLstd450FAbs);
+abs_val->add_id(f32_val->id);
+impl.add(abs_val);
 
-		auto *conv = impl.allocate(spv::OpFConvert, builder.makeFloatType(32));
-		conv->add_id(bitcast->id);
-		impl.add(conv);
+auto *clamped = impl.allocate(spv::OpExtInst, builder.makeFloatType(32));
+clamped->add_id(glsl450);
+clamped->add_literal(GLSLstd450FClamp);
+clamped->add_id(abs_val->id);
+clamped->add_id(builder.makeFloatConstant(0.0f));
+clamped->add_id(builder.makeFloatConstant(448.0f));
+impl.add(clamped);
 
-		bitcast = impl.allocate(spv::OpBitcast, impl.ags.backdoor_instructions[0]);
-		bitcast->add_id(conv->id);
-		impl.add(bitcast);
-		break;
-	}
+auto *f16_val = impl.allocate(spv::OpFConvert, builder.makeFloatType(16));
+f16_val->add_id(clamped->id);
+impl.add(f16_val);
 
-	default:
-		return false;
-	}
+auto *scaled = impl.allocate(spv::OpFMul, builder.makeFloatType(16));
+scaled->add_id(f16_val->id);
+scaled->add_id(builder.makeFloat16Constant(0x1c00));
+impl.add(scaled);
 
-	return true;
+auto *u16_bits = impl.allocate(spv::OpBitcast, builder.makeUintType(16));
+u16_bits->add_id(scaled->id);
+impl.add(u16_bits);
+
+auto *rounded = impl.allocate(spv::OpIAdd, builder.makeUintType(16));
+rounded->add_id(u16_bits->id);
+rounded->add_id(builder.makeUint16Constant(0x003f));
+impl.add(rounded);
+
+auto *fp8_mag = impl.allocate(spv::OpShiftRightLogical, builder.makeUintType(16));
+fp8_mag->add_id(rounded->id);
+fp8_mag->add_id(builder.makeUint16Constant(7));
+impl.add(fp8_mag);
+
+auto *fp8_u32 = impl.allocate(spv::OpUConvert, builder.makeUintType(32));
+fp8_u32->add_id(fp8_mag->id);
+impl.add(fp8_u32);
+
+auto *final_fp8 = impl.allocate(spv::OpBitwiseOr, impl.ags.backdoor_instructions[0]);
+final_fp8->add_id(sign_bit->id);
+final_fp8->add_id(fp8_u32->id);
+impl.add(final_fp8);
+}
+break;
+}
+
+case AmdExtD3DShaderIntrinsicsFloat8CvtOp_BF8_2_F32:
+is_bfloat = true;
+// fallthrough
+case AmdExtD3DShaderIntrinsicsFloat8CvtOp_FP8_2_F32:
+{
+if (impl.options.wmma_fp8)
+{
+builder.addExtension("SPV_EXT_float8");
+builder.addCapability(spv::CapabilityFloat8EXT);
+builder.addCapability(spv::CapabilityInt8);
+
+auto *trunc = impl.allocate(spv::OpUConvert, builder.makeUintType(8));
+trunc->add_id(impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5)));
+impl.add(trunc);
+
+auto *bitcast =
+    impl.allocate(spv::OpBitcast, builder.makeFloatType(8, is_bfloat ? spv::FPEncodingFloat8E5M2EXT :
+                                                                       spv::FPEncodingFloat8E4M3EXT));
+bitcast->add_id(trunc->id);
+impl.add(bitcast);
+
+auto *conv = impl.allocate(spv::OpFConvert, builder.makeFloatType(32));
+conv->add_id(bitcast->id);
+impl.add(conv);
+
+bitcast = impl.allocate(spv::OpBitcast, impl.ags.backdoor_instructions[0]);
+bitcast->add_id(conv->id);
+impl.add(bitcast);
+}
+else
+{
+// Software emulation of FP8 (E4M3) -> Float32 conversion for RDNA 3.
+spv::Id raw_u32 = impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5));
+auto *u8_val = impl.allocate(spv::OpUConvert, builder.makeUintType(8));
+u8_val->add_id(raw_u32);
+impl.add(u8_val);
+
+auto *s16_val = impl.allocate(spv::OpSConvert, builder.makeIntType(16));
+s16_val->add_id(u8_val->id);
+impl.add(s16_val);
+
+auto *shifted = impl.allocate(spv::OpShiftLeftLogical, builder.makeIntType(16));
+shifted->add_id(s16_val->id);
+shifted->add_id(builder.makeInt16Constant(7));
+impl.add(shifted);
+
+auto *masked = impl.allocate(spv::OpBitwiseAnd, builder.makeIntType(16));
+masked->add_id(shifted->id);
+masked->add_id(builder.makeInt16Constant(int16_t(0xffff ^ 0x4000)));
+impl.add(masked);
+
+auto *f16_val = impl.allocate(spv::OpBitcast, builder.makeFloatType(16));
+f16_val->add_id(masked->id);
+impl.add(f16_val);
+
+auto *f16_scaled = impl.allocate(spv::OpFMul, builder.makeFloatType(16));
+f16_scaled->add_id(f16_val->id);
+f16_scaled->add_id(builder.makeFloat16Constant(0x5c00));
+impl.add(f16_scaled);
+
+auto *f32_res = impl.allocate(spv::OpFConvert, builder.makeFloatType(32));
+f32_res->add_id(f16_scaled->id);
+impl.add(f32_res);
+
+auto *final_bitcast = impl.allocate(spv::OpBitcast, impl.ags.backdoor_instructions[0]);
+final_bitcast->add_id(f32_res->id);
+impl.add(final_bitcast);
+}
+break;
+}
+
+default:
+return false;
+}
+
+return true;
 }
 
 static spv::Id get_matmul_result_type(Converter::Impl &impl, uint32_t opcode)
