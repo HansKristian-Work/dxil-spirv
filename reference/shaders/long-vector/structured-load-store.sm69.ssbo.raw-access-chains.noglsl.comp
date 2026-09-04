@@ -1,0 +1,113 @@
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 68
+; Schema: 0
+OpCapability Shader
+OpCapability RawAccessChainsNV
+OpCapability LongVectorEXT
+OpExtension "SPV_EXT_long_vector"
+OpExtension "SPV_NV_raw_access_chains"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %9 %13 %17 %21 %24
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %7 "SSBO"
+OpName %11 "SSBO"
+OpName %15 "SSBO"
+OpName %19 "SSBO"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %10 ArrayStride 4
+OpMemberDecorate %11 0 Offset 0
+OpDecorate %11 Block
+OpDecorate %13 DescriptorSet 0
+OpDecorate %13 Binding 1
+OpDecorate %14 ArrayStride 4
+OpMemberDecorate %15 0 Offset 0
+OpDecorate %15 Block
+OpDecorate %17 DescriptorSet 0
+OpDecorate %17 Binding 2
+OpDecorate %18 ArrayStride 4
+OpMemberDecorate %19 0 Offset 0
+OpDecorate %19 Block
+OpDecorate %21 DescriptorSet 0
+OpDecorate %21 Binding 3
+OpDecorate %24 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeRuntimeArray %5
+%11 = OpTypeStruct %10
+%12 = OpTypePointer StorageBuffer %11
+%13 = OpVariable %12 StorageBuffer
+%14 = OpTypeRuntimeArray %5
+%15 = OpTypeStruct %14
+%16 = OpTypePointer StorageBuffer %15
+%17 = OpVariable %16 StorageBuffer
+%18 = OpTypeRuntimeArray %5
+%19 = OpTypeStruct %18
+%20 = OpTypePointer StorageBuffer %19
+%21 = OpVariable %20 StorageBuffer
+%22 = OpTypeVector %5 3
+%23 = OpTypePointer Input %22
+%24 = OpVariable %23 Input
+%25 = OpTypePointer Input %5
+%27 = OpConstant %5 0
+%29 = OpTypeFloat 32
+%30 = OpTypeVector %29 5
+%31 = OpTypePointer StorageBuffer %30
+%33 = OpConstant %5 20
+%36 = OpConstant %29 2
+%37 = OpConstantComposite %30 %36 %36 %36 %36 %36
+%39 = OpTypeVector %29 6
+%40 = OpTypePointer StorageBuffer %39
+%42 = OpConstant %5 24
+%45 = OpConstant %29 3
+%46 = OpConstantComposite %39 %45 %45 %45 %45 %45 %45
+%48 = OpTypeVector %29 7
+%49 = OpTypePointer StorageBuffer %48
+%51 = OpConstant %5 28
+%54 = OpConstant %29 4
+%55 = OpConstantComposite %48 %54 %54 %54 %54 %54 %54 %54
+%57 = OpTypeVector %29 8
+%58 = OpTypePointer StorageBuffer %57
+%60 = OpConstant %5 32
+%63 = OpConstant %29 5
+%64 = OpConstantComposite %57 %63 %63 %63 %63 %63 %63 %63 %63
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %66
+%66 = OpLabel
+%26 = OpAccessChain %25 %24 %27
+%28 = OpLoad %5 %26
+%32 = OpRawAccessChainNV %31 %9 %33 %28 %27 RobustnessPerElementNV
+%34 = OpLoad %30 %32 Aligned 4
+%35 = OpFAdd %30 %34 %37
+%38 = OpRawAccessChainNV %31 %9 %33 %28 %27 RobustnessPerElementNV
+OpStore %38 %35 Aligned 4
+%41 = OpRawAccessChainNV %40 %13 %42 %28 %27 RobustnessPerElementNV
+%43 = OpLoad %39 %41 Aligned 8
+%44 = OpFAdd %39 %43 %46
+%47 = OpRawAccessChainNV %40 %13 %42 %28 %27 RobustnessPerElementNV
+OpStore %47 %44 Aligned 8
+%50 = OpRawAccessChainNV %49 %17 %51 %28 %27 RobustnessPerElementNV
+%52 = OpLoad %48 %50 Aligned 4
+%53 = OpFAdd %48 %52 %55
+%56 = OpRawAccessChainNV %49 %17 %51 %28 %27 RobustnessPerElementNV
+OpStore %56 %53 Aligned 4
+%59 = OpRawAccessChainNV %58 %21 %60 %28 %27 RobustnessPerElementNV
+%61 = OpLoad %57 %59 Aligned 16
+%62 = OpFAdd %57 %61 %64
+%65 = OpRawAccessChainNV %58 %21 %60 %28 %27 RobustnessPerElementNV
+OpStore %65 %62 Aligned 16
+OpReturn
+OpFunctionEnd
+

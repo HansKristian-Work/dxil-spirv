@@ -1,0 +1,272 @@
+#version 460
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_long_vector : require
+#extension GL_EXT_buffer_reference_uvec2 : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(buffer_reference) buffer PhysicalPointerFloat5;
+layout(buffer_reference) buffer PhysicalPointerFloat6;
+layout(buffer_reference) buffer PhysicalPointerFloat7;
+layout(buffer_reference) buffer PhysicalPointerFloat8Array;
+
+struct AddCarry
+{
+    uint _m0;
+    uint _m1;
+};
+
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat5
+{
+    vector<float, 5> value;
+};
+
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat6
+{
+    vector<float, 6> value;
+};
+
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat7
+{
+    vector<float, 7> value;
+};
+
+layout(buffer_reference, buffer_reference_align = 16, std430) buffer PhysicalPointerFloat8Array
+{
+    vector<float, 8> value[];
+};
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uvec2 _m0;
+    uvec2 _m1;
+    uvec2 _m2;
+    uvec2 _m3;
+} registers;
+
+uint ByteAddressMask(uint index, uint stride)
+{
+    return index & (4294967295u / stride);
+}
+
+void main()
+{
+    uint _17 = gl_GlobalInvocationID.x * 20u;
+    AddCarry _30;
+    _30._m0 = uaddCarry(registers._m2.x, _17, _30._m1);
+    vector<float, 5> _38 = PhysicalPointerFloat5(uvec2(_30._m0, registers._m2.y + _30._m1)).value;
+    AddCarry _44;
+    _44._m0 = uaddCarry(registers._m2.x, _17, _44._m1);
+    PhysicalPointerFloat5(uvec2(_44._m0, registers._m2.y + _44._m1)).value = _38 + (vector<float, 5>(2.0, 2.0, 2.0, 2.0, 2.0));
+    uint _51 = gl_GlobalInvocationID.x * 24u;
+    AddCarry _60;
+    _60._m0 = uaddCarry(registers._m2.x, _51, _60._m1);
+    vector<float, 6> _68 = PhysicalPointerFloat6(uvec2(_60._m0, registers._m2.y + _60._m1)).value;
+    AddCarry _74;
+    _74._m0 = uaddCarry(registers._m2.x, _51, _74._m1);
+    PhysicalPointerFloat6(uvec2(_74._m0, registers._m2.y + _74._m1)).value = _68 + (vector<float, 6>(3.0, 3.0, 3.0, 3.0, 3.0, 3.0));
+    uint _81 = gl_GlobalInvocationID.x * 28u;
+    AddCarry _90;
+    _90._m0 = uaddCarry(registers._m2.x, _81, _90._m1);
+    vector<float, 7> _98 = PhysicalPointerFloat7(uvec2(_90._m0, registers._m2.y + _90._m1)).value;
+    AddCarry _104;
+    _104._m0 = uaddCarry(registers._m2.x, _81, _104._m1);
+    PhysicalPointerFloat7(uvec2(_104._m0, registers._m2.y + _104._m1)).value = _98 + (vector<float, 7>(4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0));
+    vector<float, 8> _133 = PhysicalPointerFloat8Array(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x, 32u)];
+    PhysicalPointerFloat8Array(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x, 32u)] = _133 + (vector<float, 8>(5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 142
+; Schema: 0
+OpCapability Shader
+OpCapability PhysicalStorageBufferAddresses
+OpCapability LongVectorEXT
+OpExtension "SPV_EXT_long_vector"
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpEntryPoint GLCompute %3 "main" %9 %12
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %7 "RootConstants"
+OpName %9 "registers"
+OpName %25 "PhysicalPointerFloat5"
+OpMemberName %25 0 "value"
+OpName %29 "AddCarry"
+OpName %56 "PhysicalPointerFloat6"
+OpMemberName %56 0 "value"
+OpName %86 "PhysicalPointerFloat7"
+OpMemberName %86 0 "value"
+OpName %118 "ByteAddressMask"
+OpName %116 "index"
+OpName %117 "stride"
+OpName %128 "PhysicalPointerFloat8Array"
+OpMemberName %128 0 "value"
+OpDecorate %7 Block
+OpMemberDecorate %7 0 Offset 0
+OpMemberDecorate %7 1 Offset 8
+OpMemberDecorate %7 2 Offset 16
+OpMemberDecorate %7 3 Offset 24
+OpDecorate %12 BuiltIn GlobalInvocationId
+OpMemberDecorate %25 0 Offset 0
+OpDecorate %25 Block
+OpMemberDecorate %56 0 Offset 0
+OpDecorate %56 Block
+OpMemberDecorate %86 0 Offset 0
+OpDecorate %86 Block
+OpDecorate %127 ArrayStride 32
+OpMemberDecorate %128 0 Offset 0
+OpDecorate %128 Block
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeVector %5 2
+%7 = OpTypeStruct %6 %6 %6 %6
+%8 = OpTypePointer PushConstant %7
+%9 = OpVariable %8 PushConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%18 = OpConstant %5 20
+%19 = OpTypePointer PushConstant %6
+%21 = OpConstant %5 2
+%23 = OpTypeFloat 32
+%24 = OpTypeVector %23 5
+%25 = OpTypeStruct %24
+%26 = OpTypePointer PhysicalStorageBuffer %25
+%29 = OpTypeStruct %5 %5
+%36 = OpTypePointer PhysicalStorageBuffer %24
+%40 = OpConstant %23 2
+%41 = OpConstantComposite %24 %40 %40 %40 %40 %40
+%52 = OpConstant %5 24
+%55 = OpTypeVector %23 6
+%56 = OpTypeStruct %55
+%57 = OpTypePointer PhysicalStorageBuffer %56
+%66 = OpTypePointer PhysicalStorageBuffer %55
+%70 = OpConstant %23 3
+%71 = OpConstantComposite %55 %70 %70 %70 %70 %70 %70
+%82 = OpConstant %5 28
+%85 = OpTypeVector %23 7
+%86 = OpTypeStruct %85
+%87 = OpTypePointer PhysicalStorageBuffer %86
+%96 = OpTypePointer PhysicalStorageBuffer %85
+%100 = OpConstant %23 4
+%101 = OpConstantComposite %85 %100 %100 %100 %100 %100 %100 %100
+%112 = OpConstant %5 5
+%115 = OpTypeFunction %5 %5 %5
+%121 = OpConstant %5 4294967295
+%125 = OpConstant %5 32
+%126 = OpTypeVector %23 8
+%127 = OpTypeRuntimeArray %126
+%128 = OpTypeStruct %127
+%129 = OpTypePointer PhysicalStorageBuffer %128
+%131 = OpTypePointer PhysicalStorageBuffer %126
+%135 = OpConstant %23 5
+%136 = OpConstantComposite %126 %135 %135 %135 %135 %135 %135 %135 %135
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %140
+%140 = OpLabel
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%17 = OpIMul %5 %16 %18
+%20 = OpAccessChain %19 %9 %21
+%22 = OpLoad %6 %20
+%27 = OpCompositeExtract %5 %22 0
+%28 = OpCompositeExtract %5 %22 1
+%30 = OpIAddCarry %29 %27 %17
+%31 = OpCompositeExtract %5 %30 0
+%32 = OpCompositeExtract %5 %30 1
+%33 = OpIAdd %5 %28 %32
+%34 = OpCompositeConstruct %6 %31 %33
+%35 = OpBitcast %26 %34
+%37 = OpInBoundsAccessChain %36 %35 %15
+%38 = OpLoad %24 %37 Aligned 4
+%39 = OpFAdd %24 %38 %41
+%42 = OpCompositeExtract %5 %22 0
+%43 = OpCompositeExtract %5 %22 1
+%44 = OpIAddCarry %29 %42 %17
+%45 = OpCompositeExtract %5 %44 0
+%46 = OpCompositeExtract %5 %44 1
+%47 = OpIAdd %5 %43 %46
+%48 = OpCompositeConstruct %6 %45 %47
+%49 = OpBitcast %26 %48
+%50 = OpInBoundsAccessChain %36 %49 %15
+OpStore %50 %39 Aligned 4
+%51 = OpIMul %5 %16 %52
+%53 = OpAccessChain %19 %9 %21
+%54 = OpLoad %6 %53
+%58 = OpCompositeExtract %5 %54 0
+%59 = OpCompositeExtract %5 %54 1
+%60 = OpIAddCarry %29 %58 %51
+%61 = OpCompositeExtract %5 %60 0
+%62 = OpCompositeExtract %5 %60 1
+%63 = OpIAdd %5 %59 %62
+%64 = OpCompositeConstruct %6 %61 %63
+%65 = OpBitcast %57 %64
+%67 = OpInBoundsAccessChain %66 %65 %15
+%68 = OpLoad %55 %67 Aligned 4
+%69 = OpFAdd %55 %68 %71
+%72 = OpCompositeExtract %5 %54 0
+%73 = OpCompositeExtract %5 %54 1
+%74 = OpIAddCarry %29 %72 %51
+%75 = OpCompositeExtract %5 %74 0
+%76 = OpCompositeExtract %5 %74 1
+%77 = OpIAdd %5 %73 %76
+%78 = OpCompositeConstruct %6 %75 %77
+%79 = OpBitcast %57 %78
+%80 = OpInBoundsAccessChain %66 %79 %15
+OpStore %80 %69 Aligned 4
+%81 = OpIMul %5 %16 %82
+%83 = OpAccessChain %19 %9 %21
+%84 = OpLoad %6 %83
+%88 = OpCompositeExtract %5 %84 0
+%89 = OpCompositeExtract %5 %84 1
+%90 = OpIAddCarry %29 %88 %81
+%91 = OpCompositeExtract %5 %90 0
+%92 = OpCompositeExtract %5 %90 1
+%93 = OpIAdd %5 %89 %92
+%94 = OpCompositeConstruct %6 %91 %93
+%95 = OpBitcast %87 %94
+%97 = OpInBoundsAccessChain %96 %95 %15
+%98 = OpLoad %85 %97 Aligned 4
+%99 = OpFAdd %85 %98 %101
+%102 = OpCompositeExtract %5 %84 0
+%103 = OpCompositeExtract %5 %84 1
+%104 = OpIAddCarry %29 %102 %81
+%105 = OpCompositeExtract %5 %104 0
+%106 = OpCompositeExtract %5 %104 1
+%107 = OpIAdd %5 %103 %106
+%108 = OpCompositeConstruct %6 %105 %107
+%109 = OpBitcast %87 %108
+%110 = OpInBoundsAccessChain %96 %109 %15
+OpStore %110 %99 Aligned 4
+%111 = OpShiftLeftLogical %5 %16 %112
+%113 = OpAccessChain %19 %9 %21
+%114 = OpLoad %6 %113
+%124 = OpFunctionCall %5 %118 %16 %125
+%130 = OpBitcast %129 %114
+%132 = OpInBoundsAccessChain %131 %130 %15 %124
+%133 = OpLoad %126 %132 Aligned 16
+%134 = OpFAdd %126 %133 %136
+%137 = OpFunctionCall %5 %118 %16 %125
+%138 = OpBitcast %129 %114
+%139 = OpInBoundsAccessChain %131 %138 %15 %137
+OpStore %139 %134 Aligned 16
+OpReturn
+OpFunctionEnd
+%118 = OpFunction %5 None %115
+%116 = OpFunctionParameter %5
+%117 = OpFunctionParameter %5
+%119 = OpLabel
+%120 = OpUDiv %5 %121 %117
+%122 = OpBitwiseAnd %5 %116 %120
+OpReturnValue %122
+OpFunctionEnd
+#endif
