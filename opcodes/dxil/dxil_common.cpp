@@ -27,6 +27,10 @@
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 namespace dxil_spv
 {
 bool get_constant_operand(const llvm::Instruction *value, unsigned index, uint32_t *operand)
@@ -709,5 +713,24 @@ unsigned access_mask_to_vecsize(unsigned mask)
 
 	assert(0 && "Expected to get vecsize.\n");
 	return 1;
+}
+
+uint32_t log2i_floor(uint32_t value)
+{
+	assert(value != 0);
+
+#if defined(__GNUC__)
+	return 31 - __builtin_clz(value);
+#elif defined(_MSC_VER)
+	unsigned long result;
+	// Must succeed due to assert.
+	_BitScanReverse(&result, x);
+	return result;
+#else
+	for (int i = 31; i >= 0; i--)
+		if (value & (1u << i))
+			return uint32_t(i);
+	return 32;
+#endif
 }
 } // namespace dxil_spv
