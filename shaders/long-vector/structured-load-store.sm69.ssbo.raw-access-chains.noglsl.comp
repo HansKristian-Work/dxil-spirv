@@ -1,0 +1,13 @@
+RWStructuredBuffer<vector<float, 5> > B5 : register(u0);
+RWStructuredBuffer<vector<float, 6> > B6 : register(u1);
+RWStructuredBuffer<vector<float, 7> > B7 : register(u2);
+RWStructuredBuffer<vector<float, 8> > B8 : register(u3);
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	B5[thr] += 2.0;
+	B6[thr] += 3.0;
+	B7[thr] += 4.0;
+	B8[thr] += 5.0;
+}

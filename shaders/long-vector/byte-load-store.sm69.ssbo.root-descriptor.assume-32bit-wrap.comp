@@ -1,0 +1,15 @@
+RWByteAddressBuffer B : register(u0);
+
+typedef vector<float, 5> vec5;
+typedef vector<float, 6> vec6;
+typedef vector<float, 7> vec7;
+typedef vector<float, 8> vec8;
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	B.Store<vec5>(sizeof(vec5) * thr, B.Load<vec5>(sizeof(vec5) * thr) + 2.0);
+	B.Store<vec6>(sizeof(vec6) * thr, B.Load<vec6>(sizeof(vec6) * thr) + 3.0);
+	B.Store<vec7>(sizeof(vec7) * thr, B.Load<vec7>(sizeof(vec7) * thr) + 4.0);
+	B.Store<vec8>(sizeof(vec8) * thr, B.Load<vec8>(sizeof(vec8) * thr) + 5.0);
+}
