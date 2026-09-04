@@ -1,0 +1,1824 @@
+#version 460
+#extension GL_EXT_long_vector : require
+#extension GL_KHR_shader_subgroup_quad : require
+#extension GL_EXT_spirv_intrinsics : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+float _439;
+float _440;
+float _441;
+vector<float, 8> _66;
+vector<double, 8> _268;
+vector<uint, 8> _463;
+vector<bool, 8> _648;
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
+{
+    vector<uint, 8> _m0[];
+} _10;
+
+layout(set = 0, binding = 0, std430) writeonly buffer _12_14
+{
+    vector<uint, 8> _m0[];
+} _14;
+
+spirv_instruction(set = "GLSL.std.450", id = 79) float spvNMin(float, float);
+spirv_instruction(set = "GLSL.std.450", id = 79) vec2 spvNMin(vec2, vec2);
+spirv_instruction(set = "GLSL.std.450", id = 79) vec3 spvNMin(vec3, vec3);
+spirv_instruction(set = "GLSL.std.450", id = 79) vec4 spvNMin(vec4, vec4);
+spirv_instruction(set = "GLSL.std.450", id = 80) float spvNMax(float, float);
+spirv_instruction(set = "GLSL.std.450", id = 80) vec2 spvNMax(vec2, vec2);
+spirv_instruction(set = "GLSL.std.450", id = 80) vec3 spvNMax(vec3, vec3);
+spirv_instruction(set = "GLSL.std.450", id = 80) vec4 spvNMax(vec4, vec4);
+spirv_instruction(set = "GLSL.std.450", id = 81) float spvNClamp(float, float, float);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec2 spvNClamp(vec2, vec2, vec2);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec3 spvNClamp(vec3, vec3, vec3);
+spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4);
+
+bool QuadAny(bool _49)
+{
+    return ((subgroupQuadBroadcast(_49, 0u) || subgroupQuadBroadcast(_49, 1u)) || subgroupQuadBroadcast(_49, 2u)) || subgroupQuadBroadcast(_49, 3u);
+}
+
+void main()
+{
+    uint _22 = gl_GlobalInvocationID.x * 3u;
+    vector<float, 8> _30 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x * 3u]);
+    vector<float, 8> _37 = uintBitsToFloat(_10._m0[(gl_GlobalInvocationID.x * 3u) + 1u]);
+    vector<float, 8> _44 = uintBitsToFloat(_10._m0[(gl_GlobalInvocationID.x * 3u) + 2u]);
+    vector<float, 8> _65;
+    vector<float, 8> _67;
+    vector<float, 8> _68;
+    vector<float, 8> _69;
+    if (QuadAny(gl_GlobalInvocationID.x == 28u))
+    {
+        _65 = dFdyFine(_30);
+        _67 = dFdxFine(_30);
+        _68 = dFdyCoarse(_30);
+        _69 = dFdxCoarse(_30);
+    }
+    else
+    {
+        _65 = _66;
+        _67 = _66;
+        _68 = _66;
+        _69 = _66;
+    }
+    vector<float, 8> _77;
+    vector<float, 8> _78;
+    vector<float, 8> _79;
+    vector<float, 8> _80;
+    if (QuadAny(gl_GlobalInvocationID.x == 56u))
+    {
+        _77 = subgroupQuadBroadcast(_30, 1u);
+        _78 = subgroupQuadSwapHorizontal(_30);
+        _79 = subgroupQuadSwapVertical(_30);
+        _80 = subgroupQuadSwapDiagonal(_30);
+    }
+    else
+    {
+        _77 = _66;
+        _78 = _66;
+        _79 = _66;
+        _80 = _66;
+    }
+    vector<float, 8> _81;
+    switch (gl_GlobalInvocationID.x)
+    {
+        case 0u:
+        {
+            _81 = abs(_30);
+            break;
+        }
+        case 1u:
+        {
+            _81 = spvNClamp(_30, vector<float, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+            break;
+        }
+        case 2u:
+        {
+            vector<bool, 8> _143 = isnan(_30);
+            vector<float, 8> _160;
+            _160[0] = float(_143[0]);
+            _160[1] = float(_143[1]);
+            _160[2] = float(_143[2]);
+            _160[3] = float(_143[3]);
+            _160[4] = float(_143[4]);
+            _160[5] = float(_143[5]);
+            _160[6] = float(_143[6]);
+            _160[7] = float(_143[7]);
+            _81 = _160;
+            break;
+        }
+        case 3u:
+        {
+            vector<bool, 8> _167 = isinf(_30);
+            vector<float, 8> _184;
+            _184[0] = float(_167[0]);
+            _184[1] = float(_167[1]);
+            _184[2] = float(_167[2]);
+            _184[3] = float(_167[3]);
+            _184[4] = float(_167[4]);
+            _184[5] = float(_167[5]);
+            _184[6] = float(_167[6]);
+            _184[7] = float(_167[7]);
+            _81 = _184;
+            break;
+        }
+        case 4u:
+        {
+            vector<bool, 8> _191 = isnan(_30);
+            vector<bool, 8> _192 = isinf(_30);
+            vector<bool, 8> _194 = not(vector<bool, 8>(_191[0] || _192[0], _191[1] || _192[1], _191[2] || _192[2], _191[3] || _192[3], _191[4] || _192[4], _191[5] || _192[5], _191[6] || _192[6], _191[7] || _192[7]));
+            vector<float, 8> _211;
+            _211[0] = float(_194[0]);
+            _211[1] = float(_194[1]);
+            _211[2] = float(_194[2]);
+            _211[3] = float(_194[3]);
+            _211[4] = float(_194[4]);
+            _211[5] = float(_194[5]);
+            _211[6] = float(_194[6]);
+            _211[7] = float(_194[7]);
+            _81 = _211;
+            break;
+        }
+        case 5u:
+        {
+            vector<float, 8> _218 = abs(_30);
+            vector<bool, 8> _223 = greaterThanEqual(_218, vector<float, 8>(1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38));
+            vector<bool, 8> _224 = lessThan(_218, vector<float, 8>(uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */)));
+            vector<bool, 8> _225 = vector<bool, 8>(_223[0] && _224[0], _223[1] && _224[1], _223[2] && _224[2], _223[3] && _224[3], _223[4] && _224[4], _223[5] && _224[5], _223[6] && _224[6], _223[7] && _224[7]);
+            vector<float, 8> _242;
+            _242[0] = float(_225[0]);
+            _242[1] = float(_225[1]);
+            _242[2] = float(_225[2]);
+            _242[3] = float(_225[3]);
+            _242[4] = float(_225[4]);
+            _242[5] = float(_225[5]);
+            _242[6] = float(_225[6]);
+            _242[7] = float(_225[7]);
+            _81 = _242;
+            break;
+        }
+        case 6u:
+        {
+            _81 = cos(_30);
+            break;
+        }
+        case 7u:
+        {
+            _81 = sin(_30);
+            break;
+        }
+        case 8u:
+        {
+            _81 = tan(_30);
+            break;
+        }
+        case 9u:
+        {
+            _81 = acos(_30);
+            break;
+        }
+        case 10u:
+        {
+            _81 = asin(_30);
+            break;
+        }
+        case 11u:
+        {
+            _81 = atan(_30);
+            break;
+        }
+        case 12u:
+        {
+            _81 = cosh(_30);
+            break;
+        }
+        case 13u:
+        {
+            _81 = sinh(_30);
+            break;
+        }
+        case 14u:
+        {
+            _81 = tanh(_30);
+            break;
+        }
+        case 15u:
+        {
+            _81 = exp2(_30);
+            break;
+        }
+        case 16u:
+        {
+            _81 = fract(_30);
+            break;
+        }
+        case 17u:
+        {
+            _81 = log2(_30);
+            break;
+        }
+        case 18u:
+        {
+            _81 = sqrt(_30);
+            break;
+        }
+        case 19u:
+        {
+            _81 = inversesqrt(_30);
+            break;
+        }
+        case 20u:
+        {
+            _81 = roundEven(_30);
+            break;
+        }
+        case 21u:
+        {
+            _81 = trunc(_30);
+            break;
+        }
+        case 22u:
+        {
+            _81 = ceil(_30);
+            break;
+        }
+        case 23u:
+        {
+            _81 = floor(_30);
+            break;
+        }
+        case 24u:
+        {
+            _81 = spvNMax(_30, _37);
+            break;
+        }
+        case 25u:
+        {
+            _81 = spvNMin(_30, _37);
+            break;
+        }
+        case 26u:
+        {
+            _81 = fma(_30, _37, _44);
+            break;
+        }
+        case 27u:
+        {
+            vector<double, 8> _267;
+            _267[0] = double(_44[0]);
+            _267[1] = double(_44[1]);
+            _267[2] = double(_44[2]);
+            _267[3] = double(_44[3]);
+            _267[4] = double(_44[4]);
+            _267[5] = double(_44[5]);
+            _267[6] = double(_44[6]);
+            _267[7] = double(_44[7]);
+            vector<double, 8> _292;
+            _292[0] = double(_37[0]);
+            _292[1] = double(_37[1]);
+            _292[2] = double(_37[2]);
+            _292[3] = double(_37[3]);
+            _292[4] = double(_37[4]);
+            _292[5] = double(_37[5]);
+            _292[6] = double(_37[6]);
+            _292[7] = double(_37[7]);
+            vector<double, 8> _316;
+            _316[0] = double(_30[0]);
+            _316[1] = double(_30[1]);
+            _316[2] = double(_30[2]);
+            _316[3] = double(_30[3]);
+            _316[4] = double(_30[4]);
+            _316[5] = double(_30[5]);
+            _316[6] = double(_30[6]);
+            _316[7] = double(_30[7]);
+            vector<double, 8> _324 = fma(_316, _292, _267);
+            vector<float, 8> _341;
+            _341[0] = float(_324[0]);
+            _341[1] = float(_324[1]);
+            _341[2] = float(_324[2]);
+            _341[3] = float(_324[3]);
+            _341[4] = float(_324[4]);
+            _341[5] = float(_324[5]);
+            _341[6] = float(_324[6]);
+            _341[7] = float(_324[7]);
+            _81 = _341;
+            break;
+        }
+        case 28u:
+        {
+            _81 = _69;
+            break;
+        }
+        case 29u:
+        {
+            _81 = _68;
+            break;
+        }
+        case 30u:
+        {
+            _81 = _67;
+            break;
+        }
+        case 31u:
+        {
+            _81 = _65;
+            break;
+        }
+        case 32u:
+        {
+            vector<float, 8> _349 = atan(_30 / _37);
+            vector<bool, 8> _356 = lessThan(_37, vector<float, 8>(0));
+            vector<bool, 8> _357 = equal(_37, vector<float, 8>(0));
+            vector<bool, 8> _358 = greaterThanEqual(_30, vector<float, 8>(0));
+            vector<bool, 8> _359 = lessThan(_30, vector<float, 8>(0));
+            _81 = mix(mix(mix(mix(_349, _349 + (vector<float, 8>(3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875)), vector<bool, 8>(_356[0] && _358[0], _356[1] && _358[1], _356[2] && _358[2], _356[3] && _358[3], _356[4] && _358[4], _356[5] && _358[5], _356[6] && _358[6], _356[7] && _358[7])), _349 + (vector<float, 8>(-3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875)), vector<bool, 8>(_356[0] && _359[0], _356[1] && _359[1], _356[2] && _359[2], _356[3] && _359[3], _356[4] && _359[4], _356[5] && _359[5], _356[6] && _359[6], _356[7] && _359[7])), vector<float, 8>(-1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375), vector<bool, 8>(_357[0] && _359[0], _357[1] && _359[1], _357[2] && _359[2], _357[3] && _359[3], _357[4] && _359[4], _357[5] && _359[5], _357[6] && _359[6], _357[7] && _359[7])), vector<float, 8>(1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375), vector<bool, 8>(_357[0] && _358[0], _357[1] && _358[1], _357[2] && _358[2], _357[3] && _358[3], _357[4] && _358[4], _357[5] && _358[5], _357[6] && _358[6], _357[7] && _358[7]));
+            break;
+        }
+        case 33u:
+        {
+            _81 = _30 * (vector<float, 8>(57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625));
+            break;
+        }
+        case 34u:
+        {
+            _81 = _30 * (vector<float, 8>(0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625));
+            break;
+        }
+        case 35u:
+        {
+            _81 = spvNMin(spvNMax(_30, _37), _44);
+            break;
+        }
+        case 36u:
+        {
+            vector<float, 8> _376 = _30 / _37;
+            vector<float, 8> _382 = fract(abs(_376));
+            _81 = mix((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _382, _382, greaterThanEqual(_376, (vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _376)) * _37;
+            break;
+        }
+        case 37u:
+        {
+            _81 = (_44 * (_37 - _30)) + _30;
+            break;
+        }
+        case 38u:
+        {
+            _81 = exp2(log2(_30) * _37);
+            break;
+        }
+        case 39u:
+        {
+            _81 = (vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)) / _30;
+            break;
+        }
+        case 40u:
+        {
+            _81 = vector<float, 8>(vector<int, 8>(mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), greaterThan(_30, vector<float, 8>(0))) - mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), lessThan(_30, vector<float, 8>(0)))));
+            break;
+        }
+        case 41u:
+        {
+            vector<float, 8> _399 = spvNClamp((_44 - _30) / (_37 - _30), vector<float, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+            _81 = (_399 * _399) * ((vector<float, 8>(3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0)) - (_399 * (vector<float, 8>(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0))));
+            break;
+        }
+        case 42u:
+        {
+            _81 = mix(vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), vector<float, 8>(0), lessThan(_37, _30));
+            break;
+        }
+        case 43u:
+        {
+            vector<float, 8> _408 = trunc(_30);
+            vector<uint, 8> _410 = vector<uint, 8>(vector<int, 8>(_408));
+            vector<float, 8> _427;
+            _427[0] = float(int(_410[0]));
+            _427[1] = float(int(_410[1]));
+            _427[2] = float(int(_410[2]));
+            _427[3] = float(int(_410[3]));
+            _427[4] = float(int(_410[4]));
+            _427[5] = float(int(_410[5]));
+            _427[6] = float(int(_410[6]));
+            _427[7] = float(int(_410[7]));
+            _81 = (_30 + ((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _408)) + ((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _427);
+            break;
+        }
+        case 44u:
+        {
+            vector<float, 8> _438 = vector<float, 8>(_439, _440, _441, 0.0, 0.0, 0.0, 0.0, 0.0);
+            _438[0] = dot(_30, _37);
+            _438[1] = dot(_30, _44);
+            _438[2] = dot(_37, _44);
+            _81 = _438;
+            break;
+        }
+        case 45u:
+        {
+            vector<uint, 8> _462;
+            _462[0] = uint(int(_30[0]));
+            _462[1] = uint(int(_30[1]));
+            _462[2] = uint(int(_30[2]));
+            _462[3] = uint(int(_30[3]));
+            _462[4] = uint(int(_30[4]));
+            _462[5] = uint(int(_30[5]));
+            _462[6] = uint(int(_30[6]));
+            _462[7] = uint(int(_30[7]));
+            _81 = uintBitsToFloat(bitfieldReverse(_462));
+            break;
+        }
+        case 46u:
+        {
+            vector<uint, 8> _488;
+            _488[0] = uint(int(_30[0]));
+            _488[1] = uint(int(_30[1]));
+            _488[2] = uint(int(_30[2]));
+            _488[3] = uint(int(_30[3]));
+            _488[4] = uint(int(_30[4]));
+            _488[5] = uint(int(_30[5]));
+            _488[6] = uint(int(_30[6]));
+            _488[7] = uint(int(_30[7]));
+            _81 = uintBitsToFloat(vector<uint, 8>(bitCount(_488)));
+            break;
+        }
+        case 47u:
+        {
+            vector<uint, 8> _513;
+            _513[0] = uint(int(_30[0]));
+            _513[1] = uint(int(_30[1]));
+            _513[2] = uint(int(_30[2]));
+            _513[3] = uint(int(_30[3]));
+            _513[4] = uint(int(_30[4]));
+            _513[5] = uint(int(_30[5]));
+            _513[6] = uint(int(_30[6]));
+            _513[7] = uint(int(_30[7]));
+            vector<uint, 8> _521 = vector<uint, 8>(findMSB(vector<int, 8>(_513)));
+            vector<uint, 8> _528 = mix((vector<uint, 8>(31u, 31u, 31u, 31u, 31u, 31u, 31u, 31u)) - _521, vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u), equal(_521, (vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u))));
+            _81 = mix(uintBitsToFloat((vector<uint, 8>(31u, 31u, 31u, 31u, 31u, 31u, 31u, 31u)) - _528), vector<float, 8>(uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */)), equal(_528, (vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u))));
+            break;
+        }
+        case 48u:
+        {
+            vector<uint, 8> _550;
+            _550[0] = uint(int(_30[0]));
+            _550[1] = uint(int(_30[1]));
+            _550[2] = uint(int(_30[2]));
+            _550[3] = uint(int(_30[3]));
+            _550[4] = uint(int(_30[4]));
+            _550[5] = uint(int(_30[5]));
+            _550[6] = uint(int(_30[6]));
+            _550[7] = uint(int(_30[7]));
+            _81 = uintBitsToFloat(vector<uint, 8>(findLSB(_550)));
+            break;
+        }
+        case 49u:
+        {
+            vector<float, 8> _578;
+            _578[0] = unpackHalf2x16(uint(int(_30[0]))).x;
+            _578[1] = unpackHalf2x16(uint(int(_30[1]))).x;
+            _578[2] = unpackHalf2x16(uint(int(_30[2]))).x;
+            _578[3] = unpackHalf2x16(uint(int(_30[3]))).x;
+            _578[4] = unpackHalf2x16(uint(int(_30[4]))).x;
+            _578[5] = unpackHalf2x16(uint(int(_30[5]))).x;
+            _578[6] = unpackHalf2x16(uint(int(_30[6]))).x;
+            _578[7] = unpackHalf2x16(uint(int(_30[7]))).x;
+            _81 = _578;
+            break;
+        }
+        case 50u:
+        {
+            vector<uint, 8> _602;
+            _602[0] = packHalf2x16(vec2(_30[0], 0.0));
+            _602[1] = packHalf2x16(vec2(_30[1], 0.0));
+            _602[2] = packHalf2x16(vec2(_30[2], 0.0));
+            _602[3] = packHalf2x16(vec2(_30[3], 0.0));
+            _602[4] = packHalf2x16(vec2(_30[4], 0.0));
+            _602[5] = packHalf2x16(vec2(_30[5], 0.0));
+            _602[6] = packHalf2x16(vec2(_30[6], 0.0));
+            _602[7] = packHalf2x16(vec2(_30[7], 0.0));
+            _81 = uintBitsToFloat(_602);
+            break;
+        }
+        case 51u:
+        {
+            vector<bool, 8> _647;
+            _647[0] = _37[0] != 0.0;
+            _647[1] = _37[1] != 0.0;
+            _647[2] = _37[2] != 0.0;
+            _647[3] = _37[3] != 0.0;
+            _647[4] = _37[4] != 0.0;
+            _647[5] = _37[5] != 0.0;
+            _647[6] = _37[6] != 0.0;
+            _647[7] = _37[7] != 0.0;
+            vector<bool, 8> _672;
+            _672[0] = _30[0] != 0.0;
+            _672[1] = _30[1] != 0.0;
+            _672[2] = _30[2] != 0.0;
+            _672[3] = _30[3] != 0.0;
+            _672[4] = _30[4] != 0.0;
+            _672[5] = _30[5] != 0.0;
+            _672[6] = _30[6] != 0.0;
+            _672[7] = _30[7] != 0.0;
+            vector<bool, 8> _680 = vector<bool, 8>(_647[0] && _672[0], _647[1] && _672[1], _647[2] && _672[2], _647[3] && _672[3], _647[4] && _672[4], _647[5] && _672[5], _647[6] && _672[6], _647[7] && _672[7]);
+            vector<float, 8> _697;
+            _697[0] = float(_680[0]);
+            _697[1] = float(_680[1]);
+            _697[2] = float(_680[2]);
+            _697[3] = float(_680[3]);
+            _697[4] = float(_680[4]);
+            _697[5] = float(_680[5]);
+            _697[6] = float(_680[6]);
+            _697[7] = float(_680[7]);
+            _81 = _697;
+            break;
+        }
+        case 52u:
+        {
+            vector<bool, 8> _720;
+            _720[0] = _37[0] != 0.0;
+            _720[1] = _37[1] != 0.0;
+            _720[2] = _37[2] != 0.0;
+            _720[3] = _37[3] != 0.0;
+            _720[4] = _37[4] != 0.0;
+            _720[5] = _37[5] != 0.0;
+            _720[6] = _37[6] != 0.0;
+            _720[7] = _37[7] != 0.0;
+            vector<bool, 8> _744;
+            _744[0] = _30[0] != 0.0;
+            _744[1] = _30[1] != 0.0;
+            _744[2] = _30[2] != 0.0;
+            _744[3] = _30[3] != 0.0;
+            _744[4] = _30[4] != 0.0;
+            _744[5] = _30[5] != 0.0;
+            _744[6] = _30[6] != 0.0;
+            _744[7] = _30[7] != 0.0;
+            vector<bool, 8> _752 = vector<bool, 8>(_720[0] || _744[0], _720[1] || _744[1], _720[2] || _744[2], _720[3] || _744[3], _720[4] || _744[4], _720[5] || _744[5], _720[6] || _744[6], _720[7] || _744[7]);
+            vector<float, 8> _769;
+            _769[0] = float(_752[0]);
+            _769[1] = float(_752[1]);
+            _769[2] = float(_752[2]);
+            _769[3] = float(_752[3]);
+            _769[4] = float(_752[4]);
+            _769[5] = float(_752[5]);
+            _769[6] = float(_752[6]);
+            _769[7] = float(_752[7]);
+            _81 = _769;
+            break;
+        }
+        case 53u:
+        {
+            vector<bool, 8> _792;
+            _792[0] = _30[0] != 0.0;
+            _792[1] = _30[1] != 0.0;
+            _792[2] = _30[2] != 0.0;
+            _792[3] = _30[3] != 0.0;
+            _792[4] = _30[4] != 0.0;
+            _792[5] = _30[5] != 0.0;
+            _792[6] = _30[6] != 0.0;
+            _792[7] = _30[7] != 0.0;
+            _81 = mix(_44, _37, _792);
+            break;
+        }
+        case 54u:
+        {
+            vector<bool, 8> _816;
+            _816[0] = _30[0] != 0.0;
+            _816[1] = _30[1] != 0.0;
+            _816[2] = _30[2] != 0.0;
+            _816[3] = _30[3] != 0.0;
+            _816[4] = _30[4] != 0.0;
+            _816[5] = _30[5] != 0.0;
+            _816[6] = _30[6] != 0.0;
+            _816[7] = _30[7] != 0.0;
+            vector<float, 8> _826 = vector<float, 8>(_439, _440, _441, 0.0, 0.0, 0.0, 0.0, 0.0);
+            _826[0] = float(all(_816));
+            vector<bool, 8> _843;
+            _843[0] = _37[0] != 0.0;
+            _843[1] = _37[1] != 0.0;
+            _843[2] = _37[2] != 0.0;
+            _843[3] = _37[3] != 0.0;
+            _843[4] = _37[4] != 0.0;
+            _843[5] = _37[5] != 0.0;
+            _843[6] = _37[6] != 0.0;
+            _843[7] = _37[7] != 0.0;
+            _826[1] = float(all(_843));
+            vector<bool, 8> _870;
+            _870[0] = _44[0] != 0.0;
+            _870[1] = _44[1] != 0.0;
+            _870[2] = _44[2] != 0.0;
+            _870[3] = _44[3] != 0.0;
+            _870[4] = _44[4] != 0.0;
+            _870[5] = _44[5] != 0.0;
+            _870[6] = _44[6] != 0.0;
+            _870[7] = _44[7] != 0.0;
+            _826[2] = float(all(_870));
+            _81 = _826;
+            break;
+        }
+        case 55u:
+        {
+            vector<bool, 8> _896;
+            _896[0] = _30[0] != 0.0;
+            _896[1] = _30[1] != 0.0;
+            _896[2] = _30[2] != 0.0;
+            _896[3] = _30[3] != 0.0;
+            _896[4] = _30[4] != 0.0;
+            _896[5] = _30[5] != 0.0;
+            _896[6] = _30[6] != 0.0;
+            _896[7] = _30[7] != 0.0;
+            vector<float, 8> _906 = vector<float, 8>(_439, _440, _441, 0.0, 0.0, 0.0, 0.0, 0.0);
+            _906[0] = float(any(_896));
+            vector<bool, 8> _923;
+            _923[0] = _37[0] != 0.0;
+            _923[1] = _37[1] != 0.0;
+            _923[2] = _37[2] != 0.0;
+            _923[3] = _37[3] != 0.0;
+            _923[4] = _37[4] != 0.0;
+            _923[5] = _37[5] != 0.0;
+            _923[6] = _37[6] != 0.0;
+            _923[7] = _37[7] != 0.0;
+            _906[1] = float(any(_923));
+            vector<bool, 8> _950;
+            _950[0] = _44[0] != 0.0;
+            _950[1] = _44[1] != 0.0;
+            _950[2] = _44[2] != 0.0;
+            _950[3] = _44[3] != 0.0;
+            _950[4] = _44[4] != 0.0;
+            _950[5] = _44[5] != 0.0;
+            _950[6] = _44[6] != 0.0;
+            _950[7] = _44[7] != 0.0;
+            _906[2] = float(any(_950));
+            _81 = _906;
+            break;
+        }
+        case 56u:
+        {
+            _81 = _77;
+            break;
+        }
+        case 57u:
+        {
+            _81 = _78;
+            break;
+        }
+        case 58u:
+        {
+            _81 = _79;
+            break;
+        }
+        case 59u:
+        {
+            _81 = _80;
+            break;
+        }
+        default:
+        {
+            _81 = vector<float, 8>(0);
+            break;
+        }
+    }
+    _14._m0[gl_GlobalInvocationID.x] = floatBitsToUint(_81);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 1027
+; Schema: 0
+OpCapability Shader
+OpCapability Float64
+OpCapability DerivativeControl
+OpCapability GroupNonUniformQuad
+OpCapability DenormPreserve
+OpCapability ComputeDerivativeGroupLinearKHR
+OpCapability LongVectorEXT
+OpExtension "SPV_EXT_long_vector"
+OpExtension "SPV_KHR_compute_shader_derivatives"
+OpExtension "SPV_KHR_float_controls"
+%137 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %10 %14 %17
+OpExecutionMode %3 DerivativeGroupLinearKHR
+OpExecutionMode %3 LocalSize 64 1 1
+OpExecutionMode %3 DenormPreserve 64
+OpName %3 "main"
+OpName %8 "SSBO"
+OpName %12 "SSBO"
+OpName %50 "QuadAny"
+OpDecorate %7 ArrayStride 32
+OpMemberDecorate %8 0 Offset 0
+OpDecorate %8 Block
+OpDecorate %10 DescriptorSet 0
+OpDecorate %10 Binding 0
+OpDecorate %10 NonWritable
+OpDecorate %10 Restrict
+OpDecorate %11 ArrayStride 32
+OpMemberDecorate %12 0 Offset 0
+OpDecorate %12 Block
+OpDecorate %14 DescriptorSet 0
+OpDecorate %14 Binding 0
+OpDecorate %14 NonReadable
+OpDecorate %17 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeVector %5 8
+%7 = OpTypeRuntimeArray %6
+%8 = OpTypeStruct %7
+%9 = OpTypePointer StorageBuffer %8
+%10 = OpVariable %9 StorageBuffer
+%11 = OpTypeRuntimeArray %6
+%12 = OpTypeStruct %11
+%13 = OpTypePointer StorageBuffer %12
+%14 = OpVariable %13 StorageBuffer
+%15 = OpTypeVector %5 3
+%16 = OpTypePointer Input %15
+%17 = OpVariable %16 Input
+%18 = OpTypePointer Input %5
+%20 = OpConstant %5 0
+%23 = OpConstant %5 3
+%25 = OpTypePointer StorageBuffer %6
+%28 = OpTypeFloat 32
+%29 = OpTypeVector %28 8
+%32 = OpConstant %5 1
+%39 = OpConstant %5 2
+%45 = OpTypeBool
+%47 = OpConstant %5 28
+%48 = OpTypeFunction %45 %45
+%71 = OpConstant %5 56
+%82 = OpConstantNull %29
+%138 = OpConstant %28 0
+%139 = OpConstant %28 1
+%140 = OpConstantComposite %29 %138 %138 %138 %138 %138 %138 %138 %138
+%141 = OpConstantComposite %29 %139 %139 %139 %139 %139 %139 %139 %139
+%142 = OpTypeVector %45 8
+%219 = OpConstant %28 1.17549435e-38
+%220 = OpConstantComposite %29 %219 %219 %219 %219 %219 %219 %219 %219
+%221 = OpConstant %28 0x1p+128
+%222 = OpConstantComposite %29 %221 %221 %221 %221 %221 %221 %221 %221
+%257 = OpTypeFloat 64
+%266 = OpTypeVector %257 8
+%351 = OpConstant %28 3.14159274
+%352 = OpConstantComposite %29 %351 %351 %351 %351 %351 %351 %351 %351
+%354 = OpConstant %28 -3.14159274
+%355 = OpConstantComposite %29 %354 %354 %354 %354 %354 %354 %354 %354
+%366 = OpConstant %28 -1.57079637
+%367 = OpConstantComposite %29 %366 %366 %366 %366 %366 %366 %366 %366
+%369 = OpConstant %28 1.57079637
+%370 = OpConstantComposite %29 %369 %369 %369 %369 %369 %369 %369 %369
+%371 = OpConstant %28 57.2957802
+%372 = OpConstantComposite %29 %371 %371 %371 %371 %371 %371 %371 %371
+%373 = OpConstant %28 0.0174532924
+%374 = OpConstantComposite %29 %373 %373 %373 %373 %373 %373 %373 %373
+%378 = OpConstant %28 -0
+%379 = OpConstantComposite %29 %378 %378 %378 %378 %378 %378 %378 %378
+%391 = OpConstantComposite %6 %20 %20 %20 %20 %20 %20 %20 %20
+%392 = OpConstantComposite %6 %32 %32 %32 %32 %32 %32 %32 %32
+%401 = OpConstant %28 2
+%402 = OpConstantComposite %29 %401 %401 %401 %401 %401 %401 %401 %401
+%404 = OpConstant %28 3
+%405 = OpConstantComposite %29 %404 %404 %404 %404 %404 %404 %404 %404
+%439 = OpUndef %28
+%440 = OpUndef %28
+%441 = OpUndef %28
+%442 = OpConstantComposite %29 %439 %440 %441 %138 %138 %138 %138 %138
+%523 = OpConstant %5 4294967295
+%524 = OpConstantComposite %6 %523 %523 %523 %523 %523 %523 %523 %523
+%526 = OpConstant %5 31
+%527 = OpConstantComposite %6 %526 %526 %526 %526 %526 %526 %526 %526
+%532 = OpConstant %28 -0x1.fffffep+128
+%533 = OpConstantComposite %29 %532 %532 %532 %532 %532 %532 %532 %532
+%575 = OpTypeVector %28 2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%66 = OpUndef %29
+%268 = OpUndef %266
+%463 = OpUndef %6
+%648 = OpUndef %142
+OpBranch %960
+%960 = OpLabel
+%19 = OpAccessChain %18 %17 %20
+%21 = OpLoad %5 %19
+%22 = OpIMul %5 %21 %23
+%24 = OpIMul %5 %21 %23
+%26 = OpAccessChain %25 %10 %20 %24
+%27 = OpLoad %6 %26
+%30 = OpBitcast %29 %27
+%31 = OpIAdd %5 %22 %32
+%33 = OpIMul %5 %21 %23
+%34 = OpIAdd %5 %33 %32
+%35 = OpAccessChain %25 %10 %20 %34
+%36 = OpLoad %6 %35
+%37 = OpBitcast %29 %36
+%38 = OpIAdd %5 %22 %39
+%40 = OpIMul %5 %21 %23
+%41 = OpIAdd %5 %40 %39
+%42 = OpAccessChain %25 %10 %20 %41
+%43 = OpLoad %6 %42
+%44 = OpBitcast %29 %43
+%46 = OpIEqual %45 %21 %47
+%60 = OpFunctionCall %45 %50 %46
+OpSelectionMerge %962 None
+OpBranchConditional %60 %961 %962
+%961 = OpLabel
+%61 = OpDPdxCoarse %29 %30
+%62 = OpDPdyCoarse %29 %30
+%63 = OpDPdxFine %29 %30
+%64 = OpDPdyFine %29 %30
+OpBranch %962
+%962 = OpLabel
+%65 = OpPhi %29 %66 %960 %64 %961
+%67 = OpPhi %29 %66 %960 %63 %961
+%68 = OpPhi %29 %66 %960 %62 %961
+%69 = OpPhi %29 %66 %960 %61 %961
+%70 = OpIEqual %45 %21 %71
+%72 = OpFunctionCall %45 %50 %70
+OpSelectionMerge %964 None
+OpBranchConditional %72 %963 %964
+%963 = OpLabel
+%73 = OpGroupNonUniformQuadBroadcast %29 %23 %30 %32
+%74 = OpGroupNonUniformQuadSwap %29 %23 %30 %20
+%75 = OpGroupNonUniformQuadSwap %29 %23 %30 %32
+%76 = OpGroupNonUniformQuadSwap %29 %23 %30 %39
+OpBranch %964
+%964 = OpLabel
+%77 = OpPhi %29 %66 %962 %73 %963
+%78 = OpPhi %29 %66 %962 %74 %963
+%79 = OpPhi %29 %66 %962 %75 %963
+%80 = OpPhi %29 %66 %962 %76 %963
+OpSelectionMerge %1025 None
+OpSwitch %21 %1025 0 %1024 1 %1023 2 %1022 3 %1021 4 %1020 5 %1019 6 %1018 7 %1017 8 %1016 9 %1015 10 %1014 11 %1013 12 %1012 13 %1011 14 %1010 15 %1009 16 %1008 17 %1007 18 %1006 19 %1005 20 %1004 21 %1003 22 %1002 23 %1001 24 %1000 25 %999 26 %998 27 %997 28 %996 29 %995 30 %994 31 %993 32 %992 33 %991 34 %990 35 %989 36 %988 37 %987 38 %986 39 %985 40 %984 41 %983 42 %982 43 %981 44 %980 45 %979 46 %978 47 %977 48 %976 49 %975 50 %974 51 %973 52 %972 53 %971 54 %970 55 %969 56 %968 57 %967 58 %966 59 %965
+%1024 = OpLabel
+%134 = OpExtInst %29 %137 FAbs %30
+OpBranch %1025
+%1023 = OpLabel
+%133 = OpExtInst %29 %137 NClamp %30 %140 %141
+OpBranch %1025
+%1022 = OpLabel
+%143 = OpIsNan %142 %30
+%144 = OpCompositeExtract %45 %143 0
+%145 = OpCompositeExtract %45 %143 1
+%146 = OpCompositeExtract %45 %143 2
+%147 = OpCompositeExtract %45 %143 3
+%148 = OpCompositeExtract %45 %143 4
+%149 = OpCompositeExtract %45 %143 5
+%150 = OpCompositeExtract %45 %143 6
+%151 = OpCompositeExtract %45 %143 7
+%152 = OpSelect %28 %144 %139 %138
+%153 = OpSelect %28 %145 %139 %138
+%154 = OpSelect %28 %146 %139 %138
+%155 = OpSelect %28 %147 %139 %138
+%156 = OpSelect %28 %148 %139 %138
+%157 = OpSelect %28 %149 %139 %138
+%158 = OpSelect %28 %150 %139 %138
+%159 = OpSelect %28 %151 %139 %138
+%160 = OpCompositeInsert %29 %152 %66 0
+%161 = OpCompositeInsert %29 %153 %160 1
+%162 = OpCompositeInsert %29 %154 %161 2
+%163 = OpCompositeInsert %29 %155 %162 3
+%164 = OpCompositeInsert %29 %156 %163 4
+%165 = OpCompositeInsert %29 %157 %164 5
+%166 = OpCompositeInsert %29 %158 %165 6
+%132 = OpCompositeInsert %29 %159 %166 7
+OpBranch %1025
+%1021 = OpLabel
+%167 = OpIsInf %142 %30
+%168 = OpCompositeExtract %45 %167 0
+%169 = OpCompositeExtract %45 %167 1
+%170 = OpCompositeExtract %45 %167 2
+%171 = OpCompositeExtract %45 %167 3
+%172 = OpCompositeExtract %45 %167 4
+%173 = OpCompositeExtract %45 %167 5
+%174 = OpCompositeExtract %45 %167 6
+%175 = OpCompositeExtract %45 %167 7
+%176 = OpSelect %28 %168 %139 %138
+%177 = OpSelect %28 %169 %139 %138
+%178 = OpSelect %28 %170 %139 %138
+%179 = OpSelect %28 %171 %139 %138
+%180 = OpSelect %28 %172 %139 %138
+%181 = OpSelect %28 %173 %139 %138
+%182 = OpSelect %28 %174 %139 %138
+%183 = OpSelect %28 %175 %139 %138
+%184 = OpCompositeInsert %29 %176 %66 0
+%185 = OpCompositeInsert %29 %177 %184 1
+%186 = OpCompositeInsert %29 %178 %185 2
+%187 = OpCompositeInsert %29 %179 %186 3
+%188 = OpCompositeInsert %29 %180 %187 4
+%189 = OpCompositeInsert %29 %181 %188 5
+%190 = OpCompositeInsert %29 %182 %189 6
+%131 = OpCompositeInsert %29 %183 %190 7
+OpBranch %1025
+%1020 = OpLabel
+%191 = OpIsNan %142 %30
+%192 = OpIsInf %142 %30
+%193 = OpLogicalOr %142 %191 %192
+%194 = OpLogicalNot %142 %193
+%195 = OpCompositeExtract %45 %194 0
+%196 = OpCompositeExtract %45 %194 1
+%197 = OpCompositeExtract %45 %194 2
+%198 = OpCompositeExtract %45 %194 3
+%199 = OpCompositeExtract %45 %194 4
+%200 = OpCompositeExtract %45 %194 5
+%201 = OpCompositeExtract %45 %194 6
+%202 = OpCompositeExtract %45 %194 7
+%203 = OpSelect %28 %195 %139 %138
+%204 = OpSelect %28 %196 %139 %138
+%205 = OpSelect %28 %197 %139 %138
+%206 = OpSelect %28 %198 %139 %138
+%207 = OpSelect %28 %199 %139 %138
+%208 = OpSelect %28 %200 %139 %138
+%209 = OpSelect %28 %201 %139 %138
+%210 = OpSelect %28 %202 %139 %138
+%211 = OpCompositeInsert %29 %203 %66 0
+%212 = OpCompositeInsert %29 %204 %211 1
+%213 = OpCompositeInsert %29 %205 %212 2
+%214 = OpCompositeInsert %29 %206 %213 3
+%215 = OpCompositeInsert %29 %207 %214 4
+%216 = OpCompositeInsert %29 %208 %215 5
+%217 = OpCompositeInsert %29 %209 %216 6
+%130 = OpCompositeInsert %29 %210 %217 7
+OpBranch %1025
+%1019 = OpLabel
+%218 = OpExtInst %29 %137 FAbs %30
+%223 = OpFOrdGreaterThanEqual %142 %218 %220
+%224 = OpFOrdLessThan %142 %218 %222
+%225 = OpLogicalAnd %142 %223 %224
+%226 = OpCompositeExtract %45 %225 0
+%227 = OpCompositeExtract %45 %225 1
+%228 = OpCompositeExtract %45 %225 2
+%229 = OpCompositeExtract %45 %225 3
+%230 = OpCompositeExtract %45 %225 4
+%231 = OpCompositeExtract %45 %225 5
+%232 = OpCompositeExtract %45 %225 6
+%233 = OpCompositeExtract %45 %225 7
+%234 = OpSelect %28 %226 %139 %138
+%235 = OpSelect %28 %227 %139 %138
+%236 = OpSelect %28 %228 %139 %138
+%237 = OpSelect %28 %229 %139 %138
+%238 = OpSelect %28 %230 %139 %138
+%239 = OpSelect %28 %231 %139 %138
+%240 = OpSelect %28 %232 %139 %138
+%241 = OpSelect %28 %233 %139 %138
+%242 = OpCompositeInsert %29 %234 %66 0
+%243 = OpCompositeInsert %29 %235 %242 1
+%244 = OpCompositeInsert %29 %236 %243 2
+%245 = OpCompositeInsert %29 %237 %244 3
+%246 = OpCompositeInsert %29 %238 %245 4
+%247 = OpCompositeInsert %29 %239 %246 5
+%248 = OpCompositeInsert %29 %240 %247 6
+%129 = OpCompositeInsert %29 %241 %248 7
+OpBranch %1025
+%1018 = OpLabel
+%128 = OpExtInst %29 %137 Cos %30
+OpBranch %1025
+%1017 = OpLabel
+%127 = OpExtInst %29 %137 Sin %30
+OpBranch %1025
+%1016 = OpLabel
+%126 = OpExtInst %29 %137 Tan %30
+OpBranch %1025
+%1015 = OpLabel
+%125 = OpExtInst %29 %137 Acos %30
+OpBranch %1025
+%1014 = OpLabel
+%124 = OpExtInst %29 %137 Asin %30
+OpBranch %1025
+%1013 = OpLabel
+%123 = OpExtInst %29 %137 Atan %30
+OpBranch %1025
+%1012 = OpLabel
+%122 = OpExtInst %29 %137 Cosh %30
+OpBranch %1025
+%1011 = OpLabel
+%121 = OpExtInst %29 %137 Sinh %30
+OpBranch %1025
+%1010 = OpLabel
+%120 = OpExtInst %29 %137 Tanh %30
+OpBranch %1025
+%1009 = OpLabel
+%119 = OpExtInst %29 %137 Exp2 %30
+OpBranch %1025
+%1008 = OpLabel
+%118 = OpExtInst %29 %137 Fract %30
+OpBranch %1025
+%1007 = OpLabel
+%117 = OpExtInst %29 %137 Log2 %30
+OpBranch %1025
+%1006 = OpLabel
+%116 = OpExtInst %29 %137 Sqrt %30
+OpBranch %1025
+%1005 = OpLabel
+%115 = OpExtInst %29 %137 InverseSqrt %30
+OpBranch %1025
+%1004 = OpLabel
+%114 = OpExtInst %29 %137 RoundEven %30
+OpBranch %1025
+%1003 = OpLabel
+%113 = OpExtInst %29 %137 Trunc %30
+OpBranch %1025
+%1002 = OpLabel
+%112 = OpExtInst %29 %137 Ceil %30
+OpBranch %1025
+%1001 = OpLabel
+%111 = OpExtInst %29 %137 Floor %30
+OpBranch %1025
+%1000 = OpLabel
+%110 = OpExtInst %29 %137 NMax %30 %37
+OpBranch %1025
+%999 = OpLabel
+%109 = OpExtInst %29 %137 NMin %30 %37
+OpBranch %1025
+%998 = OpLabel
+%108 = OpExtInst %29 %137 Fma %30 %37 %44
+OpBranch %1025
+%997 = OpLabel
+%249 = OpCompositeExtract %28 %44 0
+%250 = OpCompositeExtract %28 %44 1
+%251 = OpCompositeExtract %28 %44 2
+%252 = OpCompositeExtract %28 %44 3
+%253 = OpCompositeExtract %28 %44 4
+%254 = OpCompositeExtract %28 %44 5
+%255 = OpCompositeExtract %28 %44 6
+%256 = OpCompositeExtract %28 %44 7
+%258 = OpFConvert %257 %249
+%259 = OpFConvert %257 %250
+%260 = OpFConvert %257 %251
+%261 = OpFConvert %257 %252
+%262 = OpFConvert %257 %253
+%263 = OpFConvert %257 %254
+%264 = OpFConvert %257 %255
+%265 = OpFConvert %257 %256
+%267 = OpCompositeInsert %266 %258 %268 0
+%269 = OpCompositeInsert %266 %259 %267 1
+%270 = OpCompositeInsert %266 %260 %269 2
+%271 = OpCompositeInsert %266 %261 %270 3
+%272 = OpCompositeInsert %266 %262 %271 4
+%273 = OpCompositeInsert %266 %263 %272 5
+%274 = OpCompositeInsert %266 %264 %273 6
+%275 = OpCompositeInsert %266 %265 %274 7
+%276 = OpCompositeExtract %28 %37 0
+%277 = OpCompositeExtract %28 %37 1
+%278 = OpCompositeExtract %28 %37 2
+%279 = OpCompositeExtract %28 %37 3
+%280 = OpCompositeExtract %28 %37 4
+%281 = OpCompositeExtract %28 %37 5
+%282 = OpCompositeExtract %28 %37 6
+%283 = OpCompositeExtract %28 %37 7
+%284 = OpFConvert %257 %276
+%285 = OpFConvert %257 %277
+%286 = OpFConvert %257 %278
+%287 = OpFConvert %257 %279
+%288 = OpFConvert %257 %280
+%289 = OpFConvert %257 %281
+%290 = OpFConvert %257 %282
+%291 = OpFConvert %257 %283
+%292 = OpCompositeInsert %266 %284 %268 0
+%293 = OpCompositeInsert %266 %285 %292 1
+%294 = OpCompositeInsert %266 %286 %293 2
+%295 = OpCompositeInsert %266 %287 %294 3
+%296 = OpCompositeInsert %266 %288 %295 4
+%297 = OpCompositeInsert %266 %289 %296 5
+%298 = OpCompositeInsert %266 %290 %297 6
+%299 = OpCompositeInsert %266 %291 %298 7
+%300 = OpCompositeExtract %28 %30 0
+%301 = OpCompositeExtract %28 %30 1
+%302 = OpCompositeExtract %28 %30 2
+%303 = OpCompositeExtract %28 %30 3
+%304 = OpCompositeExtract %28 %30 4
+%305 = OpCompositeExtract %28 %30 5
+%306 = OpCompositeExtract %28 %30 6
+%307 = OpCompositeExtract %28 %30 7
+%308 = OpFConvert %257 %300
+%309 = OpFConvert %257 %301
+%310 = OpFConvert %257 %302
+%311 = OpFConvert %257 %303
+%312 = OpFConvert %257 %304
+%313 = OpFConvert %257 %305
+%314 = OpFConvert %257 %306
+%315 = OpFConvert %257 %307
+%316 = OpCompositeInsert %266 %308 %268 0
+%317 = OpCompositeInsert %266 %309 %316 1
+%318 = OpCompositeInsert %266 %310 %317 2
+%319 = OpCompositeInsert %266 %311 %318 3
+%320 = OpCompositeInsert %266 %312 %319 4
+%321 = OpCompositeInsert %266 %313 %320 5
+%322 = OpCompositeInsert %266 %314 %321 6
+%323 = OpCompositeInsert %266 %315 %322 7
+%324 = OpExtInst %266 %137 Fma %323 %299 %275
+%325 = OpCompositeExtract %257 %324 0
+%326 = OpCompositeExtract %257 %324 1
+%327 = OpCompositeExtract %257 %324 2
+%328 = OpCompositeExtract %257 %324 3
+%329 = OpCompositeExtract %257 %324 4
+%330 = OpCompositeExtract %257 %324 5
+%331 = OpCompositeExtract %257 %324 6
+%332 = OpCompositeExtract %257 %324 7
+%333 = OpFConvert %28 %325
+%334 = OpFConvert %28 %326
+%335 = OpFConvert %28 %327
+%336 = OpFConvert %28 %328
+%337 = OpFConvert %28 %329
+%338 = OpFConvert %28 %330
+%339 = OpFConvert %28 %331
+%340 = OpFConvert %28 %332
+%341 = OpCompositeInsert %29 %333 %66 0
+%342 = OpCompositeInsert %29 %334 %341 1
+%343 = OpCompositeInsert %29 %335 %342 2
+%344 = OpCompositeInsert %29 %336 %343 3
+%345 = OpCompositeInsert %29 %337 %344 4
+%346 = OpCompositeInsert %29 %338 %345 5
+%347 = OpCompositeInsert %29 %339 %346 6
+%107 = OpCompositeInsert %29 %340 %347 7
+OpBranch %1025
+%996 = OpLabel
+OpBranch %1025
+%995 = OpLabel
+OpBranch %1025
+%994 = OpLabel
+OpBranch %1025
+%993 = OpLabel
+OpBranch %1025
+%992 = OpLabel
+%348 = OpFDiv %29 %30 %37
+%349 = OpExtInst %29 %137 Atan %348
+%350 = OpFAdd %29 %349 %352
+%353 = OpFAdd %29 %349 %355
+%356 = OpFOrdLessThan %142 %37 %82
+%357 = OpFOrdEqual %142 %37 %82
+%358 = OpFOrdGreaterThanEqual %142 %30 %82
+%359 = OpFOrdLessThan %142 %30 %82
+%360 = OpLogicalAnd %142 %356 %358
+%361 = OpSelect %29 %360 %350 %349
+%362 = OpLogicalAnd %142 %356 %359
+%363 = OpSelect %29 %362 %353 %361
+%364 = OpLogicalAnd %142 %357 %359
+%365 = OpSelect %29 %364 %367 %363
+%368 = OpLogicalAnd %142 %357 %358
+%106 = OpSelect %29 %368 %370 %365
+OpBranch %1025
+%991 = OpLabel
+%105 = OpFMul %29 %30 %372
+OpBranch %1025
+%990 = OpLabel
+%104 = OpFMul %29 %30 %374
+OpBranch %1025
+%989 = OpLabel
+%375 = OpExtInst %29 %137 NMax %30 %37
+%103 = OpExtInst %29 %137 NMin %375 %44
+OpBranch %1025
+%988 = OpLabel
+%376 = OpFDiv %29 %30 %37
+%377 = OpFSub %29 %379 %376
+%380 = OpFOrdGreaterThanEqual %142 %376 %377
+%381 = OpExtInst %29 %137 FAbs %376
+%382 = OpExtInst %29 %137 Fract %381
+%383 = OpFSub %29 %379 %382
+%384 = OpSelect %29 %380 %382 %383
+%102 = OpFMul %29 %384 %37
+OpBranch %1025
+%987 = OpLabel
+%385 = OpFSub %29 %37 %30
+%386 = OpFMul %29 %44 %385
+%101 = OpFAdd %29 %386 %30
+OpBranch %1025
+%986 = OpLabel
+%387 = OpExtInst %29 %137 Log2 %30
+%388 = OpFMul %29 %387 %37
+%100 = OpExtInst %29 %137 Exp2 %388
+OpBranch %1025
+%985 = OpLabel
+%99 = OpFDiv %29 %141 %30
+OpBranch %1025
+%984 = OpLabel
+%389 = OpFOrdGreaterThan %142 %30 %82
+%390 = OpFOrdLessThan %142 %30 %82
+%393 = OpSelect %6 %389 %392 %391
+%394 = OpSelect %6 %390 %392 %391
+%395 = OpISub %6 %393 %394
+%98 = OpConvertSToF %29 %395
+OpBranch %1025
+%983 = OpLabel
+%396 = OpFSub %29 %37 %30
+%397 = OpFSub %29 %44 %30
+%398 = OpFDiv %29 %397 %396
+%399 = OpExtInst %29 %137 NClamp %398 %140 %141
+%400 = OpFMul %29 %399 %402
+%403 = OpFSub %29 %405 %400
+%406 = OpFMul %29 %399 %399
+%97 = OpFMul %29 %406 %403
+OpBranch %1025
+%982 = OpLabel
+%407 = OpFOrdLessThan %142 %37 %30
+%96 = OpSelect %29 %407 %82 %141
+OpBranch %1025
+%981 = OpLabel
+%408 = OpExtInst %29 %137 Trunc %30
+%409 = OpFSub %29 %379 %408
+%410 = OpConvertFToS %6 %408
+%411 = OpCompositeExtract %5 %410 0
+%412 = OpCompositeExtract %5 %410 1
+%413 = OpCompositeExtract %5 %410 2
+%414 = OpCompositeExtract %5 %410 3
+%415 = OpCompositeExtract %5 %410 4
+%416 = OpCompositeExtract %5 %410 5
+%417 = OpCompositeExtract %5 %410 6
+%418 = OpCompositeExtract %5 %410 7
+%419 = OpConvertSToF %28 %411
+%420 = OpConvertSToF %28 %412
+%421 = OpConvertSToF %28 %413
+%422 = OpConvertSToF %28 %414
+%423 = OpConvertSToF %28 %415
+%424 = OpConvertSToF %28 %416
+%425 = OpConvertSToF %28 %417
+%426 = OpConvertSToF %28 %418
+%427 = OpCompositeInsert %29 %419 %66 0
+%428 = OpCompositeInsert %29 %420 %427 1
+%429 = OpCompositeInsert %29 %421 %428 2
+%430 = OpCompositeInsert %29 %422 %429 3
+%431 = OpCompositeInsert %29 %423 %430 4
+%432 = OpCompositeInsert %29 %424 %431 5
+%433 = OpCompositeInsert %29 %425 %432 6
+%434 = OpCompositeInsert %29 %426 %433 7
+%435 = OpFSub %29 %379 %434
+%436 = OpFAdd %29 %30 %409
+%95 = OpFAdd %29 %436 %435
+OpBranch %1025
+%980 = OpLabel
+%437 = OpDot %28 %30 %37
+%438 = OpCompositeInsert %29 %437 %442 0
+%443 = OpDot %28 %30 %44
+%444 = OpCompositeInsert %29 %443 %438 1
+%445 = OpDot %28 %37 %44
+%94 = OpCompositeInsert %29 %445 %444 2
+OpBranch %1025
+%979 = OpLabel
+%446 = OpCompositeExtract %28 %30 0
+%447 = OpCompositeExtract %28 %30 1
+%448 = OpCompositeExtract %28 %30 2
+%449 = OpCompositeExtract %28 %30 3
+%450 = OpCompositeExtract %28 %30 4
+%451 = OpCompositeExtract %28 %30 5
+%452 = OpCompositeExtract %28 %30 6
+%453 = OpCompositeExtract %28 %30 7
+%454 = OpConvertFToS %5 %446
+%455 = OpConvertFToS %5 %447
+%456 = OpConvertFToS %5 %448
+%457 = OpConvertFToS %5 %449
+%458 = OpConvertFToS %5 %450
+%459 = OpConvertFToS %5 %451
+%460 = OpConvertFToS %5 %452
+%461 = OpConvertFToS %5 %453
+%462 = OpCompositeInsert %6 %454 %463 0
+%464 = OpCompositeInsert %6 %455 %462 1
+%465 = OpCompositeInsert %6 %456 %464 2
+%466 = OpCompositeInsert %6 %457 %465 3
+%467 = OpCompositeInsert %6 %458 %466 4
+%468 = OpCompositeInsert %6 %459 %467 5
+%469 = OpCompositeInsert %6 %460 %468 6
+%470 = OpCompositeInsert %6 %461 %469 7
+%471 = OpBitReverse %6 %470
+%93 = OpBitcast %29 %471
+OpBranch %1025
+%978 = OpLabel
+%472 = OpCompositeExtract %28 %30 0
+%473 = OpCompositeExtract %28 %30 1
+%474 = OpCompositeExtract %28 %30 2
+%475 = OpCompositeExtract %28 %30 3
+%476 = OpCompositeExtract %28 %30 4
+%477 = OpCompositeExtract %28 %30 5
+%478 = OpCompositeExtract %28 %30 6
+%479 = OpCompositeExtract %28 %30 7
+%480 = OpConvertFToS %5 %472
+%481 = OpConvertFToS %5 %473
+%482 = OpConvertFToS %5 %474
+%483 = OpConvertFToS %5 %475
+%484 = OpConvertFToS %5 %476
+%485 = OpConvertFToS %5 %477
+%486 = OpConvertFToS %5 %478
+%487 = OpConvertFToS %5 %479
+%488 = OpCompositeInsert %6 %480 %463 0
+%489 = OpCompositeInsert %6 %481 %488 1
+%490 = OpCompositeInsert %6 %482 %489 2
+%491 = OpCompositeInsert %6 %483 %490 3
+%492 = OpCompositeInsert %6 %484 %491 4
+%493 = OpCompositeInsert %6 %485 %492 5
+%494 = OpCompositeInsert %6 %486 %493 6
+%495 = OpCompositeInsert %6 %487 %494 7
+%496 = OpBitCount %6 %495
+%92 = OpBitcast %29 %496
+OpBranch %1025
+%977 = OpLabel
+%497 = OpCompositeExtract %28 %30 0
+%498 = OpCompositeExtract %28 %30 1
+%499 = OpCompositeExtract %28 %30 2
+%500 = OpCompositeExtract %28 %30 3
+%501 = OpCompositeExtract %28 %30 4
+%502 = OpCompositeExtract %28 %30 5
+%503 = OpCompositeExtract %28 %30 6
+%504 = OpCompositeExtract %28 %30 7
+%505 = OpConvertFToS %5 %497
+%506 = OpConvertFToS %5 %498
+%507 = OpConvertFToS %5 %499
+%508 = OpConvertFToS %5 %500
+%509 = OpConvertFToS %5 %501
+%510 = OpConvertFToS %5 %502
+%511 = OpConvertFToS %5 %503
+%512 = OpConvertFToS %5 %504
+%513 = OpCompositeInsert %6 %505 %463 0
+%514 = OpCompositeInsert %6 %506 %513 1
+%515 = OpCompositeInsert %6 %507 %514 2
+%516 = OpCompositeInsert %6 %508 %515 3
+%517 = OpCompositeInsert %6 %509 %516 4
+%518 = OpCompositeInsert %6 %510 %517 5
+%519 = OpCompositeInsert %6 %511 %518 6
+%520 = OpCompositeInsert %6 %512 %519 7
+%521 = OpExtInst %6 %137 FindSMsb %520
+%522 = OpIEqual %142 %521 %524
+%525 = OpISub %6 %527 %521
+%528 = OpSelect %6 %522 %524 %525
+%529 = OpISub %6 %527 %528
+%530 = OpIEqual %142 %528 %524
+%531 = OpBitcast %29 %529
+%91 = OpSelect %29 %530 %533 %531
+OpBranch %1025
+%976 = OpLabel
+%534 = OpCompositeExtract %28 %30 0
+%535 = OpCompositeExtract %28 %30 1
+%536 = OpCompositeExtract %28 %30 2
+%537 = OpCompositeExtract %28 %30 3
+%538 = OpCompositeExtract %28 %30 4
+%539 = OpCompositeExtract %28 %30 5
+%540 = OpCompositeExtract %28 %30 6
+%541 = OpCompositeExtract %28 %30 7
+%542 = OpConvertFToS %5 %534
+%543 = OpConvertFToS %5 %535
+%544 = OpConvertFToS %5 %536
+%545 = OpConvertFToS %5 %537
+%546 = OpConvertFToS %5 %538
+%547 = OpConvertFToS %5 %539
+%548 = OpConvertFToS %5 %540
+%549 = OpConvertFToS %5 %541
+%550 = OpCompositeInsert %6 %542 %463 0
+%551 = OpCompositeInsert %6 %543 %550 1
+%552 = OpCompositeInsert %6 %544 %551 2
+%553 = OpCompositeInsert %6 %545 %552 3
+%554 = OpCompositeInsert %6 %546 %553 4
+%555 = OpCompositeInsert %6 %547 %554 5
+%556 = OpCompositeInsert %6 %548 %555 6
+%557 = OpCompositeInsert %6 %549 %556 7
+%558 = OpExtInst %6 %137 FindILsb %557
+%90 = OpBitcast %29 %558
+OpBranch %1025
+%975 = OpLabel
+%559 = OpCompositeExtract %28 %30 0
+%560 = OpCompositeExtract %28 %30 1
+%561 = OpCompositeExtract %28 %30 2
+%562 = OpCompositeExtract %28 %30 3
+%563 = OpCompositeExtract %28 %30 4
+%564 = OpCompositeExtract %28 %30 5
+%565 = OpCompositeExtract %28 %30 6
+%566 = OpCompositeExtract %28 %30 7
+%567 = OpConvertFToS %5 %559
+%568 = OpConvertFToS %5 %560
+%569 = OpConvertFToS %5 %561
+%570 = OpConvertFToS %5 %562
+%571 = OpConvertFToS %5 %563
+%572 = OpConvertFToS %5 %564
+%573 = OpConvertFToS %5 %565
+%574 = OpConvertFToS %5 %566
+%576 = OpExtInst %575 %137 UnpackHalf2x16 %567
+%577 = OpCompositeExtract %28 %576 0
+%578 = OpCompositeInsert %29 %577 %66 0
+%579 = OpExtInst %575 %137 UnpackHalf2x16 %568
+%580 = OpCompositeExtract %28 %579 0
+%581 = OpCompositeInsert %29 %580 %578 1
+%582 = OpExtInst %575 %137 UnpackHalf2x16 %569
+%583 = OpCompositeExtract %28 %582 0
+%584 = OpCompositeInsert %29 %583 %581 2
+%585 = OpExtInst %575 %137 UnpackHalf2x16 %570
+%586 = OpCompositeExtract %28 %585 0
+%587 = OpCompositeInsert %29 %586 %584 3
+%588 = OpExtInst %575 %137 UnpackHalf2x16 %571
+%589 = OpCompositeExtract %28 %588 0
+%590 = OpCompositeInsert %29 %589 %587 4
+%591 = OpExtInst %575 %137 UnpackHalf2x16 %572
+%592 = OpCompositeExtract %28 %591 0
+%593 = OpCompositeInsert %29 %592 %590 5
+%594 = OpExtInst %575 %137 UnpackHalf2x16 %573
+%595 = OpCompositeExtract %28 %594 0
+%596 = OpCompositeInsert %29 %595 %593 6
+%597 = OpExtInst %575 %137 UnpackHalf2x16 %574
+%598 = OpCompositeExtract %28 %597 0
+%89 = OpCompositeInsert %29 %598 %596 7
+OpBranch %1025
+%974 = OpLabel
+%599 = OpCompositeExtract %28 %30 0
+%601 = OpCompositeConstruct %575 %599 %138
+%600 = OpExtInst %5 %137 PackHalf2x16 %601
+%602 = OpCompositeInsert %6 %600 %463 0
+%603 = OpCompositeExtract %28 %30 1
+%605 = OpCompositeConstruct %575 %603 %138
+%604 = OpExtInst %5 %137 PackHalf2x16 %605
+%606 = OpCompositeInsert %6 %604 %602 1
+%607 = OpCompositeExtract %28 %30 2
+%609 = OpCompositeConstruct %575 %607 %138
+%608 = OpExtInst %5 %137 PackHalf2x16 %609
+%610 = OpCompositeInsert %6 %608 %606 2
+%611 = OpCompositeExtract %28 %30 3
+%613 = OpCompositeConstruct %575 %611 %138
+%612 = OpExtInst %5 %137 PackHalf2x16 %613
+%614 = OpCompositeInsert %6 %612 %610 3
+%615 = OpCompositeExtract %28 %30 4
+%617 = OpCompositeConstruct %575 %615 %138
+%616 = OpExtInst %5 %137 PackHalf2x16 %617
+%618 = OpCompositeInsert %6 %616 %614 4
+%619 = OpCompositeExtract %28 %30 5
+%621 = OpCompositeConstruct %575 %619 %138
+%620 = OpExtInst %5 %137 PackHalf2x16 %621
+%622 = OpCompositeInsert %6 %620 %618 5
+%623 = OpCompositeExtract %28 %30 6
+%625 = OpCompositeConstruct %575 %623 %138
+%624 = OpExtInst %5 %137 PackHalf2x16 %625
+%626 = OpCompositeInsert %6 %624 %622 6
+%627 = OpCompositeExtract %28 %30 7
+%629 = OpCompositeConstruct %575 %627 %138
+%628 = OpExtInst %5 %137 PackHalf2x16 %629
+%630 = OpCompositeInsert %6 %628 %626 7
+%88 = OpBitcast %29 %630
+OpBranch %1025
+%973 = OpLabel
+%631 = OpCompositeExtract %28 %37 0
+%632 = OpCompositeExtract %28 %37 1
+%633 = OpCompositeExtract %28 %37 2
+%634 = OpCompositeExtract %28 %37 3
+%635 = OpCompositeExtract %28 %37 4
+%636 = OpCompositeExtract %28 %37 5
+%637 = OpCompositeExtract %28 %37 6
+%638 = OpCompositeExtract %28 %37 7
+%639 = OpFUnordNotEqual %45 %631 %138
+%640 = OpFUnordNotEqual %45 %632 %138
+%641 = OpFUnordNotEqual %45 %633 %138
+%642 = OpFUnordNotEqual %45 %634 %138
+%643 = OpFUnordNotEqual %45 %635 %138
+%644 = OpFUnordNotEqual %45 %636 %138
+%645 = OpFUnordNotEqual %45 %637 %138
+%646 = OpFUnordNotEqual %45 %638 %138
+%647 = OpCompositeInsert %142 %639 %648 0
+%649 = OpCompositeInsert %142 %640 %647 1
+%650 = OpCompositeInsert %142 %641 %649 2
+%651 = OpCompositeInsert %142 %642 %650 3
+%652 = OpCompositeInsert %142 %643 %651 4
+%653 = OpCompositeInsert %142 %644 %652 5
+%654 = OpCompositeInsert %142 %645 %653 6
+%655 = OpCompositeInsert %142 %646 %654 7
+%656 = OpCompositeExtract %28 %30 0
+%657 = OpCompositeExtract %28 %30 1
+%658 = OpCompositeExtract %28 %30 2
+%659 = OpCompositeExtract %28 %30 3
+%660 = OpCompositeExtract %28 %30 4
+%661 = OpCompositeExtract %28 %30 5
+%662 = OpCompositeExtract %28 %30 6
+%663 = OpCompositeExtract %28 %30 7
+%664 = OpFUnordNotEqual %45 %656 %138
+%665 = OpFUnordNotEqual %45 %657 %138
+%666 = OpFUnordNotEqual %45 %658 %138
+%667 = OpFUnordNotEqual %45 %659 %138
+%668 = OpFUnordNotEqual %45 %660 %138
+%669 = OpFUnordNotEqual %45 %661 %138
+%670 = OpFUnordNotEqual %45 %662 %138
+%671 = OpFUnordNotEqual %45 %663 %138
+%672 = OpCompositeInsert %142 %664 %648 0
+%673 = OpCompositeInsert %142 %665 %672 1
+%674 = OpCompositeInsert %142 %666 %673 2
+%675 = OpCompositeInsert %142 %667 %674 3
+%676 = OpCompositeInsert %142 %668 %675 4
+%677 = OpCompositeInsert %142 %669 %676 5
+%678 = OpCompositeInsert %142 %670 %677 6
+%679 = OpCompositeInsert %142 %671 %678 7
+%680 = OpLogicalAnd %142 %655 %679
+%681 = OpCompositeExtract %45 %680 0
+%682 = OpCompositeExtract %45 %680 1
+%683 = OpCompositeExtract %45 %680 2
+%684 = OpCompositeExtract %45 %680 3
+%685 = OpCompositeExtract %45 %680 4
+%686 = OpCompositeExtract %45 %680 5
+%687 = OpCompositeExtract %45 %680 6
+%688 = OpCompositeExtract %45 %680 7
+%689 = OpSelect %28 %681 %139 %138
+%690 = OpSelect %28 %682 %139 %138
+%691 = OpSelect %28 %683 %139 %138
+%692 = OpSelect %28 %684 %139 %138
+%693 = OpSelect %28 %685 %139 %138
+%694 = OpSelect %28 %686 %139 %138
+%695 = OpSelect %28 %687 %139 %138
+%696 = OpSelect %28 %688 %139 %138
+%697 = OpCompositeInsert %29 %689 %66 0
+%698 = OpCompositeInsert %29 %690 %697 1
+%699 = OpCompositeInsert %29 %691 %698 2
+%700 = OpCompositeInsert %29 %692 %699 3
+%701 = OpCompositeInsert %29 %693 %700 4
+%702 = OpCompositeInsert %29 %694 %701 5
+%703 = OpCompositeInsert %29 %695 %702 6
+%87 = OpCompositeInsert %29 %696 %703 7
+OpBranch %1025
+%972 = OpLabel
+%704 = OpCompositeExtract %28 %37 0
+%705 = OpCompositeExtract %28 %37 1
+%706 = OpCompositeExtract %28 %37 2
+%707 = OpCompositeExtract %28 %37 3
+%708 = OpCompositeExtract %28 %37 4
+%709 = OpCompositeExtract %28 %37 5
+%710 = OpCompositeExtract %28 %37 6
+%711 = OpCompositeExtract %28 %37 7
+%712 = OpFUnordNotEqual %45 %704 %138
+%713 = OpFUnordNotEqual %45 %705 %138
+%714 = OpFUnordNotEqual %45 %706 %138
+%715 = OpFUnordNotEqual %45 %707 %138
+%716 = OpFUnordNotEqual %45 %708 %138
+%717 = OpFUnordNotEqual %45 %709 %138
+%718 = OpFUnordNotEqual %45 %710 %138
+%719 = OpFUnordNotEqual %45 %711 %138
+%720 = OpCompositeInsert %142 %712 %648 0
+%721 = OpCompositeInsert %142 %713 %720 1
+%722 = OpCompositeInsert %142 %714 %721 2
+%723 = OpCompositeInsert %142 %715 %722 3
+%724 = OpCompositeInsert %142 %716 %723 4
+%725 = OpCompositeInsert %142 %717 %724 5
+%726 = OpCompositeInsert %142 %718 %725 6
+%727 = OpCompositeInsert %142 %719 %726 7
+%728 = OpCompositeExtract %28 %30 0
+%729 = OpCompositeExtract %28 %30 1
+%730 = OpCompositeExtract %28 %30 2
+%731 = OpCompositeExtract %28 %30 3
+%732 = OpCompositeExtract %28 %30 4
+%733 = OpCompositeExtract %28 %30 5
+%734 = OpCompositeExtract %28 %30 6
+%735 = OpCompositeExtract %28 %30 7
+%736 = OpFUnordNotEqual %45 %728 %138
+%737 = OpFUnordNotEqual %45 %729 %138
+%738 = OpFUnordNotEqual %45 %730 %138
+%739 = OpFUnordNotEqual %45 %731 %138
+%740 = OpFUnordNotEqual %45 %732 %138
+%741 = OpFUnordNotEqual %45 %733 %138
+%742 = OpFUnordNotEqual %45 %734 %138
+%743 = OpFUnordNotEqual %45 %735 %138
+%744 = OpCompositeInsert %142 %736 %648 0
+%745 = OpCompositeInsert %142 %737 %744 1
+%746 = OpCompositeInsert %142 %738 %745 2
+%747 = OpCompositeInsert %142 %739 %746 3
+%748 = OpCompositeInsert %142 %740 %747 4
+%749 = OpCompositeInsert %142 %741 %748 5
+%750 = OpCompositeInsert %142 %742 %749 6
+%751 = OpCompositeInsert %142 %743 %750 7
+%752 = OpLogicalOr %142 %727 %751
+%753 = OpCompositeExtract %45 %752 0
+%754 = OpCompositeExtract %45 %752 1
+%755 = OpCompositeExtract %45 %752 2
+%756 = OpCompositeExtract %45 %752 3
+%757 = OpCompositeExtract %45 %752 4
+%758 = OpCompositeExtract %45 %752 5
+%759 = OpCompositeExtract %45 %752 6
+%760 = OpCompositeExtract %45 %752 7
+%761 = OpSelect %28 %753 %139 %138
+%762 = OpSelect %28 %754 %139 %138
+%763 = OpSelect %28 %755 %139 %138
+%764 = OpSelect %28 %756 %139 %138
+%765 = OpSelect %28 %757 %139 %138
+%766 = OpSelect %28 %758 %139 %138
+%767 = OpSelect %28 %759 %139 %138
+%768 = OpSelect %28 %760 %139 %138
+%769 = OpCompositeInsert %29 %761 %66 0
+%770 = OpCompositeInsert %29 %762 %769 1
+%771 = OpCompositeInsert %29 %763 %770 2
+%772 = OpCompositeInsert %29 %764 %771 3
+%773 = OpCompositeInsert %29 %765 %772 4
+%774 = OpCompositeInsert %29 %766 %773 5
+%775 = OpCompositeInsert %29 %767 %774 6
+%86 = OpCompositeInsert %29 %768 %775 7
+OpBranch %1025
+%971 = OpLabel
+%776 = OpCompositeExtract %28 %30 0
+%777 = OpCompositeExtract %28 %30 1
+%778 = OpCompositeExtract %28 %30 2
+%779 = OpCompositeExtract %28 %30 3
+%780 = OpCompositeExtract %28 %30 4
+%781 = OpCompositeExtract %28 %30 5
+%782 = OpCompositeExtract %28 %30 6
+%783 = OpCompositeExtract %28 %30 7
+%784 = OpFUnordNotEqual %45 %776 %138
+%785 = OpFUnordNotEqual %45 %777 %138
+%786 = OpFUnordNotEqual %45 %778 %138
+%787 = OpFUnordNotEqual %45 %779 %138
+%788 = OpFUnordNotEqual %45 %780 %138
+%789 = OpFUnordNotEqual %45 %781 %138
+%790 = OpFUnordNotEqual %45 %782 %138
+%791 = OpFUnordNotEqual %45 %783 %138
+%792 = OpCompositeInsert %142 %784 %648 0
+%793 = OpCompositeInsert %142 %785 %792 1
+%794 = OpCompositeInsert %142 %786 %793 2
+%795 = OpCompositeInsert %142 %787 %794 3
+%796 = OpCompositeInsert %142 %788 %795 4
+%797 = OpCompositeInsert %142 %789 %796 5
+%798 = OpCompositeInsert %142 %790 %797 6
+%799 = OpCompositeInsert %142 %791 %798 7
+%85 = OpSelect %29 %799 %37 %44
+OpBranch %1025
+%970 = OpLabel
+%800 = OpCompositeExtract %28 %30 0
+%801 = OpCompositeExtract %28 %30 1
+%802 = OpCompositeExtract %28 %30 2
+%803 = OpCompositeExtract %28 %30 3
+%804 = OpCompositeExtract %28 %30 4
+%805 = OpCompositeExtract %28 %30 5
+%806 = OpCompositeExtract %28 %30 6
+%807 = OpCompositeExtract %28 %30 7
+%808 = OpFUnordNotEqual %45 %800 %138
+%809 = OpFUnordNotEqual %45 %801 %138
+%810 = OpFUnordNotEqual %45 %802 %138
+%811 = OpFUnordNotEqual %45 %803 %138
+%812 = OpFUnordNotEqual %45 %804 %138
+%813 = OpFUnordNotEqual %45 %805 %138
+%814 = OpFUnordNotEqual %45 %806 %138
+%815 = OpFUnordNotEqual %45 %807 %138
+%816 = OpCompositeInsert %142 %808 %648 0
+%817 = OpCompositeInsert %142 %809 %816 1
+%818 = OpCompositeInsert %142 %810 %817 2
+%819 = OpCompositeInsert %142 %811 %818 3
+%820 = OpCompositeInsert %142 %812 %819 4
+%821 = OpCompositeInsert %142 %813 %820 5
+%822 = OpCompositeInsert %142 %814 %821 6
+%823 = OpCompositeInsert %142 %815 %822 7
+%824 = OpAll %45 %823
+%825 = OpSelect %28 %824 %139 %138
+%826 = OpCompositeInsert %29 %825 %442 0
+%827 = OpCompositeExtract %28 %37 0
+%828 = OpCompositeExtract %28 %37 1
+%829 = OpCompositeExtract %28 %37 2
+%830 = OpCompositeExtract %28 %37 3
+%831 = OpCompositeExtract %28 %37 4
+%832 = OpCompositeExtract %28 %37 5
+%833 = OpCompositeExtract %28 %37 6
+%834 = OpCompositeExtract %28 %37 7
+%835 = OpFUnordNotEqual %45 %827 %138
+%836 = OpFUnordNotEqual %45 %828 %138
+%837 = OpFUnordNotEqual %45 %829 %138
+%838 = OpFUnordNotEqual %45 %830 %138
+%839 = OpFUnordNotEqual %45 %831 %138
+%840 = OpFUnordNotEqual %45 %832 %138
+%841 = OpFUnordNotEqual %45 %833 %138
+%842 = OpFUnordNotEqual %45 %834 %138
+%843 = OpCompositeInsert %142 %835 %648 0
+%844 = OpCompositeInsert %142 %836 %843 1
+%845 = OpCompositeInsert %142 %837 %844 2
+%846 = OpCompositeInsert %142 %838 %845 3
+%847 = OpCompositeInsert %142 %839 %846 4
+%848 = OpCompositeInsert %142 %840 %847 5
+%849 = OpCompositeInsert %142 %841 %848 6
+%850 = OpCompositeInsert %142 %842 %849 7
+%851 = OpAll %45 %850
+%852 = OpSelect %28 %851 %139 %138
+%853 = OpCompositeInsert %29 %852 %826 1
+%854 = OpCompositeExtract %28 %44 0
+%855 = OpCompositeExtract %28 %44 1
+%856 = OpCompositeExtract %28 %44 2
+%857 = OpCompositeExtract %28 %44 3
+%858 = OpCompositeExtract %28 %44 4
+%859 = OpCompositeExtract %28 %44 5
+%860 = OpCompositeExtract %28 %44 6
+%861 = OpCompositeExtract %28 %44 7
+%862 = OpFUnordNotEqual %45 %854 %138
+%863 = OpFUnordNotEqual %45 %855 %138
+%864 = OpFUnordNotEqual %45 %856 %138
+%865 = OpFUnordNotEqual %45 %857 %138
+%866 = OpFUnordNotEqual %45 %858 %138
+%867 = OpFUnordNotEqual %45 %859 %138
+%868 = OpFUnordNotEqual %45 %860 %138
+%869 = OpFUnordNotEqual %45 %861 %138
+%870 = OpCompositeInsert %142 %862 %648 0
+%871 = OpCompositeInsert %142 %863 %870 1
+%872 = OpCompositeInsert %142 %864 %871 2
+%873 = OpCompositeInsert %142 %865 %872 3
+%874 = OpCompositeInsert %142 %866 %873 4
+%875 = OpCompositeInsert %142 %867 %874 5
+%876 = OpCompositeInsert %142 %868 %875 6
+%877 = OpCompositeInsert %142 %869 %876 7
+%878 = OpAll %45 %877
+%879 = OpSelect %28 %878 %139 %138
+%84 = OpCompositeInsert %29 %879 %853 2
+OpBranch %1025
+%969 = OpLabel
+%880 = OpCompositeExtract %28 %30 0
+%881 = OpCompositeExtract %28 %30 1
+%882 = OpCompositeExtract %28 %30 2
+%883 = OpCompositeExtract %28 %30 3
+%884 = OpCompositeExtract %28 %30 4
+%885 = OpCompositeExtract %28 %30 5
+%886 = OpCompositeExtract %28 %30 6
+%887 = OpCompositeExtract %28 %30 7
+%888 = OpFUnordNotEqual %45 %880 %138
+%889 = OpFUnordNotEqual %45 %881 %138
+%890 = OpFUnordNotEqual %45 %882 %138
+%891 = OpFUnordNotEqual %45 %883 %138
+%892 = OpFUnordNotEqual %45 %884 %138
+%893 = OpFUnordNotEqual %45 %885 %138
+%894 = OpFUnordNotEqual %45 %886 %138
+%895 = OpFUnordNotEqual %45 %887 %138
+%896 = OpCompositeInsert %142 %888 %648 0
+%897 = OpCompositeInsert %142 %889 %896 1
+%898 = OpCompositeInsert %142 %890 %897 2
+%899 = OpCompositeInsert %142 %891 %898 3
+%900 = OpCompositeInsert %142 %892 %899 4
+%901 = OpCompositeInsert %142 %893 %900 5
+%902 = OpCompositeInsert %142 %894 %901 6
+%903 = OpCompositeInsert %142 %895 %902 7
+%904 = OpAny %45 %903
+%905 = OpSelect %28 %904 %139 %138
+%906 = OpCompositeInsert %29 %905 %442 0
+%907 = OpCompositeExtract %28 %37 0
+%908 = OpCompositeExtract %28 %37 1
+%909 = OpCompositeExtract %28 %37 2
+%910 = OpCompositeExtract %28 %37 3
+%911 = OpCompositeExtract %28 %37 4
+%912 = OpCompositeExtract %28 %37 5
+%913 = OpCompositeExtract %28 %37 6
+%914 = OpCompositeExtract %28 %37 7
+%915 = OpFUnordNotEqual %45 %907 %138
+%916 = OpFUnordNotEqual %45 %908 %138
+%917 = OpFUnordNotEqual %45 %909 %138
+%918 = OpFUnordNotEqual %45 %910 %138
+%919 = OpFUnordNotEqual %45 %911 %138
+%920 = OpFUnordNotEqual %45 %912 %138
+%921 = OpFUnordNotEqual %45 %913 %138
+%922 = OpFUnordNotEqual %45 %914 %138
+%923 = OpCompositeInsert %142 %915 %648 0
+%924 = OpCompositeInsert %142 %916 %923 1
+%925 = OpCompositeInsert %142 %917 %924 2
+%926 = OpCompositeInsert %142 %918 %925 3
+%927 = OpCompositeInsert %142 %919 %926 4
+%928 = OpCompositeInsert %142 %920 %927 5
+%929 = OpCompositeInsert %142 %921 %928 6
+%930 = OpCompositeInsert %142 %922 %929 7
+%931 = OpAny %45 %930
+%932 = OpSelect %28 %931 %139 %138
+%933 = OpCompositeInsert %29 %932 %906 1
+%934 = OpCompositeExtract %28 %44 0
+%935 = OpCompositeExtract %28 %44 1
+%936 = OpCompositeExtract %28 %44 2
+%937 = OpCompositeExtract %28 %44 3
+%938 = OpCompositeExtract %28 %44 4
+%939 = OpCompositeExtract %28 %44 5
+%940 = OpCompositeExtract %28 %44 6
+%941 = OpCompositeExtract %28 %44 7
+%942 = OpFUnordNotEqual %45 %934 %138
+%943 = OpFUnordNotEqual %45 %935 %138
+%944 = OpFUnordNotEqual %45 %936 %138
+%945 = OpFUnordNotEqual %45 %937 %138
+%946 = OpFUnordNotEqual %45 %938 %138
+%947 = OpFUnordNotEqual %45 %939 %138
+%948 = OpFUnordNotEqual %45 %940 %138
+%949 = OpFUnordNotEqual %45 %941 %138
+%950 = OpCompositeInsert %142 %942 %648 0
+%951 = OpCompositeInsert %142 %943 %950 1
+%952 = OpCompositeInsert %142 %944 %951 2
+%953 = OpCompositeInsert %142 %945 %952 3
+%954 = OpCompositeInsert %142 %946 %953 4
+%955 = OpCompositeInsert %142 %947 %954 5
+%956 = OpCompositeInsert %142 %948 %955 6
+%957 = OpCompositeInsert %142 %949 %956 7
+%958 = OpAny %45 %957
+%959 = OpSelect %28 %958 %139 %138
+%83 = OpCompositeInsert %29 %959 %933 2
+OpBranch %1025
+%968 = OpLabel
+OpBranch %1025
+%967 = OpLabel
+OpBranch %1025
+%966 = OpLabel
+OpBranch %1025
+%965 = OpLabel
+OpBranch %1025
+%1025 = OpLabel
+%81 = OpPhi %29 %82 %964 %134 %1024 %133 %1023 %132 %1022 %131 %1021 %130 %1020 %129 %1019 %128 %1018 %127 %1017 %126 %1016 %125 %1015 %124 %1014 %123 %1013 %122 %1012 %121 %1011 %120 %1010 %119 %1009 %118 %1008 %117 %1007 %116 %1006 %115 %1005 %114 %1004 %113 %1003 %112 %1002 %111 %1001 %110 %1000 %109 %999 %108 %998 %107 %997 %69 %996 %68 %995 %67 %994 %65 %993 %106 %992 %105 %991 %104 %990 %103 %989 %102 %988 %101 %987 %100 %986 %99 %985 %98 %984 %97 %983 %96 %982 %95 %981 %94 %980 %93 %979 %92 %978 %91 %977 %90 %976 %89 %975 %88 %974 %87 %973 %86 %972 %85 %971 %84 %970 %83 %969 %77 %968 %78 %967 %79 %966 %80 %965
+%135 = OpBitcast %6 %81
+%136 = OpAccessChain %25 %14 %20 %21
+OpStore %136 %135
+OpReturn
+OpFunctionEnd
+%50 = OpFunction %45 None %48
+%49 = OpFunctionParameter %45
+%51 = OpLabel
+%52 = OpGroupNonUniformQuadBroadcast %45 %23 %49 %20
+%53 = OpGroupNonUniformQuadBroadcast %45 %23 %49 %32
+%54 = OpGroupNonUniformQuadBroadcast %45 %23 %49 %39
+%55 = OpGroupNonUniformQuadBroadcast %45 %23 %49 %23
+%56 = OpLogicalOr %45 %52 %53
+%57 = OpLogicalOr %45 %56 %54
+%58 = OpLogicalOr %45 %57 %55
+OpReturnValue %58
+OpFunctionEnd
+#endif

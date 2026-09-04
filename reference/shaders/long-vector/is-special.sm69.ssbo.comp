@@ -1,0 +1,191 @@
+#version 460
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_16bit_storage : require
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+uvec4 _43;
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
+{
+    u16vec4 _m0[];
+} _11;
+
+layout(set = 0, binding = 0, std430) writeonly buffer _14_16
+{
+    uvec4 _m0[];
+} _16;
+
+void main()
+{
+    f16vec4 _29 = uint16BitsToFloat16(_11._m0[gl_GlobalInvocationID.x]);
+    bvec4 _32 = isinf(_29);
+    uvec4 _42;
+    _42.x = uint(_32.x);
+    _42.y = uint(_32.y);
+    _42.z = uint(_32.z);
+    _42.w = uint(_32.w);
+    bvec4 _47 = isnan(_29);
+    uvec4 _56;
+    _56.x = uint(_47.x);
+    _56.y = uint(_47.y);
+    _56.z = uint(_47.z);
+    _56.w = uint(_47.w);
+    f16vec4 _61 = abs(_29);
+    bvec4 _66 = greaterThanEqual(_61, f16vec4(float16_t(6.103515625e-05)));
+    bvec4 _67 = lessThan(_61, f16vec4(float16_t(1.0 / 0.0)));
+    bvec4 _68 = bvec4(_66.x && _67.x, _66.y && _67.y, _66.z && _67.z, _66.w && _67.w);
+    uvec4 _77;
+    _77.x = uint(_68.x);
+    _77.y = uint(_68.y);
+    _77.z = uint(_68.z);
+    _77.w = uint(_68.w);
+    uint _81 = gl_GlobalInvocationID.x * 3u;
+    _16._m0[gl_GlobalInvocationID.x * 3u] = _42;
+    _16._m0[(gl_GlobalInvocationID.x * 3u) + 1u] = _56;
+    _16._m0[(gl_GlobalInvocationID.x * 3u) + 2u] = _77;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 97
+; Schema: 0
+OpCapability Shader
+OpCapability Float16
+OpCapability Int16
+OpCapability StorageBuffer16BitAccess
+OpCapability DenormPreserve
+OpExtension "SPV_KHR_float_controls"
+%60 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %11 %16 %19
+OpExecutionMode %3 LocalSize 64 1 1
+OpExecutionMode %3 DenormPreserve 16
+OpName %3 "main"
+OpName %9 "SSBO"
+OpName %14 "SSBO"
+OpDecorate %8 ArrayStride 8
+OpMemberDecorate %9 0 Offset 0
+OpDecorate %9 Block
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 0
+OpDecorate %11 NonWritable
+OpDecorate %11 Restrict
+OpDecorate %13 ArrayStride 16
+OpMemberDecorate %14 0 Offset 0
+OpDecorate %14 Block
+OpDecorate %16 DescriptorSet 0
+OpDecorate %16 Binding 0
+OpDecorate %16 NonReadable
+OpDecorate %19 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeInt 16 0
+%7 = OpTypeVector %6 4
+%8 = OpTypeRuntimeArray %7
+%9 = OpTypeStruct %8
+%10 = OpTypePointer StorageBuffer %9
+%11 = OpVariable %10 StorageBuffer
+%12 = OpTypeVector %5 4
+%13 = OpTypeRuntimeArray %12
+%14 = OpTypeStruct %13
+%15 = OpTypePointer StorageBuffer %14
+%16 = OpVariable %15 StorageBuffer
+%17 = OpTypeVector %5 3
+%18 = OpTypePointer Input %17
+%19 = OpVariable %18 Input
+%20 = OpTypePointer Input %5
+%22 = OpConstant %5 0
+%24 = OpTypePointer StorageBuffer %7
+%27 = OpTypeFloat 16
+%28 = OpTypeVector %27 4
+%30 = OpTypeBool
+%31 = OpTypeVector %30 4
+%37 = OpConstant %5 1
+%62 = OpConstant %27 0x1p-14
+%63 = OpConstantComposite %28 %62 %62 %62 %62
+%64 = OpConstant %27 0x1p+16
+%65 = OpConstantComposite %28 %64 %64 %64 %64
+%82 = OpConstant %5 3
+%84 = OpTypePointer StorageBuffer %12
+%91 = OpConstant %5 2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%43 = OpUndef %12
+OpBranch %95
+%95 = OpLabel
+%21 = OpAccessChain %20 %19 %22
+%23 = OpLoad %5 %21
+%25 = OpAccessChain %24 %11 %22 %23
+%26 = OpLoad %7 %25
+%29 = OpBitcast %28 %26
+%32 = OpIsInf %31 %29
+%33 = OpCompositeExtract %30 %32 0
+%34 = OpCompositeExtract %30 %32 1
+%35 = OpCompositeExtract %30 %32 2
+%36 = OpCompositeExtract %30 %32 3
+%38 = OpSelect %5 %33 %37 %22
+%39 = OpSelect %5 %34 %37 %22
+%40 = OpSelect %5 %35 %37 %22
+%41 = OpSelect %5 %36 %37 %22
+%42 = OpCompositeInsert %12 %38 %43 0
+%44 = OpCompositeInsert %12 %39 %42 1
+%45 = OpCompositeInsert %12 %40 %44 2
+%46 = OpCompositeInsert %12 %41 %45 3
+%47 = OpIsNan %31 %29
+%48 = OpCompositeExtract %30 %47 0
+%49 = OpCompositeExtract %30 %47 1
+%50 = OpCompositeExtract %30 %47 2
+%51 = OpCompositeExtract %30 %47 3
+%52 = OpSelect %5 %48 %37 %22
+%53 = OpSelect %5 %49 %37 %22
+%54 = OpSelect %5 %50 %37 %22
+%55 = OpSelect %5 %51 %37 %22
+%56 = OpCompositeInsert %12 %52 %43 0
+%57 = OpCompositeInsert %12 %53 %56 1
+%58 = OpCompositeInsert %12 %54 %57 2
+%59 = OpCompositeInsert %12 %55 %58 3
+%61 = OpExtInst %28 %60 FAbs %29
+%66 = OpFOrdGreaterThanEqual %31 %61 %63
+%67 = OpFOrdLessThan %31 %61 %65
+%68 = OpLogicalAnd %31 %66 %67
+%69 = OpCompositeExtract %30 %68 0
+%70 = OpCompositeExtract %30 %68 1
+%71 = OpCompositeExtract %30 %68 2
+%72 = OpCompositeExtract %30 %68 3
+%73 = OpSelect %5 %69 %37 %22
+%74 = OpSelect %5 %70 %37 %22
+%75 = OpSelect %5 %71 %37 %22
+%76 = OpSelect %5 %72 %37 %22
+%77 = OpCompositeInsert %12 %73 %43 0
+%78 = OpCompositeInsert %12 %74 %77 1
+%79 = OpCompositeInsert %12 %75 %78 2
+%80 = OpCompositeInsert %12 %76 %79 3
+%81 = OpIMul %5 %23 %82
+%83 = OpIMul %5 %23 %82
+%85 = OpAccessChain %84 %16 %22 %83
+OpStore %85 %46
+%86 = OpIAdd %5 %81 %37
+%87 = OpIMul %5 %23 %82
+%88 = OpIAdd %5 %87 %37
+%89 = OpAccessChain %84 %16 %22 %88
+OpStore %89 %59
+%90 = OpIAdd %5 %81 %91
+%92 = OpIMul %5 %23 %82
+%93 = OpIAdd %5 %92 %91
+%94 = OpAccessChain %84 %16 %22 %93
+OpStore %94 %80
+OpReturn
+OpFunctionEnd
+#endif
