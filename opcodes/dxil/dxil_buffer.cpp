@@ -802,6 +802,7 @@ static RawAccessChain emit_raw_access_chain(Converter::Impl &impl, const Convert
 	{
 		unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, element_type);
 
+		// We can never infer more than 16 byte of alignment since the BAB descriptor is at most 16 bytes.
 		if (raw_access_byte_address_can_vectorize(impl, element_type, inst->getOperand(2), 4))
 			raw.alignment = 4;
 		else if (raw_access_byte_address_can_vectorize(impl, element_type, inst->getOperand(2), 2))
@@ -845,25 +846,29 @@ static RawAccessChain emit_raw_access_chain(Converter::Impl &impl, const Convert
 		op->add_id(impl.get_id_for_value(inst->getOperand(3)));
 		op->add_literal(spv::RawAccessChainOperandsRobustnessPerElementNVMask);
 
+		// We can never infer more than 16 byte alignment.
+		// https://github.com/microsoft/DirectX-Specs/blob/master/d3d/D3D12RevisedCreateViews.md#runtime-validation
+		// "For structured buffers:
+		// Offset must be aligned to the highest divisible alignment of the following bytes [2,4,8,16].
+		// This works out to be min(1 << ffs(stride),16)"
+
 		// Need extra check for stride alignment since we can normally "vectorize" vec3 structured buffers
 		// if SSBO alignment is 4. However, we also need to make sure the alignment is correct before accepting.
-		if ((meta.stride & (scalar_size * 4 - 1)) == 0 &&
-		    raw_access_structured_can_vectorize(
-			    impl, element_type,
-			    inst->getOperand(2), meta.stride, inst->getOperand(3), 4))
+
+		raw.alignment = 1;
+
+		for (unsigned align_vecsize = 8, max_scalar_size = 2; align_vecsize; align_vecsize /= 2, max_scalar_size *= 2)
 		{
-			raw.alignment = 4;
+			if (scalar_size <= max_scalar_size &&
+			    (meta.stride & (scalar_size * align_vecsize - 1)) == 0 &&
+			    raw_access_structured_can_vectorize(
+				    impl, element_type,
+				    inst->getOperand(2), meta.stride, inst->getOperand(3), align_vecsize))
+			{
+				raw.alignment = align_vecsize;
+				break;
+			}
 		}
-		else if ((meta.stride & (scalar_size * 2 - 1)) == 0 &&
-		         raw_access_structured_can_vectorize(
-			         impl, element_type,
-			         inst->getOperand(2), meta.stride,
-			         inst->getOperand(3), 2))
-		{
-			raw.alignment = 2;
-		}
-		else
-			raw.alignment = 1;
 	}
 
 	raw.alignment *= scalar_size;
