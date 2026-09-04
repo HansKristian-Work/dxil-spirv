@@ -32,9 +32,9 @@ layout(set = 0, binding = 3, std430) writeonly buffer _25_27
 
 void main()
 {
-    _27._m0[0u] = uvec2(uvec4(bitCount(_10._m0[0u])).xy);
-    _27._m0[1u] = uvec2(uvec2(bitCount(_16._m0[0u])));
-    _27._m0[2u] = uvec2(uvec2(bitCount(_22._m0[0u])));
+    _27._m0[0u] = uvec4(bitCount(_10._m0[0u])).xy;
+    _27._m0[1u] = uvec2(bitCount(_16._m0[0u]));
+    _27._m0[2u] = uvec2(bitCount(_22._m0[0u]));
 }
 
 
@@ -43,7 +43,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 60
+; Bound: 51
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -108,41 +108,32 @@ OpDecorate %27 NonReadable
 %27 = OpVariable %26 StorageBuffer
 %28 = OpConstant %5 0
 %29 = OpTypePointer StorageBuffer %6
-%38 = OpTypePointer StorageBuffer %23
-%40 = OpTypePointer StorageBuffer %12
-%44 = OpConstant %5 1
-%49 = OpTypePointer StorageBuffer %18
-%53 = OpConstant %5 2
+%35 = OpTypePointer StorageBuffer %23
+%37 = OpTypePointer StorageBuffer %12
+%41 = OpConstant %5 1
+%43 = OpTypePointer StorageBuffer %18
+%47 = OpConstant %5 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %34 = OpUndef %6
-OpBranch %58
-%58 = OpLabel
+OpBranch %49
+%49 = OpLabel
 %30 = OpAccessChain %29 %10 %28 %28
 %31 = OpLoad %6 %30
 %32 = OpBitCount %6 %31
 %33 = OpVectorShuffle %23 %32 %34 0 1
-%35 = OpCompositeExtract %5 %33 0
-%36 = OpCompositeExtract %5 %33 1
-%37 = OpCompositeConstruct %23 %35 %36
-%39 = OpAccessChain %38 %27 %28 %28
-OpStore %39 %37
-%41 = OpAccessChain %40 %16 %28 %28
-%42 = OpLoad %12 %41
-%43 = OpBitCount %23 %42
-%45 = OpCompositeExtract %5 %43 0
-%46 = OpCompositeExtract %5 %43 1
-%47 = OpCompositeConstruct %23 %45 %46
-%48 = OpAccessChain %38 %27 %28 %44
-OpStore %48 %47
-%50 = OpAccessChain %49 %22 %28 %28
-%51 = OpLoad %18 %50
-%52 = OpBitCount %23 %51
-%54 = OpCompositeExtract %5 %52 0
-%55 = OpCompositeExtract %5 %52 1
-%56 = OpCompositeConstruct %23 %54 %55
-%57 = OpAccessChain %38 %27 %28 %53
-OpStore %57 %56
+%36 = OpAccessChain %35 %27 %28 %28
+OpStore %36 %33
+%38 = OpAccessChain %37 %16 %28 %28
+%39 = OpLoad %12 %38
+%40 = OpBitCount %23 %39
+%42 = OpAccessChain %35 %27 %28 %41
+OpStore %42 %40
+%44 = OpAccessChain %43 %22 %28 %28
+%45 = OpLoad %18 %44
+%46 = OpBitCount %23 %45
+%48 = OpAccessChain %35 %27 %28 %47
+OpStore %48 %46
 OpReturn
 OpFunctionEnd
 #endif

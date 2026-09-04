@@ -11,8 +11,8 @@
 layout(local_size_x = 4, local_size_y = 1, local_size_z = 1) in;
 
 vec4 _30;
-f16vec3 _62;
-dvec4 _107;
+f16vec3 _57;
+dvec4 _97;
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
 {
@@ -29,33 +29,33 @@ void main()
     vec2 _29 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x]).xy;
     vec2 _35 = subgroupQuadBroadcast(_29, 1u) - subgroupQuadBroadcast(_29, 0u);
     vec2 _39 = subgroupQuadBroadcast(_29, 2u) - subgroupQuadBroadcast(_29, 0u);
-    _14._m0[gl_GlobalInvocationID.x] = uvec4(floatBitsToUint(vec4(_35.x, _35.y, _39.x, _39.y)));
-    vec4 _52 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x + 1u]);
-    f16vec3 _61;
-    _61.x = float16_t(_52.x);
-    _61.y = float16_t(_52.y);
-    _61.z = float16_t(_52.z);
-    f16vec3 _71 = (subgroupQuadBroadcast(_61, 2u) - subgroupQuadBroadcast(_61, 0u)) + (subgroupQuadBroadcast(_61, 1u) - subgroupQuadBroadcast(_61, 0u));
-    vec4 _78;
-    _78.x = float(_71.x);
-    _78.y = float(_71.y);
-    _78.z = float(_71.z);
-    _78.w = 0.0;
-    _14._m0[gl_GlobalInvocationID.x + 1u] = uvec4(floatBitsToUint(_78));
-    vec4 _95 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x + 2u]);
-    dvec4 _106;
-    _106.x = double(_95.x);
-    _106.y = double(_95.y);
-    _106.z = double(_95.z);
-    _106.w = double(_95.w);
-    vec4 _111 = vec4(_106);
-    dvec4 _120 = dvec4(subgroupQuadBroadcast(_111, 2u) - subgroupQuadBroadcast(_111, 0u)) + dvec4(subgroupQuadBroadcast(_111, 1u) - subgroupQuadBroadcast(_111, 0u));
-    vec4 _129;
-    _129.x = float(_120.x);
-    _129.y = float(_120.y);
-    _129.z = float(_120.z);
-    _129.w = float(_120.w);
-    _14._m0[gl_GlobalInvocationID.x + 2u] = uvec4(floatBitsToUint(_129));
+    _14._m0[gl_GlobalInvocationID.x] = floatBitsToUint(vec4(_35.x, _35.y, _39.x, _39.y));
+    vec4 _47 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x + 1u]);
+    f16vec3 _56;
+    _56.x = float16_t(_47.x);
+    _56.y = float16_t(_47.y);
+    _56.z = float16_t(_47.z);
+    f16vec3 _66 = (subgroupQuadBroadcast(_56, 2u) - subgroupQuadBroadcast(_56, 0u)) + (subgroupQuadBroadcast(_56, 1u) - subgroupQuadBroadcast(_56, 0u));
+    vec4 _73;
+    _73.x = float(_66.x);
+    _73.y = float(_66.y);
+    _73.z = float(_66.z);
+    _73.w = 0.0;
+    _14._m0[gl_GlobalInvocationID.x + 1u] = floatBitsToUint(_73);
+    vec4 _85 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x + 2u]);
+    dvec4 _96;
+    _96.x = double(_85.x);
+    _96.y = double(_85.y);
+    _96.z = double(_85.z);
+    _96.w = double(_85.w);
+    vec4 _101 = vec4(_96);
+    dvec4 _110 = dvec4(subgroupQuadBroadcast(_101, 2u) - subgroupQuadBroadcast(_101, 0u)) + dvec4(subgroupQuadBroadcast(_101, 1u) - subgroupQuadBroadcast(_101, 0u));
+    vec4 _119;
+    _119.x = float(_110.x);
+    _119.y = float(_110.y);
+    _119.z = float(_110.z);
+    _119.w = float(_110.w);
+    _14._m0[gl_GlobalInvocationID.x + 2u] = floatBitsToUint(_119);
 }
 
 
@@ -64,7 +64,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 143
+; Bound: 128
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -118,18 +118,18 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %32 = OpConstant %5 3
 %34 = OpConstant %5 1
 %38 = OpConstant %5 2
-%56 = OpTypeFloat 16
-%60 = OpTypeVector %56 3
-%82 = OpConstant %25 0
-%100 = OpTypeFloat 64
-%105 = OpTypeVector %100 4
+%51 = OpTypeFloat 16
+%55 = OpTypeVector %51 3
+%77 = OpConstant %25 0
+%90 = OpTypeFloat 64
+%95 = OpTypeVector %90 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %30 = OpUndef %26
-%62 = OpUndef %60
-%107 = OpUndef %105
-OpBranch %141
-%141 = OpLabel
+%57 = OpUndef %55
+%97 = OpUndef %95
+OpBranch %126
+%126 = OpLabel
 %19 = OpAccessChain %18 %17 %20
 %21 = OpLoad %5 %19
 %23 = OpAccessChain %22 %10 %20 %21
@@ -144,101 +144,86 @@ OpBranch %141
 %39 = OpFSub %28 %37 %36
 %40 = OpVectorShuffle %26 %35 %39 0 1 2 3
 %41 = OpBitcast %6 %40
-%42 = OpCompositeExtract %5 %41 0
-%43 = OpCompositeExtract %5 %41 1
-%44 = OpCompositeExtract %5 %41 2
-%45 = OpCompositeExtract %5 %41 3
-%46 = OpCompositeConstruct %6 %42 %43 %44 %45
-%47 = OpAccessChain %22 %14 %20 %21
-OpStore %47 %46
-%48 = OpIAdd %5 %21 %34
-%49 = OpIAdd %5 %21 %34
-%50 = OpAccessChain %22 %10 %20 %49
-%51 = OpLoad %6 %50
-%52 = OpBitcast %26 %51
-%53 = OpCompositeExtract %25 %52 0
-%54 = OpCompositeExtract %25 %52 1
-%55 = OpCompositeExtract %25 %52 2
-%57 = OpFConvert %56 %53
-%58 = OpFConvert %56 %54
-%59 = OpFConvert %56 %55
-%61 = OpCompositeInsert %60 %57 %62 0
-%63 = OpCompositeInsert %60 %58 %61 1
-%64 = OpCompositeInsert %60 %59 %63 2
-%65 = OpGroupNonUniformQuadBroadcast %60 %32 %64 %20
-%66 = OpGroupNonUniformQuadBroadcast %60 %32 %64 %34
-%67 = OpFSub %60 %66 %65
-%68 = OpGroupNonUniformQuadBroadcast %60 %32 %64 %20
-%69 = OpGroupNonUniformQuadBroadcast %60 %32 %64 %38
-%70 = OpFSub %60 %69 %68
-%71 = OpFAdd %60 %70 %67
-%72 = OpCompositeExtract %56 %71 0
-%73 = OpCompositeExtract %56 %71 1
-%74 = OpCompositeExtract %56 %71 2
-%75 = OpFConvert %25 %72
-%76 = OpFConvert %25 %73
-%77 = OpFConvert %25 %74
-%78 = OpCompositeInsert %26 %75 %30 0
-%79 = OpCompositeInsert %26 %76 %78 1
-%80 = OpCompositeInsert %26 %77 %79 2
-%81 = OpCompositeInsert %26 %82 %80 3
-%83 = OpIAdd %5 %21 %34
-%84 = OpBitcast %6 %81
-%85 = OpCompositeExtract %5 %84 0
-%86 = OpCompositeExtract %5 %84 1
-%87 = OpCompositeExtract %5 %84 2
-%88 = OpCompositeExtract %5 %84 3
-%89 = OpCompositeConstruct %6 %85 %86 %87 %88
-%90 = OpAccessChain %22 %14 %20 %83
-OpStore %90 %89
-%91 = OpIAdd %5 %21 %38
-%92 = OpIAdd %5 %21 %38
-%93 = OpAccessChain %22 %10 %20 %92
-%94 = OpLoad %6 %93
-%95 = OpBitcast %26 %94
-%96 = OpCompositeExtract %25 %95 0
-%97 = OpCompositeExtract %25 %95 1
-%98 = OpCompositeExtract %25 %95 2
-%99 = OpCompositeExtract %25 %95 3
-%101 = OpFConvert %100 %96
-%102 = OpFConvert %100 %97
-%103 = OpFConvert %100 %98
-%104 = OpFConvert %100 %99
-%106 = OpCompositeInsert %105 %101 %107 0
-%108 = OpCompositeInsert %105 %102 %106 1
-%109 = OpCompositeInsert %105 %103 %108 2
-%110 = OpCompositeInsert %105 %104 %109 3
-%111 = OpFConvert %26 %110
-%112 = OpGroupNonUniformQuadBroadcast %26 %32 %111 %20
-%113 = OpGroupNonUniformQuadBroadcast %26 %32 %111 %34
-%114 = OpFSub %26 %113 %112
-%115 = OpFConvert %105 %114
-%116 = OpGroupNonUniformQuadBroadcast %26 %32 %111 %20
-%117 = OpGroupNonUniformQuadBroadcast %26 %32 %111 %38
-%118 = OpFSub %26 %117 %116
-%119 = OpFConvert %105 %118
-%120 = OpFAdd %105 %119 %115
-%121 = OpCompositeExtract %100 %120 0
-%122 = OpCompositeExtract %100 %120 1
-%123 = OpCompositeExtract %100 %120 2
-%124 = OpCompositeExtract %100 %120 3
-%125 = OpFConvert %25 %121
-%126 = OpFConvert %25 %122
-%127 = OpFConvert %25 %123
-%128 = OpFConvert %25 %124
-%129 = OpCompositeInsert %26 %125 %30 0
-%130 = OpCompositeInsert %26 %126 %129 1
-%131 = OpCompositeInsert %26 %127 %130 2
-%132 = OpCompositeInsert %26 %128 %131 3
-%133 = OpIAdd %5 %21 %38
-%134 = OpBitcast %6 %132
-%135 = OpCompositeExtract %5 %134 0
-%136 = OpCompositeExtract %5 %134 1
-%137 = OpCompositeExtract %5 %134 2
-%138 = OpCompositeExtract %5 %134 3
-%139 = OpCompositeConstruct %6 %135 %136 %137 %138
-%140 = OpAccessChain %22 %14 %20 %133
-OpStore %140 %139
+%42 = OpAccessChain %22 %14 %20 %21
+OpStore %42 %41
+%43 = OpIAdd %5 %21 %34
+%44 = OpIAdd %5 %21 %34
+%45 = OpAccessChain %22 %10 %20 %44
+%46 = OpLoad %6 %45
+%47 = OpBitcast %26 %46
+%48 = OpCompositeExtract %25 %47 0
+%49 = OpCompositeExtract %25 %47 1
+%50 = OpCompositeExtract %25 %47 2
+%52 = OpFConvert %51 %48
+%53 = OpFConvert %51 %49
+%54 = OpFConvert %51 %50
+%56 = OpCompositeInsert %55 %52 %57 0
+%58 = OpCompositeInsert %55 %53 %56 1
+%59 = OpCompositeInsert %55 %54 %58 2
+%60 = OpGroupNonUniformQuadBroadcast %55 %32 %59 %20
+%61 = OpGroupNonUniformQuadBroadcast %55 %32 %59 %34
+%62 = OpFSub %55 %61 %60
+%63 = OpGroupNonUniformQuadBroadcast %55 %32 %59 %20
+%64 = OpGroupNonUniformQuadBroadcast %55 %32 %59 %38
+%65 = OpFSub %55 %64 %63
+%66 = OpFAdd %55 %65 %62
+%67 = OpCompositeExtract %51 %66 0
+%68 = OpCompositeExtract %51 %66 1
+%69 = OpCompositeExtract %51 %66 2
+%70 = OpFConvert %25 %67
+%71 = OpFConvert %25 %68
+%72 = OpFConvert %25 %69
+%73 = OpCompositeInsert %26 %70 %30 0
+%74 = OpCompositeInsert %26 %71 %73 1
+%75 = OpCompositeInsert %26 %72 %74 2
+%76 = OpCompositeInsert %26 %77 %75 3
+%78 = OpIAdd %5 %21 %34
+%79 = OpBitcast %6 %76
+%80 = OpAccessChain %22 %14 %20 %78
+OpStore %80 %79
+%81 = OpIAdd %5 %21 %38
+%82 = OpIAdd %5 %21 %38
+%83 = OpAccessChain %22 %10 %20 %82
+%84 = OpLoad %6 %83
+%85 = OpBitcast %26 %84
+%86 = OpCompositeExtract %25 %85 0
+%87 = OpCompositeExtract %25 %85 1
+%88 = OpCompositeExtract %25 %85 2
+%89 = OpCompositeExtract %25 %85 3
+%91 = OpFConvert %90 %86
+%92 = OpFConvert %90 %87
+%93 = OpFConvert %90 %88
+%94 = OpFConvert %90 %89
+%96 = OpCompositeInsert %95 %91 %97 0
+%98 = OpCompositeInsert %95 %92 %96 1
+%99 = OpCompositeInsert %95 %93 %98 2
+%100 = OpCompositeInsert %95 %94 %99 3
+%101 = OpFConvert %26 %100
+%102 = OpGroupNonUniformQuadBroadcast %26 %32 %101 %20
+%103 = OpGroupNonUniformQuadBroadcast %26 %32 %101 %34
+%104 = OpFSub %26 %103 %102
+%105 = OpFConvert %95 %104
+%106 = OpGroupNonUniformQuadBroadcast %26 %32 %101 %20
+%107 = OpGroupNonUniformQuadBroadcast %26 %32 %101 %38
+%108 = OpFSub %26 %107 %106
+%109 = OpFConvert %95 %108
+%110 = OpFAdd %95 %109 %105
+%111 = OpCompositeExtract %90 %110 0
+%112 = OpCompositeExtract %90 %110 1
+%113 = OpCompositeExtract %90 %110 2
+%114 = OpCompositeExtract %90 %110 3
+%115 = OpFConvert %25 %111
+%116 = OpFConvert %25 %112
+%117 = OpFConvert %25 %113
+%118 = OpFConvert %25 %114
+%119 = OpCompositeInsert %26 %115 %30 0
+%120 = OpCompositeInsert %26 %116 %119 1
+%121 = OpCompositeInsert %26 %117 %120 2
+%122 = OpCompositeInsert %26 %118 %121 3
+%123 = OpIAdd %5 %21 %38
+%124 = OpBitcast %6 %122
+%125 = OpAccessChain %22 %14 %20 %123
+OpStore %125 %124
 OpReturn
 OpFunctionEnd
 #endif

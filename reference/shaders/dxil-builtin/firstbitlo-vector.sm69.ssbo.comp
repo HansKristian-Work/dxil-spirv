@@ -32,10 +32,10 @@ layout(set = 0, binding = 3, std430) writeonly buffer _25_27
 
 void main()
 {
-    _27._m0[0u] = uvec2(uvec4(findLSB(_10._m0[0u])).xy);
-    _27._m0[1u] = uvec2(uvec2(findLSB(uvec2(_16._m0[0u]))));
-    uvec4 _55 = uvec4(findLSB((_22._m0[0u])));
-    _27._m0[2u] = uvec2(min(_55.xz, (_55.yw | uvec2(32u))));
+    _27._m0[0u] = uvec4(findLSB(_10._m0[0u])).xy;
+    _27._m0[1u] = uvec2(findLSB(uvec2(_16._m0[0u])));
+    uvec4 _49 = uvec4(findLSB((_22._m0[0u])));
+    _27._m0[2u] = min(_49.xz, (_49.yw | uvec2(32u)));
 }
 
 
@@ -44,7 +44,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 69
+; Bound: 60
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -110,49 +110,40 @@ OpDecorate %27 NonReadable
 %27 = OpVariable %26 StorageBuffer
 %28 = OpConstant %5 0
 %29 = OpTypePointer StorageBuffer %6
-%39 = OpTypePointer StorageBuffer %23
-%41 = OpTypePointer StorageBuffer %12
-%46 = OpConstant %5 1
-%51 = OpTypePointer StorageBuffer %18
-%59 = OpConstant %5 32
-%60 = OpConstantComposite %23 %59 %59
-%62 = OpConstant %5 2
+%36 = OpTypePointer StorageBuffer %23
+%38 = OpTypePointer StorageBuffer %12
+%43 = OpConstant %5 1
+%45 = OpTypePointer StorageBuffer %18
+%53 = OpConstant %5 32
+%54 = OpConstantComposite %23 %53 %53
+%56 = OpConstant %5 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %35 = OpUndef %6
-OpBranch %67
-%67 = OpLabel
+OpBranch %58
+%58 = OpLabel
 %30 = OpAccessChain %29 %10 %28 %28
 %31 = OpLoad %6 %30
 %33 = OpExtInst %6 %32 FindILsb %31
 %34 = OpVectorShuffle %23 %33 %35 0 1
-%36 = OpCompositeExtract %5 %34 0
-%37 = OpCompositeExtract %5 %34 1
-%38 = OpCompositeConstruct %23 %36 %37
-%40 = OpAccessChain %39 %27 %28 %28
-OpStore %40 %38
-%42 = OpAccessChain %41 %16 %28 %28
-%43 = OpLoad %12 %42
-%44 = OpUConvert %23 %43
-%45 = OpExtInst %23 %32 FindILsb %44
-%47 = OpCompositeExtract %5 %45 0
-%48 = OpCompositeExtract %5 %45 1
-%49 = OpCompositeConstruct %23 %47 %48
-%50 = OpAccessChain %39 %27 %28 %46
-OpStore %50 %49
-%52 = OpAccessChain %51 %22 %28 %28
-%53 = OpLoad %18 %52
-%54 = OpBitcast %6 %53
-%55 = OpExtInst %6 %32 FindILsb %54
-%56 = OpVectorShuffle %23 %55 %55 0 2
-%57 = OpVectorShuffle %23 %55 %55 1 3
-%58 = OpBitwiseOr %23 %57 %60
-%61 = OpExtInst %23 %32 UMin %56 %58
-%63 = OpCompositeExtract %5 %61 0
-%64 = OpCompositeExtract %5 %61 1
-%65 = OpCompositeConstruct %23 %63 %64
-%66 = OpAccessChain %39 %27 %28 %62
-OpStore %66 %65
+%37 = OpAccessChain %36 %27 %28 %28
+OpStore %37 %34
+%39 = OpAccessChain %38 %16 %28 %28
+%40 = OpLoad %12 %39
+%41 = OpUConvert %23 %40
+%42 = OpExtInst %23 %32 FindILsb %41
+%44 = OpAccessChain %36 %27 %28 %43
+OpStore %44 %42
+%46 = OpAccessChain %45 %22 %28 %28
+%47 = OpLoad %18 %46
+%48 = OpBitcast %6 %47
+%49 = OpExtInst %6 %32 FindILsb %48
+%50 = OpVectorShuffle %23 %49 %49 0 2
+%51 = OpVectorShuffle %23 %49 %49 1 3
+%52 = OpBitwiseOr %23 %51 %54
+%55 = OpExtInst %23 %32 UMin %50 %52
+%57 = OpAccessChain %36 %27 %28 %56
+OpStore %57 %55
 OpReturn
 OpFunctionEnd
 #endif

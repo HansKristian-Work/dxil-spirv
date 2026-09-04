@@ -834,4 +834,9 @@ enum RayQueryFlags
 	RayQueryFlagAllowOpacityMicromaps = 0x1,
 	RayQueryFlagAllowClusteredGeometry = 0x2
 };
+
+enum
+{
+	MaxLongVectorComponents = 1024
+};
 } // namespace DXIL

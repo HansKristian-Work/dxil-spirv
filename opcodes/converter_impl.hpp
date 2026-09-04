@@ -184,8 +184,7 @@ struct AccessTracking
 	bool has_counter = false;
 	bool dynamically_indexed_cbv = false;
 
-	// Can be bumped to 32 when we're ready for it.
-	enum { MaxVecSize = 4 };
+	enum { MaxVecSize = 32 };
 
 	void add_accessed_vecsize(RawType type, RawWidth width, uint32_t vecsize)
 	{

@@ -236,19 +236,26 @@ bool raw_access_byte_address_can_vectorize(Converter::Impl &impl, const llvm::Ty
                                            const llvm::Value *byte_offset,
                                            unsigned vecsize)
 {
+	bool npot_vec_size = (vecsize & (vecsize - 1)) != 0;
+
 	// vec3 vectorization requires scalar block layout always.
 	// For byte address buffers, robustness must be checked per component, and a vectorized vec3 load
 	// can straddle the boundary. If the hardware is known not to support per-component robustness correctly,
 	// avoid vectorizing this case.
-	if ((!impl.options.scalar_block_layout || !impl.options.supports_per_component_robustness) && vecsize == 3)
+	if ((!impl.options.scalar_block_layout || !impl.options.supports_per_component_robustness) && npot_vec_size)
 		return false;
 
-	if (impl.options.ssbo_alignment > 16 && vecsize == 3)
+	// Alignment for BAB is 16 byte, and it must support per-component robustness.
+	// Even if we can vectorize, we need to handle that different 16 byte loads need separate loads.
+	if (vecsize > 4 && !impl.options.supports_per_component_robustness)
+		return false;
+
+	if (impl.options.ssbo_alignment > 16 && npot_vec_size)
 		return false;
 
 	// If implementation doesn't do the wrapping implicitly we cannot do it ourselves
 	// since we cannot express it as a simple mask.
-	if (vecsize == 3 && !impl.options.ssbo_wraps_32bit_before_robustness)
+	if (npot_vec_size && !impl.options.ssbo_wraps_32bit_before_robustness)
 		return false;
 
 	// The rules for raw BAB vectorization are pretty simple.
@@ -268,8 +275,10 @@ bool raw_access_structured_can_vectorize(
 		const llvm::Value *byte_offset,
 		unsigned vecsize)
 {
-	// vec3 vectorization requires scalar block layout always.
-	if (!impl.options.scalar_block_layout && vecsize == 3)
+	bool npot_vec_size = (vecsize & (vecsize - 1)) != 0;
+
+	// npot vectorization requires scalar block layout always.
+	if (!impl.options.scalar_block_layout && npot_vec_size)
 		return false;
 
 	unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, type);
@@ -294,12 +303,15 @@ unsigned raw_access_byte_address_vectorize(
 	Converter::Impl &impl, const llvm::Type *type,
     const llvm::Value *byte_offset, uint32_t vecsize)
 {
-	if (vecsize == 4 && raw_access_byte_address_can_vectorize(impl, type, byte_offset, vecsize))
-		return 4;
-	else if (vecsize == 3 && raw_access_byte_address_can_vectorize(impl, type, byte_offset, vecsize))
-		return 3;
-	else if (vecsize == 2 && raw_access_byte_address_can_vectorize(impl, type, byte_offset, vecsize))
-		return 2;
+	// TODO: It's theoretically possible to split massive loads into chunks of 2 or 4,
+	// but that's overkill for now.
+	// The current relevant implementation is NV where we have raw access chains anyway,
+	// so this is kind of moot in practice, and AMD supports per component robustness natively.
+	if (vecsize > AccessTracking::MaxVecSize || vecsize == 1)
+		return 1;
+
+	if (raw_access_byte_address_can_vectorize(impl, type, byte_offset, vecsize))
+		return vecsize;
 	else
 		return 1;
 }
@@ -311,12 +323,13 @@ unsigned raw_access_structured_vectorize(
     const llvm::Value *byte_offset,
 	uint32_t vecsize)
 {
-	if (vecsize == 4 && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, vecsize))
-		return 4;
-	else if (vecsize == 3 && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, vecsize))
-		return 3;
-	else if (vecsize == 2 && raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, vecsize))
-		return 2;
+	// TODO: It's theoretically possible to split massive load-store into chunks of 2 or 4,
+	// but that's overkill for now.
+	if (vecsize > AccessTracking::MaxVecSize || vecsize == 1)
+		return 1;
+
+	if (raw_access_structured_can_vectorize(impl, type, index, stride, byte_offset, vecsize))
+		return vecsize;
 	else
 		return 1;
 }
@@ -508,23 +521,9 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 
 	if (index_offset_id)
 	{
-		unsigned vectorized_addr_shift_log2 = addr_shift_log2;
-
-		switch (raw_vecsize)
-		{
-		case 2:
-			vectorized_addr_shift_log2 += 1;
-			break;
-
-		case 4:
-			vectorized_addr_shift_log2 += 2;
-			break;
-
-		default:
-			// If we need offset buffers, we should never hit this case.
-			assert(raw_vecsize != 3);
-			break;
-		}
+		// If we need offset buffers, we should never hit this case.
+		assert((raw_vecsize & (raw_vecsize - 1)) == 0);
+		unsigned vectorized_addr_shift_log2 = addr_shift_log2 + log2i_floor(raw_vecsize);
 
 		// Need to shift the offset buffer last minute instead.
 		if (meta.aliased)
@@ -573,11 +572,20 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 
 		uint32_t oob_index;
 		if (meta.kind == DXIL::ResourceKind::TypedBuffer)
+		{
 			oob_index = 0xffffffffu;
+		}
 		else if (raw_vecsize != 1)
+		{
 			oob_index = 0xffffffffu >> vectorized_addr_shift_log2;
+		}
 		else
-			oob_index = (0xffffffffu >> addr_shift_log2) - 3u;
+		{
+			// Safe region of 3 is to avoid changing older shaders.
+			// We normally don't expect to expose offset buffer + long vector.
+			uint32_t safe_region = std::max<uint32_t>(3u, vecsize - 1u);
+			oob_index = (0xffffffffu >> addr_shift_log2) - safe_region;
+		}
 
 		select_op->add_ids({ compare_op->id, add_op->id, builder.makeUintConstant(oob_index) });
 		impl.add(select_op);
@@ -664,23 +672,9 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 {
 	auto &builder = impl.builder();
 
-	if (is_vector)
-	{
-		// TODO: Add support for long vector.
-		if (vecsize > 4 && !impl.options.nv_raw_access_chains)
-		{
-			LOGE("Long vector load-store currently requires NV_raw_access_chains.");
-			return false;
-		}
-
-		if (alignment == 0 && !get_constant_operand(instruction, 4, &alignment))
-			return false;
-	}
-	else
-	{
-		if (alignment == 0 && !get_constant_operand(instruction, 5, &alignment))
-			return false;
-	}
+	uint32_t alignment_argument_index = is_vector ? 4 : 5;
+	if (alignment == 0 && !get_constant_operand(instruction, alignment_argument_index, &alignment))
+		return false;
 
 	auto *element_type = get_composite_element_type(instruction->getType());
 	// If we can express this as a plain access chain, do so for clarity and ideally better perf.
@@ -965,14 +959,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	if (is_vector)
 	{
 		sparse = (access_mask & (1u << 1)) != 0;
-
-		// TODO: Add support for long vector.
 		vecsize = get_composite_element_count(result_type);
-		if (vecsize > 4 && !impl.options.nv_raw_access_chains)
-		{
-			LOGE("Long-vector load-store requires NV_raw_access_chains currently.\n");
-			return false;
-		}
 	}
 	else
 	{
@@ -1039,7 +1026,8 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 		vecsize = access.raw_vec_size;
 
-		spv::Id component_ids[4] = {};
+		// Intentionally leave uninitialized.
+		spv::Id component_ids[DXIL::MaxLongVectorComponents];
 
 		spv::Id extracted_id_type = raw_type == RawType::Integer ?
 		                            builder.makeUintType(raw_width_to_bits(width)) :
@@ -1299,10 +1287,6 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 		element_type = data_type->getVectorElementType();
 		vecsize = data_type->getVectorNumElements();
 
-		// TODO: Add support for long vector.
-		if (vecsize > 4)
-			return false;
-
 		if (alignment == 0 && !get_constant_operand(instruction, 5, &alignment))
 			return false;
 	}
@@ -1311,23 +1295,9 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 		uint32_t mask = 0;
 		if (!get_constant_operand(instruction, 8, &mask))
 			return false;
-
 		if (alignment == 0 && !get_constant_operand(instruction, 9, &alignment))
 			return false;
-
-		if (mask == 1)
-			vecsize = 1;
-		else if (mask == 3)
-			vecsize = 2;
-		else if (mask == 7)
-			vecsize = 3;
-		else if (mask == 15)
-			vecsize = 4;
-		else
-		{
-			LOGE("Unexpected mask for RawBufferStore = %u.\n", mask);
-			return false;
-		}
+		vecsize = access_mask_to_vecsize(mask);
 	}
 
 	// If we can express this as a plain access chain, do so for clarity and ideally better perf.
@@ -1353,6 +1323,9 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	if (tmp_ptr_meta.stride && (tmp_ptr_meta.stride & (tmp_ptr_meta.stride - 1)) == 0)
 	{
 		alignment = std::max<uint32_t>(alignment, tmp_ptr_meta.stride);
+
+		// We can never infer more than 16 byte alignment due to D3D12 rules.
+		// BAB is 16 byte aligned, and structured buffer alignment caps out at 16 byte for explicit offset API.
 		alignment = std::min<uint32_t>(alignment, 16);
 	}
 
@@ -1377,7 +1350,9 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	impl.add(chain_op);
 
 	spv::Id vec_id = 0;
-	spv::Id elems[4] = {};
+
+	// Leave intentionally uninitialized.
+	spv::Id elems[DXIL::MaxLongVectorComponents];
 
 	if (is_vector)
 	{
@@ -1420,13 +1395,6 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 
 bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool is_vector)
 {
-	// TODO: Add support for long vector.
-	if (is_vector && (get_composite_element_count(instruction->getType()) > 4))
-	{
-		LOGE("Long vector is not supported.\n");
-		return false;
-	}
-
 	DXIL::Op op = is_vector ? DXIL::Op::RawBufferVectorLoad : DXIL::Op::RawBufferLoad;
 	if (emit_ags_buffer_load(impl, instruction, op))
 		return true;
@@ -1475,9 +1443,9 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 	}
 }
 
-static void emit_buffer_store_values_bitcast_vector(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                                    spv::Id *store_values, RawWidth raw_width,
-                                                    bool ignore_bitcast)
+static spv::Id emit_buffer_store_values_bitcast_vector(Converter::Impl &impl, const llvm::CallInst *instruction,
+                                                       spv::Id *store_values, RawWidth raw_width,
+                                                       bool ignore_bitcast)
 {
 	// Vector raw-buffer stores always target untyped buffers.
 	const auto *data_type = instruction->getOperand(4)->getType();
@@ -1539,13 +1507,22 @@ static void emit_buffer_store_values_bitcast_vector(Converter::Impl &impl, const
 		impl.add(op);
 	}
 
-	for (unsigned i = 0; i < num_elements; i++)
+	if (store_values)
 	{
-		Operation *extract = impl.allocate(spv::OpCompositeExtract, cur_elem_type_id);
-		extract->add_id(vec_id);
-		extract->add_literal(i);
-		impl.add(extract);
-		store_values[i] = extract->id;
+		for (unsigned i = 0; i < num_elements; i++)
+		{
+			Operation *extract = impl.allocate(spv::OpCompositeExtract, cur_elem_type_id);
+			extract->add_id(vec_id);
+			extract->add_literal(i);
+			impl.add(extract);
+			store_values[i] = extract->id;
+		}
+
+		return 0;
+	}
+	else
+	{
+		return vec_id;
 	}
 }
 
@@ -1648,17 +1625,22 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
 
 	bool raw_access_chain = buffer_access_is_raw_access_chain(impl, meta);
-	spv::Id store_values[4] = {};
+
+	// Intentionally leave uninitialized.
+	spv::Id store_values[DXIL::MaxLongVectorComponents];
 
 	if (raw_access_chain)
 	{
+		spv::Id vector_value_id = 0;
 		if (is_vector)
-			emit_buffer_store_values_bitcast_vector(impl, instruction, store_values, width, true);
+			vector_value_id = emit_buffer_store_values_bitcast_vector(impl, instruction, nullptr, width, true);
 		else
 			emit_buffer_store_values_bitcast(impl, instruction, store_values, vecsize, width, false, true);
 
 		auto raw = emit_raw_access_chain(impl, meta, instruction, element_type, vecsize);
-		spv::Id vector_value_id = impl.build_vector(raw.component_type_id, store_values, vecsize);
+
+		if (!vector_value_id)
+			vector_value_id = impl.build_vector(raw.component_type_id, store_values, vecsize);
 
 		auto *store_op = impl.allocate(spv::OpStore);
 		store_op->add_id(raw.ptr_id);
@@ -1683,11 +1665,10 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	// We could hoist the call to emit_buffer_store_values_bitcast,
 	// but causes too much churn on shader deltas.
-	if (is_vector)
-	{
-		// TODO: optimize splitting the input vector when a vectorized store can be used
+	if (is_vector && vectorized_store && meta.storage == spv::StorageClassStorageBuffer)
+		store_values[0] = emit_buffer_store_values_bitcast_vector(impl, instruction, nullptr, width, false);
+	else if (is_vector)
 		emit_buffer_store_values_bitcast_vector(impl, instruction, store_values, width, false);
-	}
 	else
 		emit_buffer_store_values_bitcast(impl, instruction, store_values, vecsize, width, is_typed, false);
 
@@ -1714,7 +1695,13 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 			vecsize = access.raw_vec_size;
 			spv::Id vec_type_id = builder.makeVectorType(elem_type_id, vecsize);
-			spv::Id vector_value_id = impl.build_vector(elem_type_id, store_values, vecsize);
+
+			spv::Id vector_value_id;
+			if (is_vector && vectorized_store)
+				vector_value_id = store_values[0];
+			else
+				vector_value_id = impl.build_vector(elem_type_id, store_values, vecsize);
+
 			Operation *chain_op = impl.allocate(
 				spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, vec_type_id));
 
@@ -1789,13 +1776,6 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction, bool is_vector)
 {
-	// TODO: Add support for long vector.
-	if (is_vector && (get_composite_element_count(instruction->getOperand(4)->getType()) > 4))
-	{
-		LOGE("Long vector is not supported.\n");
-		return false;
-	}
-
 	spv::Id ptr_id = impl.get_id_for_value(instruction->getOperand(1));
 
 	if (emit_ags_buffer_store(impl, instruction, ptr_id))
