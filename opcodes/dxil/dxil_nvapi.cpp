@@ -235,12 +235,18 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 			spv::Id addr = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
 			spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B32, 1);
 
-			ptr = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, f16vec2_type));
+			auto base = builder.makeStructType({vec2_type}, "e");
+			builder.addMemberDecoration(base,0, spv::DecorationOffset, 0);
+
+			ptr = impl.allocate(spv::OpUntypedAccessChainKHR, builder.makeUntypedPointer(spv::StorageClassStorageBuffer));
+			ptr->add_id(base);
 			ptr->add_id(ssbo_id);
 			ptr->add_id(builder.makeUintConstant(0));
 			ptr->add_id(addr);
-			impl.add(ptr); // SPIRV-Tools message: OpAccessChain result type <id> '49[%v2half]' (OpTypeVector) does not match the type that results from indexing into the base <id> '5[%uint]' (OpTypeInt).
+			impl.add(ptr);
 
+			builder.addExtension("SPV_KHR_untyped_pointers");
+			builder.addCapability(spv::CapabilityUntypedPointersKHR);
 			builder.addCapability(spv::CapabilityStorageBuffer16BitAccess);
 		}
 		else if (meta.storage == spv::StorageClassUniformConstant)

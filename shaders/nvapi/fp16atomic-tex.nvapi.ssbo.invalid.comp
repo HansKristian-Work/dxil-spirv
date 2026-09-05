@@ -2,7 +2,6 @@
 #define NV_SHADER_EXTN_REGISTER_SPACE space0
 #include "nvHLSLExtns.h"
 
-RWByteAddressBuffer BAB;
 RWTexture1D<float2> RWTex1;
 RWTexture2D<float2> RWTex2;
 RWTexture3D<float2> RWTex3;
@@ -15,7 +14,6 @@ RWStructuredBuffer<uint2> UAV2;
 void main(uint thr : SV_DispatchThreadID)
 {
     float2 v1 = {45.5f, 46.5f};
-    UAV1[100] = NvInterlockedAddFp16x2(BAB, 4, v1);
     UAV1[101] = NvInterlockedAddFp16x2(RWTex1, 5, v1);
     UAV1[102] = NvInterlockedAddFp16x2(RWTex2, uint2(6, 7), v1);
     UAV1[103] = NvInterlockedAddFp16x2(RWTex3, uint3(8, 9, 10), v1);
