@@ -1422,7 +1422,7 @@ impl.add(ext);
 }
 else
 {
-// Софтверная эмуляция Float32 -> FP8 (E4M3) для RDNA3
+// Software emulation of Float32 -> FP8 (E4M3) conversion for RDNA 3.
 spv::Id val_id = impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5));
 auto *f32_val = impl.allocate(spv::OpBitcast, builder.makeFloatType(32));
 f32_val->add_id(val_id);
@@ -1523,7 +1523,7 @@ impl.add(bitcast);
 }
 else
 {
-// Софтверная распаковка FP8 -> Float32 для RDNA3
+// Software emulation of FP8 (E4M3) -> Float32 conversion for RDNA 3.
 spv::Id raw_u32 = impl.get_id_for_value(impl.ags.backdoor_instructions[0]->getOperand(5));
 auto *u8_val = impl.allocate(spv::OpUConvert, builder.makeUintType(8));
 u8_val->add_id(raw_u32);
