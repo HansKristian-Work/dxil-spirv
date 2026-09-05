@@ -277,7 +277,7 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 			ptr->add_id(meta.var_id);
 			ptr->add_id(texture_addr);
 			ptr->add_id(builder.makeUintConstant(0));
-			impl.add(ptr); // SPIRV-Tools message: Expected Image 'Sampled Type' to be the same as the Type pointed to by Result Type
+			impl.add(ptr);
 
 			builder.addCapability(spv::CapabilityStorageImageExtendedFormats);
 		}
@@ -1336,6 +1336,19 @@ void analyze_nvapi_buffer_store(Converter::Impl &impl, const llvm::CallInst *ins
 	{
 		if (!impl.nvapi.mark_uav_write(instruction))
 			impl.nvapi.write_arguments_from_store(impl, instruction, true);
+	}
+
+	// Opcode is known, set some resource tracking info for later
+	if (impl.options.nvapi.enabled && impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
+	{
+		auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]);
+		if (c != nullptr)
+		{
+			auto& tracking = impl.uav_access_tracking[impl.llvm_value_to_uav_resource_index_map[impl.nvapi.marked_uav]];
+			auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
+
+			tracking.has_nvapi_atomic_16bit = opcode == NV_EXTN_OP_FP16_ATOMIC;
+		}
 	}
 }
 
