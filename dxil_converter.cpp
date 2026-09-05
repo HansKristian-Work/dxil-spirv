@@ -1866,6 +1866,19 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				actual_component_type = DXIL::ComponentType::U64;
 			}
 			effective_component_type = get_effective_typed_resource_type(actual_component_type);
+
+			if (access_meta.has_nvapi_atomic_16bit &&
+				(resource_kind == DXIL::ResourceKind::Texture1D ||
+				 resource_kind == DXIL::ResourceKind::Texture2D ||
+				 resource_kind == DXIL::ResourceKind::Texture3D))
+			{
+				// From shaders/nvapi/nvHLSLExtns.h:
+				// .. perform atomic operation on a R16G16_FLOAT UAV at the given address
+				// .. Behaviour of these set of functions is undefined if the UAV is not of R16G16_FLOAT format
+				// Note: there are also NvInterlocked variations (e.g. NvInterlockedAddFp16x4) that operate on
+				// a R16G16B16A16_FLOAT UAV, but the address is multiplied by 2, so it still fits R16G16_FLOAT.
+				format = spv::ImageFormatRg16f;
+			}
 		}
 		else
 		{

@@ -1,0 +1,215 @@
+#version 460
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_atomic_float : require
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 4, std430) writeonly buffer SSBO
+{
+    uint _m0[];
+} _20;
+
+layout(set = 0, binding = 5, std430) writeonly buffer _23_25
+{
+    uvec2 _m0[];
+} _25;
+
+layout(set = 0, binding = 0, rg16f) uniform image1D _8;
+layout(set = 0, binding = 1, rg16f) uniform image2D _11;
+layout(set = 0, binding = 2, rg16f) uniform image3D _14;
+layout(set = 0, binding = 3, rg16f) uniform image3D _15;
+
+void main()
+{
+    uint _42 = (packHalf2x16(vec2(46.5, 0.0)) << 16u) | packHalf2x16(vec2(45.5, 0.0));
+    f16vec2 _51 = imageAtomicAdd(_8, int(5u), f16vec2(unpackHalf2x16(_42)));
+    _20._m0[101u] = packHalf2x16(vec2(_51));
+    f16vec2 _64 = imageAtomicAdd(_11, ivec2(uvec2(6u, 7u)), f16vec2(unpackHalf2x16(_42)));
+    _20._m0[102u] = packHalf2x16(vec2(_64));
+    f16vec2 _77 = imageAtomicAdd(_14, ivec3(uvec3(8u, 9u, 10u)), f16vec2(unpackHalf2x16(_42)));
+    _20._m0[103u] = packHalf2x16(vec2(_77));
+    f16vec2 _105 = imageAtomicAdd(_15, ivec3(uvec3(22u, 12u, 13u)), f16vec2(unpackHalf2x16((packHalf2x16(vec2(79.5, 0.0)) << 16u) | packHalf2x16(vec2(78.5, 0.0)))));
+    f16vec2 _113 = imageAtomicAdd(_15, ivec3(uvec3(23u, 12u, 13u)), f16vec2(unpackHalf2x16((packHalf2x16(vec2(81.5, 0.0)) << 16u) | packHalf2x16(vec2(80.5, 0.0)))));
+    _25._m0[105u] = uvec2(packHalf2x16(vec2(_105)), packHalf2x16(vec2(_113)));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 122
+; Schema: 0
+OpCapability Shader
+OpCapability Float16
+OpCapability Image1D
+OpCapability StorageImageExtendedFormats
+OpCapability DenormPreserve
+OpCapability AtomicFloat16VectorNV
+OpExtension "SPV_KHR_float_controls"
+OpExtension "SPV_NV_shader_atomic_fp16_vector"
+%31 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main"
+OpExecutionMode %3 LocalSize 32 1 1
+OpExecutionMode %3 DenormPreserve 16
+OpName %3 "main"
+OpName %18 "SSBO"
+OpName %23 "SSBO"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 1
+OpDecorate %11 NonReadable
+OpDecorate %14 DescriptorSet 0
+OpDecorate %14 Binding 2
+OpDecorate %14 NonReadable
+OpDecorate %15 DescriptorSet 0
+OpDecorate %15 Binding 3
+OpDecorate %15 NonReadable
+OpDecorate %17 ArrayStride 4
+OpMemberDecorate %18 0 Offset 0
+OpDecorate %18 Block
+OpDecorate %20 DescriptorSet 0
+OpDecorate %20 Binding 4
+OpDecorate %20 NonReadable
+OpDecorate %22 ArrayStride 8
+OpMemberDecorate %23 0 Offset 0
+OpDecorate %23 Block
+OpDecorate %25 DescriptorSet 0
+OpDecorate %25 Binding 5
+OpDecorate %25 NonReadable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeImage %5 1D 0 0 0 2 Rg16f
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeImage %5 2D 0 0 0 2 Rg16f
+%10 = OpTypePointer UniformConstant %9
+%11 = OpVariable %10 UniformConstant
+%12 = OpTypeImage %5 3D 0 0 0 2 Rg16f
+%13 = OpTypePointer UniformConstant %12
+%14 = OpVariable %13 UniformConstant
+%15 = OpVariable %13 UniformConstant
+%16 = OpTypeInt 32 0
+%17 = OpTypeRuntimeArray %16
+%18 = OpTypeStruct %17
+%19 = OpTypePointer StorageBuffer %18
+%20 = OpVariable %19 StorageBuffer
+%21 = OpTypeVector %16 2
+%22 = OpTypeRuntimeArray %21
+%23 = OpTypeStruct %22
+%24 = OpTypePointer StorageBuffer %23
+%25 = OpVariable %24 StorageBuffer
+%32 = OpConstant %5 46.5
+%34 = OpConstant %5 0
+%35 = OpTypeVector %5 2
+%38 = OpConstant %16 16
+%39 = OpConstant %5 45.5
+%43 = OpTypeFloat 16
+%44 = OpTypeVector %43 2
+%45 = OpConstant %16 5
+%46 = OpTypePointer Image %44
+%48 = OpConstant %16 0
+%52 = OpConstant %16 1
+%55 = OpConstant %16 101
+%56 = OpTypePointer StorageBuffer %16
+%58 = OpConstant %16 6
+%59 = OpConstant %16 7
+%67 = OpConstant %16 102
+%69 = OpConstant %16 8
+%70 = OpConstant %16 9
+%71 = OpConstant %16 10
+%72 = OpTypeVector %16 3
+%80 = OpConstant %16 103
+%82 = OpConstant %5 79.5
+%86 = OpConstant %5 78.5
+%90 = OpConstant %5 81.5
+%94 = OpConstant %5 80.5
+%98 = OpConstant %16 22
+%99 = OpConstant %16 12
+%100 = OpConstant %16 13
+%108 = OpConstant %16 23
+%116 = OpConstant %16 105
+%118 = OpTypePointer StorageBuffer %21
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %120
+%120 = OpLabel
+%26 = OpLoad %12 %15
+%27 = OpLoad %12 %14
+%28 = OpLoad %9 %11
+%29 = OpLoad %6 %8
+%36 = OpCompositeConstruct %35 %32 %34
+%33 = OpExtInst %16 %31 PackHalf2x16 %36
+%37 = OpShiftLeftLogical %16 %33 %38
+%41 = OpCompositeConstruct %35 %39 %34
+%40 = OpExtInst %16 %31 PackHalf2x16 %41
+%42 = OpBitwiseOr %16 %37 %40
+%47 = OpImageTexelPointer %46 %8 %45 %48
+%49 = OpExtInst %35 %31 UnpackHalf2x16 %42
+%50 = OpFConvert %44 %49
+%51 = OpAtomicFAddEXT %44 %47 %52 %48 %50
+%53 = OpFConvert %35 %51
+%54 = OpExtInst %16 %31 PackHalf2x16 %53
+%57 = OpAccessChain %56 %20 %48 %55
+OpStore %57 %54
+%60 = OpCompositeConstruct %21 %58 %59
+%61 = OpImageTexelPointer %46 %11 %60 %48
+%62 = OpExtInst %35 %31 UnpackHalf2x16 %42
+%63 = OpFConvert %44 %62
+%64 = OpAtomicFAddEXT %44 %61 %52 %48 %63
+%65 = OpFConvert %35 %64
+%66 = OpExtInst %16 %31 PackHalf2x16 %65
+%68 = OpAccessChain %56 %20 %48 %67
+OpStore %68 %66
+%73 = OpCompositeConstruct %72 %69 %70 %71
+%74 = OpImageTexelPointer %46 %14 %73 %48
+%75 = OpExtInst %35 %31 UnpackHalf2x16 %42
+%76 = OpFConvert %44 %75
+%77 = OpAtomicFAddEXT %44 %74 %52 %48 %76
+%78 = OpFConvert %35 %77
+%79 = OpExtInst %16 %31 PackHalf2x16 %78
+%81 = OpAccessChain %56 %20 %48 %80
+OpStore %81 %79
+%84 = OpCompositeConstruct %35 %82 %34
+%83 = OpExtInst %16 %31 PackHalf2x16 %84
+%85 = OpShiftLeftLogical %16 %83 %38
+%88 = OpCompositeConstruct %35 %86 %34
+%87 = OpExtInst %16 %31 PackHalf2x16 %88
+%89 = OpBitwiseOr %16 %85 %87
+%92 = OpCompositeConstruct %35 %90 %34
+%91 = OpExtInst %16 %31 PackHalf2x16 %92
+%93 = OpShiftLeftLogical %16 %91 %38
+%96 = OpCompositeConstruct %35 %94 %34
+%95 = OpExtInst %16 %31 PackHalf2x16 %96
+%97 = OpBitwiseOr %16 %93 %95
+%101 = OpCompositeConstruct %72 %98 %99 %100
+%102 = OpImageTexelPointer %46 %15 %101 %48
+%103 = OpExtInst %35 %31 UnpackHalf2x16 %89
+%104 = OpFConvert %44 %103
+%105 = OpAtomicFAddEXT %44 %102 %52 %48 %104
+%106 = OpFConvert %35 %105
+%107 = OpExtInst %16 %31 PackHalf2x16 %106
+%109 = OpCompositeConstruct %72 %108 %99 %100
+%110 = OpImageTexelPointer %46 %15 %109 %48
+%111 = OpExtInst %35 %31 UnpackHalf2x16 %97
+%112 = OpFConvert %44 %111
+%113 = OpAtomicFAddEXT %44 %110 %52 %48 %112
+%114 = OpFConvert %35 %113
+%115 = OpExtInst %16 %31 PackHalf2x16 %114
+%117 = OpCompositeConstruct %21 %107 %115
+%119 = OpAccessChain %118 %25 %48 %116
+OpStore %119 %117
+OpReturn
+OpFunctionEnd
+#endif

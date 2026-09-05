@@ -1,0 +1,16 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+RWByteAddressBuffer BAB;
+
+RWStructuredBuffer<uint> UAV1;
+
+[numthreads(32, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+    float2 v1 = {45.5f, 46.5f};
+    UAV1[100] = NvInterlockedAddFp16x2(BAB, 4, v1);
+    UAV1[101] = NvInterlockedMinFp16x2(BAB, 4, v1);
+    UAV1[102] = NvInterlockedMaxFp16x2(BAB, 4, v1);
+}
