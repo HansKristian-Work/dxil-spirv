@@ -209,51 +209,134 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 	if (!impl.nvapi.marked_uav)
 		return false;
 
-	// Dummy throwaway implementation to demonstrate UAV reference plumbing.
-	spv::Id addr = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
-	spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC1U + 0);
-	spv::Id type = get_argument(impl, NVAPI_ARGUMENT_SRC2U + 0);
-	(void)type;
-
-	auto &builder = impl.builder();
-
-	spv::Id id = impl.get_id_for_value(impl.nvapi.marked_uav);
-	const auto &meta = impl.handle_to_resource_meta[id];
-
-	if (meta.storage == spv::StorageClassStorageBuffer)
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0]);
+	if (c != nullptr)
 	{
-		spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B32, 1);
+		auto subopcode = uint32_t(c->getUniqueInteger().getZExtValue());
 
-		auto *chain = impl.allocate(spv::OpAccessChain,
-		                            builder.makePointer(spv::StorageClassStorageBuffer, builder.makeUintType(32)));
-		chain->add_id(ssbo_id);
-		chain->add_id(builder.makeUintConstant(0));
-		chain->add_id(addr);
-		impl.add(chain);
+		auto &builder = impl.builder();
+		auto uint32_type = builder.makeUintType(32);
+		auto f16_type = builder.makeFloatType(16);
+		auto f32_type = builder.makeFloatType(32);
+		auto f16vec2_type = builder.makeVectorType(f16_type, 2);
+		auto vec2_type = builder.makeVectorType(f32_type, 2);
 
-		auto *atomic = impl.allocate(spv::OpAtomicIAdd, builder.makeUintType(32));
-		atomic->add_id(chain->id);
-		atomic->add_id(builder.makeUintConstant(spv::ScopeDevice));
-		atomic->add_id(builder.makeUintConstant(0));
-		atomic->add_id(val);
-		impl.add(atomic);
+		builder.addExtension("SPV_NV_shader_atomic_fp16_vector");
+		builder.addCapability(spv::CapabilityAtomicFloat16VectorNV);
 
-		impl.nvapi.fake_doorbell_outputs[NVAPI_ARGUMENT_DST0U + 0] = atomic->id;
+		spv::Id id = impl.get_id_for_value(impl.nvapi.marked_uav);
+		const auto &meta = impl.handle_to_resource_meta[id];
+
+		// Get pointer
+
+		Operation *ptr;
+		if (meta.storage == spv::StorageClassStorageBuffer)
+		{
+			spv::Id addr = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+			spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B32, 1);
+
+			ptr = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, f16vec2_type));
+			ptr->add_id(ssbo_id);
+			ptr->add_id(builder.makeUintConstant(0));
+			ptr->add_id(addr);
+			impl.add(ptr); // SPIRV-Tools message: OpAccessChain result type <id> '49[%v2half]' (OpTypeVector) does not match the type that results from indexing into the base <id> '5[%uint]' (OpTypeInt).
+
+			builder.addCapability(spv::CapabilityStorageBuffer16BitAccess);
+		}
+		else if (meta.storage == spv::StorageClassUniformConstant)
+		{
+			spv::Id addrs[3] = {};
+			addrs[0] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+			spv::Id texture_addr;
+			switch (meta.kind)
+			{
+			case DXIL::ResourceKind::Texture1D:
+				texture_addr = impl.build_vector(uint32_type, addrs, 1);
+				break;
+			case DXIL::ResourceKind::Texture2D:
+				addrs[1] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+				texture_addr = impl.build_vector(uint32_type, addrs, 2);
+				break;
+			case DXIL::ResourceKind::Texture3D:
+				addrs[1] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+				addrs[2] =  get_argument(impl, NVAPI_ARGUMENT_SRC0U + 2);
+				texture_addr = impl.build_vector(uint32_type, addrs, 3);
+				break;
+			default:
+				LOGE("Unsupported storage kind: %u\n", static_cast<uint32_t>(meta.kind));
+				return false;
+			}
+
+			ptr = impl.allocate(spv::OpImageTexelPointer, builder.makePointer(spv::StorageClassImage, f16vec2_type));
+			ptr->add_id(meta.var_id);
+			ptr->add_id(texture_addr);
+			ptr->add_id(builder.makeUintConstant(0));
+			impl.add(ptr); // SPIRV-Tools message: Expected Image 'Sampled Type' to be the same as the Type pointed to by Result Type
+
+			builder.addCapability(spv::CapabilityStorageImageExtendedFormats);
+		}
+		else
+		{
+			LOGE("Unsupported storage: %u\n", static_cast<uint32_t>(meta.storage));
+			return false;
+		}
+
+		spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC1U + 0);
+
+		// Unpack val
+
+		auto *unpack_op = impl.allocate(spv::OpExtInst, vec2_type);
+		unpack_op->add_id(impl.glsl_std450_ext);
+		unpack_op->add_literal(GLSLstd450UnpackHalf2x16);
+		unpack_op->add_id(val);
+		impl.add(unpack_op);
+
+		auto *cast16_op = impl.allocate(spv::OpFConvert, f16vec2_type);
+		cast16_op->add_id(unpack_op->id);
+		impl.add(cast16_op);
+
+		// Atomic operation
+
+		spv::Op op;
+		switch (subopcode)
+		{
+		case NV_EXTN_ATOM_ADD:
+			op = spv::OpAtomicFAddEXT;
+			break;
+		case NV_EXTN_ATOM_MAX:
+			op = spv::OpAtomicFMaxEXT;
+			break;
+		case NV_EXTN_ATOM_MIN:
+			op = spv::OpAtomicFMinEXT;
+			break;
+		default:
+			return false;
+		}
+
+		auto *atomic_op = impl.allocate(op, f16vec2_type);
+		atomic_op->add_id(ptr->id);
+		atomic_op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->add_id(builder.makeUintConstant(0));
+		atomic_op->add_id(cast16_op->id);
+		impl.add(atomic_op);
+
+		// Pack result
+
+		auto *cast32_op = impl.allocate(spv::OpFConvert, vec2_type);
+		cast32_op->add_id(atomic_op->id);
+		impl.add(cast32_op);
+
+		auto *pack_op = impl.allocate(spv::OpExtInst, uint32_type);
+		pack_op->add_id(impl.glsl_std450_ext);
+		pack_op->add_literal(GLSLstd450PackHalf2x16);
+		pack_op->add_id(cast32_op->id);
+		impl.add(pack_op);
+
+		impl.nvapi.fake_doorbell_outputs[NVAPI_ARGUMENT_DST0U + 0] = pack_op->id;
+		return true;
 	}
-	else if (meta.storage == spv::StorageClassUniformConstant)
-	{
-		auto *ptr = impl.allocate(spv::OpImageWrite);
-		ptr->add_id(id);
-		ptr->add_id(addr);
-		ptr->add_id(impl.build_splat_constant_vector(builder.makeFloatType(32), builder.makeFloatConstant(2.0f), 4));
-		impl.add(ptr);
 
-		builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
-		impl.nvapi.fake_doorbell_outputs[NVAPI_ARGUMENT_DST0U + 0] = builder.makeUintConstant(42);
-	}
-
-	impl.nvapi.marked_uav = nullptr;
-	return true;
+	return false;
 }
 
 static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
@@ -820,9 +903,7 @@ bool NVAPIState::can_commit_opcode()
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 2] != nullptr;
 
 		case NV_EXTN_OP_FP16_ATOMIC:
-			LOGE("NVAPI opcode %u not fully implemented.\n", opcode);
-			return false && // emit_nvapi_extn_op_fp16x2_atomic is currently just a dummy implementation
-			       marked_uav &&
+			return marked_uav &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0] != nullptr;
