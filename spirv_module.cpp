@@ -2231,9 +2231,24 @@ spv::Id SPIRVModule::Impl::build_udiv_umod(SPIRVModule &module, spv::Id type_id,
 	auto *current_build_point = builder.getBuildPoint();
 	spv::Block *entry = nullptr;
 
-	auto *func = builder.makeFunctionEntry(spv::NoPrecision, type_id,
-	                                       op == spv::OpUDiv ? "UDiv" : "UMod",
-	                                       {type_id, type_id}, {}, &entry);
+	const char *name;
+	switch (op)
+	{
+	case spv::OpUDiv:
+		name = "UDiv";
+		break;
+	case spv::OpUMod:
+		name = "UMod";
+		break;
+	case spv::OpSDiv:
+		name = "SDiv";
+		break;
+	default:
+		name = "SRem";
+		break;
+	}
+
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, type_id, name, { type_id, type_id }, {}, &entry);
 
 	builder.addName(func->getParamId(0), "num");
 	builder.addName(func->getParamId(1), "den");
@@ -3106,6 +3121,10 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_udiv_umod(module, type_id, spv::OpUDiv);
 	case HelperCall::UMod:
 		return build_udiv_umod(module, type_id, spv::OpUMod);
+	case HelperCall::SDiv:
+		return build_udiv_umod(module, type_id, spv::OpSDiv);
+	case HelperCall::SRem:
+		return build_udiv_umod(module, type_id, spv::OpSRem);
 
 	default:
 		break;

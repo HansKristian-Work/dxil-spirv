@@ -86,7 +86,9 @@ enum class HelperCall
 	CoopMatSaturateFP8,
 	ByteAddressMask,
 	UDiv,
-	UMod
+	UMod,
+	SDiv,
+	SRem
 };
 
 enum class BDAOperation

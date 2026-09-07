@@ -1,0 +1,17 @@
+RWStructuredBuffer<int> Buf : register(u0);
+
+cbuffer Params : register(b0)
+{
+	int n;
+};
+
+// A zero divisor, consumed only by a loop the same zero should skip.
+// Drivers may infer n != 0 from the division and drop the loop check.
+[numthreads(32, 1, 1)]
+void main(uint3 tid : SV_DispatchThreadID)
+{
+	int stride = 65536 / n;
+	int rem = 65536 % n;
+	for (int i = 0; i != n; i++)
+		Buf[tid.x + i] = stride + rem;
+}
