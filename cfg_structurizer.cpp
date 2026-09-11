@@ -5391,6 +5391,66 @@ CFGStructurizer::SwitchProgressMode CFGStructurizer::process_switch_blocks(unsig
 					if (constructs.size() == 1 && simple_case)
 						allow_rewrite = false;
 
+					if (simple_case && allow_rewrite)
+					{
+						// Find another cursed case. We might have layered inner merge.
+						// Keep capturing domination frontiers until we're done.
+						// If we can create a list of construct that collectively post-dominate the switch,
+						// we can collect control flow there.
+						bool has_secondary_inner_merge = false;
+						for (auto *df : inner_merge->dominance_frontier)
+						{
+							if (node->dominates(df) && query_reachability(*df, *merge) && df != merge)
+							{
+								has_secondary_inner_merge = true;
+								break;
+							}
+						}
+
+						if (has_secondary_inner_merge)
+						{
+							Vector<CFGNode *> fully_captured_frontier = { natural_merge, inner_merge };
+							Vector<CFGNode *> new_frontiers;
+							Vector<CFGNode *> block_new_frontier;
+
+							do
+							{
+								fully_captured_frontier.insert(fully_captured_frontier.end(),
+								                               new_frontiers.begin(), new_frontiers.end());
+								new_frontiers.clear();
+
+								for (auto *frontier : fully_captured_frontier)
+								{
+									for (auto *df : frontier->dominance_frontier)
+									{
+										// Check if the dominance frontier has a path to header
+										// that doesn't go through another frontier. That one would not
+										// be considered reachable in a rewrite.
+										if (node->dominates(df) && !has_element(fully_captured_frontier, df) &&
+										    !has_element(new_frontiers, df) && !has_element(block_new_frontier, df) &&
+										    df->can_backtrace_to_with_blockers(node, fully_captured_frontier) &&
+										    df != merge)
+										{
+											new_frontiers.push_back(df);
+										}
+
+										// Only consider a DF once.
+										if (!has_element(block_new_frontier, df))
+											block_new_frontier.push_back(df);
+									}
+								}
+							} while (!new_frontiers.empty());
+
+							// Make sure that the frontiers we found fully capture all reachable paths to merge.
+							if (fully_captured_frontier.size() > 2 &&
+								!merge->can_backtrace_to_with_blockers(node, fully_captured_frontier))
+							{
+								collect_and_dispatch_control_flow(node, merge, fully_captured_frontier, false, true);
+								return SwitchProgressMode::IterativeModify;
+							}
+						}
+					}
+
 					// If we don't dominate the merge block,
 					// only accept the complicated case as a reason for rewriting control flow.
 					// Otherwise, it's just a false positive.
