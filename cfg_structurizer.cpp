@@ -4904,7 +4904,25 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 	// Look at all potential fallthrough candidates and reassign global order.
 	for (size_t i = 0, n = node->ir.terminator.cases.size(); i < n; i++)
 	{
+		// We may have fallthrough where A falls through to both B and C, and B falls through to C.
+		// Need to record the latest fallthrough A -> C, then B -> C to detect certain impossible patterns.
+		size_t max_candidate_index = n - 1;
+
 		for (size_t j = i + 1; j < n; j++)
+		{
+			auto &parent = node->ir.terminator.cases[i];
+			auto &child = node->ir.terminator.cases[j];
+
+			// If the fallthrough target post-dominates the incoming block,
+			// this is the correct ordering.
+			if (child.node != parent.node && child.node->post_dominates(parent.node))
+			{
+				max_candidate_index = j;
+				break;
+			}
+		}
+
+		for (size_t j = max_candidate_index; j > i; j--)
 		{
 			auto &parent = node->ir.terminator.cases[i];
 			auto &child = node->ir.terminator.cases[j];
