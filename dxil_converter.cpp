@@ -7697,6 +7697,14 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 			b.addCapability(spv::CapabilityDenormPreserve);
 			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
 		}
+		else if (!options.supports_float16_denorm_preserve && options.quirks.force_denorm_preserve_fp16_conversions)
+		{
+			// For the denorm workaround. The HW will flush denorms, but to be spec compliant,
+			// we need to ensure the denorms are flushed for the workaround path to be as fast as possible and valid.
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormFlushToZero);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, 16);
+		}
 
 		if (b.hasCapability(spv::CapabilityFloat64) && options.supports_float64_denorm_preserve)
 		{

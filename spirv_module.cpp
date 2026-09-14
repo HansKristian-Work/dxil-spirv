@@ -2274,37 +2274,8 @@ spv::Id SPIRVModule::Impl::build_legacy_denorm_f16_conv(SPIRVModule &module, spv
 
 		if (op == GLSLstd450PackHalf2x16)
 		{
-			// Propagate the sign bit.
-			auto *bitcast = builder.addInstruction(builder.makeUintType(32), spv::OpBitcast);
-			bitcast->addIdOperand(input_id);
-
-			auto *shift_down = builder.addInstruction(builder.makeUintType(32), spv::OpShiftRightLogical);
-			shift_down->addIdOperand(bitcast->getResultId());
-			shift_down->addIdOperand(builder.makeUintConstant(16));
-
-			auto *mask = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseAnd);
-			mask->addIdOperand(shift_down->getResultId());
-			mask->addIdOperand(builder.makeUintConstant(0x8000));
-			///
-
-			auto *abs = builder.addInstruction(builder.makeFloatType(32), spv::OpExtInst);
-			abs->addIdOperand(std450);
-			abs->addImmediateOperand(GLSLstd450FAbs);
-			abs->addIdOperand(input_id);
-
-			auto *scale = builder.addInstruction(builder.makeFloatType(32), spv::OpFMul);
-			scale->addIdOperand(abs->getResultId());
-			scale->addIdOperand(builder.makeFloatConstant(16.0f * 1024.0f * 1024.0f));
-
-			// RTZ is desired.
-			auto *trunc = builder.addInstruction(builder.makeUintType(32), spv::OpConvertFToU);
-			trunc->addIdOperand(scale->getResultId());
-
-			auto *soft_result = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseOr);
-			soft_result->addIdOperand(trunc->getResultId());
-			soft_result->addIdOperand(mask->getResultId());
-
 			// HW acceleration result. This is expected to be valid for any non-denorm value.
+			// When this is used, we expect that denorms are actually flushed, and that signed zero is preserved.
 			auto *composite = builder.addInstruction(
 					builder.makeVectorType(builder.makeFloatType(32), 2),
 					spv::OpCompositeConstruct);
@@ -2317,6 +2288,21 @@ spv::Id SPIRVModule::Impl::build_legacy_denorm_f16_conv(SPIRVModule &module, spv
 			hw_result->addImmediateOperand(op);
 			hw_result->addIdOperand(composite->getResultId());
 
+			// Compute the mantissa. Only valid if denorm.
+			auto *abs = builder.addInstruction(builder.makeFloatType(32), spv::OpExtInst);
+			abs->addIdOperand(std450);
+			abs->addImmediateOperand(GLSLstd450FAbs);
+			abs->addIdOperand(input_id);
+
+			auto *scale = builder.addInstruction(builder.makeFloatType(32), spv::OpFMul);
+			scale->addIdOperand(abs->getResultId());
+			scale->addIdOperand(builder.makeFloatConstant(16.0f * 1024.0f * 1024.0f));
+
+			// RTZ is desired.
+			auto *trunc = builder.addInstruction(builder.makeUintType(32), spv::OpConvertFToU);
+			trunc->addIdOperand(scale->getResultId());
+			///
+
 			// NaN will fail this check and get nan behavior from HW accel path.
 			auto *is_sub_normal = builder.addInstruction(builder.makeBoolType(), spv::OpFOrdLessThan);
 			is_sub_normal->addIdOperand(abs->getResultId());
@@ -2324,10 +2310,14 @@ spv::Id SPIRVModule::Impl::build_legacy_denorm_f16_conv(SPIRVModule &module, spv
 
 			auto *select_result = builder.addInstruction(builder.makeUintType(32), spv::OpSelect);
 			select_result->addIdOperand(is_sub_normal->getResultId());
-			select_result->addIdOperand(soft_result->getResultId());
-			select_result->addIdOperand(hw_result->getResultId());
+			select_result->addIdOperand(trunc->getResultId());
+			select_result->addIdOperand(builder.makeUintConstant(0));
 
-			output_id = select_result->getResultId();
+			auto *merge_result = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseOr);
+			merge_result->addIdOperand(hw_result->getResultId());
+			merge_result->addIdOperand(select_result->getResultId());
+
+			output_id = merge_result->getResultId();
 		}
 		else
 		{
@@ -2340,22 +2330,6 @@ spv::Id SPIRVModule::Impl::build_legacy_denorm_f16_conv(SPIRVModule &module, spv
 			ext_hw->addIdOperand(hw_result->getResultId());
 			ext_hw->addImmediateOperand(0);
 
-			auto *sign_mask = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseAnd);
-			sign_mask->addIdOperand(input_id);
-			sign_mask->addIdOperand(builder.makeUintConstant(0x8000));
-
-			auto *sign_shift_mask = builder.addInstruction(builder.makeUintType(32), spv::OpShiftLeftLogical);
-			sign_shift_mask->addIdOperand(sign_mask->getResultId());
-			sign_shift_mask->addIdOperand(builder.makeUintConstant(16));
-
-			auto *scale = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseOr);
-			scale->addIdOperand(sign_shift_mask->getResultId());
-			// 2^-24.
-			scale->addIdOperand(builder.makeUintConstant(0x33800000));
-
-			auto *scale_fp32 = builder.addInstruction(builder.makeFloatType(32), spv::OpBitcast);
-			scale_fp32->addIdOperand(scale->getResultId());
-
 			auto *positive_mask = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseAnd);
 			positive_mask->addIdOperand(input_id);
 			positive_mask->addIdOperand(builder.makeUintConstant(0x7fff));
@@ -2365,7 +2339,7 @@ spv::Id SPIRVModule::Impl::build_legacy_denorm_f16_conv(SPIRVModule &module, spv
 
 			auto *mantissa_scale = builder.addInstruction(builder.makeFloatType(32), spv::OpFMul);
 			mantissa_scale->addIdOperand(mantissa_conv->getResultId());
-			mantissa_scale->addIdOperand(scale_fp32->getResultId());
+			mantissa_scale->addIdOperand(builder.makeFloatConstant(1.0f / (16.0f * 1024.0f * 1024.0f)));
 
 			auto *is_sub_normal = builder.addInstruction(builder.makeBoolType(), spv::OpULessThan);
 			is_sub_normal->addIdOperand(positive_mask->getResultId());
@@ -2374,9 +2348,22 @@ spv::Id SPIRVModule::Impl::build_legacy_denorm_f16_conv(SPIRVModule &module, spv
 			auto *select_result = builder.addInstruction(builder.makeFloatType(32), spv::OpSelect);
 			select_result->addIdOperand(is_sub_normal->getResultId());
 			select_result->addIdOperand(mantissa_scale->getResultId());
-			select_result->addIdOperand(ext_hw->getResultId());
+			select_result->addIdOperand(builder.makeFloatConstant(0.0f));
 
-			output_id = select_result->getResultId();
+			auto *bitu32 = builder.addInstruction(builder.makeUintType(32), spv::OpBitcast);
+			bitu32->addIdOperand(select_result->getResultId());
+
+			auto *hwu32 = builder.addInstruction(builder.makeUintType(32), spv::OpBitcast);
+			hwu32->addIdOperand(ext_hw->getResultId());
+
+			auto *or32 = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseOr);
+			or32->addIdOperand(hwu32->getResultId());
+			or32->addIdOperand(bitu32->getResultId());
+
+			auto *result = builder.addInstruction(builder.makeFloatType(32), spv::OpBitcast);
+			result->addIdOperand(or32->getResultId());
+
+			output_id = result->getResultId();
 		}
 
 		if (vecsize == 1)
