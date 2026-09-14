@@ -1187,6 +1187,7 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &indexing.base);
 	}
 
+	if (std::find(args.quirks.begin(), args.quirks.end(), DXIL_SPV_SHADER_QUIRK_FORCE_DENORM_PRESERVE_FP16_CONVERSIONS) == args.quirks.end())
 	{
 		const dxil_spv_option_denorm_preserve_support denorm = { { DXIL_SPV_OPTION_DENORM_PRESERVE_SUPPORT },
 		                                                         DXIL_SPV_TRUE, DXIL_SPV_TRUE };

@@ -88,7 +88,9 @@ enum class HelperCall
 	UDiv,
 	UMod,
 	SDiv,
-	SRem
+	SRem,
+	DenormPreserveLegacyF32toF16,
+	DenormPreserveLegacyF16toF32
 };
 
 enum class BDAOperation

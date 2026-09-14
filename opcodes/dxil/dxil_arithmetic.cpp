@@ -1022,8 +1022,24 @@ bool emit_split_double_instruction(Converter::Impl &impl, const llvm::CallInst *
 bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
+
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	if (impl.options.quirks.force_denorm_preserve_fp16_conversions &&
+		!impl.options.supports_float16_denorm_preserve)
+	{
+		// Emulation path when we must preserve fp16 denorm.
+		spv::Id helper_id = impl.spirv_module.get_helper_call_id(
+			HelperCall::DenormPreserveLegacyF16toF32,
+			impl.get_type_id(instruction->getOperand(1)->getType()));
+
+		auto *call = impl.allocate(spv::OpFunctionCall, instruction);
+		call->add_id(helper_id);
+		call->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(call);
+		return true;
+	}
 
 	Operation *unpack_op = impl.allocate(spv::OpExtInst, builder.makeVectorType(builder.makeFloatType(32), 2));
 	unpack_op->add_id(impl.glsl_std450_ext);
@@ -1067,6 +1083,21 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 	// Ideally we'd have a PackHalf variant which takes rounding mode / denorm mode to be correct, but alas ...
 	// Only do this hack when heuristics deduce it to be necessary.
 	spv::Id input_id = impl.get_id_for_value(instruction->getOperand(1));
+
+	if (impl.options.quirks.force_denorm_preserve_fp16_conversions &&
+		!impl.options.supports_float16_denorm_preserve)
+	{
+		// Emulation path when we must preserve fp16 denorm.
+		spv::Id helper_id = impl.spirv_module.get_helper_call_id(
+			HelperCall::DenormPreserveLegacyF32toF16,
+			impl.get_type_id(instruction->getOperand(1)->getType()));
+
+		auto *call = impl.allocate(spv::OpFunctionCall, instruction);
+		call->add_id(helper_id);
+		call->add_id(input_id);
+		impl.add(call);
+		return true;
+	}
 
 	if (impl.shader_analysis.precise_f16_to_f32_observed && !impl.execution_mode_meta.float_controls2)
 	{

@@ -788,7 +788,8 @@ enum class ShaderQuirk : uint32_t
 	PreciseFMA,
 	ClampWaveSizeToThreadGroup32,
     NonSemanticSignalConcurrentWorkgroup,
-	ForceNonUniform
+	ForceNonUniform,
+	ForceDenormPreserveFP16Conversions
 };
 
 struct OptionShaderQuirk : OptionBase

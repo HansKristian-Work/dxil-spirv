@@ -9742,6 +9742,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			options.quirks.non_semantic_signal_concurrent_workgroup = true;
 			break;
 
+		case ShaderQuirk::ForceDenormPreserveFP16Conversions:
+			options.quirks.force_denorm_preserve_fp16_conversions = true;
+			break;
+
 		default:
 			break;
 		}

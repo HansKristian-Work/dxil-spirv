@@ -286,6 +286,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
         hlsl_cmd += ['--opacity-micromap']
     if '.rq-omm.' in shader:
         hlsl_cmd += ['--ray-query-force-opacity-micromap']
+    if '.sf-fp16-conv.' in shader:
+        hlsl_cmd += ['--shader-quirk', '17']
 
     subprocess.check_call(hlsl_cmd)
     if is_asm:

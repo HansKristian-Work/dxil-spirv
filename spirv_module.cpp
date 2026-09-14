@@ -93,6 +93,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_allocate_invocation_id(SPIRVModule &module);
 	spv::Id build_byte_address_mask_id(SPIRVModule &module);
 	spv::Id build_udiv_umod(SPIRVModule &module, spv::Id type_id, spv::Op op);
+	spv::Id build_legacy_denorm_f16_conv(SPIRVModule &module, spv::Id type_id, GLSLstd450 op);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -190,6 +191,14 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 		spv::Id id;
 	};
 	Vector<UDivUModCall> udiv_umod_calls;
+
+	struct DenormConvCall
+	{
+		spv::Id type_id;
+		GLSLstd450 op;
+		spv::Id id;
+	};
+	Vector<DenormConvCall> denorm_conv_calls;
 
 	DescriptorQAInfo descriptor_qa_info;
 
@@ -2222,6 +2231,175 @@ spv::Id SPIRVModule::Impl::build_byte_address_mask_id(SPIRVModule &module)
 	return func->getId();
 }
 
+spv::Id SPIRVModule::Impl::build_legacy_denorm_f16_conv(SPIRVModule &module, spv::Id type_id, GLSLstd450 op)
+{
+	for (auto &call : denorm_conv_calls)
+		if (call.type_id == type_id && call.op == op)
+			return call.id;
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	const char *name = op == GLSLstd450PackHalf2x16 ? "DenormPreserveF32toF16" : "DenormPreserveF16toF32";
+
+	unsigned vecsize = 1;
+	if (builder.getTypeClass(type_id) == spv::OpTypeVector)
+		vecsize = builder.getNumTypeComponents(type_id);
+
+	spv::Id out_type_id = op == GLSLstd450PackHalf2x16 ? builder.makeUintType(32) : builder.makeFloatType(32);
+	if (vecsize > 1)
+		out_type_id = builder.makeVectorType(out_type_id, vecsize);
+
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, out_type_id, name, { type_id }, {}, &entry);
+	spv::Id std450 = builder.import("GLSL.std.450");
+	builder.setBuildPoint(entry);
+
+	spv::Id scalar_input_type = op == GLSLstd450PackHalf2x16 ? builder.makeFloatType(32) : builder.makeUintType(32);
+
+	spv::Id result_id = 0;
+	if (vecsize > 1)
+		result_id = builder.createUndefinedConstant(out_type_id);
+
+	for (unsigned c = 0; c < vecsize; c++)
+	{
+		spv::Id input_id = func->getParamId(0);
+		spv::Id output_id;
+
+		if (vecsize > 1)
+		{
+			auto *ext = builder.addInstruction(scalar_input_type, spv::OpCompositeExtract);
+			ext->addIdOperand(input_id);
+			ext->addImmediateOperand(c);
+			input_id = ext->getResultId();
+		}
+
+		if (op == GLSLstd450PackHalf2x16)
+		{
+			// Propagate the sign bit.
+			auto *bitcast = builder.addInstruction(builder.makeUintType(32), spv::OpBitcast);
+			bitcast->addIdOperand(input_id);
+
+			auto *shift_down = builder.addInstruction(builder.makeUintType(32), spv::OpShiftRightLogical);
+			shift_down->addIdOperand(bitcast->getResultId());
+			shift_down->addIdOperand(builder.makeUintConstant(16));
+
+			auto *mask = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseAnd);
+			mask->addIdOperand(shift_down->getResultId());
+			mask->addIdOperand(builder.makeUintConstant(0x8000));
+			///
+
+			auto *abs = builder.addInstruction(builder.makeFloatType(32), spv::OpExtInst);
+			abs->addIdOperand(std450);
+			abs->addImmediateOperand(GLSLstd450FAbs);
+			abs->addIdOperand(input_id);
+
+			auto *scale = builder.addInstruction(builder.makeFloatType(32), spv::OpFMul);
+			scale->addIdOperand(abs->getResultId());
+			scale->addIdOperand(builder.makeFloatConstant(16.0f * 1024.0f * 1024.0f));
+
+			// RTZ is desired.
+			auto *trunc = builder.addInstruction(builder.makeUintType(32), spv::OpConvertFToU);
+			trunc->addIdOperand(scale->getResultId());
+
+			auto *soft_result = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseOr);
+			soft_result->addIdOperand(trunc->getResultId());
+			soft_result->addIdOperand(mask->getResultId());
+
+			// HW acceleration result. This is expected to be valid for any non-denorm value.
+			auto *composite = builder.addInstruction(
+					builder.makeVectorType(builder.makeFloatType(32), 2),
+					spv::OpCompositeConstruct);
+
+			composite->addIdOperand(input_id);
+			composite->addIdOperand(builder.makeFloatConstant(0.0f));
+
+			auto *hw_result = builder.addInstruction(builder.makeUintType(32), spv::OpExtInst);
+			hw_result->addIdOperand(std450);
+			hw_result->addImmediateOperand(op);
+			hw_result->addIdOperand(composite->getResultId());
+
+			// NaN will fail this check and get nan behavior from HW accel path.
+			auto *is_sub_normal = builder.addInstruction(builder.makeBoolType(), spv::OpFOrdLessThan);
+			is_sub_normal->addIdOperand(abs->getResultId());
+			is_sub_normal->addIdOperand(builder.makeFloatConstant(1.0f / (16.0f * 1024.0f)));
+
+			auto *select_result = builder.addInstruction(builder.makeUintType(32), spv::OpSelect);
+			select_result->addIdOperand(is_sub_normal->getResultId());
+			select_result->addIdOperand(soft_result->getResultId());
+			select_result->addIdOperand(hw_result->getResultId());
+
+			output_id = select_result->getResultId();
+		}
+		else
+		{
+			auto *hw_result = builder.addInstruction(builder.makeVectorType(builder.makeFloatType(32), 2), spv::OpExtInst);
+			hw_result->addIdOperand(std450);
+			hw_result->addImmediateOperand(op);
+			hw_result->addIdOperand(input_id);
+
+			auto *ext_hw = builder.addInstruction(builder.makeFloatType(32), spv::OpCompositeExtract);
+			ext_hw->addIdOperand(hw_result->getResultId());
+			ext_hw->addImmediateOperand(0);
+
+			auto *sign_mask = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseAnd);
+			sign_mask->addIdOperand(input_id);
+			sign_mask->addIdOperand(builder.makeUintConstant(0x8000));
+
+			auto *sign_shift_mask = builder.addInstruction(builder.makeUintType(32), spv::OpShiftLeftLogical);
+			sign_shift_mask->addIdOperand(sign_mask->getResultId());
+			sign_shift_mask->addIdOperand(builder.makeUintConstant(16));
+
+			auto *scale = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseOr);
+			scale->addIdOperand(sign_shift_mask->getResultId());
+			// 2^-24.
+			scale->addIdOperand(builder.makeUintConstant(0x33800000));
+
+			auto *scale_fp32 = builder.addInstruction(builder.makeFloatType(32), spv::OpBitcast);
+			scale_fp32->addIdOperand(scale->getResultId());
+
+			auto *positive_mask = builder.addInstruction(builder.makeUintType(32), spv::OpBitwiseAnd);
+			positive_mask->addIdOperand(input_id);
+			positive_mask->addIdOperand(builder.makeUintConstant(0x7fff));
+
+			auto *mantissa_conv = builder.addInstruction(builder.makeFloatType(32), spv::OpConvertUToF);
+			mantissa_conv->addIdOperand(positive_mask->getResultId());
+
+			auto *mantissa_scale = builder.addInstruction(builder.makeFloatType(32), spv::OpFMul);
+			mantissa_scale->addIdOperand(mantissa_conv->getResultId());
+			mantissa_scale->addIdOperand(scale_fp32->getResultId());
+
+			auto *is_sub_normal = builder.addInstruction(builder.makeBoolType(), spv::OpULessThan);
+			is_sub_normal->addIdOperand(positive_mask->getResultId());
+			is_sub_normal->addIdOperand(builder.makeUintConstant(0x400));
+
+			auto *select_result = builder.addInstruction(builder.makeFloatType(32), spv::OpSelect);
+			select_result->addIdOperand(is_sub_normal->getResultId());
+			select_result->addIdOperand(mantissa_scale->getResultId());
+			select_result->addIdOperand(ext_hw->getResultId());
+
+			output_id = select_result->getResultId();
+		}
+
+		if (vecsize == 1)
+		{
+			result_id = output_id;
+		}
+		else
+		{
+			auto *inst = builder.addInstruction(out_type_id, spv::OpCompositeInsert);
+			inst->addIdOperand(output_id);
+			inst->addIdOperand(result_id);
+			inst->addImmediateOperand(c);
+			result_id = inst->getResultId();
+		}
+	}
+
+	builder.makeReturn(false, result_id);
+	builder.setBuildPoint(current_build_point);
+
+	denorm_conv_calls.push_back({ type_id, op, func->getId() });
+	return func->getId();
+}
+
 spv::Id SPIRVModule::Impl::build_udiv_umod(SPIRVModule &module, spv::Id type_id, spv::Op op)
 {
 	for (auto &udiv_umod_call : udiv_umod_calls)
@@ -3125,6 +3303,10 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 		return build_udiv_umod(module, type_id, spv::OpSDiv);
 	case HelperCall::SRem:
 		return build_udiv_umod(module, type_id, spv::OpSRem);
+	case HelperCall::DenormPreserveLegacyF32toF16:
+		return build_legacy_denorm_f16_conv(module, type_id, GLSLstd450PackHalf2x16);
+	case HelperCall::DenormPreserveLegacyF16toF32:
+		return build_legacy_denorm_f16_conv(module, type_id, GLSLstd450UnpackHalf2x16);
 
 	default:
 		break;

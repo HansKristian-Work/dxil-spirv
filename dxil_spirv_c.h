@@ -34,8 +34,8 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 72
-#define DXIL_SPV_API_VERSION_PATCH 1
+#define DXIL_SPV_API_VERSION_MINOR 73
+#define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
 #define DXIL_SPV_INSTRUCTION_INSTRUMENTATION_INTERFACE_VERSION 2
@@ -248,6 +248,9 @@ typedef enum dxil_spv_shader_quirk
 	DXIL_SPV_SHADER_QUIRK_NON_SEMANTIC_SIGNAL_CONCURRENT_WORKGROUP = 15,
 	/* Heavy hammer, aggressive_nonuniform tries to be a bit smarter. */
 	DXIL_SPV_SHADER_QUIRK_FORCE_NONUNIFORM = 16,
+	/* For legacy f32<->f16 force soft-float approach to ensure denorms are correctly preserved.
+	 * Only engages soft-float path if fp16 denorms are not set in options. */
+	DXIL_SPV_SHADER_QUIRK_FORCE_DENORM_PRESERVE_FP16_CONVERSIONS = 17,
 	DXIL_SPV_SHADER_QUIRK_INT_MAX = 0x7fffffff
 } dxil_spv_shader_quirk;
 
