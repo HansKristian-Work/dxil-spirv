@@ -4,16 +4,9 @@
 
 RWStructuredBuffer<uint> Blah;
 
-RWByteAddressBuffer BAB;
-RWTexture1D<float2> RWTex;
-
 [numthreads(32, 1, 1)]
 void main(uint thr : SV_DispatchThreadID)
 {
 	Blah[thr] = NvShfl(thr, 9);
-
-	// Test UAV reference shenanigans (currently disabled).
-	// Blah[100] = NvInterlockedAddFp16x2(BAB, 64, 9);
-	// Blah[101] = NvInterlockedAddFp16x2(RWTex, thr, 10);
 }
 

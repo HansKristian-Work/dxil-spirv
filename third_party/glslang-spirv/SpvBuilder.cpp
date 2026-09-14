@@ -263,6 +263,27 @@ Id Builder::makePointer(StorageClass storageClass, Id pointee)
     return type->getResultId();
 }
 
+Id Builder::makeUntypedPointer(StorageClass storageClass, bool setBufferPointer)
+{
+	// try to find it
+	Instruction* type;
+	// both typeBufferEXT and UntypedPointer only contains storage class info.
+	Op typeOp = setBufferPointer ? OpTypeBufferEXT : OpTypeUntypedPointerKHR;
+	for (int t = 0; t < (int)groupedTypes[typeOp].size(); ++t) {
+		type = groupedTypes[typeOp][t];
+		if (type->getImmediateOperand(0) == (unsigned)storageClass)
+			return type->getResultId();
+	}
+
+	// not found, make it
+	type = new Instruction(getUniqueId(), NoType, typeOp);
+	type->addImmediateOperand(storageClass);
+	groupedTypes[typeOp].push_back(type);
+	constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
+	module.mapInstruction(type);
+	return type->getResultId();
+}
+
 Id Builder::makeIntegerType(int width, bool hasSign)
 {
     // try to find it
