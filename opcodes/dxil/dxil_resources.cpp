@@ -2158,7 +2158,7 @@ bool emit_annotate_handle_instruction(Converter::Impl &impl, const llvm::CallIns
 }
 
 static bool build_bitcast_32x4_to_16x8_composite(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                                 spv::Id loaded_id)
+                                                 spv::Id loaded_id, spv::Id scalar_type_id)
 {
 	auto &builder = impl.builder();
 
@@ -2172,7 +2172,7 @@ static bool build_bitcast_32x4_to_16x8_composite(Converter::Impl &impl, const ll
 	spv::Id u32_composites[4];
 	for (unsigned i = 0; i < 4; i++)
 	{
-		auto *extract_op = impl.allocate(spv::OpCompositeExtract, builder.makeFloatType(32));
+		auto *extract_op = impl.allocate(spv::OpCompositeExtract, scalar_type_id);
 		extract_op->add_id(loaded_id);
 		extract_op->add_literal(i);
 		impl.add(extract_op);
@@ -2330,7 +2330,7 @@ static bool emit_cbuffer_load_physical_pointer(Converter::Impl &impl, const llvm
 
 	// Handle f16x8 loads.
 	if (!scalar_load && scalar_alignment == 2)
-		return build_bitcast_32x4_to_16x8_composite(impl, instruction, loaded_id);
+		return build_bitcast_32x4_to_16x8_composite(impl, instruction, loaded_id, builder.makeFloatType(32));
 	else if (value_cast_op != spv::OpNop)
 	{
 		spv::Id type_id = impl.get_type_id(result_component_type);
@@ -2401,6 +2401,7 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 			member_index /= 4;
 		}
 
+		// This is not exposed in normal SM 6. Keep the restriction.
 		if (get_type_scalar_alignment(impl, instruction->getType()) != 4)
 		{
 			LOGE("Attempting to use root constant buffer with non-32bit type.\n");
@@ -2422,12 +2423,6 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 			impl.add(mul4);
 
 			dynamic_member_index = mul4->id;
-		}
-
-		if (get_type_scalar_alignment(impl, get_composite_element_type(instruction->getType())) != 4)
-		{
-			LOGE("Attempting to use root constant buffer with non-32bit type.\n");
-			return false;
 		}
 	}
 
@@ -2456,8 +2451,10 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 	if (!scalar_load)
 		result_scalar_type = get_composite_element_type(result_scalar_type);
 
+	unsigned scalar_alignment = get_type_scalar_alignment(impl, result_scalar_type);
+
 	// Root constants are emitted as uints as they are typically used as indices.
-	bool need_bitcast = result_scalar_type->getTypeID() != llvm::Type::TypeID::IntegerTyID;
+	bool need_bitcast = result_scalar_type->getTypeID() != llvm::Type::TypeID::IntegerTyID || scalar_alignment != 4;
 
 	spv::Id elements[4];
 	for (unsigned i = 0; i < 4; i++)
@@ -2540,7 +2537,21 @@ static bool emit_cbuffer_load_from_uints(Converter::Impl &impl, const llvm::Call
 	{
 		spv::Id type_id = physical_type_id;
 		if (!scalar_load)
-			type_id = builder.makeVectorType(type_id, 4);
+		{
+			if (scalar_alignment >= 4)
+			{
+				type_id = builder.makeVectorType(type_id, 16 / scalar_alignment);
+			}
+			else if (scalar_alignment == 2)
+			{
+				return build_bitcast_32x4_to_16x8_composite(impl, instruction, id, builder.makeUintType(32));
+			}
+			else
+			{
+				LOGE("Unexpected cbuffer load from uints.\n");
+				return false;
+			}
+		}
 
 		auto *op = impl.allocate(spv::OpBitcast, instruction, type_id);
 		op->add_id(id);
@@ -2961,7 +2972,7 @@ bool emit_cbuffer_load_legacy_instruction(Converter::Impl &impl, const llvm::Cal
 		if (scalar_alignment == 2)
 		{
 			// Special case, need to bitcast and build a struct with 8 elements instead.
-			if (!build_bitcast_32x4_to_16x8_composite(impl, instruction, load_op->id))
+			if (!build_bitcast_32x4_to_16x8_composite(impl, instruction, load_op->id, builder.makeFloatType(32)))
 				return false;
 		}
 		else if (need_bitcast)
