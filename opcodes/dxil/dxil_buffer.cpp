@@ -33,6 +33,17 @@
 
 namespace dxil_spv
 {
+static bool type_needs_storage_16bit_cast(Converter::Impl &impl, const llvm::Type *element_type)
+{
+	// SM 6.0 shenanigans. The store operations are tagged as 16-bit,
+	// but that's bogus, it's actually 32-bit and we have to upcast.
+	// min16int is always implemented as 16-bit since games rely on it.
+	return !impl.execution_mode_meta.native_16bit_operations &&
+		   (impl.options.min_precision_prefer_native_16bit ||
+			element_type->getTypeID() == llvm::Type::TypeID::IntegerTyID) &&
+		   type_is_16bit(element_type);
+}
+
 static RawWidth get_buffer_access_bits_per_component(
 	Converter::Impl &impl, spv::StorageClass storage, const llvm::Type *element_type)
 {
@@ -775,9 +786,7 @@ static RawAccessChain emit_raw_access_chain(Converter::Impl &impl, const Convert
 	// If we're storing to min16 types and we use native 16-bit in arithmetic,
 	// we have to expand to 32-bit before storing :(
 	// This will probably fall over with int vs uint, since we don't know how to sign-extend.
-	if (!impl.execution_mode_meta.native_16bit_operations &&
-	    impl.options.min_precision_prefer_native_16bit &&
-	    type_is_16bit(element_type))
+	if (type_needs_storage_16bit_cast(impl, element_type))
 	{
 		if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
 			raw_component_type_id = builder.makeFloatType(32);
@@ -904,9 +913,7 @@ static bool emit_buffer_load_raw_chain_instruction(Converter::Impl &impl, const 
 	add_vkmm_access_qualifiers(impl, load_op, meta.vkmm);
 	impl.add(load_op);
 
-	if (type_is_16bit(target_type) &&
-	    !impl.execution_mode_meta.native_16bit_operations &&
-	    impl.options.min_precision_prefer_native_16bit)
+	if (type_needs_storage_16bit_cast(impl, target_type))
 	{
 		Operation *narrow_op;
 
@@ -1047,8 +1054,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		spv::Id constructed_id = 0;
 
 		bool need_cast = (element_type->getTypeID() != llvm::Type::TypeID::IntegerTyID) ||
-		                 (type_is_16bit(element_type) && !impl.execution_mode_meta.native_16bit_operations &&
-		                  impl.options.min_precision_prefer_native_16bit);
+		                 type_needs_storage_16bit_cast(impl, element_type);
 
 		// FP64 is handled directly.
 		if (element_type->getTypeID() == llvm::Type::TypeID::DoubleTyID)
@@ -1195,9 +1201,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 			{
 				spv::Id casted_id;
 
-				if (type_is_16bit(element_type) &&
-				    !impl.execution_mode_meta.native_16bit_operations &&
-				    impl.options.min_precision_prefer_native_16bit)
+				if (type_needs_storage_16bit_cast(impl, element_type))
 				{
 					if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
 					{
@@ -1466,9 +1470,7 @@ static spv::Id emit_buffer_store_values_bitcast_vector(Converter::Impl &impl, co
 	spv::Id vec_id = impl.get_id_for_value(instruction->getOperand(4));
 	spv::Id cur_elem_type_id = impl.get_type_id(element_type);
 
-	if (!impl.execution_mode_meta.native_16bit_operations &&
-	    impl.options.min_precision_prefer_native_16bit &&
-	    type_is_16bit(element_type))
+	if (type_needs_storage_16bit_cast(impl, element_type))
 	{
 		if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
 		{
@@ -1551,9 +1553,7 @@ static void emit_buffer_store_values_bitcast(Converter::Impl &impl, const llvm::
 			// If we're storing to min16 types and we use native 16-bit in arithmetic,
 			// we have to expand to 32-bit before storing :(
 			// This will probably fall over with int vs uint, since we don't know how to sign-extend.
-			if (!impl.execution_mode_meta.native_16bit_operations &&
-				impl.options.min_precision_prefer_native_16bit &&
-				type_is_16bit(element_type))
+			if (type_needs_storage_16bit_cast(impl, element_type))
 			{
 				if (element_type->getTypeID() == llvm::Type::TypeID::HalfTyID)
 				{
