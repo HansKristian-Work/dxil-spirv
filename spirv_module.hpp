@@ -121,6 +121,7 @@ public:
 	spv::Function *get_entry_function();
 
 	void enable_shader_discard(bool support_demote);
+	void enable_min16float_min_spec_simulation(bool enable_simulation);
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
 	spv::Id get_builtin_shader_output(spv::BuiltIn builtin);
 	bool has_builtin_shader_input(spv::BuiltIn builtin) const;
@@ -148,6 +149,7 @@ public:
 	const DescriptorQAInfo &get_descriptor_qa_info() const;
 
 	static bool opcode_is_control_dependent(spv::Op opcode);
+	static bool opcode_is_denorm_invariant(spv::Op opcode);
 	static bool opcode_has_side_effect_and_result(spv::Op opcode);
 
 	void set_override_spirv_version(uint32_t version);

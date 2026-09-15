@@ -110,6 +110,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 		bool supports_demote = false;
 	} caps;
 
+	bool min16float_min_spec_simulation = false;
+
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
 	spv::Id get_builtin_shader_output(spv::BuiltIn builtin);
 	bool has_builtin_shader_input(spv::BuiltIn builtin) const;
@@ -3766,10 +3768,24 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			}
 
 			std::unique_ptr<spv::Instruction> inst;
+			bool quant_fp16 = false;
+
 			if (op->id != 0)
 			{
 				assert(op->type_id);
-				inst = std::make_unique<spv::Instruction>(op->id, op->type_id, op->op);
+				spv::Id effective_id = op->id;
+
+				if (min16float_min_spec_simulation && !opcode_is_denorm_invariant(op->op))
+				{
+					quant_fp16 = builder.hasDecoration(op->id, spv::DecorationRelaxedPrecision) &&
+					             builder.getTypeClass(builder.getScalarTypeId(op->type_id)) == spv::OpTypeFloat &&
+					             builder.getScalarTypeWidth(op->type_id) == 32;
+				}
+
+				if (quant_fp16)
+					effective_id = builder.getUniqueId();
+
+				inst = std::make_unique<spv::Instruction>(effective_id, op->type_id, op->op);
 			}
 			else
 				inst = std::make_unique<spv::Instruction>(op->op);
@@ -3785,7 +3801,18 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 					inst->addIdOperand(arg);
 				}
 			}
+
+			std::unique_ptr<spv::Instruction> quant_op;
+			if (quant_fp16)
+			{
+				builder.addDecoration(inst->getResultId(), spv::DecorationRelaxedPrecision);
+				quant_op = std::make_unique<spv::Instruction>(op->id, op->type_id, spv::OpQuantizeToF16);
+				quant_op->addIdOperand(inst->getResultId());
+			}
+
 			add_instruction(bb, std::move(inst));
+			if (quant_op)
+				add_instruction(bb, std::move(quant_op));
 		}
 
 		if (op->flags & Operation::SubgroupSyncPost)
@@ -4076,6 +4103,11 @@ void SPIRVModule::enable_shader_discard(bool supports_demote)
 	impl->enable_shader_discard(supports_demote);
 }
 
+void SPIRVModule::enable_min16float_min_spec_simulation(bool enable_simulation)
+{
+	impl->min16float_min_spec_simulation = enable_simulation;
+}
+
 spv::Id SPIRVModule::get_builtin_shader_input(spv::BuiltIn builtin)
 {
 	return impl->get_builtin_shader_input(builtin);
@@ -4215,6 +4247,24 @@ bool SPIRVModule::opcode_has_side_effect_and_result(spv::Op opcode)
 	case spv::OpAtomicExchange:
 	case spv::OpAtomicStore:
 	case spv::OpFunctionCall: // This depends, but we have to assume it might.
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+bool SPIRVModule::opcode_is_denorm_invariant(spv::Op opcode)
+{
+	switch (opcode)
+	{
+	case spv::OpCompositeConstruct:
+	case spv::OpCompositeExtract:
+	case spv::OpCompositeInsert:
+	case spv::OpVectorExtractDynamic:
+	case spv::OpVectorInsertDynamic:
+	case spv::OpBitcast:
+		// Avoids dummy QuantizeToFP16 in debug.
 		return true;
 
 	default:

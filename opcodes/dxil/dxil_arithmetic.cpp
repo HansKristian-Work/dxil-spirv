@@ -1056,6 +1056,15 @@ bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallI
 	op->add_literal(0);
 	impl.add(op);
 
+	if (!impl.options.quirks.force_denorm_preserve_fp16_conversions &&
+	    GlobalConfiguration::get().simulate_min16float_min_spec)
+	{
+		auto *quant = impl.allocate(spv::OpQuantizeToF16, op->type_id);
+		quant->add_id(op->id);
+		impl.add(quant);
+		impl.rewrite_value(instruction, quant->id);
+	}
+
 	// By construction, these are relaxed precision, but spams lots of unrelated shader changes,
 	// and doesn't make too much sense to add ...
 	//builder.addDecoration(op->id, spv::DecorationRelaxedPrecision);
@@ -1099,9 +1108,12 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 		return true;
 	}
 
-	if (impl.shader_analysis.precise_f16_to_f32_observed && !impl.execution_mode_meta.float_controls2)
+	if ((!impl.options.quirks.force_denorm_preserve_fp16_conversions &&
+	     GlobalConfiguration::get().simulate_min16float_min_spec) ||
+	    (impl.shader_analysis.precise_f16_to_f32_observed &&
+	     !impl.execution_mode_meta.float_controls2))
 	{
-		auto *quant_op = impl.allocate(spv::OpQuantizeToF16, builder.makeFloatType(32));
+		auto *quant_op = impl.allocate(spv::OpQuantizeToF16, impl.get_type_id(instruction->getOperand(1)->getType()));
 		quant_op->add_id(input_id);
 		impl.add(quant_op);
 		input_id = quant_op->id;
