@@ -892,11 +892,14 @@ typedef struct dxil_spv_option_ssbo_addressing_behavior
 	dxil_spv_bool raw_access_chain_wraps_32bit_offset_before_robustness;
 } dxil_spv_option_ssbo_addressing_behavior;
 
-typedef struct dxil_spv_options_float_controls_2
+typedef struct dxil_spv_option_float_controls_2
 {
 	dxil_spv_option_base base;
 	dxil_spv_bool supported;
-} dxil_spv_options_float_controls_2;
+} dxil_spv_option_float_controls_2;
+
+/* API compatibility */
+typedef dxil_spv_option_float_controls_2 dxil_spv_options_float_controls_2;
 
 typedef struct dxil_spv_option_shader_abort
 {
