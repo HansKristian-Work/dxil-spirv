@@ -9851,6 +9851,14 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &c = static_cast<const OptionFloatControls2 &>(cap);
 		options.supports_float_controls2 = c.supported;
+		break;
+	}
+
+	case Option::ShaderAbort:
+	{
+		auto &c = static_cast<const OptionShaderAbort &>(cap);
+		options.instruction_instrumentation.shader_abort = c.enabled;
+		break;
 	}
 
 	default:

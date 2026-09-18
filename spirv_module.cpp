@@ -3422,7 +3422,8 @@ void SPIRVModule::Impl::add_instrumented_instruction(spv::Op op, spv::Block *bb,
 		}
 	}
 
-	if (!instruction_instrumentation.should_report_instrumentation_id)
+	if (!instruction_instrumentation.should_report_instrumentation_id &&
+		(op != spv::OpAssumeTrueKHR || !instruction_instrumentation.info.shader_abort))
 	{
 		instruction_instrumentation.should_report_instrumentation_id = create_variable_with_initializer(
 			spv::StorageClassPrivate, builder.makeBoolType(),
