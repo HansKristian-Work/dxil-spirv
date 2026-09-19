@@ -1,0 +1,23 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+RWTexture1D<float2> RWTex1;
+RWTexture2D<float2> RWTex2;
+RWTexture3D<float2> RWTex3;
+RWTexture3D<float4> RWTex4;
+
+RWStructuredBuffer<uint> UAV1;
+RWStructuredBuffer<uint2> UAV2;
+
+[numthreads(32, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+    float2 v1 = {45.5f, 46.5f};
+    UAV1[101] = NvInterlockedAddFp16x2(RWTex1, 5, v1);
+    UAV1[102] = NvInterlockedAddFp16x2(RWTex2, uint2(6, 7), v1);
+    UAV1[103] = NvInterlockedAddFp16x2(RWTex3, uint3(8, 9, 10), v1);
+
+    float4 v2 = {78.5f, 79.5f, 80.5f, 81.5f};
+    UAV2[105] = NvInterlockedAddFp16x4(RWTex4, uint3(11, 12, 13), v2);
+}
