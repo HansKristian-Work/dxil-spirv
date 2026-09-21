@@ -57,9 +57,9 @@ coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> CoopMatFP16toFP8(coo
         uint _75 = _74 + 2u;
         uint _76 = _74 + 1u;
         f16vec2 _81 = f16vec2(_66[_74], _66[_76]);
-        u8vec2 _101 = u8vec2(((float16BitsToUint16(abs(_81) * f16vec2(float16_t(0.00390625))) + u16vec2(63)) >> u16vec2(7)) | ((float16BitsToUint16(_81) >> u16vec2(8)) & u16vec2(128)));
-        coop_output[_74] = _101.x;
-        coop_output[_76] = _101.y;
+        u8vec2 _100 = u8vec2(((float16BitsToUint16(_81 * f16vec2(float16_t(0.00390625))) + u16vec2(63)) >> u16vec2(7)) | ((float16BitsToUint16(_81) >> u16vec2(8)) & u16vec2(128)));
+        coop_output[_74] = _100.x;
+        coop_output[_76] = _100.y;
         if (_75 < uint(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(0).length()))
         {
             _74 = _75;
@@ -75,8 +75,8 @@ coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> CoopMatFP16toFP8(coo
 void main()
 {
     coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _54 = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(uintBitsToFloat(gl_WorkGroupID.x)));
-    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _110 = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(CoopMatSaturateFP8(_54));
-    coopMatStore(CoopMatFP16toFP8(_110), _18._m0, 0u, 16u, gl_CooperativeMatrixLayoutColumnMajor);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _109 = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(CoopMatSaturateFP8(_54));
+    coopMatStore(CoopMatFP16toFP8(_109), _18._m0, 0u, 16u, gl_CooperativeMatrixLayoutColumnMajor);
 }
 
 
@@ -86,7 +86,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 114
+; Bound: 113
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -160,19 +160,19 @@ OpDecorate %21 BuiltIn WorkgroupId
 %85 = OpConstantComposite %62 %84 %84
 %87 = OpConstant %60 128
 %88 = OpConstantComposite %62 %87 %87
-%91 = OpConstant %7 0x1p-8
-%92 = OpConstantComposite %61 %91 %91
-%95 = OpConstant %60 63
-%96 = OpConstantComposite %62 %95 %95
-%98 = OpConstant %60 7
-%99 = OpConstantComposite %62 %98 %98
-%102 = OpTypePointer Function %14
+%90 = OpConstant %7 0x1p-8
+%91 = OpConstantComposite %61 %90 %90
+%94 = OpConstant %60 63
+%95 = OpConstantComposite %62 %94 %94
+%97 = OpConstant %60 7
+%98 = OpConstantComposite %62 %97 %97
+%101 = OpTypePointer Function %14
 %12 = OpFunction %10 None %11
 %13 = OpLabel
 %54 = OpVariable %32 Function
-%110 = OpVariable %64 Function
-OpBranch %112
-%112 = OpLabel
+%109 = OpVariable %64 Function
+OpBranch %111
+%111 = OpLabel
 %23 = OpAccessChain %22 %21 %24
 %25 = OpLoad %2 %23
 %27 = OpBitcast %1 %25
@@ -182,9 +182,9 @@ OpStore %54 %30
 %55 = OpFunctionCall %29 %35 %54
 %56 = OpCooperativeMatrixConvertNV %9 %55
 %58 = OpAccessChain %57 %18 %24 %24
-OpStore %110 %56
-%111 = OpFunctionCall %59 %67 %110
-OpCooperativeMatrixStoreKHR %58 %111 %8 %4 NonPrivatePointer
+OpStore %109 %56
+%110 = OpFunctionCall %59 %67 %109
+OpCooperativeMatrixStoreKHR %58 %110 %8 %4 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %35 = OpFunction %29 None %33
@@ -226,24 +226,23 @@ OpBranch %72
 %82 = OpBitcast %62 %81
 %83 = OpShiftRightLogical %62 %82 %85
 %86 = OpBitwiseAnd %62 %83 %88
-%89 = OpExtInst %61 %46 FAbs %81
-%90 = OpFMul %61 %89 %92
-%93 = OpBitcast %62 %90
-%94 = OpIAdd %62 %93 %96
-%97 = OpShiftRightLogical %62 %94 %99
-%100 = OpBitwiseOr %62 %97 %86
-%101 = OpUConvert %63 %100
-%103 = OpInBoundsAccessChain %102 %70 %74
-%104 = OpCompositeExtract %14 %101 0
-OpStore %103 %104
-%105 = OpInBoundsAccessChain %102 %70 %76
-%106 = OpCompositeExtract %14 %101 1
-OpStore %105 %106
-%107 = OpULessThan %31 %75 %71
+%89 = OpFMul %61 %81 %91
+%92 = OpBitcast %62 %89
+%93 = OpIAdd %62 %92 %95
+%96 = OpShiftRightLogical %62 %93 %98
+%99 = OpBitwiseOr %62 %96 %86
+%100 = OpUConvert %63 %99
+%102 = OpInBoundsAccessChain %101 %70 %74
+%103 = OpCompositeExtract %14 %100 0
+OpStore %102 %103
+%104 = OpInBoundsAccessChain %101 %70 %76
+%105 = OpCompositeExtract %14 %100 1
+OpStore %104 %105
+%106 = OpULessThan %31 %75 %71
 OpLoopMerge %73 %72 None
-OpBranchConditional %107 %72 %73
+OpBranchConditional %106 %72 %73
 %73 = OpLabel
-%108 = OpLoad %59 %70
-OpReturnValue %108
+%107 = OpLoad %59 %70
+OpReturnValue %107
 OpFunctionEnd
 #endif

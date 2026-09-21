@@ -2920,15 +2920,10 @@ spv::Id SPIRVModule::Impl::build_fp16_to_fp8(SPIRVModule &module, const spv::Id 
 		sign_bit->addIdOperand(make_u16vec_constant(builder, 0x80, coopmat));
 		///
 
-		spv::Id glsl450 = builder.import("GLSL.std.450");
-		auto *fabs = builder.addInstruction(f16vec_type, spv::OpExtInst);
-		fabs->addIdOperand(glsl450);
-		fabs->addImmediateOperand(GLSLstd450FAbs);
-		fabs->addIdOperand(fp16_composite_id);
-
 		// FP16 detains denorms, so we can use this trick.
+		// Don't need FAbs. After shifting and truncating, the sign bit disappears anyway.
 		auto *scale_to_denorm = builder.addInstruction(f16vec_type, spv::OpFMul);
-		scale_to_denorm->addIdOperand(fabs->getResultId());
+		scale_to_denorm->addIdOperand(fp16_composite_id);
 		scale_to_denorm->addIdOperand(make_f16vec_constant(builder, 0x1c00 /* 1 / 256 */, coopmat));
 
 		auto *bitcast_int = builder.addInstruction(u16vec_type, spv::OpBitcast);
