@@ -170,6 +170,7 @@ public:
 	static const GlobalConfiguration &get();
 	bool wmma_rdna3_workaround = false;
 	bool wmma_conv_hack = false;
+	bool simulate_min16float_min_spec = false;
 
 private:
 	GlobalConfiguration();
@@ -833,6 +834,7 @@ struct Converter::Impl
 			bool clamp_wave_size_to_thread_group32 = false;
 			bool non_semantic_signal_concurrent_workgroup = false;
 			bool force_nonuniform = false;
+			bool force_denorm_preserve_fp16_conversions = false;
 		} quirks;
 
 		struct

@@ -348,21 +348,29 @@ static spv::Id emit_integer_division_instruction(Converter::Impl &impl, const In
 {
 	auto &builder = impl.builder();
 
-	// UDiv and UMod have special behaviour regarding division by 0: At the HLSL
+	// Integer division has special behaviour regarding division by 0: At the HLSL
 	// and LLVM IR level, division by 0 is undefined behaviour and compilers may
-	// optimize assuming that the divisor is non-zero. Any UDiv or URem in the
-	// IR itself however behaves like DXBC when 0 is encountered, i.e. the result
+	// optimize assuming that the divisor is non-zero. Any division in the IR
+	// itself however behaves like DXBC when 0 is encountered, i.e. the result
 	// is -1.
 	//
-	// In SPIR-V, UDiv and UMod by zero also constitute undefined behaviour, and
-	// at least Nvidia drivers will optimize. Any solution that ensures the
+	// In SPIR-V, integer division by zero also constitutes undefined behaviour,
+	// and at least Nvidia drivers will optimize. Any solution that ensures the
 	// divisor cannot be zero works, but since we have no easy way to insert control
 	// flow here, simply set the divisor to -1.
 	//
-	// This does explicitly *not* apply to the signed variants.
-	//
 	// See: https://github.com/microsoft/DirectXShaderCompiler/issues/3150
 	auto divisor = instruction->getOperand(1);
+	bool is_signed = opcode == spv::OpSDiv || opcode == spv::OpSRem;
+
+	// Signed division is width sensitive. Sign-extend odd widths first.
+	const auto operand_id = [&](unsigned index) -> spv::Id
+	{
+		if (is_signed)
+			return build_naturally_extended_value(impl, instruction->getOperand(index), true);
+		else
+			return impl.get_id_for_value(instruction->getOperand(index));
+	};
 
 	// No need to add any extra code for instructions that have a constant
 	// divisor that isn't zero
@@ -372,13 +380,13 @@ static spv::Id emit_integer_division_instruction(Converter::Impl &impl, const In
 	if (is_constant_divisor && llvm::cast<llvm::ConstantInt>(divisor)->getUniqueInteger().getZExtValue())
 	{
 		auto op = impl.allocate(opcode, instruction);
-		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
-		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		op->add_id(operand_id(0));
+		op->add_id(operand_id(1));
 		impl.add(op);
 		return op->id;
 	}
 
-	auto scalar_type = instruction->getType()->getScalarType();
+	auto *scalar_type = instruction->getType()->getScalarType();
 
 	if (is_constant_divisor)
 	{
@@ -396,8 +404,30 @@ static spv::Id emit_integer_division_instruction(Converter::Impl &impl, const In
 		}
 	}
 
-	spv::Id call_id = impl.spirv_module.get_helper_call_id(opcode == spv::OpUDiv ? HelperCall::UDiv : HelperCall::UMod,
-	                                                       impl.get_type_id(instruction->getType()));
+	ExpectAssumeCodes expect_assume_code;
+	HelperCall helper;
+
+	switch (opcode)
+	{
+	case spv::OpUDiv:
+		helper = HelperCall::UDiv;
+		expect_assume_code = ExpectAssumeUDivByZero;
+		break;
+	case spv::OpUMod:
+		helper = HelperCall::UMod;
+		expect_assume_code = ExpectAssumeUModByZero;
+		break;
+	case spv::OpSDiv:
+		helper = HelperCall::SDiv;
+		expect_assume_code = ExpectAssumeSDivByZero;
+		break;
+	default:
+		helper = HelperCall::SRem;
+		expect_assume_code = ExpectAssumeSRemByZero;
+		break;
+	}
+
+	spv::Id call_id = impl.spirv_module.get_helper_call_id(helper, impl.get_type_id(instruction->getType()));
 
 	Operation *call;
 	if (llvm::isa<llvm::ConstantExpr>(instruction))
@@ -405,9 +435,39 @@ static spv::Id emit_integer_division_instruction(Converter::Impl &impl, const In
 	else
 		call = impl.allocate(spv::OpFunctionCall, instruction);
 
+	if (impl.options.instruction_instrumentation.enabled &&
+	    impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+	{
+		unsigned vecsize = 1;
+		if (auto *vec = llvm::dyn_cast<llvm::VectorType>(instruction->getType()))
+			vecsize = vec->getVectorSize();
+
+		spv::Id bool_type = builder.makeBoolType();
+		if (vecsize > 1)
+			bool_type = builder.makeVectorType(bool_type, vecsize);
+
+		auto *eq = impl.allocate(spv::OpINotEqual, bool_type);
+		eq->add_id(operand_id(1));
+		eq->add_id(builder.makeNullConstant(impl.get_type_id(instruction->getOperand(1)->getType())));
+		impl.add(eq);
+
+		if (vecsize > 1)
+		{
+			auto *all = impl.allocate(spv::OpAll, builder.makeBoolType());
+			all->add_id(eq->id);
+			impl.add(all);
+			eq = all;
+		}
+
+		auto *assert_non_zero = impl.allocate(spv::OpAssumeTrueKHR);
+		assert_non_zero->add_id(eq->id);
+		assert_non_zero->add_id(builder.makeUintConstant(expect_assume_code));
+		impl.add(assert_non_zero);
+	}
+
 	call->add_id(call_id);
-	call->add_id(impl.get_id_for_value(instruction->getOperand(0)));
-	call->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	call->add_id(operand_id(0));
+	call->add_id(operand_id(1));
 	impl.add(call);
 
 	return call->id;
@@ -484,10 +544,7 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::SDiv:
-		opcode = spv::OpSDiv;
-		signed_input = true;
-		is_width_sensitive = true;
-		break;
+		return emit_integer_division_instruction(impl, instruction, spv::OpSDiv);
 
 	case llvm::BinaryOperator::BinaryOps::UDiv:
 		return emit_integer_division_instruction(impl, instruction, spv::OpUDiv);
@@ -508,10 +565,7 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::SRem:
-		opcode = spv::OpSRem;
-		signed_input = true;
-		is_width_sensitive = true;
-		break;
+		return emit_integer_division_instruction(impl, instruction, spv::OpSRem);
 
 	case llvm::BinaryOperator::BinaryOps::FRem:
 		opcode = spv::OpFRem;

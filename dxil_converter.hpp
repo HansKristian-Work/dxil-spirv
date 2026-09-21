@@ -276,6 +276,7 @@ enum class Option : uint32_t
 	SSBOAddressingBehavior = 52,
 	OpacityMicromap = 53,
 	FloatControls2 = 54,
+	ShaderAbort = 55,
 	Count
 };
 
@@ -788,7 +789,8 @@ enum class ShaderQuirk : uint32_t
 	PreciseFMA,
 	ClampWaveSizeToThreadGroup32,
     NonSemanticSignalConcurrentWorkgroup,
-	ForceNonUniform
+	ForceNonUniform,
+	ForceDenormPreserveFP16Conversions
 };
 
 struct OptionShaderQuirk : OptionBase
@@ -925,6 +927,16 @@ struct OptionFloatControls2 : OptionBase
 	}
 
 	bool supported = false;
+};
+
+struct OptionShaderAbort : OptionBase
+{
+	OptionShaderAbort()
+		: OptionBase(Option::ShaderAbort)
+	{
+	}
+
+	bool enabled = false;
 };
 
 struct DescriptorTableEntry

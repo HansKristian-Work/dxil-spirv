@@ -1,0 +1,12 @@
+RWStructuredBuffer<float2> FBuffer;
+RWStructuredBuffer<uint2> UBuffer;
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	UBuffer[thr] = f32tof16(FBuffer[thr]);
+	UBuffer[thr + 1024].x = f32tof16(FBuffer[thr + 1].x);
+
+	FBuffer[thr] = f16tof32(UBuffer[thr]);
+	FBuffer[thr + 1024].x = f16tof32(UBuffer[thr + 1].x);
+}

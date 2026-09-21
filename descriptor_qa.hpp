@@ -72,12 +72,17 @@ enum ExpectAssumeCodes
 	ExpectAssumeAllocaGEPOOB = 1234000010,
 	ExpectAssumeQuestionableBABOverflow = 1234000011,
 	ExpectAssumeQuestionableStructuredOverflow = 1234000012,
+	ExpectAssumeUDivByZero = 1234000013,
+	ExpectAssumeUModByZero = 1234000014,
+	ExpectAssumeSDivByZero = 1234000015,
+	ExpectAssumeSRemByZero = 1234000016,
 };
 
 struct InstructionInstrumentationInfo
 {
 	uint32_t version = 0;
 	bool enabled = false;
+	bool shader_abort = false;
 	uint32_t control_desc_set = 0;
 	uint32_t control_binding = 0;
 	uint32_t payload_desc_set = 0;

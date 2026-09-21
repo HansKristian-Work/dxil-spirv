@@ -1022,8 +1022,24 @@ bool emit_split_double_instruction(Converter::Impl &impl, const llvm::CallInst *
 bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
+
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
+
+	if (impl.options.quirks.force_denorm_preserve_fp16_conversions &&
+		!impl.options.supports_float16_denorm_preserve)
+	{
+		// Emulation path when we must preserve fp16 denorm.
+		spv::Id helper_id = impl.spirv_module.get_helper_call_id(
+			HelperCall::DenormPreserveLegacyF16toF32,
+			impl.get_type_id(instruction->getOperand(1)->getType()));
+
+		auto *call = impl.allocate(spv::OpFunctionCall, instruction);
+		call->add_id(helper_id);
+		call->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(call);
+		return true;
+	}
 
 	Operation *unpack_op = impl.allocate(spv::OpExtInst, builder.makeVectorType(builder.makeFloatType(32), 2));
 	unpack_op->add_id(impl.glsl_std450_ext);
@@ -1039,6 +1055,15 @@ bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallI
 	op->add_id(unpack_op->id);
 	op->add_literal(0);
 	impl.add(op);
+
+	if (!impl.options.quirks.force_denorm_preserve_fp16_conversions &&
+	    GlobalConfiguration::get().simulate_min16float_min_spec)
+	{
+		auto *quant = impl.allocate(spv::OpQuantizeToF16, op->type_id);
+		quant->add_id(op->id);
+		impl.add(quant);
+		impl.rewrite_value(instruction, quant->id);
+	}
 
 	// By construction, these are relaxed precision, but spams lots of unrelated shader changes,
 	// and doesn't make too much sense to add ...
@@ -1068,9 +1093,27 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 	// Only do this hack when heuristics deduce it to be necessary.
 	spv::Id input_id = impl.get_id_for_value(instruction->getOperand(1));
 
-	if (impl.shader_analysis.precise_f16_to_f32_observed && !impl.execution_mode_meta.float_controls2)
+	if (impl.options.quirks.force_denorm_preserve_fp16_conversions &&
+		!impl.options.supports_float16_denorm_preserve)
 	{
-		auto *quant_op = impl.allocate(spv::OpQuantizeToF16, builder.makeFloatType(32));
+		// Emulation path when we must preserve fp16 denorm.
+		spv::Id helper_id = impl.spirv_module.get_helper_call_id(
+			HelperCall::DenormPreserveLegacyF32toF16,
+			impl.get_type_id(instruction->getOperand(1)->getType()));
+
+		auto *call = impl.allocate(spv::OpFunctionCall, instruction);
+		call->add_id(helper_id);
+		call->add_id(input_id);
+		impl.add(call);
+		return true;
+	}
+
+	if ((!impl.options.quirks.force_denorm_preserve_fp16_conversions &&
+	     GlobalConfiguration::get().simulate_min16float_min_spec) ||
+	    (impl.shader_analysis.precise_f16_to_f32_observed &&
+	     !impl.execution_mode_meta.float_controls2))
+	{
+		auto *quant_op = impl.allocate(spv::OpQuantizeToF16, impl.get_type_id(instruction->getOperand(1)->getType()));
 		quant_op->add_id(input_id);
 		impl.add(quant_op);
 		input_id = quant_op->id;

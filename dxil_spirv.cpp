@@ -171,6 +171,7 @@ static void print_help()
 	     "\t[--root-descriptor <cbv/uav/srv> <space> <register>]\n"
 	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n"
 	     "\t[--instruction-instrumentation <type> <set> <binding base> <shader hash>]\n"
+	     "\t[--shader-abort]\n"
 	     "\t[--min-precision-native-16bit]\n"
 	     "\t[--raw-llvm]\n"
 	     "\t[--use-reflection-names]\n"
@@ -282,6 +283,7 @@ struct Arguments
 	unsigned nvapi_register_space = 0;
 
 	bool instruction_instrumentation = false;
+	bool shader_abort = false;
 	uint32_t instruction_instrumentation_set = 0;
 	uint32_t instruction_instrumentation_binding = 0;
 	dxil_spv_instruction_instrumentation_type instruction_instrumentation_type = {};
@@ -837,6 +839,7 @@ int main(int argc, char **argv)
 		args.instruction_instrumentation_binding = parser.next_uint();
 		args.shader_hash = uint64_t(strtoull(parser.next_string(), nullptr, 16));
 	});
+	cbs.add("--shader-abort", [&](CLIParser &) { args.shader_abort = true; });
 	cbs.add("--min-precision-native-16bit", [&](CLIParser &) { args.min_precision_native_16bit = true; });
 	cbs.add("--raw-llvm", [&](CLIParser &) { args.raw_llvm = true; });
 	cbs.add("--use-reflection-names", [&](CLIParser &) { args.use_reflection_names = true; });
@@ -1140,6 +1143,11 @@ int main(int argc, char **argv)
 			args.instruction_instrumentation_type,
 		};
 		dxil_spv_converter_add_option(converter, &inst.base);
+
+		const dxil_spv_option_shader_abort shader_abort = {
+			{ DXIL_SPV_OPTION_SHADER_ABORT }, args.shader_abort ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
+		};
+		dxil_spv_converter_add_option(converter, &shader_abort.base);
 	}
 
 	{
@@ -1187,6 +1195,7 @@ int main(int argc, char **argv)
 		dxil_spv_converter_add_option(converter, &indexing.base);
 	}
 
+	if (std::find(args.quirks.begin(), args.quirks.end(), DXIL_SPV_SHADER_QUIRK_FORCE_DENORM_PRESERVE_FP16_CONVERSIONS) == args.quirks.end())
 	{
 		const dxil_spv_option_denorm_preserve_support denorm = { { DXIL_SPV_OPTION_DENORM_PRESERVE_SUPPORT },
 		                                                         DXIL_SPV_TRUE, DXIL_SPV_TRUE };

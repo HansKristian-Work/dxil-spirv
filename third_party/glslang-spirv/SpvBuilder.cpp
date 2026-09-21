@@ -40,6 +40,7 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 
 #include <algorithm>
 
@@ -135,6 +136,25 @@ spv::Id Builder::addString(const dxil_spv::String &str)
     spv::Id ret = spv_str->getResultId();
     strings.push_back(std::move(spv_str));
     return ret;
+}
+
+spv::Id Builder::addConstantData(spv::Id type_id, const void *data, size_t size)
+{
+    auto spv_data = std::make_unique<Instruction>(getUniqueId(), type_id, OpConstantDataKHR);
+
+    for (size_t i = 0; i < size; i += 4) {
+        // This implies little endian. We're supposed to back little endian inside the u32 words
+        // (which are then encoded as big or little endian).
+        // On little endian this works out to a plain memcpy more or less,
+        // and we don't really care about big-endian systems in 2026.
+        uint32_t word = 0;
+        std::memcpy(&word, static_cast<const uint8_t *>(data) + i, std::min<uint32_t>(4, size - i));
+        spv_data->addImmediateOperand(word);
+    }
+
+    spv::Id id = spv_data->getResultId();
+    constantsTypesGlobals.push_back(std::move(spv_data));
+    return id;
 }
 
 // For creating new groupedTypes (will return old type if the requested one was already made).

@@ -881,6 +881,10 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 				// Smear read masks.
 				access_mask |= access_mask >> 1u;
 				access_mask |= access_mask >> 2u;
+
+				if (access_mask == 0)
+					return;
+
 				vecsize = access_mask_to_vecsize(access_mask);
 			}
 

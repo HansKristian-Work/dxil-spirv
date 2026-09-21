@@ -850,6 +850,49 @@ void emit_instrumentation_hash(SPIRVModule &module, const InstructionInstrumenta
 	builder.setBuildPoint(merge_payload_path);
 }
 
+void emit_shader_abort(SPIRVModule &module, const InstructionInstrumentationState &instrumentation,
+					   spv::Id value_id, spv::Id instruction_id)
+{
+	auto &builder = module.get_builder();
+
+	// Follow glslang code patterns here.
+	spv::Id char_type = builder.makeIntType(8);
+	builder.addCapability(spv::CapabilityInt8);
+	spv::Id char_array_type = builder.makeArrayType(char_type, builder.makeUintConstant(8), 0);
+	spv::Id char_decorated_array_type = builder.makeArrayType(char_type, builder.makeUintConstant(8), 1);
+	builder.addDecoration(char_decorated_array_type, spv::DecorationArrayStride, 1);
+
+	// This could be stripped, but again, follow glslang output.
+	builder.addDecoration(char_array_type, spv::DecorationUTFEncodedKHR);
+	builder.addDecoration(char_decorated_array_type, spv::DecorationUTFEncodedKHR);
+
+	spv::Id u32_type = builder.makeUintType(32);
+
+	spv::Id logical_type_id = builder.makeStructType({ char_array_type, u32_type, u32_type, u32_type, u32_type }, "AbortLogical");
+	spv::Id physical_type_id = builder.makeStructType({ char_decorated_array_type, u32_type, u32_type, u32_type, u32_type }, "AbortPhysical");
+	builder.addMemberDecoration(physical_type_id, 0, spv::DecorationOffset, 0);
+	builder.addMemberDecoration(physical_type_id, 1, spv::DecorationOffset, 8);
+	builder.addMemberDecoration(physical_type_id, 2, spv::DecorationOffset, 12);
+	builder.addMemberDecoration(physical_type_id, 3, spv::DecorationOffset, 16);
+	builder.addMemberDecoration(physical_type_id, 4, spv::DecorationOffset, 20);
+
+	auto *composite = builder.addInstruction(logical_type_id, spv::OpCompositeConstruct);
+	composite->addIdOperand(builder.addConstantData(char_array_type, "ABRTMSG", 8));
+	composite->addIdOperand(builder.makeUintConstant(uint32_t(instrumentation.info.shader_hash)));
+	composite->addIdOperand(builder.makeUintConstant(uint32_t(instrumentation.info.shader_hash >> 32)));
+	composite->addIdOperand(value_id ? value_id : builder.makeUintConstant(0));
+	composite->addIdOperand(instruction_id);
+
+	builder.addCapability(spv::CapabilityConstantDataKHR);
+	builder.addCapability(spv::CapabilityAbortKHR);
+	builder.addExtension("SPV_KHR_abort");
+	builder.addExtension("SPV_KHR_constant_data");
+
+	auto *abort_op = builder.addInstruction(spv::OpAbortKHR);
+	abort_op->addIdOperand(physical_type_id);
+	abort_op->addIdOperand(composite->getResultId());
+}
+
 spv::Id build_assume_true_call_function(SPIRVModule &module, const InstructionInstrumentationState &instrumentation,
                                         bool has_code_id)
 {
@@ -878,30 +921,45 @@ spv::Id build_assume_true_call_function(SPIRVModule &module, const InstructionIn
 	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
 	auto *fail_block = new spv::Block(builder.getUniqueId(), *func);
 
-	auto should_report = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpLogicalNot);
+	builder.setBuildPoint(entry);
+
+	auto *should_report = builder.addInstruction(bool_type, spv::OpLogicalNot);
 	should_report->addIdOperand(func->getParamId(0));
 
-	auto loaded = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpLoad);
-	loaded->addIdOperand(instrumentation.should_report_instrumentation_id);
+	spv::Id cond_id;
 
-	auto will_report = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpLogicalAnd);
-	will_report->addIdOperand(should_report->getResultId());
-	will_report->addIdOperand(loaded->getResultId());
+	if (instrumentation.info.shader_abort)
+	{
+		cond_id = should_report->getResultId();
+	}
+	else
+	{
+		auto *loaded = builder.addInstruction(bool_type, spv::OpLoad);
+		loaded->addIdOperand(instrumentation.should_report_instrumentation_id);
 
-	spv::Id cond_id = will_report->getResultId();
+		auto *will_report = builder.addInstruction(bool_type, spv::OpLogicalAnd);
+		will_report->addIdOperand(should_report->getResultId());
+		will_report->addIdOperand(loaded->getResultId());
 
-	entry->addInstruction(std::move(should_report));
-	entry->addInstruction(std::move(loaded));
-	entry->addInstruction(std::move(will_report));
+		cond_id = will_report->getResultId();
+	}
 
 	builder.createSelectionMerge(merge_block, 0);
 	builder.createConditionalBranch(cond_id, fail_block, merge_block);
 
 	builder.setBuildPoint(fail_block);
 	{
-		emit_instrumentation_hash(module, instrumentation, func,
-		                          has_code_id ? func->getParamId(2) : 0, func->getParamId(1));
-		builder.createBranch(merge_block);
+		if (instrumentation.info.shader_abort)
+		{
+			emit_shader_abort(module, instrumentation, has_code_id ? func->getParamId(2) : 0, func->getParamId(1));
+			// Abort is a terminator.
+		}
+		else
+		{
+			emit_instrumentation_hash(module, instrumentation, func,
+									  has_code_id ? func->getParamId(2) : 0, func->getParamId(1));
+			builder.createBranch(merge_block);
+		}
 	}
 
 	builder.setBuildPoint(merge_block);

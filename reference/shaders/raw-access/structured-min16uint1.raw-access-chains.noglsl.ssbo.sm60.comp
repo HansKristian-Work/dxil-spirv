@@ -34,7 +34,6 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %19 = OpConstant %5 4
 %21 = OpTypeInt 16 0
 %24 = OpConstant %21 4
-%25 = OpTypePointer StorageBuffer %21
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %27
@@ -45,8 +44,9 @@ OpBranch %27
 %20 = OpLoad %5 %18 Aligned 4
 %22 = OpUConvert %21 %20
 %23 = OpIAdd %21 %22 %24
-%26 = OpRawAccessChainNV %25 %9 %19 %16 %15 RobustnessPerElementNV
-OpStore %26 %23 Aligned 2
+%25 = OpUConvert %5 %23
+%26 = OpRawAccessChainNV %17 %9 %19 %16 %15 RobustnessPerElementNV
+OpStore %26 %25 Aligned 4
 OpReturn
 OpFunctionEnd
 

@@ -116,6 +116,7 @@ public:
     void addLine(Id fileName, int line, int column);
     void addExternal(std::unique_ptr<spv::Instruction> inst);
     spv::Id addString(const dxil_spv::String &str);
+    spv::Id addConstantData(spv::Id type_id, const void *data, size_t size);
 
     // For creating new types (will return old type if the requested one was already made).
     Id makeVoidType();

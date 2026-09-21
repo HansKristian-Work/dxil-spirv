@@ -1726,13 +1726,14 @@ bool CFGStructurizer::can_duplicate_phis(const CFGNode *node)
 void CFGStructurizer::duplicate_node(CFGNode *node)
 {
 	Vector<UnorderedMap<spv::Id, spv::Id>> rewritten_ids;
-	assert(node->succ.size() == 1);
+	assert(node->ir.terminator.type == Terminator::Type::Branch || node->ir.terminator.type == Terminator::Type::Condition);
 	assert(node->pred.size() >= 2);
-	assert(!node->dominates(node->succ.front()));
+	assert(std::all_of(node->succ.begin(), node->succ.end(), [node](const CFGNode *succ) { return !node->dominates(succ); }));
+
+	auto node_succs = node->succ;
 
 	Vector<CFGNode *> break_blocks(node->pred.size());
 	rewritten_ids.resize(node->pred.size());
-	auto *succ = node->succ.front();
 
 	auto tmp_pred = node->pred;
 	for (size_t i = 0, n = tmp_pred.size(); i < n; i++)
@@ -1744,12 +1745,13 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 		// Since we only have one pred now, we can resolve PHIs directly.
 		auto *block = pool.create_node();
 		block->name = node->name + ".dup." + pred->name;
-		block->ir.terminator.type = Terminator::Type::Branch;
-		block->ir.terminator.direct_block = succ;
-		block->immediate_post_dominator = succ;
+
+		block->immediate_post_dominator = node->immediate_post_dominator;
 		block->immediate_dominator = pred;
 		pred->retarget_branch(node, block);
-		block->add_branch(succ);
+
+		for (auto *succ : node_succs)
+			block->add_branch(succ);
 
 		for (auto &phi : node->ir.phi)
 		{
@@ -1786,6 +1788,16 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 
 		module.get_builder().removeDecorations(remove_decoration_ids);
 
+		block->ir.terminator.type = node->ir.terminator.type;
+		block->ir.terminator.direct_block = node->ir.terminator.direct_block;
+		block->ir.terminator.true_block = node->ir.terminator.true_block;
+		block->ir.terminator.false_block = node->ir.terminator.false_block;
+		if (node->ir.terminator.conditional_id)
+		{
+			block->ir.terminator.conditional_id =
+				get_remapped_id_for_duplicated_block(node->ir.terminator.conditional_id, remap);
+		}
+
 		break_blocks[i] = block;
 	}
 
@@ -1802,20 +1814,22 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 	// First, collect all the succs that we are supposed to examine.
 	// The list should also include succ_back_edge because it is not in the succ chain after recompute_cfg.
 	Vector<CFGNode *> succs;
-	while (succ)
+	for (auto *succ : node_succs)
 	{
-		if (succ->succ_back_edge)
-			succs.push_back(succ->succ_back_edge);
-		succs.push_back(succ);
-		if (succ->succ.size() == 1)
-			succ = succ->succ.front();
-		else
-			succ = nullptr;
+		while (succ)
+		{
+			if (succ->succ_back_edge)
+				succs.push_back(succ->succ_back_edge);
+			succs.push_back(succ);
+			if (succ->succ.size() == 1)
+				succ = succ->succ.front();
+			else
+				succ = nullptr;
+		}
 	}
 
 	for (auto *succ : succs)
 	{
-		bool done = false;
 		for (auto &phi : succ->ir.phi)
 		{
 			// Find incoming ID from the block we're splitting up.
@@ -1833,15 +1847,39 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 					auto &remap = rewritten_ids[i];
 					phi.incoming.push_back({ break_blocks[i], get_remapped_id_for_duplicated_block(incoming_from_node, remap) });
 				}
-
-				// We've found the block we wanted to rewrite, terminate loop now.
-				done = true;
 			}
 		}
-
-		if (done)
-			break;
 	}
+}
+
+bool CFGStructurizer::block_is_ambiguous_switch_merge_block(CFGNode *node) const
+{
+	for (auto *succ : node->succ)
+		if (node->dominates(succ))
+			return false;
+
+	for (auto *pdf : node->post_dominance_frontier)
+	{
+		// Oddball case of breaking both out of, then back into a switch statement again.
+		// Complete nonsense. We should split this block so that we avoid a Duff's device
+		// kind of goto situation entering a switch at a case label.
+		if (pdf->ir.terminator.type != Terminator::Type::Switch)
+			continue;
+		if (!has_element(pdf->dominance_frontier, node))
+			continue;
+
+		auto *pdom = CFGNode::find_common_post_dominator(node, pdf);
+
+		// We found a natural merge candidate for the switch block, yet we don't dominate
+		// all the blocks entering that natural merge. How curious ...
+		for (auto &c : pdf->ir.terminator.cases)
+			if (!query_reachability(*c.node, *node) && !query_reachability(*node, *c.node))
+				for (auto *df : c.node->dominance_frontier)
+					if (!pdf->dominates(df) && df != pdom && has_element(node->dominance_frontier, df))
+						return true;
+	}
+
+	return false;
 }
 
 void CFGStructurizer::duplicate_impossible_merge_constructs()
@@ -1866,6 +1904,9 @@ void CFGStructurizer::duplicate_impossible_merge_constructs()
 		// WARNING: This check is EXTREMELY sensitive and microscopic changes to the implementation
 		// will dramatically affect codegen.
 		bool breaking = merge_candidate_is_on_breaking_path(node);
+
+		if (!breaking && node->num_forward_preds() > 1)
+			breaking = block_is_ambiguous_switch_merge_block(node);
 
 		if (breaking && !node->ir.operations.empty() && !block_is_control_dependent(node))
 			duplicate_queue.push_back(node);
@@ -4904,7 +4945,25 @@ CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode
 	// Look at all potential fallthrough candidates and reassign global order.
 	for (size_t i = 0, n = node->ir.terminator.cases.size(); i < n; i++)
 	{
+		// We may have fallthrough where A falls through to both B and C, and B falls through to C.
+		// Need to record the latest fallthrough A -> C, then B -> C to detect certain impossible patterns.
+		size_t max_candidate_index = n - 1;
+
 		for (size_t j = i + 1; j < n; j++)
+		{
+			auto &parent = node->ir.terminator.cases[i];
+			auto &child = node->ir.terminator.cases[j];
+
+			// If the fallthrough target post-dominates the incoming block,
+			// this is the correct ordering.
+			if (child.node != parent.node && child.node->post_dominates(parent.node))
+			{
+				max_candidate_index = j;
+				break;
+			}
+		}
+
+		for (size_t j = max_candidate_index; j > i; j--)
 		{
 			auto &parent = node->ir.terminator.cases[i];
 			auto &child = node->ir.terminator.cases[j];
@@ -5331,6 +5390,66 @@ CFGStructurizer::SwitchProgressMode CFGStructurizer::process_switch_blocks(unsig
 
 					if (constructs.size() == 1 && simple_case)
 						allow_rewrite = false;
+
+					if (simple_case && allow_rewrite)
+					{
+						// Find another cursed case. We might have layered inner merge.
+						// Keep capturing domination frontiers until we're done.
+						// If we can create a list of construct that collectively post-dominate the switch,
+						// we can collect control flow there.
+						bool has_secondary_inner_merge = false;
+						for (auto *df : inner_merge->dominance_frontier)
+						{
+							if (node->dominates(df) && query_reachability(*df, *merge) && df != merge)
+							{
+								has_secondary_inner_merge = true;
+								break;
+							}
+						}
+
+						if (has_secondary_inner_merge)
+						{
+							Vector<CFGNode *> fully_captured_frontier = { natural_merge, inner_merge };
+							Vector<CFGNode *> new_frontiers;
+							Vector<CFGNode *> block_new_frontier;
+
+							do
+							{
+								fully_captured_frontier.insert(fully_captured_frontier.end(),
+								                               new_frontiers.begin(), new_frontiers.end());
+								new_frontiers.clear();
+
+								for (auto *frontier : fully_captured_frontier)
+								{
+									for (auto *df : frontier->dominance_frontier)
+									{
+										// Check if the dominance frontier has a path to header
+										// that doesn't go through another frontier. That one would not
+										// be considered reachable in a rewrite.
+										if (node->dominates(df) && !has_element(fully_captured_frontier, df) &&
+										    !has_element(new_frontiers, df) && !has_element(block_new_frontier, df) &&
+										    df->can_backtrace_to_with_blockers(node, fully_captured_frontier) &&
+										    df != merge)
+										{
+											new_frontiers.push_back(df);
+										}
+
+										// Only consider a DF once.
+										if (!has_element(block_new_frontier, df))
+											block_new_frontier.push_back(df);
+									}
+								}
+							} while (!new_frontiers.empty());
+
+							// Make sure that the frontiers we found fully capture all reachable paths to merge.
+							if (fully_captured_frontier.size() > 2 &&
+								!merge->can_backtrace_to_with_blockers(node, fully_captured_frontier))
+							{
+								collect_and_dispatch_control_flow(node, merge, fully_captured_frontier, false, true);
+								return SwitchProgressMode::IterativeModify;
+							}
+						}
+					}
 
 					// If we don't dominate the merge block,
 					// only accept the complicated case as a reason for rewriting control flow.

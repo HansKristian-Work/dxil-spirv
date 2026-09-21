@@ -42,4 +42,6 @@ spv::Id build_nan_inf_instrument_call_function(
     SPIRVModule &module, const InstructionInstrumentationState &instrumentation, spv::Id type_id);
 void emit_instrumentation_hash(SPIRVModule &module, const InstructionInstrumentationState &instrumentation,
                                spv::Function *func, spv::Id value_id, spv::Id instruction_id);
+void emit_shader_abort(SPIRVModule &module, const InstructionInstrumentationState &instrumentation,
+                       spv::Id value_id, spv::Id instruction_id);
 } // namespace dxil_spv

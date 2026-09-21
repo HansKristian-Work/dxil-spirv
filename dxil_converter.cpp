@@ -7710,6 +7710,14 @@ void Converter::Impl::emit_execution_modes_post_code_generation()
 			b.addCapability(spv::CapabilityDenormPreserve);
 			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormPreserve, 16);
 		}
+		else if (!options.supports_float16_denorm_preserve && options.quirks.force_denorm_preserve_fp16_conversions)
+		{
+			// For the denorm workaround. The HW will flush denorms, but to be spec compliant,
+			// we need to ensure the denorms are flushed for the workaround path to be as fast as possible and valid.
+			b.addExtension("SPV_KHR_float_controls");
+			b.addCapability(spv::CapabilityDenormFlushToZero);
+			b.addExecutionMode(spirv_module.get_entry_function(), spv::ExecutionModeDenormFlushToZero, 16);
+		}
 
 		if (b.hasCapability(spv::CapabilityFloat64) && options.supports_float64_denorm_preserve)
 		{
@@ -9037,6 +9045,14 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (module_is_dxilconv(module))
 		options.min_precision_prefer_native_16bit = false;
 
+	if (GlobalConfiguration::get().simulate_min16float_min_spec)
+	{
+		// QuantizeToFP16 any RelaxedPrecision values.
+		options.min_precision_prefer_native_16bit = false;
+		options.arithmetic_relaxed_precision = true;
+		spirv_module.enable_min16float_min_spec_simulation(true);
+	}
+
 	if (module_is_dxbc_spirv(module))
 	{
 		backend.skip_non_uniform_promotion = true;
@@ -9755,6 +9771,10 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			options.quirks.non_semantic_signal_concurrent_workgroup = true;
 			break;
 
+		case ShaderQuirk::ForceDenormPreserveFP16Conversions:
+			options.quirks.force_denorm_preserve_fp16_conversions = true;
+			break;
+
 		default:
 			break;
 		}
@@ -9844,6 +9864,14 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &c = static_cast<const OptionFloatControls2 &>(cap);
 		options.supports_float_controls2 = c.supported;
+		break;
+	}
+
+	case Option::ShaderAbort:
+	{
+		auto &c = static_cast<const OptionShaderAbort &>(cap);
+		options.instruction_instrumentation.shader_abort = c.enabled;
+		break;
 	}
 
 	default:
@@ -9944,6 +9972,8 @@ GlobalConfiguration::GlobalConfiguration()
 			wmma_rdna3_workaround = true;
 		else if (strcmp(env, "wmma_conv_hack") == 0)
 			wmma_conv_hack = true;
+		else if (strcmp(env, "debug_simulate_min16float_min_spec") == 0)
+			simulate_min16float_min_spec = true;
 	}
 }
 } // namespace dxil_spv
