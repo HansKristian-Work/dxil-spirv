@@ -57,10 +57,9 @@ coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> CoopMatFP16toFP8(coo
         uint _75 = _74 + 2u;
         uint _76 = _74 + 1u;
         f16vec2 _81 = f16vec2(_66[_74], _66[_76]);
-        u16vec2 _93 = float16BitsToUint16(abs(_81) * f16vec2(float16_t(0.00390625)));
-        u8vec2 _99 = u8vec2((_93 >> u16vec2(7)) | ((float16BitsToUint16(_81) >> u16vec2(7)) & u16vec2(128)));
-        coop_output[_74] = _99.x;
-        coop_output[_76] = _99.y;
+        u8vec2 _101 = u8vec2(((float16BitsToUint16(abs(_81) * f16vec2(float16_t(0.00390625))) + u16vec2(63)) >> u16vec2(7)) | ((float16BitsToUint16(_81) >> u16vec2(8)) & u16vec2(128)));
+        coop_output[_74] = _101.x;
+        coop_output[_76] = _101.y;
         if (_75 < uint(coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(0).length()))
         {
             _74 = _75;
@@ -76,8 +75,8 @@ coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> CoopMatFP16toFP8(coo
 void main()
 {
     coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _54 = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(uintBitsToFloat(gl_WorkGroupID.x)));
-    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _108 = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(CoopMatSaturateFP8(_54));
-    coopMatStore(CoopMatFP16toFP8(_108), _18._m0, 0u, 16u, gl_CooperativeMatrixLayoutColumnMajor);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _110 = coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(CoopMatSaturateFP8(_54));
+    coopMatStore(CoopMatFP16toFP8(_110), _18._m0, 0u, 16u, gl_CooperativeMatrixLayoutColumnMajor);
 }
 
 
@@ -87,7 +86,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 112
+; Bound: 114
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -157,7 +156,7 @@ OpDecorate %21 BuiltIn WorkgroupId
 %64 = OpTypePointer Function %9
 %65 = OpTypeFunction %59 %64
 %69 = OpTypePointer Function %59
-%84 = OpConstant %60 7
+%84 = OpConstant %60 8
 %85 = OpConstantComposite %62 %84 %84
 %87 = OpConstant %60 128
 %88 = OpConstantComposite %62 %87 %87
@@ -165,13 +164,15 @@ OpDecorate %21 BuiltIn WorkgroupId
 %92 = OpConstantComposite %61 %91 %91
 %95 = OpConstant %60 63
 %96 = OpConstantComposite %62 %95 %95
-%100 = OpTypePointer Function %14
+%98 = OpConstant %60 7
+%99 = OpConstantComposite %62 %98 %98
+%102 = OpTypePointer Function %14
 %12 = OpFunction %10 None %11
 %13 = OpLabel
 %54 = OpVariable %32 Function
-%108 = OpVariable %64 Function
-OpBranch %110
-%110 = OpLabel
+%110 = OpVariable %64 Function
+OpBranch %112
+%112 = OpLabel
 %23 = OpAccessChain %22 %21 %24
 %25 = OpLoad %2 %23
 %27 = OpBitcast %1 %25
@@ -181,9 +182,9 @@ OpStore %54 %30
 %55 = OpFunctionCall %29 %35 %54
 %56 = OpCooperativeMatrixConvertNV %9 %55
 %58 = OpAccessChain %57 %18 %24 %24
-OpStore %108 %56
-%109 = OpFunctionCall %59 %67 %108
-OpCooperativeMatrixStoreKHR %58 %109 %8 %4 NonPrivatePointer
+OpStore %110 %56
+%111 = OpFunctionCall %59 %67 %110
+OpCooperativeMatrixStoreKHR %58 %111 %8 %4 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %35 = OpFunction %29 None %33
@@ -229,20 +230,20 @@ OpBranch %72
 %90 = OpFMul %61 %89 %92
 %93 = OpBitcast %62 %90
 %94 = OpIAdd %62 %93 %96
-%97 = OpShiftRightLogical %62 %93 %85
-%98 = OpBitwiseOr %62 %97 %86
-%99 = OpUConvert %63 %98
-%101 = OpInBoundsAccessChain %100 %70 %74
-%102 = OpCompositeExtract %14 %99 0
-OpStore %101 %102
-%103 = OpInBoundsAccessChain %100 %70 %76
-%104 = OpCompositeExtract %14 %99 1
+%97 = OpShiftRightLogical %62 %94 %99
+%100 = OpBitwiseOr %62 %97 %86
+%101 = OpUConvert %63 %100
+%103 = OpInBoundsAccessChain %102 %70 %74
+%104 = OpCompositeExtract %14 %101 0
 OpStore %103 %104
-%105 = OpULessThan %31 %75 %71
+%105 = OpInBoundsAccessChain %102 %70 %76
+%106 = OpCompositeExtract %14 %101 1
+OpStore %105 %106
+%107 = OpULessThan %31 %75 %71
 OpLoopMerge %73 %72 None
-OpBranchConditional %105 %72 %73
+OpBranchConditional %107 %72 %73
 %73 = OpLabel
-%106 = OpLoad %59 %70
-OpReturnValue %106
+%108 = OpLoad %59 %70
+OpReturnValue %108
 OpFunctionEnd
 #endif
