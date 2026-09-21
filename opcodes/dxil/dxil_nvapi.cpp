@@ -1325,7 +1325,7 @@ void analyze_nvapi_buffer_store(Converter::Impl &impl, const llvm::CallInst *ins
 		auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]);
 		if (c != nullptr)
 		{
-			auto& tracking = impl.uav_access_tracking[impl.llvm_value_to_uav_resource_index_map[impl.nvapi.marked_uav]];
+			auto &tracking = impl.uav_access_tracking[impl.llvm_value_to_uav_resource_index_map[impl.nvapi.marked_uav]];
 			auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
 
 			tracking.has_nvapi_atomic_fp16bit = opcode == NV_EXTN_OP_FP16_ATOMIC;
