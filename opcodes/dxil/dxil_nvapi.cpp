@@ -326,6 +326,117 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 	return false;
 }
 
+static bool emit_nvapi_extn_op_fp32_atomic(Converter::Impl &impl)
+{
+	if (!impl.nvapi.marked_uav)
+		return false;
+
+	auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0]);
+	if (c != nullptr)
+	{
+		auto subopcode = uint32_t(c->getUniqueInteger().getZExtValue());
+
+		auto &builder = impl.builder();
+		auto f32_type = builder.makeFloatType(32);
+		auto uint32_type = builder.makeUintType(32);
+
+		builder.addExtension("SPV_EXT_shader_atomic_float_add");
+		builder.addCapability(spv::CapabilityAtomicFloat32AddEXT);
+
+		spv::Id id = impl.get_id_for_value(impl.nvapi.marked_uav);
+		const auto &meta = impl.handle_to_resource_meta[id];
+
+		Operation *ptr;
+		if (meta.storage == spv::StorageClassStorageBuffer)
+		{
+			spv::Id addr = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+			spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B32, 1);
+
+			auto f32_array = builder.makeRuntimeArray(f32_type);
+			builder.addDecoration(f32_array, spv::DecorationArrayStride, 4);
+
+			auto base = builder.makeStructType({f32_array}, "ssbo");
+			builder.addDecoration(base, spv::DecorationBlock);
+			builder.addMemberDecoration(base, 0, spv::DecorationOffset, 0);
+
+			ptr = impl.allocate(spv::OpUntypedAccessChainKHR, builder.makeUntypedPointer(spv::StorageClassStorageBuffer));
+			ptr->add_id(base);
+			ptr->add_id(ssbo_id);
+			ptr->add_id(builder.makeUintConstant(0));
+			ptr->add_id(addr);
+			impl.add(ptr);
+
+			builder.addExtension("SPV_KHR_untyped_pointers");
+			builder.addCapability(spv::CapabilityUntypedPointersKHR);
+		}
+		else if (meta.storage == spv::StorageClassUniformConstant)
+		{
+			spv::Id addrs[3] = {};
+			addrs[0] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+			spv::Id texture_addr;
+			switch (meta.kind)
+			{
+			case DXIL::ResourceKind::Texture1D:
+				texture_addr = impl.build_vector(uint32_type, addrs, 1);
+				break;
+			case DXIL::ResourceKind::Texture2D:
+				addrs[1] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+				texture_addr = impl.build_vector(uint32_type, addrs, 2);
+				break;
+			case DXIL::ResourceKind::Texture3D:
+				addrs[1] = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 1);
+				addrs[2] =  get_argument(impl, NVAPI_ARGUMENT_SRC0U + 2);
+				texture_addr = impl.build_vector(uint32_type, addrs, 3);
+				break;
+			default:
+				LOGE("Unsupported storage kind: %u\n", static_cast<uint32_t>(meta.kind));
+				return false;
+			}
+
+			ptr = impl.allocate(spv::OpImageTexelPointer, builder.makePointer(spv::StorageClassImage, f32_type));
+			ptr->add_id(meta.var_id);
+			ptr->add_id(texture_addr);
+			ptr->add_id(builder.makeUintConstant(0));
+			impl.add(ptr);
+
+			builder.addCapability(spv::CapabilityStorageImageExtendedFormats);
+		}
+		else
+		{
+			LOGE("Unsupported storage: %u\n", static_cast<uint32_t>(meta.storage));
+			return false;
+		}
+
+		spv::Id val = get_argument(impl, NVAPI_ARGUMENT_SRC1U + 0);
+
+		auto *cast_f32_op = impl.allocate(spv::OpBitcast, f32_type);
+		cast_f32_op->add_id(val);
+		impl.add(cast_f32_op);
+
+		if (subopcode != NV_EXTN_ATOM_ADD)
+		{
+			LOGE("Unsupported sub opcode: %u\n",subopcode);
+			return false;
+		}
+
+		auto *atomic_op = impl.allocate(spv::OpAtomicFAddEXT, f32_type);
+		atomic_op->add_id(ptr->id);
+		atomic_op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->add_id(builder.makeUintConstant(0));
+		atomic_op->add_id(cast_f32_op->id);
+		impl.add(atomic_op);
+
+		auto *cast_uint32_op = impl.allocate(spv::OpBitcast, uint32_type);
+		cast_uint32_op->add_id(atomic_op->id);
+		impl.add(cast_uint32_op);
+
+		impl.nvapi.fake_doorbell_outputs[NVAPI_ARGUMENT_DST0U + 0] = cast_uint32_op->id;
+		return true;
+	}
+
+	return false;
+}
+
 static bool emit_nvapi_extn_op_get_special(Converter::Impl &impl)
 {
 	auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
@@ -895,6 +1006,12 @@ bool NVAPIState::can_commit_opcode()
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] != nullptr &&
 			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0] != nullptr;
 
+		case NV_EXTN_OP_FP32_ATOMIC:
+			return marked_uav &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC1U + 0] != nullptr &&
+			       fake_doorbell_inputs[NVAPI_ARGUMENT_SRC2U + 0] != nullptr;
+
 		case NV_EXTN_OP_GET_SPECIAL:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
@@ -992,6 +1109,12 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_FP16_ATOMIC:
 			impl.nvapi.num_expected_clock_outputs = 0;
 			if (!analysis && !emit_nvapi_extn_op_fp16x2_atomic(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_FP32_ATOMIC:
+			impl.nvapi.num_expected_clock_outputs = 0;
+			if (!analysis && !emit_nvapi_extn_op_fp32_atomic(impl))
 				return false;
 			break;
 
@@ -1329,6 +1452,7 @@ void analyze_nvapi_buffer_store(Converter::Impl &impl, const llvm::CallInst *ins
 			auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
 
 			tracking.has_nvapi_atomic_fp16bit = opcode == NV_EXTN_OP_FP16_ATOMIC;
+			tracking.has_nvapi_atomic_fp32bit = opcode == NV_EXTN_OP_FP32_ATOMIC;
 		}
 	}
 }
