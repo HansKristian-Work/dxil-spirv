@@ -1,0 +1,15 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+RWByteAddressBuffer BAB;
+
+// The resulting spirv/glsl handles this as uint and casts accordingly, should be fine
+RWStructuredBuffer<float> UAV1;
+
+[numthreads(32, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	float v = 45.5 + thr;
+    UAV1[100] = NvInterlockedAddFp32(BAB, 4, v);
+}

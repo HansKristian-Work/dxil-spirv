@@ -1879,6 +1879,17 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				// a R16G16B16A16_FLOAT UAV, but the address is multiplied by 2, so it still fits R16G16_FLOAT.
 				format = spv::ImageFormatRg16f;
 			}
+
+			if (access_meta.has_nvapi_atomic_fp32bit &&
+				(resource_kind == DXIL::ResourceKind::Texture1D ||
+				 resource_kind == DXIL::ResourceKind::Texture2D ||
+				 resource_kind == DXIL::ResourceKind::Texture3D))
+			{
+				// From shaders/nvapi/nvHLSLExtns.h:
+				// .. perform atomic add on a R32_FLOAT UAV at the given address
+				// .. Behaviour of these set of functions is undefined if the UAV is not of R32_FLOAT format
+				format = spv::ImageFormatR32f;
+			}
 		}
 		else
 		{

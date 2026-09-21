@@ -1,0 +1,19 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+RWTexture1D<float> RWTex1;
+RWTexture2D<float> RWTex2;
+RWTexture3D<float> RWTex3;
+
+// The resulting spirv/glsl handles this as uint and casts accordingly, should be fine
+RWStructuredBuffer<float> UAV1;
+
+[numthreads(32, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	float v = 45.5 + thr;
+    UAV1[101] = NvInterlockedAddFp32(RWTex1, 5, v);
+    UAV1[102] = NvInterlockedAddFp32(RWTex2, uint2(6,7), v);
+    UAV1[103] = NvInterlockedAddFp32(RWTex3, uint3(8,9,10), v);
+}

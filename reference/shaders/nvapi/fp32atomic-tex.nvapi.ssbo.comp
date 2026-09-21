@@ -1,0 +1,135 @@
+#version 460
+#extension GL_EXT_shader_atomic_float : require
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 3, std430) writeonly buffer SSBO
+{
+    uint _m0[];
+} _19;
+
+layout(set = 0, binding = 0, r32f) uniform image1D _8;
+layout(set = 0, binding = 1, r32f) uniform image2D _11;
+layout(set = 0, binding = 2, r32f) uniform image3D _14;
+
+void main()
+{
+    uint _34 = floatBitsToUint(float(gl_GlobalInvocationID.x) + 45.5);
+    float _39 = imageAtomicAdd(_8, int(5u), uintBitsToFloat(_34));
+    _19._m0[101u] = floatBitsToUint(uintBitsToFloat(floatBitsToUint(_39)));
+    float _53 = imageAtomicAdd(_11, ivec2(uvec2(6u, 7u)), uintBitsToFloat(_34));
+    _19._m0[102u] = floatBitsToUint(uintBitsToFloat(floatBitsToUint(_53)));
+    float _65 = imageAtomicAdd(_14, ivec3(uvec3(8u, 9u, 10u)), uintBitsToFloat(_34));
+    _19._m0[103u] = floatBitsToUint(uintBitsToFloat(floatBitsToUint(_65)));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 73
+; Schema: 0
+OpCapability Shader
+OpCapability Image1D
+OpCapability StorageImageExtendedFormats
+OpCapability AtomicFloat32AddEXT
+OpExtension "SPV_EXT_shader_atomic_float_add"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %26
+OpExecutionMode %3 LocalSize 32 1 1
+OpName %3 "main"
+OpName %17 "SSBO"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 1
+OpDecorate %11 NonReadable
+OpDecorate %14 DescriptorSet 0
+OpDecorate %14 Binding 2
+OpDecorate %14 NonReadable
+OpDecorate %16 ArrayStride 4
+OpMemberDecorate %17 0 Offset 0
+OpDecorate %17 Block
+OpDecorate %19 DescriptorSet 0
+OpDecorate %19 Binding 3
+OpDecorate %19 NonReadable
+OpDecorate %26 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeImage %5 1D 0 0 0 2 R32f
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeImage %5 2D 0 0 0 2 R32f
+%10 = OpTypePointer UniformConstant %9
+%11 = OpVariable %10 UniformConstant
+%12 = OpTypeImage %5 3D 0 0 0 2 R32f
+%13 = OpTypePointer UniformConstant %12
+%14 = OpVariable %13 UniformConstant
+%15 = OpTypeInt 32 0
+%16 = OpTypeRuntimeArray %15
+%17 = OpTypeStruct %16
+%18 = OpTypePointer StorageBuffer %17
+%19 = OpVariable %18 StorageBuffer
+%24 = OpTypeVector %15 3
+%25 = OpTypePointer Input %24
+%26 = OpVariable %25 Input
+%27 = OpTypePointer Input %15
+%29 = OpConstant %15 0
+%33 = OpConstant %5 45.5
+%35 = OpConstant %15 5
+%36 = OpTypePointer Image %5
+%40 = OpConstant %15 1
+%43 = OpConstant %15 101
+%45 = OpTypePointer StorageBuffer %15
+%47 = OpConstant %15 6
+%48 = OpConstant %15 7
+%49 = OpTypeVector %15 2
+%56 = OpConstant %15 102
+%59 = OpConstant %15 8
+%60 = OpConstant %15 9
+%61 = OpConstant %15 10
+%68 = OpConstant %15 103
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %71
+%71 = OpLabel
+%20 = OpLoad %12 %14
+%21 = OpLoad %9 %11
+%22 = OpLoad %6 %8
+%28 = OpAccessChain %27 %26 %29
+%30 = OpLoad %15 %28
+%31 = OpConvertUToF %5 %30
+%32 = OpFAdd %5 %31 %33
+%34 = OpBitcast %15 %32
+%37 = OpImageTexelPointer %36 %8 %35 %29
+%38 = OpBitcast %5 %34
+%39 = OpAtomicFAddEXT %5 %37 %40 %29 %38
+%41 = OpBitcast %15 %39
+%42 = OpBitcast %5 %41
+%44 = OpBitcast %15 %42
+%46 = OpAccessChain %45 %19 %29 %43
+OpStore %46 %44
+%50 = OpCompositeConstruct %49 %47 %48
+%51 = OpImageTexelPointer %36 %11 %50 %29
+%52 = OpBitcast %5 %34
+%53 = OpAtomicFAddEXT %5 %51 %40 %29 %52
+%54 = OpBitcast %15 %53
+%55 = OpBitcast %5 %54
+%57 = OpBitcast %15 %55
+%58 = OpAccessChain %45 %19 %29 %56
+OpStore %58 %57
+%62 = OpCompositeConstruct %24 %59 %60 %61
+%63 = OpImageTexelPointer %36 %14 %62 %29
+%64 = OpBitcast %5 %34
+%65 = OpAtomicFAddEXT %5 %63 %40 %29 %64
+%66 = OpBitcast %15 %65
+%67 = OpBitcast %5 %66
+%69 = OpBitcast %15 %67
+%70 = OpAccessChain %45 %19 %29 %68
+OpStore %70 %69
+OpReturn
+OpFunctionEnd
+#endif
