@@ -2827,14 +2827,14 @@ spv::Id SPIRVModule::Impl::build_coop_mat_saturate_fp8(SPIRVModule &module, spv:
 	return func->getId();
 }
 
-static spv::Id make_i16vec_constant(spv::Builder &builder, int16_t val, bool vec2)
+static spv::Id make_u16vec_constant(spv::Builder &builder, uint16_t val, bool vec2)
 {
-	spv::Id constant = builder.makeInt16Constant(val);
+	spv::Id constant = builder.makeUint16Constant(val);
 
 	if (vec2)
 	{
-		spv::Id s16vec_type = builder.makeVectorType(builder.makeIntType(16), 2);
-		return builder.makeCompositeConstant(s16vec_type, { constant, constant });
+		spv::Id u16vec2_type = builder.makeVectorType(builder.makeUintType(16), 2);
+		return builder.makeCompositeConstant(u16vec2_type, { constant, constant });
 	}
 	else
 	{
@@ -2842,14 +2842,14 @@ static spv::Id make_i16vec_constant(spv::Builder &builder, int16_t val, bool vec
 	}
 }
 
-static spv::Id make_u16vec_constant(spv::Builder &builder, uint16_t val, bool vec2)
+static spv::Id make_f16vec_constant(spv::Builder &builder, uint16_t val, bool vec2)
 {
-	spv::Id constant = builder.makeUint16Constant(val);
+	spv::Id constant = builder.makeFloat16Constant(val);
 
 	if (vec2)
 	{
-		spv::Id s16vec2_type = builder.makeVectorType(builder.makeUintType(16), 2);
-		return builder.makeCompositeConstant(s16vec2_type, { constant, constant });
+		spv::Id f16vec2_type = builder.makeVectorType(builder.makeFloatType(16), 2);
+		return builder.makeCompositeConstant(f16vec2_type, { constant, constant });
 	}
 	else
 	{
@@ -2877,23 +2877,21 @@ spv::Id SPIRVModule::Impl::build_fp16_to_fp8(SPIRVModule &module, const spv::Id 
 	spv::Id uint_type = builder.makeUintType(32);
 	spv::Id bool_type = builder.makeBoolType();
 	spv::Id f16_type = builder.makeFloatType(16);
-	spv::Id s16_type = builder.makeIntType(16);
+	spv::Id u16_type = builder.makeUintType(16);
 	spv::Id u8_type = builder.makeUintType(8);
 
-	spv::Id bvec_type, f16vec_type, s16vec_type, u8vec_type;
+	spv::Id f16vec_type, u16vec_type, u8vec_type;
 
 	if (coopmat)
 	{
-		bvec_type = builder.makeVectorType(bool_type, 2);
 		f16vec_type = builder.makeVectorType(f16_type, 2);
-		s16vec_type = builder.makeVectorType(s16_type, 2);
+		u16vec_type = builder.makeVectorType(u16_type, 2);
 		u8vec_type = builder.makeVectorType(u8_type, 2);
 	}
 	else
 	{
-		bvec_type = bool_type;
 		f16vec_type = f16_type;
-		s16vec_type = s16_type;
+		u16vec_type = u16_type;
 		u8vec_type = u8_type;
 	}
 
@@ -2909,148 +2907,49 @@ spv::Id SPIRVModule::Impl::build_fp16_to_fp8(SPIRVModule &module, const spv::Id 
 
 	const auto convert_fp16_to_fp8 = [&](spv::Id fp16_composite_id)
 	{
-		auto *bitcast = builder.addInstruction(s16vec_type, spv::OpBitcast);
+		auto *bitcast = builder.addInstruction(u16vec_type, spv::OpBitcast);
 		bitcast->addIdOperand(fp16_composite_id);
 
 		// Extract the sign bit.
-		auto *sign_in_lsb = builder.addInstruction(s16vec_type, spv::OpShiftRightLogical);
-		sign_in_lsb->addIdOperand(bitcast->getResultId());
-		sign_in_lsb->addIdOperand(make_i16vec_constant(builder, 15, coopmat));
+		auto *sign_shift= builder.addInstruction(u16vec_type, spv::OpShiftRightLogical);
+		sign_shift->addIdOperand(bitcast->getResultId());
+		sign_shift->addIdOperand(make_u16vec_constant(builder, 8, coopmat));
 
-		auto *sign_bit = builder.addInstruction(s16vec_type, spv::OpShiftLeftLogical);
-		sign_bit->addIdOperand(sign_in_lsb->getResultId());
-		sign_bit->addIdOperand(make_i16vec_constant(builder, 7, coopmat));
+		auto *sign_bit = builder.addInstruction(u16vec_type, spv::OpBitwiseAnd);
+		sign_bit->addIdOperand(sign_shift->getResultId());
+		sign_bit->addIdOperand(make_u16vec_constant(builder, 0x80, coopmat));
 		///
 
-		// When the input is shifted like this the result is E5M3 in upper byte, which is very handy.
-		auto *unsigned_e5m11 = builder.addInstruction(s16vec_type, spv::OpShiftLeftLogical);
-		unsigned_e5m11->addIdOperand(bitcast->getResultId());
-		unsigned_e5m11->addIdOperand(make_i16vec_constant(builder, 1, coopmat));
-
-		// Shift -15 bias to -7 bias.
-		auto *shift_exponent = builder.addInstruction(s16vec_type, spv::OpISub);
-		shift_exponent->addIdOperand(unsigned_e5m11->getResultId());
-		shift_exponent->addIdOperand(make_i16vec_constant(builder, 8 << 11, coopmat));
-		unsigned_e5m11 = shift_exponent;
-
-		auto *exponent = builder.addInstruction(s16vec_type, spv::OpShiftRightArithmetic);
-		exponent->addIdOperand(shift_exponent->getResultId());
-		exponent->addIdOperand(make_i16vec_constant(builder, 11, coopmat));
-
-		auto *exponent_minus1 = builder.addInstruction(s16vec_type, spv::OpISub);
-		exponent_minus1->addIdOperand(exponent->getResultId());
-		exponent_minus1->addIdOperand(make_i16vec_constant(builder, 1, coopmat));
-
-		auto *denorm_shamt = builder.addInstruction(s16vec_type, spv::OpSNegate);
-		denorm_shamt->addIdOperand(exponent_minus1->getResultId());
-
-		// Ensure we don't get negative shift.
 		spv::Id glsl450 = builder.import("GLSL.std.450");
-		auto *clamp = builder.addInstruction(s16vec_type, spv::OpExtInst);
-		clamp->addIdOperand(glsl450);
-		clamp->addImmediateOperand(GLSLstd450SMax);
-		clamp->addIdOperand(denorm_shamt->getResultId());
-		clamp->addIdOperand(make_i16vec_constant(builder, 0, coopmat));
-		denorm_shamt = clamp;
+		auto *fabs = builder.addInstruction(f16vec_type, spv::OpExtInst);
+		fabs->addIdOperand(glsl450);
+		fabs->addImmediateOperand(GLSLstd450FAbs);
+		fabs->addIdOperand(fp16_composite_id);
 
-		// If we're denorm, the arith shift ensures the upper bits are all 1.
-		auto *denorm_mask = builder.addInstruction(s16vec_type, spv::OpBitwiseAnd);
-		denorm_mask->addIdOperand(exponent_minus1->getResultId());
-		denorm_mask->addIdOperand(make_i16vec_constant(builder, 1 << 11, coopmat));
+		// FP16 detains denorms, so we can use this trick.
+		auto *scale_to_denorm = builder.addInstruction(f16vec_type, spv::OpFMul);
+		scale_to_denorm->addIdOperand(fabs->getResultId());
+		scale_to_denorm->addIdOperand(make_f16vec_constant(builder, 0x1c00 /* 1 / 256 */, coopmat));
 
-		// Serves as a clamping function.
-		// If the exponent goes negative here, we need to emit a 0 exponent, marking that we're in denorm region.
-		auto *clear_exponent_neg_mask = builder.addInstruction(s16vec_type, spv::OpBitwiseAnd);
-		clear_exponent_neg_mask->addIdOperand(exponent_minus1->getResultId());
-		clear_exponent_neg_mask->addIdOperand(make_i16vec_constant(builder, int16_t(0x1f << 11), coopmat));
-		auto *clear_exponent_mask = builder.addInstruction(s16vec_type, spv::OpBitwiseXor);
-		clear_exponent_mask->addIdOperand(clear_exponent_neg_mask->getResultId());
-		clear_exponent_mask->addIdOperand(make_i16vec_constant(builder, -1, coopmat));
+		auto *bitcast_int = builder.addInstruction(u16vec_type, spv::OpBitcast);
+		bitcast_int->addIdOperand(scale_to_denorm->getResultId());
 
-		// Clamp negative exponent to 0.
-		{
-			auto *mask = builder.addInstruction(s16vec_type, spv::OpBitwiseAnd);
-			mask->addIdOperand(unsigned_e5m11->getResultId());
-			mask->addIdOperand(clear_exponent_mask->getResultId());
-			unsigned_e5m11 = mask;
-		}
+		// This isn't quite exact RTNE, but rather a round to nearest ties to 0.
+		// We already screw up exact RTNE for FP32 to FP16 step, so this is "good enough" emulation.
+		auto *round_bits = builder.addInstruction(u16vec_type, spv::OpIAdd);
+		round_bits->addIdOperand(bitcast_int->getResultId());
+		round_bits->addIdOperand(make_u16vec_constant(builder, 0x3f, coopmat));
 
-		// If denorm, add in the implicit 1.xxxx.
-		{
-			auto *mask = builder.addInstruction(s16vec_type, spv::OpBitwiseOr);
-			mask->addIdOperand(unsigned_e5m11->getResultId());
-			mask->addIdOperand(denorm_mask->getResultId());
-			unsigned_e5m11 = mask;
-		}
+		auto *quant = builder.addInstruction(u16vec_type, spv::OpShiftRightLogical);
+		quant->addIdOperand(round_bits->getResultId());
+		quant->addIdOperand(make_u16vec_constant(builder, 7, coopmat));
 
-		// Before we shift, we need to capture any possible rounding bits.
-		// Only capture the lower 7 bits.
-		// If we shift more than 7 we've already exhausted all denorm bits on E4M3 anyway, so don't need to care.
-		// Cannot capture the top bit in lower half since we might get a false positive for 0.5 condition.
-		auto *pre_denorm_rounding_bits = builder.addInstruction(s16vec_type, spv::OpBitwiseAnd);
-		pre_denorm_rounding_bits->addIdOperand(unsigned_e5m11->getResultId());
-		pre_denorm_rounding_bits->addIdOperand(make_i16vec_constant(builder, 0x7f, coopmat));
-
-		// Now we apply the denorm shift.
-		auto *denorm_shift = builder.addInstruction(s16vec_type, spv::OpShiftRightArithmetic);
-		denorm_shift->addIdOperand(unsigned_e5m11->getResultId());
-		denorm_shift->addIdOperand(denorm_shamt->getResultId());
-		unsigned_e5m11 = denorm_shift;
-
-		// Capture any rounding bits.
-		// If we shift due to denorms,
-		// we have to know if we shifted away bits that are relevant to RTE.
-		auto *rounding_bits = builder.addInstruction(s16vec_type, spv::OpBitwiseOr);
-		rounding_bits->addIdOperand(unsigned_e5m11->getResultId());
-		rounding_bits->addIdOperand(pre_denorm_rounding_bits->getResultId());
-
-		auto *unsigned_e5m3 = builder.addInstruction(s16vec_type, spv::OpShiftRightLogical);
-		unsigned_e5m3->addIdOperand(unsigned_e5m11->getResultId());
-		unsigned_e5m3->addIdOperand(make_i16vec_constant(builder, 8, coopmat));
-
-		auto *is_odd = builder.addInstruction(s16vec_type, spv::OpBitwiseAnd);
-		is_odd->addIdOperand(unsigned_e5m3->getResultId());
-		is_odd->addIdOperand(make_i16vec_constant(builder, 1, coopmat));
-
-		auto *or_rounding_bits = builder.addInstruction(s16vec_type, spv::OpBitwiseOr);
-		or_rounding_bits->addIdOperand(is_odd->getResultId());
-		or_rounding_bits->addIdOperand(rounding_bits->getResultId());
-
-		// To get > 0x80 in lower bits either the fraction is > 0.5, or it's exactly 0.5 and the upper part is odd,
-		// which would make the result 0x81.
-		// We shift the high bits away and then compare with 0x8000
-
-		auto *rounding_bits_in_msb = builder.addInstruction(s16vec_type, spv::OpShiftLeftLogical);
-		rounding_bits_in_msb->addIdOperand(or_rounding_bits->getResultId());
-		rounding_bits_in_msb->addIdOperand(make_i16vec_constant(builder, 8, coopmat));
-
-		auto *should_round = builder.addInstruction(bvec_type, spv::OpUGreaterThan);
-		should_round->addIdOperand(rounding_bits_in_msb->getResultId());
-		should_round->addIdOperand(make_u16vec_constant(builder, 0x8000, coopmat));
-
-		// Compensate for exponent bias when dealing with denorms.
-		auto *rounding = builder.addInstruction(s16vec_type, spv::OpSelect);
-		rounding->addIdOperand(should_round->getResultId());
-		rounding->addIdOperand(make_i16vec_constant(builder, 1, coopmat));
-		rounding->addIdOperand(make_i16vec_constant(builder, 0, coopmat));
-
-		// Add rounding.
-		auto *add_rounding = builder.addInstruction(s16vec_type, spv::OpIAdd);
-		add_rounding->addIdOperand(unsigned_e5m3->getResultId());
-		add_rounding->addIdOperand(rounding->getResultId());
-
-		// Mask away the top exponent. We should be in range now anyway.
-		auto *e4m3 = builder.addInstruction(s16vec_type, spv::OpBitwiseAnd);
-		e4m3->addIdOperand(add_rounding->getResultId());
-		e4m3->addIdOperand(make_i16vec_constant(builder, 0x7f, coopmat));
-
-		// OR in the sign bit.
-		auto *with_sign = builder.addInstruction(s16vec_type, spv::OpBitwiseOr);
-		with_sign->addIdOperand(e4m3->getResultId());
-		with_sign->addIdOperand(sign_bit->getResultId());
+		auto *or_sign = builder.addInstruction(u16vec_type, spv::OpBitwiseOr);
+		or_sign->addIdOperand(quant->getResultId());
+		or_sign->addIdOperand(sign_bit->getResultId());
 
 		auto *trunc = builder.addInstruction(u8vec_type, spv::OpUConvert);
-		trunc->addIdOperand(with_sign->getResultId());
+		trunc->addIdOperand(or_sign->getResultId());
 
 		return trunc->getResultId();
 	};
