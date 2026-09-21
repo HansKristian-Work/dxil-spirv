@@ -121,7 +121,7 @@ public:
     Id makeVoidType();
     Id makeBoolType();
     Id makePointer(StorageClass, Id type);
-	Id makeUntypedPointer(StorageClass, bool setBufferPointer = false);
+    Id makeUntypedPointer(StorageClass);
     Id makeIntegerType(int width, bool hasSign);   // generic
     Id makeIntType(int width) { return makeIntegerType(width, true); }
     Id makeUintType(int width) { return makeIntegerType(width, false); }
@@ -687,10 +687,19 @@ protected:
     dxil_spv::Vector<std::unique_ptr<Function> > functions;
 
     // not output, internally used for quick & dirty canonical (unique) creation
-	dxil_spv::Vector<Instruction*> groupedConstants[OpTypeUntypedPointerKHR + 1];
-	dxil_spv::Vector<Instruction*> groupedTypes[OpTypeUntypedPointerKHR + 1];
-	dxil_spv::Vector<Instruction*> coopmatConstants;
-    dxil_spv::Vector<Instruction*> coopmatTypes;
+    // Legacy quirk from glslang. It picked OpConstant size because it would
+    // contain every possible value. To fit untyped pointers, we don't want
+    // the huge enum value to be used as size, so just append that as a special case
+    // at the end.
+	dxil_spv::Vector<Instruction*> groupedConstants[OpConstant];
+	dxil_spv::Vector<Instruction*> groupedTypes[OpConstant + 1];
+    static unsigned mapOpToGroupIndex(spv::Op op)
+    {
+        return op == spv::OpTypeUntypedPointerKHR ? OpConstant : op;
+    }
+
+    dxil_spv::Vector<Instruction *> coopmatConstants;
+    dxil_spv::Vector<Instruction *> coopmatTypes;
     Instruction *acceleration_structure_type = nullptr;
     Instruction *ray_query_type = nullptr;
     Instruction *hit_object_nv_type = nullptr;
