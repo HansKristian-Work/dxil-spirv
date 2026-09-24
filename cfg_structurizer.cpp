@@ -8548,12 +8548,8 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 				break;
 			}
 		}
-		else if (node->merge == MergeType::Loop && node->loop_merge_block && node->pred_back_edge &&
-		         node->pred_back_edge->succ.empty())
+		else if (node->merge == MergeType::Loop && node->loop_merge_block && node->pred_back_edge)
 		{
-			// Only consider "infinite" loops here. Otherwise, the break from continue will always be
-			// a suitable merge target and the ladder block for any loop exits.
-
 			if (!node->dominates(node->loop_merge_block))
 			{
 				// We must dominate the loop merge block here.
