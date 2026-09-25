@@ -237,11 +237,18 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 			builder.addDecoration(base, spv::DecorationBlock);
 			builder.addMemberDecoration(base, 0, spv::DecorationOffset, 0);
 
+			// From shaders/nvapi/nvHLSLExtns.h: byteAddress must be multiple of 4
+			// ... so translate from byte address to index
+			Operation *ssbo_index = impl.allocate(spv::OpUDiv, uint32_type);
+			ssbo_index->add_id(addr);
+			ssbo_index->add_id(builder.makeUintConstant(4));
+			impl.add(ssbo_index);
+
 			ptr = impl.allocate(spv::OpUntypedAccessChainKHR, builder.makeUntypedPointer(spv::StorageClassStorageBuffer));
 			ptr->add_id(base);
 			ptr->add_id(ssbo_id);
 			ptr->add_id(builder.makeUintConstant(0));
-			ptr->add_id(addr);
+			ptr->add_id(ssbo_index->id);
 			impl.add(ptr);
 
 			builder.addExtension("SPV_KHR_untyped_pointers");
@@ -359,11 +366,18 @@ static bool emit_nvapi_extn_op_fp32_atomic(Converter::Impl &impl)
 			builder.addDecoration(base, spv::DecorationBlock);
 			builder.addMemberDecoration(base, 0, spv::DecorationOffset, 0);
 
+			// From shaders/nvapi/nvHLSLExtns.h: byteAddress must be multiple of 4
+			// ... so translate from byte address to index
+			Operation *ssbo_index = impl.allocate(spv::OpUDiv, uint32_type);
+			ssbo_index->add_id(addr);
+			ssbo_index->add_id(builder.makeUintConstant(4));
+			impl.add(ssbo_index);
+
 			ptr = impl.allocate(spv::OpUntypedAccessChainKHR, builder.makeUntypedPointer(spv::StorageClassStorageBuffer));
 			ptr->add_id(base);
 			ptr->add_id(ssbo_id);
 			ptr->add_id(builder.makeUintConstant(0));
-			ptr->add_id(addr);
+			ptr->add_id(ssbo_index->id);
 			impl.add(ptr);
 
 			builder.addExtension("SPV_KHR_untyped_pointers");
