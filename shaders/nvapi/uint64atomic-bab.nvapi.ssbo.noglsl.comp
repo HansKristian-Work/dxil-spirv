@@ -1,0 +1,25 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+RWByteAddressBuffer BAB;
+
+RWStructuredBuffer<uint2> UAV1;
+
+[numthreads(32, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+    uint64_t v64 = thr + 1ull;
+    uint2 v = uint2(v64, v64 >> 32);
+    UAV1[100] = NvInterlockedAddUint64(BAB, 16, v);
+    UAV1[101] = NvInterlockedMinUint64(BAB, 16, v);
+    UAV1[102] = NvInterlockedMaxUint64(BAB, 16, v);
+    UAV1[103] = NvInterlockedAndUint64(BAB, 16, v);
+    UAV1[104] = NvInterlockedOrUint64(BAB, 16, v);
+    UAV1[105] = NvInterlockedXorUint64(BAB, 16, v);
+    UAV1[106] = NvInterlockedExchangeUint64(BAB, 16, v);
+
+    uint64_t c64 = thr + 2ull;
+    uint2 c = uint2(c64, c64 >> 32);
+    UAV1[107] = NvInterlockedCompareExchangeUint64(BAB, 16, c, v);
+}

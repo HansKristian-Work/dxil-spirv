@@ -1865,7 +1865,6 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				// This is also the case for signed components. Always use R64UI here.
 				actual_component_type = DXIL::ComponentType::U64;
 			}
-			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 
 			if (access_meta.has_nvapi_atomic_fp16bit &&
 				(resource_kind == DXIL::ResourceKind::Texture1D ||
@@ -1890,6 +1889,20 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				// .. Behaviour of these set of functions is undefined if the UAV is not of R32_FLOAT format
 				format = spv::ImageFormatR32f;
 			}
+
+			if (access_meta.has_nvapi_atomic_uint64bit &&
+				(resource_kind == DXIL::ResourceKind::Texture1D ||
+				 resource_kind == DXIL::ResourceKind::Texture2D ||
+				 resource_kind == DXIL::ResourceKind::Texture3D))
+			{
+				// From shaders/nvapi/nvHLSLExtns.h:
+				// .. perform atomic operation on a R32G32_UINT UAV at the given address treating the value as uint64
+				// .. Behaviour of these set of functions is undefined if the UAV is not of R32G32_UINT format
+				actual_component_type = DXIL::ComponentType::U64;
+				format = spv::ImageFormatR64ui; // Should be spv::ImageFormatRg32ui but we need to treat this as uint64
+			}
+
+			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 		}
 		else
 		{

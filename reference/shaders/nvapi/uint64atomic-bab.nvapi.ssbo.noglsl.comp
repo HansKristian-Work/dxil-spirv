@@ -1,0 +1,219 @@
+; SPIR-V
+; Version: 1.3
+; Generator: Unknown(30017); 21022
+; Bound: 149
+; Schema: 0
+OpCapability Shader
+OpCapability Int64
+OpCapability Int64Atomics
+OpCapability UntypedPointersKHR
+OpExtension "SPV_KHR_untyped_pointers"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %3 "main" %18
+OpExecutionMode %3 LocalSize 32 1 1
+OpName %3 "main"
+OpName %7 "SSBO"
+OpName %12 "SSBO"
+OpName %33 "ssbo"
+OpName %50 "ssbo"
+OpName %63 "ssbo"
+OpName %76 "ssbo"
+OpName %89 "ssbo"
+OpName %102 "ssbo"
+OpName %115 "ssbo"
+OpName %133 "ssbo"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %9 NonReadable
+OpDecorate %11 ArrayStride 8
+OpMemberDecorate %12 0 Offset 0
+OpDecorate %12 Block
+OpDecorate %14 DescriptorSet 0
+OpDecorate %14 Binding 1
+OpDecorate %14 NonReadable
+OpDecorate %18 BuiltIn GlobalInvocationId
+OpDecorate %32 ArrayStride 8
+OpDecorate %33 Block
+OpMemberDecorate %33 0 Offset 0
+OpDecorate %49 ArrayStride 8
+OpDecorate %50 Block
+OpMemberDecorate %50 0 Offset 0
+OpDecorate %62 ArrayStride 8
+OpDecorate %63 Block
+OpMemberDecorate %63 0 Offset 0
+OpDecorate %75 ArrayStride 8
+OpDecorate %76 Block
+OpMemberDecorate %76 0 Offset 0
+OpDecorate %88 ArrayStride 8
+OpDecorate %89 Block
+OpMemberDecorate %89 0 Offset 0
+OpDecorate %101 ArrayStride 8
+OpDecorate %102 Block
+OpMemberDecorate %102 0 Offset 0
+OpDecorate %114 ArrayStride 8
+OpDecorate %115 Block
+OpMemberDecorate %115 0 Offset 0
+OpDecorate %132 ArrayStride 8
+OpDecorate %133 Block
+OpMemberDecorate %133 0 Offset 0
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeVector %5 2
+%11 = OpTypeRuntimeArray %10
+%12 = OpTypeStruct %11
+%13 = OpTypePointer StorageBuffer %12
+%14 = OpVariable %13 StorageBuffer
+%16 = OpTypeVector %5 3
+%17 = OpTypePointer Input %16
+%18 = OpVariable %17 Input
+%19 = OpTypePointer Input %5
+%21 = OpConstant %5 0
+%23 = OpTypeInt 64 0
+%26 = OpConstant %23 1
+%29 = OpConstant %23 32
+%31 = OpConstant %5 16
+%32 = OpTypeRuntimeArray %23
+%33 = OpTypeStruct %32
+%35 = OpConstant %5 8
+%36 = OpTypeUntypedPointerKHR StorageBuffer
+%41 = OpConstant %5 1
+%45 = OpConstant %5 100
+%47 = OpTypePointer StorageBuffer %10
+%49 = OpTypeRuntimeArray %23
+%50 = OpTypeStruct %49
+%59 = OpConstant %5 101
+%62 = OpTypeRuntimeArray %23
+%63 = OpTypeStruct %62
+%72 = OpConstant %5 102
+%75 = OpTypeRuntimeArray %23
+%76 = OpTypeStruct %75
+%85 = OpConstant %5 103
+%88 = OpTypeRuntimeArray %23
+%89 = OpTypeStruct %88
+%98 = OpConstant %5 104
+%101 = OpTypeRuntimeArray %23
+%102 = OpTypeStruct %101
+%111 = OpConstant %5 105
+%114 = OpTypeRuntimeArray %23
+%115 = OpTypeStruct %114
+%124 = OpConstant %5 106
+%128 = OpConstant %23 2
+%132 = OpTypeRuntimeArray %23
+%133 = OpTypeStruct %132
+%144 = OpConstant %5 107
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %147
+%147 = OpLabel
+%20 = OpAccessChain %19 %18 %21
+%22 = OpLoad %5 %20
+%24 = OpUConvert %23 %22
+%25 = OpIAdd %23 %24 %26
+%27 = OpUConvert %5 %25
+%28 = OpShiftRightLogical %23 %25 %29
+%30 = OpUConvert %5 %28
+%34 = OpUDiv %5 %31 %35
+%37 = OpUntypedAccessChainKHR %36 %33 %9 %21 %34
+%38 = OpCompositeConstruct %10 %27 %30
+%39 = OpBitcast %23 %38
+%40 = OpAtomicIAdd %23 %37 %41 %21 %39
+%42 = OpBitcast %10 %40
+%43 = OpCompositeExtract %5 %42 0
+%44 = OpCompositeExtract %5 %42 1
+%46 = OpCompositeConstruct %10 %43 %44
+%48 = OpAccessChain %47 %14 %21 %45
+OpStore %48 %46
+%51 = OpUDiv %5 %31 %35
+%52 = OpUntypedAccessChainKHR %36 %50 %9 %21 %51
+%53 = OpCompositeConstruct %10 %27 %30
+%54 = OpBitcast %23 %53
+%55 = OpAtomicUMin %23 %52 %41 %21 %54
+%56 = OpBitcast %10 %55
+%57 = OpCompositeExtract %5 %56 0
+%58 = OpCompositeExtract %5 %56 1
+%60 = OpCompositeConstruct %10 %57 %58
+%61 = OpAccessChain %47 %14 %21 %59
+OpStore %61 %60
+%64 = OpUDiv %5 %31 %35
+%65 = OpUntypedAccessChainKHR %36 %63 %9 %21 %64
+%66 = OpCompositeConstruct %10 %27 %30
+%67 = OpBitcast %23 %66
+%68 = OpAtomicUMax %23 %65 %41 %21 %67
+%69 = OpBitcast %10 %68
+%70 = OpCompositeExtract %5 %69 0
+%71 = OpCompositeExtract %5 %69 1
+%73 = OpCompositeConstruct %10 %70 %71
+%74 = OpAccessChain %47 %14 %21 %72
+OpStore %74 %73
+%77 = OpUDiv %5 %31 %35
+%78 = OpUntypedAccessChainKHR %36 %76 %9 %21 %77
+%79 = OpCompositeConstruct %10 %27 %30
+%80 = OpBitcast %23 %79
+%81 = OpAtomicAnd %23 %78 %41 %21 %80
+%82 = OpBitcast %10 %81
+%83 = OpCompositeExtract %5 %82 0
+%84 = OpCompositeExtract %5 %82 1
+%86 = OpCompositeConstruct %10 %83 %84
+%87 = OpAccessChain %47 %14 %21 %85
+OpStore %87 %86
+%90 = OpUDiv %5 %31 %35
+%91 = OpUntypedAccessChainKHR %36 %89 %9 %21 %90
+%92 = OpCompositeConstruct %10 %27 %30
+%93 = OpBitcast %23 %92
+%94 = OpAtomicOr %23 %91 %41 %21 %93
+%95 = OpBitcast %10 %94
+%96 = OpCompositeExtract %5 %95 0
+%97 = OpCompositeExtract %5 %95 1
+%99 = OpCompositeConstruct %10 %96 %97
+%100 = OpAccessChain %47 %14 %21 %98
+OpStore %100 %99
+%103 = OpUDiv %5 %31 %35
+%104 = OpUntypedAccessChainKHR %36 %102 %9 %21 %103
+%105 = OpCompositeConstruct %10 %27 %30
+%106 = OpBitcast %23 %105
+%107 = OpAtomicXor %23 %104 %41 %21 %106
+%108 = OpBitcast %10 %107
+%109 = OpCompositeExtract %5 %108 0
+%110 = OpCompositeExtract %5 %108 1
+%112 = OpCompositeConstruct %10 %109 %110
+%113 = OpAccessChain %47 %14 %21 %111
+OpStore %113 %112
+%116 = OpUDiv %5 %31 %35
+%117 = OpUntypedAccessChainKHR %36 %115 %9 %21 %116
+%118 = OpCompositeConstruct %10 %27 %30
+%119 = OpBitcast %23 %118
+%120 = OpAtomicExchange %23 %117 %41 %21 %119
+%121 = OpBitcast %10 %120
+%122 = OpCompositeExtract %5 %121 0
+%123 = OpCompositeExtract %5 %121 1
+%125 = OpCompositeConstruct %10 %122 %123
+%126 = OpAccessChain %47 %14 %21 %124
+OpStore %126 %125
+%127 = OpIAdd %23 %24 %128
+%129 = OpUConvert %5 %127
+%130 = OpShiftRightLogical %23 %127 %29
+%131 = OpUConvert %5 %130
+%134 = OpUDiv %5 %31 %35
+%135 = OpUntypedAccessChainKHR %36 %133 %9 %21 %134
+%136 = OpCompositeConstruct %10 %129 %131
+%137 = OpBitcast %23 %136
+%139 = OpCompositeConstruct %10 %27 %30
+%140 = OpBitcast %23 %139
+%138 = OpAtomicCompareExchange %23 %135 %41 %21 %21 %140 %137
+%141 = OpBitcast %10 %138
+%142 = OpCompositeExtract %5 %141 0
+%143 = OpCompositeExtract %5 %141 1
+%145 = OpCompositeConstruct %10 %142 %143
+%146 = OpAccessChain %47 %14 %21 %144
+OpStore %146 %145
+OpReturn
+OpFunctionEnd
+
