@@ -184,6 +184,7 @@ struct AccessTracking
 	bool has_atomic_64bit = false;
 	bool has_nvapi_atomic_fp16bit = false;
 	bool has_nvapi_atomic_fp32bit = false;
+	bool has_nvapi_atomic_uint64bit = false;
 	bool has_counter = false;
 	bool dynamically_indexed_cbv = false;
 

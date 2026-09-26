@@ -2,15 +2,27 @@
 #define NV_SHADER_EXTN_REGISTER_SPACE space0
 #include "nvHLSLExtns.h"
 
-RWStructuredBuffer<uint> Blah : register(u0);
+RWStructuredBuffer<uint> Blah1 : register(u0);
+RWStructuredBuffer<uint2> Blah2 : register(u0);
 
-RWByteAddressBuffer BAB : register(u1);
-RWTexture1D<float2> RWTex : register(u2);
+RWTexture1D<float2> RWTex1 : register(u2);
+RWTexture2D<float> RWTex2 : register(u3);
+RWTexture3D<uint2> RWTex3 : register(u4);
 
 [shader("raygeneration")]
 void main()
 {
 	uint thr = DispatchRaysIndex().x;
-	Blah[thr] = NvShfl(thr, 9);
+	Blah1[thr] = NvShfl(thr, 9);
+
+    float2 v1 = {45.5f + thr, 46.5f + thr};
+	Blah1[thr + 101] = NvInterlockedAddFp16x2(RWTex1, 5, v1);
+
+    float v2 = 45.5 + thr;
+	Blah1[thr + 102] = NvInterlockedAddFp32(RWTex2, uint2(6,7), v2);
+
+    uint64_t v64 = 1ull + thr;
+    uint2 v3 = uint2(v64, v64 >> 32);
+	Blah2[thr + 103] = NvInterlockedAddUint64(RWTex3, uint3(8,9,10), v3);
 }
 
