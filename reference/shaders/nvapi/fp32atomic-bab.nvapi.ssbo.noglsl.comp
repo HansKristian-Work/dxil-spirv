@@ -20,7 +20,6 @@ OpMemberDecorate %7 0 Offset 0
 OpDecorate %7 Block
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
-OpDecorate %9 NonReadable
 OpDecorate %10 ArrayStride 4
 OpMemberDecorate %11 0 Offset 0
 OpDecorate %11 Block

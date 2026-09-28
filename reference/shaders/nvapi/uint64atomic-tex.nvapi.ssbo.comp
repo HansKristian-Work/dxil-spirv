@@ -46,7 +46,6 @@ OpCapability Shader
 OpCapability Int64
 OpCapability Int64Atomics
 OpCapability Image1D
-OpCapability StorageImageExtendedFormats
 OpCapability Int64ImageEXT
 OpExtension "SPV_EXT_shader_image_int64"
 OpMemoryModel Logical GLSL450
@@ -56,13 +55,10 @@ OpName %3 "main"
 OpName %18 "SSBO"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
-OpDecorate %8 NonReadable
 OpDecorate %11 DescriptorSet 0
 OpDecorate %11 Binding 1
-OpDecorate %11 NonReadable
 OpDecorate %14 DescriptorSet 0
 OpDecorate %14 Binding 2
-OpDecorate %14 NonReadable
 OpDecorate %17 ArrayStride 8
 OpMemberDecorate %18 0 Offset 0
 OpDecorate %18 Block

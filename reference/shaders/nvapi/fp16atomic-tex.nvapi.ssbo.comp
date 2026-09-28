@@ -65,16 +65,12 @@ OpName %18 "SSBO"
 OpName %23 "SSBO"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
-OpDecorate %8 NonReadable
 OpDecorate %11 DescriptorSet 0
 OpDecorate %11 Binding 1
-OpDecorate %11 NonReadable
 OpDecorate %14 DescriptorSet 0
 OpDecorate %14 Binding 2
-OpDecorate %14 NonReadable
 OpDecorate %15 DescriptorSet 0
 OpDecorate %15 Binding 3
-OpDecorate %15 NonReadable
 OpDecorate %17 ArrayStride 4
 OpMemberDecorate %18 0 Offset 0
 OpDecorate %18 Block

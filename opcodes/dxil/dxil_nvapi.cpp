@@ -500,6 +500,8 @@ static bool emit_nvapi_extn_op_uint64_atomic(Converter::Impl &impl)
 		auto uint32vec2_type = builder.makeVectorType(uint32_type, 2);
 		auto uint64_type = builder.makeUintType(64);
 
+		builder.addCapability(spv::CapabilityInt64Atomics);
+
 		spv::Id id = impl.get_id_for_value(impl.nvapi.marked_uav);
 		const auto &meta = impl.handle_to_resource_meta[id];
 
@@ -531,7 +533,6 @@ static bool emit_nvapi_extn_op_uint64_atomic(Converter::Impl &impl)
 			impl.add(ptr);
 
 			builder.addExtension("SPV_KHR_untyped_pointers");
-			builder.addCapability(spv::CapabilityInt64Atomics);
 			builder.addCapability(spv::CapabilityUntypedPointersKHR);
 		}
 		else if (meta.storage == spv::StorageClassUniformConstant)
@@ -563,11 +564,6 @@ static bool emit_nvapi_extn_op_uint64_atomic(Converter::Impl &impl)
 			ptr->add_id(texture_addr);
 			ptr->add_id(builder.makeUintConstant(0));
 			impl.add(ptr);
-
-			builder.addExtension("SPV_EXT_shader_image_int64");
-			builder.addCapability(spv::CapabilityInt64Atomics);
-			builder.addCapability(spv::CapabilityInt64ImageEXT);
-			builder.addCapability(spv::CapabilityStorageImageExtendedFormats);
 		}
 		else
 		{
@@ -1629,12 +1625,20 @@ void analyze_nvapi_buffer_store(Converter::Impl &impl, const llvm::CallInst *ins
 		auto *c = llvm::dyn_cast<llvm::ConstantInt>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE]);
 		if (c != nullptr)
 		{
-			auto &tracking = impl.uav_access_tracking[impl.llvm_value_to_uav_resource_index_map[impl.nvapi.marked_uav]];
 			auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
+			auto &tracking = impl.uav_access_tracking[impl.llvm_value_to_uav_resource_index_map[impl.nvapi.marked_uav]];
 
-			tracking.has_nvapi_atomic_fp16bit = opcode == NV_EXTN_OP_FP16_ATOMIC;
-			tracking.has_nvapi_atomic_fp32bit = opcode == NV_EXTN_OP_FP32_ATOMIC;
-			tracking.has_nvapi_atomic_uint64bit = opcode == NV_EXTN_OP_UINT64_ATOMIC;
+			if (opcode == NV_EXTN_OP_FP16_ATOMIC || opcode == NV_EXTN_OP_FP32_ATOMIC || opcode == NV_EXTN_OP_UINT64_ATOMIC)
+			{
+				tracking.has_read = true;
+				tracking.has_atomic = true;
+
+				if (opcode == NV_EXTN_OP_FP16_ATOMIC)
+					tracking.has_nvapi_atomic_fp16bit = true;
+
+				if (opcode == NV_EXTN_OP_UINT64_ATOMIC)
+					tracking.has_atomic_64bit = true;
+			}
 		}
 	}
 }
@@ -1673,7 +1677,7 @@ bool emit_nvapi_buffer_load(Converter::Impl &impl, const llvm::CallInst *instruc
 
 		// TODO: There should be a better way to get number of components
 		auto &tracking = impl.uav_access_tracking[impl.llvm_value_to_uav_resource_index_map[impl.nvapi.marked_uav]];
-		unsigned num_components = tracking.has_nvapi_atomic_uint64bit ? 2 : 1;
+		unsigned num_components = tracking.has_atomic_64bit ? 2 : 1;
 
 		impl.llvm_composite_meta[instruction].components = num_components;
 		impl.llvm_composite_meta[instruction].forced_composite = false;

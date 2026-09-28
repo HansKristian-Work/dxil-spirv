@@ -108,13 +108,10 @@ OpDecorate %14 Binding 0
 OpDecorate %14 NonReadable
 OpDecorate %18 DescriptorSet 0
 OpDecorate %18 Binding 2
-OpDecorate %18 NonReadable
 OpDecorate %21 DescriptorSet 0
 OpDecorate %21 Binding 3
-OpDecorate %21 NonReadable
 OpDecorate %25 DescriptorSet 0
 OpDecorate %25 Binding 4
-OpDecorate %25 NonReadable
 OpDecorate %28 BuiltIn LaunchIdKHR
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
