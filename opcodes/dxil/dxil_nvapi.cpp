@@ -509,14 +509,7 @@ static bool emit_nvapi_extn_op_uint64_atomic(Converter::Impl &impl)
 		if (meta.storage == spv::StorageClassStorageBuffer)
 		{
 			spv::Id addr = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
-			spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B32, 1);
-
-			auto uint64_array = builder.makeRuntimeArray(uint64_type);
-			builder.addDecoration(uint64_array, spv::DecorationArrayStride, 8);
-
-			auto base = builder.makeStructType({uint64_array}, "ssbo");
-			builder.addDecoration(base, spv::DecorationBlock);
-			builder.addMemberDecoration(base, 0, spv::DecorationOffset, 0);
+			spv::Id ssbo_id = get_buffer_alias_handle(impl, meta, id, RawType::Integer, RawWidth::B64, 1);
 
 			// From shaders/nvapi/nvHLSLExtns.h: byteAddress must be multiple of 8
 			// ... so translate from byte address to index
@@ -525,15 +518,11 @@ static bool emit_nvapi_extn_op_uint64_atomic(Converter::Impl &impl)
 			ssbo_index->add_id(builder.makeUintConstant(8));
 			impl.add(ssbo_index);
 
-			ptr = impl.allocate(spv::OpUntypedAccessChainKHR, builder.makeUntypedPointer(spv::StorageClassStorageBuffer));
-			ptr->add_id(base);
+			ptr = impl.allocate(spv::OpAccessChain, builder.makePointer(spv::StorageClassStorageBuffer, uint64_type));
 			ptr->add_id(ssbo_id);
 			ptr->add_id(builder.makeUintConstant(0));
 			ptr->add_id(ssbo_index->id);
 			impl.add(ptr);
-
-			builder.addExtension("SPV_KHR_untyped_pointers");
-			builder.addCapability(spv::CapabilityUntypedPointersKHR);
 		}
 		else if (meta.storage == spv::StorageClassUniformConstant)
 		{
@@ -1627,6 +1616,7 @@ void analyze_nvapi_buffer_store(Converter::Impl &impl, const llvm::CallInst *ins
 		{
 			auto opcode = uint32_t(c->getUniqueInteger().getZExtValue());
 			auto &tracking = impl.uav_access_tracking[impl.llvm_value_to_uav_resource_index_map[impl.nvapi.marked_uav]];
+			auto meta = impl.get_raw_buffer_meta(DXIL::ResourceType::UAV, impl.llvm_value_to_uav_resource_index_map[impl.nvapi.marked_uav]);
 
 			if (opcode == NV_EXTN_OP_FP16_ATOMIC || opcode == NV_EXTN_OP_FP32_ATOMIC || opcode == NV_EXTN_OP_UINT64_ATOMIC)
 			{
@@ -1637,7 +1627,15 @@ void analyze_nvapi_buffer_store(Converter::Impl &impl, const llvm::CallInst *ins
 					tracking.has_nvapi_atomic_fp16bit = true;
 
 				if (opcode == NV_EXTN_OP_UINT64_ATOMIC)
+				{
 					tracking.has_atomic_64bit = true;
+					if (meta.kind != DXIL::ResourceKind::Texture1D
+						&& meta.kind != DXIL::ResourceKind::Texture2D
+						&& meta.kind != DXIL::ResourceKind::Texture3D)
+					{
+						tracking.add_accessed_vecsize(RawType::Integer, RawWidth::B64, 1);
+					}
+				}
 			}
 		}
 	}
