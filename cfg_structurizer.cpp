@@ -7397,6 +7397,17 @@ uint32_t CFGStructurizer::earliest_dominance_frontier_post_visit_order(const CFG
 	return earliest_df;
 }
 
+bool CFGStructurizer::merges_to_outer_real_loop(const CFGNode *node) const
+{
+	for (auto *outer : node->loop_merge_block->headers)
+	{
+		if (outer->merge == MergeType::Loop && outer->pred_back_edge &&
+		    outer->loop_merge_block == node->loop_merge_block && outer->dominates(node))
+			return true;
+	}
+	return false;
+}
+
 bool CFGStructurizer::find_loops(unsigned pass)
 {
 	for (auto index = forward_post_visit_order.size(); index; index--)
@@ -7411,8 +7422,20 @@ bool CFGStructurizer::find_loops(unsigned pass)
 			// just propagate the header information and be done with it.
 			if (node->merge == MergeType::Loop)
 			{
-				node->loop_merge_block->add_unique_header(node);
-				continue;
+				// In pass 1, an outer real loop may now share our merge block, which pass 1 cannot split.
+				// Breaking to it is a plain break for the outer loop, so demote and redo this node.
+				if (pass == 1 && merges_to_outer_real_loop(node))
+				{
+					node->merge = MergeType::None;
+					node->loop_merge_block = nullptr;
+					node->loop_ladder_block = nullptr;
+					node->freeze_structured_analysis = false;
+				}
+				else
+				{
+					node->loop_merge_block->add_unique_header(node);
+					continue;
+				}
 			}
 		}
 
