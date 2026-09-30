@@ -246,8 +246,11 @@ private:
 
 	UnorderedMap<uint32_t, CFGNode *> value_id_to_block;
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	void log_cfg(const char *tag) const;
 	void log_cfg_graphviz(const char *path) const;
+	void log_cfg_structurize_test(const char *path) const;
+#endif
 
 	bool can_complete_phi_insertion(const PHI &phi, const CFGNode *end_node);
 	CFGNode *find_linear_phi_control_flow_frontier(

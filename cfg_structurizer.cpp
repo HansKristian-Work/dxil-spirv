@@ -69,6 +69,7 @@ CFGStructurizer::CFGStructurizer(CFGNode *entry, CFGNodePool &pool_, SPIRVModule
 	exit_block->name = "EXIT";
 }
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 void CFGStructurizer::log_cfg_graphviz(const char *path) const
 {
 	FILE *file = fopen(path, "w");
@@ -206,6 +207,56 @@ void CFGStructurizer::log_cfg(const char *tag) const
 	}
 	LOGI("\n=====================\n");
 }
+
+void CFGStructurizer::log_cfg_structurize_test(const char *path) const
+{
+	FILE *f = fopen(path, "w");
+	if (!f)
+		return;
+
+	UnorderedMap<const CFGNode *, String> names;
+	Vector<const CFGNode *> stack;
+
+	auto name = [&](const CFGNode *n) -> const char * {
+		auto itr = names.find(n);
+		if (itr == names.end())
+		{
+			String s = n == entry_block ? "entry" : ("n" + std::to_string(names.size())).c_str();
+			itr = names.insert({ n, s }).first;
+			stack.push_back(n);
+		}
+		return itr->second.c_str();
+	};
+
+	name(entry_block);
+
+	while (!stack.empty())
+	{
+		auto *n = stack.back();
+		stack.pop_back();
+		auto &t = n->ir.terminator;
+		if (!n->ir.operations.empty())
+			fprintf(f, "sideeffect %s\n", name(n));
+		if (t.type == Terminator::Type::Branch)
+			fprintf(f, "b %s %s\n", name(n), name(t.direct_block));
+		else if (t.type == Terminator::Type::Condition)
+			fprintf(f, "c %s %s %s\n", name(n), name(t.true_block), name(t.false_block));
+		else if (t.type == Terminator::Type::Switch)
+		{
+			// structurize-test takes the default target first.
+			fprintf(f, "switch %s", name(n));
+			for (auto &c : t.cases)
+				if (c.is_default)
+					fprintf(f, " %s", name(c.node));
+			for (auto &c : t.cases)
+				if (!c.is_default)
+					fprintf(f, " %s", name(c.node));
+			fprintf(f, "\n");
+		}
+	}
+	fclose(f);
+}
+#endif
 
 //#define PHI_DEBUG
 #ifdef PHI_DEBUG
@@ -1289,14 +1340,21 @@ bool CFGStructurizer::run_trivial()
 
 bool CFGStructurizer::run()
 {
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	String graphviz_path;
 	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
 		graphviz_path = env;
+
+	// Debug only: dump the input CFG in the format structurize-test reads.
+	if (const char *env = getenv("DXIL_SPIRV_STRUCTURIZE_TEST_PATH"))
+		log_cfg_structurize_test(env);
+#endif
 
 	// We make the assumption during traversal that there is only one back edge.
 	// Fix this up here.
 	rewrite_multiple_back_edges();
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	//log_cfg("Input state");
 	if (!graphviz_path.empty())
 	{
@@ -1305,6 +1363,7 @@ bool CFGStructurizer::run()
 		auto graphviz_input = graphviz_path + ".input";
 		log_cfg_graphviz(graphviz_input.c_str());
 	}
+#endif
 
 	recompute_cfg();
 	sink_ssa_constructs();
@@ -1312,159 +1371,191 @@ bool CFGStructurizer::run()
 
 	cleanup_breaking_phi_constructs();
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	if (!graphviz_path.empty())
 	{
 		auto graphviz_split = graphviz_path + ".phi-split";
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
+#endif
 
 	while (cleanup_breaking_return_constructs())
 	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_split = graphviz_path + ".break-return";
 			log_cfg_graphviz(graphviz_split.c_str());
 		}
+#endif
 	}
 
 	create_continue_block_ladders();
 
 	while (serialize_interleaved_early_returns())
 	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_split = graphviz_path + ".serialize-early-return";
 			log_cfg_graphviz(graphviz_split.c_str());
 		}
+#endif
 	}
 
 	while (serialize_interleaved_merge_scopes_aggressive())
 	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_split = graphviz_path + ".serialize-aggressive";
 			log_cfg_graphviz(graphviz_split.c_str());
 		}
+#endif
 	}
 
 	while (serialize_interleaved_merge_scopes())
 	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_split = graphviz_path + ".serialize";
 			log_cfg_graphviz(graphviz_split.c_str());
 		}
+#endif
 	}
 
 	split_merge_scopes();
 	recompute_cfg();
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	//log_cfg("Split merge scopes");
 	if (!graphviz_path.empty())
 	{
 		auto graphviz_split = graphviz_path + ".split";
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
+#endif
 
 	// We will have generated lots of ladder blocks
 	// which might cause issues with further analysis, so
 	// nuke them as required.
 	eliminate_degenerate_blocks();
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	if (!graphviz_path.empty())
 	{
 		auto graphviz_split = graphviz_path + ".eliminate0";
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
+#endif
 
 	// Similar to cleanup_breaking_phi_constructs() in spirit,
 	// but here we are forced to duplicate code blocks to make it work.
 	duplicate_impossible_merge_constructs();
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	//log_cfg("Split impossible merges");
 	if (!graphviz_path.empty())
 	{
 		auto graphviz_split = graphviz_path + ".duplicate";
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
+#endif
 
 	while (rewrite_complex_loop_header_switch_constructs())
 	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_split = graphviz_path + ".loop-header-switch-rewrite";
 			log_cfg_graphviz(graphviz_split.c_str());
 		}
+#endif
 	}
 
 	while (rewrite_transposed_loops())
 	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_split = graphviz_path + ".transpose-loop-rewrite";
 			log_cfg_graphviz(graphviz_split.c_str());
 		}
+#endif
 	}
 
 	// If there are back-edges that punch through multiple loop headers, fix this up.
 	while (rewrite_impossible_back_edges())
 	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_split = graphviz_path + ".impossible-continue";
 			log_cfg_graphviz(graphviz_split.c_str());
 		}
+#endif
 	}
 
 	//LOGI("=== Structurize pass ===\n");
 	while (structurize(0))
 	{
 		recompute_cfg();
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_final = graphviz_path + ".partial-struct0";
 			log_cfg_graphviz(graphviz_final.c_str());
 		}
+#endif
 	}
 
 	update_structured_loop_merge_targets();
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	//log_cfg("Structurize pass 0");
 	if (!graphviz_path.empty())
 	{
 		auto graphviz_final = graphviz_path + ".struct0";
 		log_cfg_graphviz(graphviz_final.c_str());
 	}
+#endif
 
 	// We will have generated lots of ladder blocks
 	// which might cause issues with further analysis, so
 	// nuke them as required.
 	eliminate_degenerate_blocks();
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	//log_cfg("Split merge scopes");
 	if (!graphviz_path.empty())
 	{
 		auto graphviz_split = graphviz_path + ".eliminate1";
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
+#endif
 
 	//LOGI("=== Structurize pass ===\n");
 	structurize(1);
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	if (!graphviz_path.empty())
 	{
 		auto graphviz_final = graphviz_path + ".struct1";
 		log_cfg_graphviz(graphviz_final.c_str());
 	}
+#endif
 
 	bool need_restructure = false;
 	while (rewrite_invalid_loop_breaks())
 	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_final = graphviz_path + ".loop-break-rewrite";
 			log_cfg_graphviz(graphviz_final.c_str());
 		}
+#endif
 
 		need_restructure = true;
 	}
@@ -1478,11 +1569,13 @@ bool CFGStructurizer::run()
 	need_restructure = false;
 	if (rewrite_invalid_switch_breaks())
 	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
 		{
 			auto graphviz_final = graphviz_path + ".switch-break-rewrite";
 			log_cfg_graphviz(graphviz_final.c_str());
 		}
+#endif
 
 		recompute_cfg();
 		need_restructure = true;
@@ -1494,12 +1587,14 @@ bool CFGStructurizer::run()
 		structurize(1);
 	}
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
 	//log_cfg("Final");
 	if (!graphviz_path.empty())
 	{
 		auto graphviz_final = graphviz_path + ".final";
 		log_cfg_graphviz(graphviz_final.c_str());
 	}
+#endif
 
 	insert_phi();
 
@@ -8243,11 +8338,13 @@ bool CFGStructurizer::structurize(unsigned pass)
 		// For complex rewrites, we damage the CFG, so need to start over every iteration.
 		recompute_cfg();
 
+#ifdef DXIL_SPV_DEBUG_DUMPING
 		if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
 		{
 			auto graphviz_path = env + std::string(".switch-iterate");
 			log_cfg_graphviz(graphviz_path.c_str());
 		}
+#endif
 
 		switch_mode = process_switch_blocks(pass);
 	}
