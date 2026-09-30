@@ -142,16 +142,22 @@ cleanup:
 	spvc_context_destroy(context);
 }
 
-static void validate_spirv(const Vector<uint32_t> &code)
+static bool validate_spirv(const Vector<uint32_t> &code)
 {
 	spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("Message: %s\n", message);
 	});
 	if (!tools.Validate(code.data(), code.size()))
+	{
 		LOGE("Validation error.\n");
+		return false;
+	}
 	else
+	{
 		LOGE("Validated successfully!\n");
+		return true;
+	}
 }
 
 static Vector<String> tokenize(char *line_buffer)
@@ -356,5 +362,5 @@ int main(int argc, char **argv)
 
 	print_glsl(code);
 	print_spirv_assembly(code);
-	validate_spirv(code);
+	return validate_spirv(code) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
