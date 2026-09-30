@@ -11,5 +11,5 @@ RWStructuredBuffer<float> UAV1;
 void main(uint thr : SV_DispatchThreadID)
 {
 	float v = 45.5 + thr;
-    UAV1[100] = NvInterlockedAddFp32(BAB, 4, v);
+    UAV1[100] = NvInterlockedAddFp32(BAB, 8, v);
 }

@@ -1,16 +1,65 @@
 #version 460
+#if defined(GL_ARB_gpu_shader_int64)
+#extension GL_ARB_gpu_shader_int64 : require
+#else
+#error No extension available for 64-bit integers.
+#endif
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+#extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_shader_image_int64 : require
 #extension GL_KHR_shader_subgroup_shuffle : require
+#extension GL_EXT_shader_atomic_float : require
+#extension GL_EXT_shader_atomic_int64 : require
 
-layout(set = 0, binding = 0, std430) writeonly buffer BlahSSBO
+layout(set = 0, binding = 0, std430) writeonly buffer Blah1SSBO
 {
     uint _m0[];
-} Blah;
+} Blah1;
+
+layout(set = 0, binding = 0, std430) writeonly buffer Blah2SSBO
+{
+    uvec2 _m0[];
+} Blah2;
+
+layout(set = 0, binding = 5, std430) buffer BABSSBO
+{
+    uint _m0[];
+} BAB;
+
+layout(set = 0, binding = 5, std430) buffer BAB_1
+{
+    uint64_t _m0[];
+} BAB_2;
+
+layout(set = 0, binding = 2, rg16f) uniform image1D RWTex1;
+layout(set = 0, binding = 3, r32f) uniform image2D RWTex2;
+layout(set = 0, binding = 4, r64ui) uniform u64image3D RWTex3;
 
 void main()
 {
-    Blah._m0[gl_LaunchIDEXT.x] = subgroupShuffle(gl_LaunchIDEXT.x, 9u);
+    Blah1._m0[gl_LaunchIDEXT.x] = subgroupShuffle(gl_LaunchIDEXT.x, 9u);
+    float _47 = float(gl_LaunchIDEXT.x);
+    float _48 = _47 + 45.5;
+    f16vec2 _69 = imageAtomicAdd(RWTex1, int(5u), unpackFloat2x16((packHalf2x16(vec2(_47 + 46.5, 0.0)) << 16u) | packHalf2x16(vec2(_48, 0.0))));
+    Blah1._m0[gl_LaunchIDEXT.x + 101u] = packFloat2x16(_69);
+    float _84 = imageAtomicAdd(RWTex2, ivec2(uvec2(6u, 7u)), uintBitsToFloat(floatBitsToUint(_48)));
+    Blah1._m0[gl_LaunchIDEXT.x + 102u] = uint(uintBitsToFloat(floatBitsToUint(_84)));
+    uint64_t _93 = uint64_t(gl_LaunchIDEXT.x) + 1ul;
+    uint _95 = uint(_93);
+    uint _98 = uint(_93 >> 32ul);
+    uint64_t _107 = imageAtomicAdd(RWTex3, ivec3(uvec3(8u, 9u, 10u)), packUint2x32(uvec2(_95, _98)));
+    Blah2._m0[gl_LaunchIDEXT.x + 103u] = uvec2(unpackUint2x32(_107));
+    uint _117 = 16u / 8u;
+    uint64_t _122 = atomicAdd(BAB_2._m0[_117], packUint2x32(uvec2(_95, _98)));
+    Blah2._m0[gl_LaunchIDEXT.x + 104u] = uvec2(unpackUint2x32(_122));
 }
 
 
@@ -19,34 +68,82 @@ void main()
 ; SPIR-V
 ; Version: 1.4
 ; Generator: Unknown(30017); 21022
-; Bound: 25
+; Bound: 133
 ; Schema: 0
 OpCapability Shader
+OpCapability Float16
+OpCapability Int64
+OpCapability Int64Atomics
 OpCapability UniformBufferArrayDynamicIndexing
 OpCapability SampledImageArrayDynamicIndexing
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageImageArrayDynamicIndexing
+OpCapability Image1D
+OpCapability StorageImageExtendedFormats
 OpCapability GroupNonUniformShuffle
+OpCapability DenormPreserve
 OpCapability RayTracingKHR
+OpCapability Int64ImageEXT
 OpCapability RuntimeDescriptorArray
 OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability AtomicFloat16VectorNV
+OpCapability AtomicFloat32AddEXT
 OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_EXT_shader_atomic_float_add"
+OpExtension "SPV_EXT_shader_image_int64"
+OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_ray_tracing"
+OpExtension "SPV_NV_shader_atomic_fp16_vector"
+%52 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
-OpEntryPoint RayGenerationKHR %3 "main" %9 %12
+OpEntryPoint RayGenerationKHR %3 "main" %9 %14 %18 %21 %25 %29 %33 %36
+OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
-OpName %7 "BlahSSBO"
-OpName %9 "Blah"
+OpName %7 "Blah1SSBO"
+OpName %9 "Blah1"
+OpName %12 "Blah2SSBO"
+OpName %14 "Blah2"
+OpName %18 "RWTex1"
+OpName %21 "RWTex2"
+OpName %25 "RWTex3"
+OpName %27 "BABSSBO"
+OpName %29 "BAB"
+OpName %31 "BABSSBO"
+OpName %33 "BAB"
 OpDecorate %6 ArrayStride 4
 OpMemberDecorate %7 0 Offset 0
 OpDecorate %7 Block
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
 OpDecorate %9 NonReadable
-OpDecorate %12 BuiltIn LaunchIdKHR
+OpDecorate %11 ArrayStride 8
+OpMemberDecorate %12 0 Offset 0
+OpDecorate %12 Block
+OpDecorate %14 DescriptorSet 0
+OpDecorate %14 Binding 0
+OpDecorate %14 NonReadable
+OpDecorate %18 DescriptorSet 0
+OpDecorate %18 Binding 2
+OpDecorate %21 DescriptorSet 0
+OpDecorate %21 Binding 3
+OpDecorate %25 DescriptorSet 0
+OpDecorate %25 Binding 4
+OpDecorate %26 ArrayStride 4
+OpMemberDecorate %27 0 Offset 0
+OpDecorate %27 Block
+OpDecorate %30 ArrayStride 8
+OpMemberDecorate %31 0 Offset 0
+OpDecorate %31 Block
+OpDecorate %29 DescriptorSet 0
+OpDecorate %29 Binding 5
+OpDecorate %29 Aliased
+OpDecorate %33 DescriptorSet 0
+OpDecorate %33 Binding 5
+OpDecorate %33 Aliased
+OpDecorate %36 BuiltIn LaunchIdKHR
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -54,23 +151,134 @@ OpDecorate %12 BuiltIn LaunchIdKHR
 %7 = OpTypeStruct %6
 %8 = OpTypePointer StorageBuffer %7
 %9 = OpVariable %8 StorageBuffer
-%10 = OpTypeVector %5 3
-%11 = OpTypePointer Input %10
-%12 = OpVariable %11 Input
-%13 = OpTypePointer Input %5
-%15 = OpConstant %5 0
-%18 = OpConstant %5 9
-%20 = OpConstant %5 3
-%21 = OpTypePointer StorageBuffer %5
+%10 = OpTypeVector %5 2
+%11 = OpTypeRuntimeArray %10
+%12 = OpTypeStruct %11
+%13 = OpTypePointer StorageBuffer %12
+%14 = OpVariable %13 StorageBuffer
+%15 = OpTypeFloat 32
+%16 = OpTypeImage %15 1D 0 0 0 2 Rg16f
+%17 = OpTypePointer UniformConstant %16
+%18 = OpVariable %17 UniformConstant
+%19 = OpTypeImage %15 2D 0 0 0 2 R32f
+%20 = OpTypePointer UniformConstant %19
+%21 = OpVariable %20 UniformConstant
+%22 = OpTypeInt 64 0
+%23 = OpTypeImage %22 3D 0 0 0 2 R64ui
+%24 = OpTypePointer UniformConstant %23
+%25 = OpVariable %24 UniformConstant
+%26 = OpTypeRuntimeArray %5
+%27 = OpTypeStruct %26
+%28 = OpTypePointer StorageBuffer %27
+%29 = OpVariable %28 StorageBuffer
+%30 = OpTypeRuntimeArray %22
+%31 = OpTypeStruct %30
+%32 = OpTypePointer StorageBuffer %31
+%33 = OpVariable %32 StorageBuffer
+%34 = OpTypeVector %5 3
+%35 = OpTypePointer Input %34
+%36 = OpVariable %35 Input
+%37 = OpTypePointer Input %5
+%39 = OpConstant %5 0
+%42 = OpConstant %5 9
+%44 = OpConstant %5 3
+%45 = OpTypePointer StorageBuffer %5
+%49 = OpConstant %15 45.5
+%51 = OpConstant %15 46.5
+%54 = OpConstant %15 0
+%55 = OpTypeVector %15 2
+%58 = OpConstant %5 16
+%63 = OpTypeFloat 16
+%64 = OpTypeVector %63 2
+%65 = OpConstant %5 5
+%66 = OpTypePointer Image %64
+%70 = OpConstant %5 1
+%73 = OpConstant %5 101
+%78 = OpConstant %5 6
+%79 = OpConstant %5 7
+%81 = OpTypePointer Image %15
+%89 = OpConstant %5 102
+%94 = OpConstant %22 1
+%97 = OpConstant %22 32
+%100 = OpConstant %5 8
+%101 = OpConstant %5 10
+%103 = OpTypePointer Image %22
+%112 = OpConstant %5 103
+%115 = OpTypePointer StorageBuffer %10
+%118 = OpTypePointer StorageBuffer %22
+%127 = OpConstant %5 104
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %23
-%23 = OpLabel
-%14 = OpAccessChain %13 %12 %15
-%16 = OpLoad %5 %14
-%19 = OpGroupNonUniformShuffle %5 %20 %16 %18
-%22 = OpAccessChain %21 %9 %15 %16
-OpStore %22 %19
+OpBranch %131
+%131 = OpLabel
+%38 = OpAccessChain %37 %36 %39
+%40 = OpLoad %5 %38
+%43 = OpGroupNonUniformShuffle %5 %44 %40 %42
+%46 = OpAccessChain %45 %9 %39 %40
+OpStore %46 %43
+%47 = OpConvertUToF %15 %40
+%48 = OpFAdd %15 %47 %49
+%50 = OpFAdd %15 %47 %51
+%56 = OpCompositeConstruct %55 %50 %54
+%53 = OpExtInst %5 %52 PackHalf2x16 %56
+%57 = OpShiftLeftLogical %5 %53 %58
+%60 = OpCompositeConstruct %55 %48 %54
+%59 = OpExtInst %5 %52 PackHalf2x16 %60
+%61 = OpBitwiseOr %5 %57 %59
+%62 = OpLoad %16 %18
+%67 = OpImageTexelPointer %66 %18 %65 %39
+%68 = OpBitcast %64 %61
+%69 = OpAtomicFAddEXT %64 %67 %70 %39 %68
+%71 = OpBitcast %5 %69
+%72 = OpIAdd %5 %40 %73
+%74 = OpIAdd %5 %40 %73
+%75 = OpAccessChain %45 %9 %39 %74
+OpStore %75 %71
+%76 = OpLoad %19 %21
+%77 = OpBitcast %5 %48
+%80 = OpCompositeConstruct %10 %78 %79
+%82 = OpImageTexelPointer %81 %21 %80 %39
+%83 = OpBitcast %15 %77
+%84 = OpAtomicFAddEXT %15 %82 %70 %39 %83
+%85 = OpBitcast %5 %84
+%86 = OpBitcast %15 %85
+%87 = OpConvertFToU %5 %86
+%88 = OpIAdd %5 %40 %89
+%90 = OpIAdd %5 %40 %89
+%91 = OpAccessChain %45 %9 %39 %90
+OpStore %91 %87
+%92 = OpUConvert %22 %40
+%93 = OpIAdd %22 %92 %94
+%95 = OpUConvert %5 %93
+%96 = OpShiftRightLogical %22 %93 %97
+%98 = OpUConvert %5 %96
+%99 = OpLoad %23 %25
+%102 = OpCompositeConstruct %34 %100 %42 %101
+%104 = OpImageTexelPointer %103 %25 %102 %39
+%105 = OpCompositeConstruct %10 %95 %98
+%106 = OpBitcast %22 %105
+%107 = OpAtomicIAdd %22 %104 %70 %39 %106
+%108 = OpBitcast %10 %107
+%109 = OpCompositeExtract %5 %108 0
+%110 = OpCompositeExtract %5 %108 1
+%111 = OpIAdd %5 %40 %112
+%113 = OpIAdd %5 %40 %112
+%114 = OpCompositeConstruct %10 %109 %110
+%116 = OpAccessChain %115 %14 %39 %113
+OpStore %116 %114
+%117 = OpUDiv %5 %58 %100
+%119 = OpAccessChain %118 %33 %39 %117
+%120 = OpCompositeConstruct %10 %95 %98
+%121 = OpBitcast %22 %120
+%122 = OpAtomicIAdd %22 %119 %70 %39 %121
+%123 = OpBitcast %10 %122
+%124 = OpCompositeExtract %5 %123 0
+%125 = OpCompositeExtract %5 %123 1
+%126 = OpIAdd %5 %40 %127
+%128 = OpIAdd %5 %40 %127
+%129 = OpCompositeConstruct %10 %124 %125
+%130 = OpAccessChain %115 %14 %39 %128
+OpStore %130 %129
 OpReturn
 OpFunctionEnd
 #endif
