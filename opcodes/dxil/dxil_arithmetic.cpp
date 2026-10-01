@@ -1108,10 +1108,8 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 		return true;
 	}
 
-	if ((!impl.options.quirks.force_denorm_preserve_fp16_conversions &&
-	     GlobalConfiguration::get().simulate_min16float_min_spec) ||
-	    (impl.shader_analysis.precise_f16_to_f32_observed &&
-	     !impl.execution_mode_meta.float_controls2))
+	if (!impl.options.quirks.force_denorm_preserve_fp16_conversions &&
+	    GlobalConfiguration::get().simulate_min16float_min_spec)
 	{
 		auto *quant_op = impl.allocate(spv::OpQuantizeToF16, impl.get_type_id(instruction->getOperand(1)->getType()));
 		quant_op->add_id(input_id);
@@ -1119,17 +1117,36 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 		input_id = quant_op->id;
 	}
 
-	Operation *op = impl.allocate(spv::OpExtInst, instruction);
-	op->add_id(impl.glsl_std450_ext);
-	op->add_literal(GLSLstd450PackHalf2x16);
+	if (impl.shader_analysis.precise_f16_to_f32_observed && !impl.execution_mode_meta.float_controls2)
+	{
+		// Two use cases for this path.
+		// - Enforce that the conversion actually happens. It is not possible for a compiler to optimize
+		//   around this.
+		// - Enforce correct RTZ semantics. Only relevant for NVIDIA as far as I can tell.
+		//   Not enabled by default due to performance concerns.
+		spv::Id helper_id = impl.spirv_module.get_helper_call_id(
+				HelperCall::PackHalfPrecise,
+				impl.get_type_id(instruction->getOperand(1)->getType()));
 
-	if (impl.shader_analysis.precise_f16_to_f32_observed && impl.execution_mode_meta.float_controls2)
-		add_nocontract_decoration(impl, op->id);
+		auto *call = impl.allocate(spv::OpFunctionCall, instruction);
+		call->add_id(helper_id);
+		call->add_id(input_id);
+		impl.add(call);
+	}
+	else
+	{
+		Operation *op = impl.allocate(spv::OpExtInst, instruction);
+		op->add_id(impl.glsl_std450_ext);
+		op->add_literal(GLSLstd450PackHalf2x16);
 
-	spv::Id inputs[2] = { input_id, builder.makeFloatConstant(0.0f) };
-	op->add_id(impl.build_vector(builder.makeFloatType(32), inputs, 2));
-	impl.add(op);
-	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
+		if (impl.shader_analysis.precise_f16_to_f32_observed && impl.execution_mode_meta.float_controls2)
+			add_nocontract_decoration(impl, op->id);
+
+		spv::Id inputs[2] = { input_id, builder.makeFloatConstant(0.0f) };
+		op->add_id(impl.build_vector(builder.makeFloatType(32), inputs, 2));
+		impl.add(op);
+		impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
+	}
 	return true;
 }
 

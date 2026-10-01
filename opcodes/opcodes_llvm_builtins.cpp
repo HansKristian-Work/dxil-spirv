@@ -1232,10 +1232,14 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		// and force use of QuantizeToFP16 instead.
 		// Rounding mode of this operation is not well-defined,
 		// but that is also the case for D3D12. AMD drivers will prefer RTZ here for example.
-		auto *quant_op = impl.allocate(spv::OpQuantizeToF16, instruction);
-		quant_op->add_id(value_id);
-		impl.add(quant_op);
-		return quant_op->id;
+		spv::Id helper_id = impl.spirv_module.get_helper_call_id(HelperCall::QuantHalfPrecise);
+
+		auto *call = impl.allocate(spv::OpFunctionCall, instruction);
+		call->add_id(helper_id);
+		call->add_id(value_id);
+		impl.add(call);
+
+		return call->id;
 	}
 
 	if (value_cast_is_noop(impl, instruction, can_relax_precision))
