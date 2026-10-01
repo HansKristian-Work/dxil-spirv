@@ -381,6 +381,7 @@ struct Converter::Impl
 		bool native_16bit_operations = false;
 		bool synthesize_2d_quad_dispatch = false;
 		bool synthesize_dummy_derivatives = false;
+		bool all_resources_bound = false;
 		unsigned wave_size_min = 0;
 		unsigned wave_size_max = 0;
 		unsigned wave_size_preferred = 0;
@@ -1086,6 +1087,7 @@ struct Converter::Impl
 	Vector<NonSemanticDebugInfo> non_semantic_debug_info;
 	void emit_non_semantic_debug_info(const NonSemanticDebugInfo &info);
 	void emit_non_semantic_signal_quirk(ShaderQuirk quirk);
+	void emit_non_semantic_all_resources_bound();
 
 	bool type_can_relax_precision(const llvm::Type *type, bool known_integer_sign) const;
 	void decorate_relaxed_precision(const llvm::Type *type, spv::Id id, bool known_integer_sign);

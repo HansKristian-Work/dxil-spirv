@@ -699,6 +699,7 @@ enum class MeshOutputTopology
 enum ShaderFlag
 {
 	ShaderFlagEarlyDepthStencil = 1 << 3,
+	ShaderFlagAllResourcesBound = 1 << 8,
 	ShaderFlagNativeLowPrecision = 1 << 23
 };
 

@@ -1149,6 +1149,17 @@ void Converter::Impl::emit_non_semantic_signal_quirk(ShaderQuirk quirk)
 	b.addExternal(std::move(inst));
 }
 
+void Converter::Impl::emit_non_semantic_all_resources_bound()
+{
+	auto &b = spirv_module.get_builder();
+	b.addExtension("SPV_KHR_non_semantic_info");
+	spv::Id ext = b.import("NonSemantic.dxil-spirv.all_resources_bound");
+	auto inst = std::make_unique<spv::Instruction>(b.getUniqueId(), b.makeVoidType(), spv::OpExtInst);
+	inst->addIdOperand(ext);
+	inst->addImmediateOperand(1);
+	b.addExternal(std::move(inst));
+}
+
 void Converter::Impl::emit_non_semantic_debug_info(const NonSemanticDebugInfo &info)
 {
 	auto &b = spirv_module.get_builder();
@@ -7669,6 +7680,7 @@ bool Converter::Impl::analyze_execution_modes_meta()
 
 	auto flags = get_shader_flags(meta);
 	execution_mode_meta.native_16bit_operations = (flags & DXIL::ShaderFlagNativeLowPrecision) != 0;
+	execution_mode_meta.all_resources_bound = (flags & DXIL::ShaderFlagAllResourcesBound) != 0;
 	return true;
 }
 
@@ -9089,8 +9101,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 
 	if (options.extended_non_semantic_info)
+	{
 		for (auto &info : non_semantic_debug_info)
 			emit_non_semantic_debug_info(info);
+
+		if (execution_mode_meta.all_resources_bound)
+			emit_non_semantic_all_resources_bound();
+	}
 
 	if (options.quirks.non_semantic_signal_concurrent_workgroup)
 		emit_non_semantic_signal_quirk(ShaderQuirk::NonSemanticSignalConcurrentWorkgroup);
