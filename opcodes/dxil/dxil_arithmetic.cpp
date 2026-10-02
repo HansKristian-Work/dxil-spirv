@@ -1041,20 +1041,38 @@ bool emit_legacy_f16_to_f32_instruction(Converter::Impl &impl, const llvm::CallI
 		return true;
 	}
 
-	Operation *unpack_op = impl.allocate(spv::OpExtInst, builder.makeVectorType(builder.makeFloatType(32), 2));
-	unpack_op->add_id(impl.glsl_std450_ext);
-	unpack_op->add_literal(GLSLstd450UnpackHalf2x16);
-	unpack_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-	impl.add(unpack_op);
+	bool precise = (instruction->hasMetadata("dx.precise") || impl.options.force_precise) &&
+	               value_depends_on_dx_op(instruction->getOperand(1), DXIL::Op::LegacyF32ToF16);
 
-	// By construction, these are relaxed precision, but spams lots of unrelated shader changes,
-	// and doesn't make too much sense to add ...
-	//builder.addDecoration(unpack_op->id, spv::DecorationRelaxedPrecision);
+	Operation *op = nullptr;
 
-	Operation *op = impl.allocate(spv::OpCompositeExtract, instruction);
-	op->add_id(unpack_op->id);
-	op->add_literal(0);
-	impl.add(op);
+	if (precise && !impl.execution_mode_meta.float_controls2)
+	{
+		// Need to defeat compiler optimization through underhanded means instead.
+		spv::Id helper_id = impl.spirv_module.get_helper_call_id(HelperCall::UnpackHalfPrecise);
+
+		op = impl.allocate(spv::OpFunctionCall, instruction);
+		op->add_id(helper_id);
+		op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(op);
+	}
+	else
+	{
+		Operation *unpack_op = impl.allocate(spv::OpExtInst, builder.makeVectorType(builder.makeFloatType(32), 2));
+		unpack_op->add_id(impl.glsl_std450_ext);
+		unpack_op->add_literal(GLSLstd450UnpackHalf2x16);
+		unpack_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+		impl.add(unpack_op);
+
+		// By construction, these are relaxed precision, but spams lots of unrelated shader changes,
+		// and doesn't make too much sense to add ...
+		//builder.addDecoration(unpack_op->id, spv::DecorationRelaxedPrecision);
+
+		op = impl.allocate(spv::OpCompositeExtract, instruction);
+		op->add_id(unpack_op->id);
+		op->add_literal(0);
+		impl.add(op);
+	}
 
 	if (!impl.options.quirks.force_denorm_preserve_fp16_conversions &&
 	    GlobalConfiguration::get().simulate_min16float_min_spec)
@@ -1117,36 +1135,18 @@ bool emit_legacy_f32_to_f16_instruction(Converter::Impl &impl, const llvm::CallI
 		input_id = quant_op->id;
 	}
 
-	if (impl.shader_analysis.precise_f16_to_f32_observed && !impl.execution_mode_meta.float_controls2)
-	{
-		// Two use cases for this path.
-		// - Enforce that the conversion actually happens. It is not possible for a compiler to optimize
-		//   around this.
-		// - Enforce correct RTZ semantics. Only relevant for NVIDIA as far as I can tell.
-		//   Not enabled by default due to performance concerns.
-		spv::Id helper_id = impl.spirv_module.get_helper_call_id(
-				HelperCall::PackHalfPrecise,
-				impl.get_type_id(instruction->getOperand(1)->getType()));
+	Operation *op = impl.allocate(spv::OpExtInst, instruction);
+	op->add_id(impl.glsl_std450_ext);
+	op->add_literal(GLSLstd450PackHalf2x16);
 
-		auto *call = impl.allocate(spv::OpFunctionCall, instruction);
-		call->add_id(helper_id);
-		call->add_id(input_id);
-		impl.add(call);
-	}
-	else
-	{
-		Operation *op = impl.allocate(spv::OpExtInst, instruction);
-		op->add_id(impl.glsl_std450_ext);
-		op->add_literal(GLSLstd450PackHalf2x16);
+	if (impl.shader_analysis.precise_f16_to_f32_observed && impl.execution_mode_meta.float_controls2)
+		add_nocontract_decoration(impl, op->id);
 
-		if (impl.shader_analysis.precise_f16_to_f32_observed && impl.execution_mode_meta.float_controls2)
-			add_nocontract_decoration(impl, op->id);
+	spv::Id inputs[2] = { input_id, builder.makeFloatConstant(0.0f) };
+	op->add_id(impl.build_vector(builder.makeFloatType(32), inputs, 2));
+	impl.add(op);
+	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
 
-		spv::Id inputs[2] = { input_id, builder.makeFloatConstant(0.0f) };
-		op->add_id(impl.build_vector(builder.makeFloatType(32), inputs, 2));
-		impl.add(op);
-		impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
-	}
 	return true;
 }
 

@@ -1229,14 +1229,12 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		// D3D12 compilers will enforce a truncate here through a FP32 -> FP16 -> FP32 chain,
 		// where Vulkan compilers ... don't :(
 		// If we find this pattern, assume that compilers will try to be clever about it (NoContract does not work on NV),
-		// and force use of QuantizeToFP16 instead.
-		// Rounding mode of this operation is not well-defined,
-		// but that is also the case for D3D12. AMD drivers will prefer RTZ here for example.
-		spv::Id helper_id = impl.spirv_module.get_helper_call_id(HelperCall::QuantHalfPrecise);
+		// and defeat the compiler through underhanded means instead.
+		spv::Id helper_id = impl.spirv_module.get_helper_call_id(HelperCall::FPExtPrecise);
 
 		auto *call = impl.allocate(spv::OpFunctionCall, instruction);
 		call->add_id(helper_id);
-		call->add_id(value_id);
+		call->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 		impl.add(call);
 
 		return call->id;

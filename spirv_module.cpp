@@ -94,7 +94,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_byte_address_mask_id(SPIRVModule &module);
 	spv::Id build_udiv_umod(SPIRVModule &module, spv::Id type_id, spv::Op op);
 	spv::Id build_legacy_denorm_f16_conv(SPIRVModule &module, spv::Id type_id, GLSLstd450 op);
-	spv::Id build_pack_half_precise(SPIRVModule &module, bool native_fp16);
+	spv::Id build_pack_half_precise(SPIRVModule &module);
+	spv::Id build_unpack_half_precise(SPIRVModule &module, bool native_fp16);
 	spv::Function *discard_function = nullptr;
 	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
@@ -161,7 +162,8 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id allocate_invocation_id_call_id = 0;
 	spv::Id byte_address_mask_call_id = 0;
 	spv::Id pack_half_precise_call_id = 0;
-	spv::Id conv_half_precise_call_id = 0;
+	spv::Id unpack_half_precise_call_id = 0;
+	spv::Id fpext_half_precise_call_id = 0;
 
 	struct MultiPrefixOp
 	{
@@ -2236,9 +2238,86 @@ spv::Id SPIRVModule::Impl::build_byte_address_mask_id(SPIRVModule &module)
 	return func->getId();
 }
 
-spv::Id SPIRVModule::Impl::build_pack_half_precise(SPIRVModule &module, bool native_fp16)
+spv::Id SPIRVModule::Impl::build_unpack_half_precise(SPIRVModule &module, bool native_fp16)
 {
-	auto &call_id = native_fp16 ? pack_half_precise_call_id : conv_half_precise_call_id;
+	auto &call_id = native_fp16 ? fpext_half_precise_call_id : unpack_half_precise_call_id;
+	if (call_id)
+		return call_id;
+
+	auto *current_build_point = builder.getBuildPoint();
+	spv::Block *entry = nullptr;
+	spv::Id uint_type = builder.makeUintType(32);
+	spv::Id bool_type = builder.makeBoolType();
+	spv::Id float_type = builder.makeFloatType(32);
+
+	spv::Id arg_type = native_fp16 ? builder.makeFloatType(16) : uint_type;
+
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, float_type,
+	                                       native_fp16 ? "FPExtPrecise" : "UnpackHalfPrecise",
+	                                       { arg_type }, {}, &entry);
+
+	builder.addName(func->getParamId(0), "value");
+
+	// Defeat the compiler by arbitrarily rearranging NaN patterns.
+	// This is allowed since NaN patters do not necessarily need to be preserved.
+
+	if (native_fp16)
+	{
+		auto *isnan = builder.addInstruction(bool_type, spv::OpIsNan);
+		isnan->addIdOperand(func->getParamId(0));
+
+		auto *nan_16 = builder.addInstruction(arg_type, spv::OpBitcast);
+		nan_16->addIdOperand(builder.makeUint16Constant(UINT16_MAX));
+
+		auto *sel = builder.addInstruction(arg_type, spv::OpSelect);
+		sel->addIdOperand(isnan->getResultId());
+		sel->addIdOperand(nan_16->getResultId());
+		sel->addIdOperand(func->getParamId(0));
+
+		auto *ext = builder.addInstruction(float_type, spv::OpFConvert);
+		ext->addIdOperand(sel->getResultId());
+
+		builder.makeReturn(false, ext->getResultId());
+	}
+	else
+	{
+		spv::Id float2_type = builder.makeVectorType(float_type, 2);
+
+	    auto *mask = builder.addInstruction(uint_type, spv::OpBitwiseAnd);
+	    mask->addIdOperand(func->getParamId(0));
+	    mask->addIdOperand(builder.makeUintConstant(0x7fff));
+
+	    auto *isnan = builder.addInstruction(bool_type, spv::OpUGreaterThan);
+	    isnan->addIdOperand(mask->getResultId());
+	    isnan->addIdOperand(builder.makeUintConstant(0x7c00));
+
+		auto *sel = builder.addInstruction(uint_type, spv::OpSelect);
+		sel->addIdOperand(isnan->getResultId());
+		sel->addIdOperand(builder.makeUintConstant(UINT32_MAX));
+		sel->addIdOperand(func->getParamId(0));
+
+		spv::Id std450 = builder.import("GLSL.std.450");
+
+		auto *unpack = builder.addInstruction(float2_type, spv::OpExtInst);
+		unpack->addIdOperand(std450);
+		unpack->addImmediateOperand(GLSLstd450UnpackHalf2x16);
+		unpack->addIdOperand(sel->getResultId());
+
+		auto *ext = builder.addInstruction(float_type, spv::OpCompositeExtract);
+		ext->addIdOperand(unpack->getResultId());
+		ext->addImmediateOperand(0);
+
+		builder.makeReturn(false, ext->getResultId());
+	}
+
+	builder.setBuildPoint(current_build_point);
+	call_id = func->getId();
+	return func->getId();
+}
+
+spv::Id SPIRVModule::Impl::build_pack_half_precise(SPIRVModule &module)
+{
+	auto &call_id = pack_half_precise_call_id;
 	if (call_id)
 		return call_id;
 
@@ -2251,8 +2330,8 @@ spv::Id SPIRVModule::Impl::build_pack_half_precise(SPIRVModule &module, bool nat
 
 	bool has_float_controls2 = builder.hasCapability(spv::CapabilityFloatControls2);
 
-	auto *func = builder.makeFunctionEntry(spv::NoPrecision, native_fp16 ? float_type : uint_type,
-	                                       native_fp16 ? "QuantHalfPrecise" : "PackHalfPrecise",
+	auto *func = builder.makeFunctionEntry(spv::NoPrecision, uint_type,
+	                                       "PackHalfPrecise",
 	                                       { float_type }, {}, &entry);
 
 	builder.addName(func->getParamId(0), "value");
@@ -2322,23 +2401,16 @@ spv::Id SPIRVModule::Impl::build_pack_half_precise(SPIRVModule &module, bool nat
 	// Need to trick the NV compiler into doing the correct thing here.
 	// NV doesn't do RTZ either, so might as well just take the opportunity to do the proper thing.
 
-	if (native_fp16)
-	{
-		builder.makeReturn(false, sel->getResultId());
-	}
-	else
-	{
-		auto *vec = builder.addInstruction(float2_type, spv::OpCompositeConstruct);
-		vec->addIdOperand(sel->getResultId());
-		vec->addIdOperand(builder.makeFloatConstant(0.0f));
+	auto *vec = builder.addInstruction(float2_type, spv::OpCompositeConstruct);
+	vec->addIdOperand(sel->getResultId());
+	vec->addIdOperand(builder.makeFloatConstant(0.0f));
 
-		auto *pack = builder.addInstruction(uint_type, spv::OpExtInst);
-		pack->addIdOperand(std450);
-		pack->addImmediateOperand(GLSLstd450PackHalf2x16);
-		pack->addIdOperand(vec->getResultId());
+	auto *pack = builder.addInstruction(uint_type, spv::OpExtInst);
+	pack->addIdOperand(std450);
+	pack->addImmediateOperand(GLSLstd450PackHalf2x16);
+	pack->addIdOperand(vec->getResultId());
 
-		builder.makeReturn(false, pack->getResultId());
-	}
+	builder.makeReturn(false, pack->getResultId());
 
 	builder.setBuildPoint(current_build_point);
 	call_id = func->getId();
@@ -3381,9 +3453,11 @@ spv::Id SPIRVModule::Impl::get_helper_call_id(SPIRVModule &module, HelperCall ca
 	case HelperCall::DenormPreserveLegacyF16toF32:
 		return build_legacy_denorm_f16_conv(module, type_id, GLSLstd450UnpackHalf2x16);
 	case HelperCall::PackHalfPrecise:
-		return build_pack_half_precise(module, false);
-	case HelperCall::QuantHalfPrecise:
-		return build_pack_half_precise(module, true);
+		return build_pack_half_precise(module);
+	case HelperCall::UnpackHalfPrecise:
+		return build_unpack_half_precise(module, false);
+	case HelperCall::FPExtPrecise:
+		return build_unpack_half_precise(module, true);
 
 	default:
 		break;

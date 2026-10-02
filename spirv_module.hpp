@@ -94,7 +94,8 @@ enum class HelperCall
 	DenormPreserveLegacyF32toF16,
 	DenormPreserveLegacyF16toF32,
 	PackHalfPrecise,
-	QuantHalfPrecise
+	UnpackHalfPrecise,
+	FPExtPrecise,
 };
 
 enum class BDAOperation
