@@ -857,6 +857,7 @@ struct Converter::Impl
 		bool extended_non_semantic_info = false;
 		bool mixed_dot_product_fp16_fp16_fp32 = false;
 		bool supports_float_controls2 = false;
+		bool conservative_ssbo_vectorization = false;
 
 		struct
 		{

@@ -9878,6 +9878,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::ConservativeSSBOVectorization:
+	{
+		auto &c = static_cast<const OptionConservativeSSBOVectorization &>(cap);
+		options.conservative_ssbo_vectorization = c.enabled;
+		break;
+	}
+
 	default:
 		break;
 	}

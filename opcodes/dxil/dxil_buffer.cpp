@@ -296,6 +296,30 @@ bool raw_access_structured_can_vectorize(
 	unsigned element_size = (1u << addr_shift_log2) * vecsize;
 	unsigned alignment = element_size & -int(element_size);
 
+	if (impl.options.conservative_ssbo_vectorization && !npot_vec_size)
+	{
+		// In this mode, the compiler assumes alignment based on the type being loaded, up to 16 byte.
+		// Defeats any bad attempt to vectorize based on constant or scaled indices.
+		// This only applies to drivers where we deliberately skirt the rules around alignment, i.e. NVIDIA.
+		// However, NVIDIA normally uses the raw access chain path, so this path
+		// is only relevant when running in RenderDoc for example.
+
+		uint32_t compiler_implied_alignment = 1;
+		for (uint32_t align = 16; align > 1; align /= 2)
+		{
+			if ((element_size & (align - 1)) == 0)
+			{
+				compiler_implied_alignment = align;
+				break;
+			}
+		}
+
+		// If the underlying descriptor has an alignment which does not match what compiler implies,
+		// we cannot vectorize.
+		if (stride % compiler_implied_alignment)
+			return false;
+	}
+
 	// A hypothetical offset buffer must be able to cleanly divide by element_size.
 	// If stride aligns properly, we know we will never need offset buffers.
 	if ((stride & (impl.options.ssbo_alignment - 1)) != 0)
