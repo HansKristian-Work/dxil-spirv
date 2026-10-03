@@ -1,0 +1,31 @@
+name: Test Builds on Linux
+
+on: [push, pull_request]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+    container: archlinux/archlinux:base-devel
+
+    steps:
+    - name: Setup container
+      run: pacman -Syu --needed --noconfirm git cmake mingw-w64-gcc
+
+    - name: Checkout code
+      uses: actions/checkout@v7
+      with:
+        submodules: recursive
+
+    - name: Build MinGW
+      run: |
+        export CC=x86_64-w64-mingw32-gcc
+        export CXX=x86_64-w64-mingw32-g++
+        cmake -S . -B build-mingw -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_PROCESSOR=x86_64
+        cmake --build build-mingw -j$(nproc)
+
+    - name: Build native GCC
+      run: |
+        export CC=gcc
+        export CXX=g++
+        cmake -S . -B build-native-gcc
+        cmake --build build-native-gcc -j$(nproc)
