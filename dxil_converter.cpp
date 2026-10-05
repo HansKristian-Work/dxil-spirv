@@ -7884,7 +7884,7 @@ Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
 	bool trivial_rewrite = cfg.rewrite_rov_lock_region();
 
 	if (trivial_rewrite)
-		return { code_main, spirv_module.get_entry_function() };
+		return { code_main, spirv_module.get_entry_function(), false, true };
 
 	// If we need to fallback we need a wrapper function. Replace the entry point.
 
@@ -7901,7 +7901,7 @@ Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
 	entry->ir.operations.push_back(call_op);
 	entry->ir.operations.push_back(allocate(spv::OpEndInvocationInterlockEXT));
 	entry->ir.terminator.type = Terminator::Type::Return;
-	leaves.push_back({ code_main, code_func });
+	leaves.push_back({ code_main, code_func, false, true });
 	return { entry, spirv_module.get_entry_function() };
 }
 
@@ -7928,7 +7928,7 @@ Converter::Impl::build_node_main(const Vector<llvm::BasicBlock *> &visit_order,
 	if (!emit_workgraph_dispatcher(*this, pool, entry, node_func->getId()))
 		return {};
 
-	return { entry, spirv_module.get_entry_function() };
+	return { entry, spirv_module.get_entry_function(), false, false };
 }
 
 void Converter::Impl::emit_patch_output_lowering(CFGNode *bb)
@@ -8139,8 +8139,8 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 	builder().setBuildPoint(spirv_module.get_entry_function()->getEntryBlock());
 
 	if (hull_main)
-		leaves.push_back({ hull_main, hull_func });
-	leaves.push_back({ patch_main, patch_func });
+		leaves.push_back({ hull_main, hull_func, false, true });
+	leaves.push_back({ patch_main, patch_func, false, true });
 
 	auto *entry = pool.create_node();
 
@@ -8216,7 +8216,7 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 			emit_patch_output_lowering(entry);
 	}
 
-	return { entry, spirv_module.get_entry_function() };
+	return { entry, spirv_module.get_entry_function(), false, false };
 }
 
 void Converter::Impl::build_function_bb_visit_order_inner_analysis(
@@ -9151,6 +9151,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		}
 
 		result.entry.func = spirv_module.get_entry_function();
+		result.entry.needs_stage_io_analysis =
+			execution_model == spv::ExecutionModelVertex ||
+			execution_model == spv::ExecutionModelFragment ||
+			execution_model == spv::ExecutionModelTessellationEvaluation;
+		// TESC is handled by build_hull.
+		// Geometry is too weird to deal with here. Every EmitVertex makes everything undef.
+		// Compute doesn't have stage output. Mesh cannot be fixed up.
 	}
 
 #ifdef HAVE_LLVMBC

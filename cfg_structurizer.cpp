@@ -1775,6 +1775,88 @@ Operation *CFGStructurizer::duplicate_op(Operation *op, UnorderedMap<spv::Id, sp
 	return duplicated_op;
 }
 
+void CFGStructurizer::fixup_partial_stage_output_writes()
+{
+	// This isn't a perfect check by any means, but it's good enough.
+	// D3D12 isn't entirely well defined in these situations,
+	// so do whatever is needed to fixup obviously broken games.
+	Vector<spv::Id> output_conditionally_written;
+	Vector<spv::Id> output_always_written;
+	Vector<CFGNode *> exit_blocks;
+	Vector<CFGNode *> demote_blocks;
+
+	UnorderedMap<spv::Id, Vector<CFGNode *>> output_written_in_blocks;
+
+	for (auto *node : forward_post_visit_order)
+	{
+		for (auto *op : node->ir.operations)
+		{
+			// If we demote, any fragment outputs are irrelevant.
+			if (op->op == spv::OpDemoteToHelperInvocation && op->num_arguments() == 0 && !has_element(demote_blocks, node))
+				demote_blocks.push_back(node);
+
+			if ((op->flags & Operation::StageOutputWriteAnalysis) == 0)
+				continue;
+
+			spv::Id var_id = op->argument(0);
+
+			// Be conservative with outputs written inside loops.
+			// We have no great way to analyze it, and we assume app is correct.
+			if (get_innermost_loop_header_for(node) != entry_block || node->post_dominates(entry_block))
+			{
+				if (!has_element(output_always_written, var_id))
+					output_always_written.push_back(var_id);
+			}
+			else
+			{
+				if (!has_element(output_conditionally_written, var_id))
+					output_conditionally_written.push_back(var_id);
+			}
+
+			auto &written_blocks = output_written_in_blocks[var_id];
+			if (!has_element(written_blocks, node))
+				written_blocks.push_back(node);
+		}
+
+		if (node->ir.terminator.type == Terminator::Type::Return)
+			exit_blocks.push_back(node);
+	}
+
+	for (spv::Id var_id : output_conditionally_written)
+	{
+		if (has_element(output_always_written, var_id))
+			continue;
+
+		bool has_uninitialized_path = false;
+
+		auto &written_blocks = output_written_in_blocks[var_id];
+		for (auto *demote_block : demote_blocks)
+			if (!has_element(written_blocks, demote_block))
+				written_blocks.push_back(demote_block);
+
+		// Analyze if there exists a code path from entry to exit that does not write to output.
+		// We don't analyze if all components or all array elements are written, just
+		// that the output is written *somehow*.
+		for (auto *exit_block : exit_blocks)
+		{
+			if (has_element(written_blocks, exit_block))
+				continue;
+
+			if (exit_block->can_backtrace_to_with_blockers(entry_block, written_blocks))
+			{
+				has_uninitialized_path = true;
+				break;
+			}
+		}
+
+		if (has_uninitialized_path)
+		{
+			auto &builder = module.get_builder();
+			builder.addGlobalVariableZeroInitializer(var_id);
+		}
+	}
+}
+
 bool CFGStructurizer::can_duplicate_phis(const CFGNode *node)
 {
 	// If we want to duplicate nodes, we cannot do so in complicated scenarios where

@@ -454,11 +454,17 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	}
 	uint32_t num_cols = builder.getNumTypeComponents(output_type_id);
 
-	if (num_cols > 1 || row_index || is_control_point_output)
+	bool arrayed_output = num_cols > 1 || row_index || is_control_point_output;
+
+	if (arrayed_output)
 	{
 		Operation *op = impl.allocate(
 		    spv::OpAccessChain, builder.makePointer(spv::StorageClassOutput, builder.getScalarTypeId(output_type_id)));
 		ptr_id = op->id;
+
+		// Don't analyze control point outputs since it's non-trivial to initialize those.
+		if (!is_control_point_output)
+			op->flags |= Operation::StageOutputWriteAnalysis;
 
 		op->add_id(var_id);
 		if (is_control_point_output)
@@ -527,6 +533,10 @@ bool emit_store_output_instruction(Converter::Impl &impl, const llvm::CallInst *
 	}
 
 	Operation *op = impl.allocate(spv::OpStore);
+
+	if (!arrayed_output)
+		op->flags |= Operation::StageOutputWriteAnalysis;
+
 	op->add_ids({ ptr_id, impl.fixup_store_type_io(meta.component_type, 1, store_value) });
 	impl.add(op);
 	return true;

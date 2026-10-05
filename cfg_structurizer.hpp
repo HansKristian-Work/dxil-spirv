@@ -59,6 +59,8 @@ public:
 	void flatten_subgroup_shuffles();
 	void fixup_loop_header_undef_phis();
 
+	void fixup_partial_stage_output_writes();
+
 private:
 	CFGNode *entry_block;
 	CFGNode *exit_block;

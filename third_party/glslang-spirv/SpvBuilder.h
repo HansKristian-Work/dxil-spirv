@@ -263,6 +263,7 @@ public:
     Id makeFloat8Constant(uint8_t f8, int encoding, bool specConstant = false);
 #endif
     Id makeNullConstant(Id type);
+    void addGlobalVariableZeroInitializer(Id id);
 
     // Turn the array of constants into a proper spv constant of the requested type.
     Id makeCompositeConstant(Id type, const dxil_spv::Vector<Id>& comps, bool specConst = false);

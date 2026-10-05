@@ -42,7 +42,7 @@ bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	else
 		has_condition = true;
 
-	Operation *op = impl.allocate(spv::OpDemoteToHelperInvocationEXT);
+	Operation *op = impl.allocate(spv::OpDemoteToHelperInvocation);
 	if (has_condition)
 		op->add_id(impl.get_id_for_value(cond));
 	impl.add(op);

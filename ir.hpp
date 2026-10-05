@@ -228,7 +228,10 @@ struct Operation
 		AutoGroupSharedBarrier = 1 << 2,
 		// Inserted after analysis passes are done.
 		SubgroupSyncPre = 1 << 3,
-		SubgroupSyncPost = 1 << 4
+		SubgroupSyncPost = 1 << 4,
+		// Used for analysis if a stage output is only conditionally written to.
+		// First arguments holds the output OpVariable in question.
+		StageOutputWriteAnalysis = 1 << 5
 	};
 	uint8_t flags = 0;
 

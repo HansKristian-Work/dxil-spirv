@@ -802,6 +802,9 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 		else
 			structurizer.run();
 
+		if (entry_point.entry.needs_stage_io_analysis)
+			structurizer.fixup_partial_stage_output_writes();
+
 		module.emit_entry_point_function_body(structurizer);
 	}
 
@@ -819,6 +822,9 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 			structurizer.run_trivial();
 		else
 			structurizer.run();
+
+		if (leaf.needs_stage_io_analysis)
+			structurizer.fixup_partial_stage_output_writes();
 
 		module.emit_leaf_function_body(leaf.func, structurizer);
 	}

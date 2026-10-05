@@ -890,6 +890,31 @@ Id Builder::makeNullConstant(Id typeId)
     return c->getResultId();
 }
 
+void Builder::addGlobalVariableZeroInitializer(Id id)
+{
+    // A bit awkward, since we need to ensure that the null constant
+    // comes before everything else.
+    Instruction *variable = nullptr;
+    Id zeroTypeId = 0;
+    size_t index = 0;
+
+    for (auto &op : constantsTypesGlobals) {
+        if (op->getResultId() == id) {
+            zeroTypeId = getContainedTypeId(op->getTypeId());
+            variable = op.get();
+            break;
+        }
+        index++;
+    }
+
+    if (!variable)
+        return;
+
+    Instruction* c = new Instruction(getUniqueId(), zeroTypeId, OpConstantNull);
+    variable->addIdOperand(c->getResultId());
+    constantsTypesGlobals.insert(constantsTypesGlobals.begin() + index, std::unique_ptr<Instruction>(c));
+}
+
 Id Builder::makeBoolConstant(bool b, bool specConstant)
 {
     Id typeId = makeBoolType();
