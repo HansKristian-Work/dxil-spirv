@@ -6958,6 +6958,47 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 			++continue_itr;
 	}
 
+	// Very special case where there are two or more merge candidates, but they can break to different scopes.
+	// One of the candidates may continue while other paths, break out further.
+	// We'll need to consider the merge a continue instead.
+	// We should have picked this case up earlier during loop exit analysis, but it was missed
+	// since it looked like a legitimate merge target.
+	if (node->pred_back_edge->succ.empty() &&
+	    result.dominated_exit.size() >= 2 &&
+	    result.dominated_continue_exit.empty() &&
+	    result.non_dominated_exit.empty())
+	{
+		auto candidate_itr = result.dominated_exit.begin();
+
+		while (candidate_itr != result.dominated_exit.end())
+		{
+			auto *candidate = *candidate_itr;
+			if (candidate->dominance_frontier.size() == 1 && candidate->dominance_frontier.front()->succ_back_edge)
+			{
+				result.dominated_continue_exit.push_back(candidate);
+				candidate_itr = result.dominated_exit.erase(candidate_itr);
+			}
+			else
+			{
+				++candidate_itr;
+			}
+		}
+
+		if (result.dominated_continue_exit.size() > 1)
+		{
+			// Only interested if we find a single clear candidate.
+			result.dominated_exit.insert(result.dominated_exit.end(),
+			                             result.dominated_continue_exit.begin(),
+			                             result.dominated_continue_exit.end());
+			result.dominated_continue_exit.clear();
+		}
+		else if (result.dominated_continue_exit.size() == 1)
+		{
+			std::swap(result.non_dominated_exit, result.dominated_exit);
+			std::swap(result.dominated_exit, result.dominated_continue_exit);
+		}
+	}
+
 	if (result.dominated_continue_exit.size() > 1)
 	{
 		// If we have multiple continue exit candidates, they better merge into a single clean candidate that we
