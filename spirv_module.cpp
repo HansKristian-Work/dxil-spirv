@@ -3537,8 +3537,8 @@ void SPIRVModule::Impl::register_block(CFGNode *node)
 	if (!node->userdata || node->id == 0)
 	{
 		auto *bb = new spv::Block(builder.getUniqueId(), *active_function);
-#if 0
-		if (!node->name.empty())
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+		if (getenv("DXIL_SPIRV_GRAPHVIZ_PATH") && !node->name.empty())
 			builder.addName(bb->getId(), node->name.c_str());
 #endif
 		active_function->addBlock(bb);
