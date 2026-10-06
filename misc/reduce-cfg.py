@@ -64,6 +64,7 @@ assert interesting(lines), 'input does not reproduce'
 jobs = os.cpu_count()
 pool = ThreadPoolExecutor(jobs)
 pos, changed = 0, False
+iter_count = 0
 while True:
     cands = list(candidates(lines, pos))
     hit = None
@@ -76,7 +77,10 @@ while True:
     if hit:
         pos, lines, changed = hit[0], hit[1], True
         open(dst, 'w').write('\n'.join(lines) + '\n')
+        # For debugging, allows bisecting when the analysis strays off course.
+        open(dst + '.' + str(iter_count), 'w').write('\n'.join(lines) + '\n')
         print(len(lines), 'lines', flush=True)
+        iter_count += 1
     elif changed:
         pos, changed = 0, False
     else:
