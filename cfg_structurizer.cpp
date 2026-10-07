@@ -6973,7 +6973,8 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 		while (candidate_itr != result.dominated_exit.end())
 		{
 			auto *candidate = *candidate_itr;
-			if (candidate->dominance_frontier.size() == 1 && candidate->dominance_frontier.front()->succ_back_edge)
+			auto &df = candidate->dominance_frontier;
+			if (df.size() == 1 && df.front()->succ_back_edge && df.front()->post_dominates(candidate))
 			{
 				result.dominated_continue_exit.push_back(candidate);
 				candidate_itr = result.dominated_exit.erase(candidate_itr);
