@@ -7850,7 +7850,16 @@ bool CFGStructurizer::find_loops(unsigned pass)
 				}
 
 				if (merge != dominated_merge)
-					node->loop_ladder_block = dominated_merge;
+				{
+					// We might dominate the merge block, but we may still need to resolve merges through the ladder
+					// if we walk through a continue block of outer scope.
+					auto *walk_node = dominated_merge;
+					while (walk_node != merge && !walk_node->succ_back_edge && walk_node->succ.size() == 1)
+						walk_node = walk_node->succ.front();
+
+					if (walk_node != merge && walk_node->succ_back_edge)
+						node->loop_ladder_block = dominated_merge;
+				}
 
 				node->loop_merge_block = merge;
 				const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
