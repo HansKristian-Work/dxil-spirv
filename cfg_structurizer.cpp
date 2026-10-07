@@ -7848,7 +7848,7 @@ bool CFGStructurizer::find_loops(unsigned pass)
 					}
 				}
 
-				if (merge != dominated_merge)
+				if (merge != dominated_merge && dominated_merge)
 				{
 					// We might dominate the merge block, but we may still need to resolve merges through the ladder
 					// if we walk through a continue block of outer scope.
