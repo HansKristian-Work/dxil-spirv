@@ -208,7 +208,9 @@ private:
 	CFGNode *create_helper_pred_block(CFGNode *node);
 	CFGNode *create_helper_succ_block(CFGNode *node);
 	void reset_traversal();
-	bool rewrite_invalid_loop_breaks();
+
+	bool rewrite_invalid_frozen_loop_breaks();
+	bool rewrite_invalid_real_loop_breaks();
 	bool rewrite_invalid_switch_breaks();
 	void recompute_cfg();
 	void rewrite_multiple_back_edges();
