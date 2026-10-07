@@ -6963,10 +6963,8 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 	// We'll need to consider the merge a continue instead.
 	// We should have picked this case up earlier during loop exit analysis, but it was missed
 	// since it looked like a legitimate merge target.
-	if (node->pred_back_edge->succ.empty() &&
-	    result.dominated_exit.size() >= 2 &&
-	    result.dominated_continue_exit.empty() &&
-	    result.non_dominated_exit.empty())
+	if (node->pred_back_edge->succ.empty() && result.dominated_exit.size() >= 2 &&
+	    result.dominated_continue_exit.empty() && result.non_dominated_exit.empty())
 	{
 		auto candidate_itr = result.dominated_exit.begin();
 
@@ -6995,8 +6993,24 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 		}
 		else if (result.dominated_continue_exit.size() == 1)
 		{
-			std::swap(result.non_dominated_exit, result.dominated_exit);
-			std::swap(result.dominated_exit, result.dominated_continue_exit);
+			auto *cont = result.dominated_continue_exit.front();
+			auto dom_itr = result.dominated_exit.begin();
+
+			while (dom_itr != result.dominated_exit.end())
+			{
+				if (!query_reachability(**dom_itr, *cont))
+				{
+					result.non_dominated_exit.push_back(*dom_itr);
+					dom_itr = result.dominated_exit.erase(dom_itr);
+				}
+				else
+				{
+					++dom_itr;
+				}
+			}
+
+			if (result.dominated_exit.empty())
+				std::swap(result.dominated_exit, result.dominated_continue_exit);
 		}
 	}
 
@@ -7834,6 +7848,9 @@ bool CFGStructurizer::find_loops(unsigned pass)
 						}
 					}
 				}
+
+				if (merge != dominated_merge)
+					node->loop_ladder_block = dominated_merge;
 
 				node->loop_merge_block = merge;
 				const_cast<CFGNode *>(node->loop_merge_block)->add_unique_header(node);
