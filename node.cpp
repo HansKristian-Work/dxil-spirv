@@ -152,6 +152,10 @@ bool CFGNode::dominates(const CFGNode *other) const
 
 bool CFGNode::can_loop_merge_to(const CFGNode *other) const
 {
+	// Cannot merge directly to a continue block.
+	if (other->succ_back_edge)
+		return false;
+
 	if (!dominates(other))
 		return false;
 

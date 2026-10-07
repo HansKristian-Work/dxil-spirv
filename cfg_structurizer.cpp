@@ -1547,7 +1547,8 @@ bool CFGStructurizer::run()
 #endif
 
 	bool need_restructure = false;
-	while (rewrite_invalid_loop_breaks())
+
+	while (rewrite_invalid_frozen_loop_breaks())
 	{
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (!graphviz_path.empty())
@@ -1560,13 +1561,16 @@ bool CFGStructurizer::run()
 		need_restructure = true;
 	}
 
+	// Defer recomputing the structurization.
 	if (need_restructure)
+		structurize(1);
+
+	while (rewrite_invalid_real_loop_breaks())
 	{
-		// Need to redo the final structurization pass if we end up here.
+		// This completely nukes the structurization, need to redo it.
 		structurize(1);
 	}
 
-	need_restructure = false;
 	if (rewrite_invalid_switch_breaks())
 	{
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
@@ -1578,11 +1582,6 @@ bool CFGStructurizer::run()
 #endif
 
 		recompute_cfg();
-		need_restructure = true;
-	}
-
-	if (need_restructure)
-	{
 		// Need to redo the final structurization pass if we end up here.
 		structurize(1);
 	}
@@ -6958,6 +6957,62 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 			++continue_itr;
 	}
 
+	// Very special case where there are two or more merge candidates, but they can break to different scopes.
+	// One of the candidates may continue while other paths, break out further.
+	// We'll need to consider the merge a continue instead.
+	// We should have picked this case up earlier during loop exit analysis, but it was missed
+	// since it looked like a legitimate merge target.
+	if (node->pred_back_edge->succ.empty() && result.dominated_exit.size() >= 2 &&
+	    result.dominated_continue_exit.empty() && result.non_dominated_exit.empty())
+	{
+		auto candidate_itr = result.dominated_exit.begin();
+
+		while (candidate_itr != result.dominated_exit.end())
+		{
+			auto *candidate = *candidate_itr;
+			auto &df = candidate->dominance_frontier;
+			if (df.size() == 1 && df.front()->succ_back_edge && df.front()->post_dominates(candidate))
+			{
+				result.dominated_continue_exit.push_back(candidate);
+				candidate_itr = result.dominated_exit.erase(candidate_itr);
+			}
+			else
+			{
+				++candidate_itr;
+			}
+		}
+
+		if (result.dominated_continue_exit.size() > 1)
+		{
+			// Only interested if we find a single clear candidate.
+			result.dominated_exit.insert(result.dominated_exit.end(),
+			                             result.dominated_continue_exit.begin(),
+			                             result.dominated_continue_exit.end());
+			result.dominated_continue_exit.clear();
+		}
+		else if (result.dominated_continue_exit.size() == 1)
+		{
+			auto *cont = result.dominated_continue_exit.front();
+			auto dom_itr = result.dominated_exit.begin();
+
+			while (dom_itr != result.dominated_exit.end())
+			{
+				if (!query_reachability(**dom_itr, *cont))
+				{
+					result.non_dominated_exit.push_back(*dom_itr);
+					dom_itr = result.dominated_exit.erase(dom_itr);
+				}
+				else
+				{
+					++dom_itr;
+				}
+			}
+
+			if (result.dominated_exit.empty())
+				std::swap(result.dominated_exit, result.dominated_continue_exit);
+		}
+	}
+
 	if (result.dominated_continue_exit.size() > 1)
 	{
 		// If we have multiple continue exit candidates, they better merge into a single clean candidate that we
@@ -7791,6 +7846,18 @@ bool CFGStructurizer::find_loops(unsigned pass)
 							innermost_outer_header = existing_header;
 						}
 					}
+				}
+
+				if (merge != dominated_merge)
+				{
+					// We might dominate the merge block, but we may still need to resolve merges through the ladder
+					// if we walk through a continue block of outer scope.
+					auto *walk_node = dominated_merge;
+					while (walk_node != merge && !walk_node->succ_back_edge && walk_node->succ.size() == 1)
+						walk_node = walk_node->succ.front();
+
+					if (walk_node != merge && walk_node->succ_back_edge)
+						node->loop_ladder_block = dominated_merge;
 				}
 
 				node->loop_merge_block = merge;
@@ -8664,14 +8731,13 @@ bool CFGStructurizer::rewrite_invalid_switch_breaks()
 	return did_rewrite;
 }
 
-bool CFGStructurizer::rewrite_invalid_loop_breaks()
+bool CFGStructurizer::rewrite_invalid_frozen_loop_breaks()
 {
 	// Keep iterating here until we have validated a clean CFG w.r.t. block-like loops.
 	// This should pass through first time without issue with extremely high probability,
 	// so hitting the slow path isn't a real concern until proven otherwise.
 	CFGNode *rewrite_header = nullptr;
 	CFGNode *invalid_target = nullptr;
-	CFGNode *invalid_merge = nullptr;
 
 	// Process from inside out.
 	for (auto *node : forward_post_visit_order)
@@ -8750,28 +8816,6 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 				break;
 			}
 		}
-		else if (node->merge == MergeType::Loop && node->loop_merge_block && node->pred_back_edge)
-		{
-			if (!node->dominates(node->loop_merge_block))
-			{
-				// We must dominate the loop merge block here.
-				// There is a risk that with breaks happening into multiple scopes in certain cases,
-				// we won't be able to guarantee this in the two-phase structurizer.
-				invalid_merge = node;
-				break;
-			}
-		}
-	}
-
-	if (invalid_merge)
-	{
-		auto result = analyze_loop(invalid_merge);
-		result.dominated_exit.insert(result.dominated_exit.end(), result.non_dominated_exit.begin(),
-		                             result.non_dominated_exit.end());
-		collect_and_dispatch_control_flow(invalid_merge, invalid_merge->loop_merge_block, result.dominated_exit, false,
-		                                  false);
-		recompute_cfg();
-		return true;
 	}
 
 	if (invalid_target)
@@ -8880,7 +8924,36 @@ bool CFGStructurizer::rewrite_invalid_loop_breaks()
 		dispatcher->add_branch(invalid_target);
 
 		recompute_cfg();
+
+		// For frozen loop rewrites, we need to iterate until all invalid targets are resolved one by one.
+		// Do not try to recompute structurization since it will break in unexpected ways.
 		return true;
+	}
+
+	return false;
+}
+
+bool CFGStructurizer::rewrite_invalid_real_loop_breaks()
+{
+	// Process from inside out.
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->merge == MergeType::Loop && node->loop_merge_block && node->pred_back_edge)
+		{
+			if (!node->dominates(node->loop_merge_block))
+			{
+				// We must dominate the loop merge block here.
+				// There is a risk that with breaks happening into multiple scopes in certain cases,
+				// we won't be able to guarantee this in the two-phase structurizer.
+				auto result = analyze_loop(node);
+				result.dominated_exit.insert(result.dominated_exit.end(), result.non_dominated_exit.begin(),
+											 result.non_dominated_exit.end());
+				collect_and_dispatch_control_flow(node, node->loop_merge_block, result.dominated_exit, false,
+												  false);
+				recompute_cfg();
+				return true;
+			}
+		}
 	}
 
 	return false;
