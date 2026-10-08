@@ -91,7 +91,8 @@ private:
 	bool merges_to_outer_real_loop(const CFGNode *node) const;
 	bool rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, Vector<CFGNode *> &dominated_exits);
 	bool rewrite_transposed_loops();
-	static uint32_t earliest_dominance_frontier_post_visit_order(const CFGNode *node);
+	static CFGNode *earliest_dominance_frontier_post_visit_order(const CFGNode *node);
+	static CFGNode *latest_post_dominance_frontier_post_visit_order(const CFGNode *node);
 
 	struct LoopAnalysis
 	{

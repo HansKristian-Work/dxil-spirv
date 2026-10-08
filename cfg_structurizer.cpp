@@ -7621,12 +7621,22 @@ bool CFGStructurizer::rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, 
 	return false;
 }
 
-uint32_t CFGStructurizer::earliest_dominance_frontier_post_visit_order(const CFGNode *n)
+CFGNode *CFGStructurizer::earliest_dominance_frontier_post_visit_order(const CFGNode *n)
 {
-	uint32_t earliest_df = 0;
+	CFGNode *node = nullptr;
 	for (auto *df : n->dominance_frontier)
-		earliest_df = std::max<uint32_t>(df->forward_post_visit_order, earliest_df);
-	return earliest_df;
+		if (!node || df->forward_post_visit_order > node->forward_post_visit_order)
+			node = df;
+	return node;
+}
+
+CFGNode *CFGStructurizer::latest_post_dominance_frontier_post_visit_order(const CFGNode *n)
+{
+	CFGNode *node = nullptr;
+	for (auto *df : n->post_dominance_frontier)
+		if (!node || df->forward_post_visit_order < node->forward_post_visit_order)
+			node = df;
+	return node;
 }
 
 bool CFGStructurizer::merges_to_outer_real_loop(const CFGNode *node) const
@@ -7891,13 +7901,44 @@ bool CFGStructurizer::find_loops(unsigned pass)
 					// least breaking construct.
 					std::stable_sort(dominated_exit.begin(), dominated_exit.end(), [](const CFGNode *a, const CFGNode *b)
 					{
-						return earliest_dominance_frontier_post_visit_order(a) > earliest_dominance_frontier_post_visit_order(b);
+						auto *df_a = earliest_dominance_frontier_post_visit_order(a);
+						auto *df_b = earliest_dominance_frontier_post_visit_order(b);
+
+						if (df_a && df_b && df_a->forward_post_visit_order != df_b->forward_post_visit_order)
+							return df_a->forward_post_visit_order > df_b->forward_post_visit_order;
+
+						auto *pdf_a = latest_post_dominance_frontier_post_visit_order(a);
+						auto *pdf_b = latest_post_dominance_frontier_post_visit_order(b);
+
+						if (pdf_a && pdf_b)
+							return pdf_a->forward_post_visit_order < pdf_b->forward_post_visit_order;
+
+						// Final tie-breaker.
+						return a->forward_post_visit_order > b->forward_post_visit_order;
 					});
 
-					if (earliest_dominance_frontier_post_visit_order(dominated_exit[0]) !=
-						earliest_dominance_frontier_post_visit_order(dominated_exit[1]))
+					// If every exit shares dominance frontier that we can merge to, that's likely our ladder block.
+					auto *df = earliest_dominance_frontier_post_visit_order(dominated_exit[0]);
+
+					if (node->can_loop_merge_to(df))
 					{
-						dominated_merge = dominated_exit[0];
+						dominated_merge = df;
+						for (auto *exit : dominated_exit)
+						{
+							if (earliest_dominance_frontier_post_visit_order(exit) != df)
+							{
+								dominated_merge = nullptr;
+								break;
+							}
+						}
+					}
+
+					if (!dominated_merge)
+					{
+						auto *df_a = earliest_dominance_frontier_post_visit_order(dominated_exit[0]);
+						auto *df_b = earliest_dominance_frontier_post_visit_order(dominated_exit[1]);
+						if (df_a && df_b && df_a->forward_post_visit_order > df_b->forward_post_visit_order)
+							dominated_merge = dominated_exit[0];
 					}
 				}
 
