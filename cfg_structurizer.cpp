@@ -1569,6 +1569,14 @@ bool CFGStructurizer::run()
 	{
 		// This completely nukes the structurization, need to redo it.
 		structurize(1);
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_final = graphviz_path + ".loop-break-rewrite";
+			log_cfg_graphviz(graphviz_final.c_str());
+		}
+#endif
 	}
 
 	if (rewrite_invalid_switch_breaks())
