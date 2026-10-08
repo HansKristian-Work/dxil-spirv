@@ -7676,20 +7676,20 @@ bool CFGStructurizer::rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, 
 	return false;
 }
 
-CFGNode *CFGStructurizer::earliest_dominance_frontier_post_visit_order(const CFGNode *n)
+CFGNode *CFGStructurizer::earliest_dominance_frontier_post_visit_order(const CFGNode *n) const
 {
 	CFGNode *node = nullptr;
 	for (auto *df : n->dominance_frontier)
-		if (!node || df->forward_post_visit_order > node->forward_post_visit_order)
+		if (!node || node_order_compare(df, node) < 0)
 			node = df;
 	return node;
 }
 
-CFGNode *CFGStructurizer::latest_post_dominance_frontier_post_visit_order(const CFGNode *n)
+CFGNode *CFGStructurizer::latest_post_dominance_frontier_post_visit_order(const CFGNode *n) const
 {
 	CFGNode *node = nullptr;
 	for (auto *df : n->post_dominance_frontier)
-		if (!node || df->forward_post_visit_order < node->forward_post_visit_order)
+		if (!node || node_order_compare(df, node) > 0)
 			node = df;
 	return node;
 }
@@ -7956,7 +7956,7 @@ bool CFGStructurizer::find_loops(unsigned pass)
 					// We have a bunch of equally valid merge targets, but there is no obvious candidate.
 					// Try to pick the one with earliest dominance frontier, which is likely to mean the
 					// least breaking construct.
-					std::stable_sort(dominated_exit.begin(), dominated_exit.end(), [](const CFGNode *a, const CFGNode *b)
+					std::stable_sort(dominated_exit.begin(), dominated_exit.end(), [this](const CFGNode *a, const CFGNode *b)
 					{
 						auto *df_a = earliest_dominance_frontier_post_visit_order(a);
 						auto *df_b = earliest_dominance_frontier_post_visit_order(b);
