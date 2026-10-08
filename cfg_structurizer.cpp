@@ -7961,14 +7961,16 @@ bool CFGStructurizer::find_loops(unsigned pass)
 						auto *df_a = earliest_dominance_frontier_post_visit_order(a);
 						auto *df_b = earliest_dominance_frontier_post_visit_order(b);
 
-						if (df_a && df_b && df_a->forward_post_visit_order != df_b->forward_post_visit_order)
-							return df_a->forward_post_visit_order > df_b->forward_post_visit_order;
+						int order = node_order_compare(df_a, df_b);
+						if (order != 0)
+							return order < 0;
 
 						auto *pdf_a = latest_post_dominance_frontier_post_visit_order(a);
 						auto *pdf_b = latest_post_dominance_frontier_post_visit_order(b);
 
-						if (pdf_a && pdf_b)
-							return pdf_a->forward_post_visit_order < pdf_b->forward_post_visit_order;
+						order = node_order_compare(pdf_a, pdf_b);
+						if (order != 0)
+							return order > 0;
 
 						// Final tie-breaker.
 						return a->forward_post_visit_order > b->forward_post_visit_order;
@@ -7994,7 +7996,7 @@ bool CFGStructurizer::find_loops(unsigned pass)
 					{
 						auto *df_a = earliest_dominance_frontier_post_visit_order(dominated_exit[0]);
 						auto *df_b = earliest_dominance_frontier_post_visit_order(dominated_exit[1]);
-						if (df_a && df_b && df_a->forward_post_visit_order > df_b->forward_post_visit_order)
+						if (node_order_compare(df_a, df_b) < 0)
 							dominated_merge = dominated_exit[0];
 					}
 				}
