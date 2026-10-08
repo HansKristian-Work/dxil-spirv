@@ -7819,6 +7819,8 @@ bool CFGStructurizer::find_loops(unsigned pass)
 			{
 				auto *ladder = create_ladder_block(node, merge, ".merge");
 				dominated_merge = ladder;
+				if (ladder->post_dominates(node))
+					merge = ladder;
 			}
 
 			if (!merge)
