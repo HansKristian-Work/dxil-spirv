@@ -26,37 +26,28 @@ void main()
         {
             _22 = _20 << 2u;
             _29 = _9._m0[_20 + 2u] == 0u;
-            bool break_selector_6;
+            bool ladder_phi_7_pred;
             for (;;)
             {
                 if (_29)
                 {
                     if (_9._m0[_20 + 3u] == 0u)
                     {
-                        break_selector_6 = false;
+                        ladder_phi_7_pred = false;
                         break;
                     }
-                    break_selector_6 = true;
-                    break;
                 }
-                else
+                if (!(_9._m0[_20 + 4u] == 0u))
                 {
-                    break_selector_6 = true;
+                    ladder_phi_7_pred = false;
                     break;
                 }
+                ladder_phi_7_pred = true;
+                break;
             }
-            if (break_selector_6)
+            if (ladder_phi_7_pred)
             {
-                if (_9._m0[_20 + 4u] == 0u)
-                {
-                    break;
-                }
-                else
-                {
-                }
-            }
-            else
-            {
+                break;
             }
             _9._m0[_20 + 6u] = _20;
             if (_9._m0[_20 + 5u] == 0u)
@@ -79,7 +70,7 @@ void main()
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Unknown(30017); 21022
-; Bound: 79
+; Bound: 80
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -87,7 +78,7 @@ OpEntryPoint GLCompute %3 "main"
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
 OpName %7 "SSBO"
-OpName %56 "break_selector_6"
+OpName %56 "ladder_phi_7.pred"
 OpDecorate %6 ArrayStride 4
 OpMemberDecorate %7 0 Offset 0
 OpDecorate %7 Block
@@ -114,8 +105,8 @@ OpDecorate %9 Binding 0
 %47 = OpConstant %5 6
 %50 = OpConstant %5 20
 %52 = OpConstant %5 5
-%57 = OpConstantTrue %14
-%58 = OpConstantFalse %14
+%57 = OpConstantFalse %14
+%58 = OpConstantTrue %14
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %59
@@ -123,7 +114,7 @@ OpBranch %59
 %12 = OpAccessChain %11 %9 %10 %10
 %13 = OpLoad %5 %12
 %15 = OpIEqual %14 %13 %10
-OpLoopMerge %75 %76 None
+OpLoopMerge %76 %77 None
 OpBranch %60
 %60 = OpLabel
 OpSelectionMerge %63 None
@@ -133,25 +124,26 @@ OpBranchConditional %15 %61 %63
 %18 = OpLoad %5 %17
 %19 = OpIEqual %14 %18 %10
 OpSelectionMerge %62 None
-OpBranchConditional %19 %62 %75
+OpBranchConditional %19 %62 %76
 %62 = OpLabel
 OpBranch %63
 %63 = OpLabel
 OpBranch %64
 %64 = OpLabel
-%20 = OpPhi %5 %10 %63 %21 %73
+%20 = OpPhi %5 %10 %63 %21 %74
 %22 = OpShiftLeftLogical %5 %20 %23
 %24 = OpIAdd %5 %22 %25
 %26 = OpIAdd %5 %20 %23
 %27 = OpAccessChain %11 %9 %10 %26
 %28 = OpLoad %5 %27
 %29 = OpIEqual %14 %28 %10
-OpLoopMerge %74 %73 None
+OpLoopMerge %75 %74 None
 OpBranch %65
 %65 = OpLabel
+OpLoopMerge %72 %78 None
 OpBranch %66
 %66 = OpLabel
-OpLoopMerge %69 %77 None
+OpSelectionMerge %69 None
 OpBranchConditional %29 %67 %69
 %67 = OpLabel
 %30 = OpIAdd %5 %22 %31
@@ -160,27 +152,30 @@ OpBranchConditional %29 %67 %69
 %35 = OpLoad %5 %34
 %36 = OpIEqual %14 %35 %10
 OpSelectionMerge %68 None
-OpBranchConditional %36 %69 %68
+OpBranchConditional %36 %71 %68
+%71 = OpLabel
+OpBranch %72
 %68 = OpLabel
 OpBranch %69
-%77 = OpLabel
-OpBranch %66
 %69 = OpLabel
-%56 = OpPhi %14 %57 %66 %57 %68 %58 %67
-OpSelectionMerge %72 None
-OpBranchConditional %56 %71 %70
-%71 = OpLabel
 %37 = OpIAdd %5 %22 %38
 %39 = OpIAdd %5 %20 %40
 %41 = OpAccessChain %11 %9 %10 %39
 %42 = OpLoad %5 %41
 %43 = OpIEqual %14 %42 %10
-OpBranchConditional %43 %74 %72
+OpSelectionMerge %70 None
+OpBranchConditional %43 %70 %72
 %70 = OpLabel
 OpBranch %72
+%78 = OpLabel
+OpBranch %65
 %72 = OpLabel
-OpBranch %73
+%56 = OpPhi %14 %57 %69 %57 %71 %58 %70
+OpSelectionMerge %73 None
+OpBranchConditional %56 %75 %73
 %73 = OpLabel
+OpBranch %74
+%74 = OpLabel
 %44 = OpIAdd %5 %22 %45
 %46 = OpIAdd %5 %20 %47
 %48 = OpAccessChain %11 %9 %10 %46
@@ -191,12 +186,12 @@ OpStore %48 %20
 %54 = OpLoad %5 %53
 %55 = OpIEqual %14 %54 %10
 %21 = OpIAdd %5 %20 %16
-OpBranchConditional %55 %74 %64
-%74 = OpLabel
-OpBranch %75
-%76 = OpLabel
-OpBranch %59
+OpBranchConditional %55 %75 %64
 %75 = OpLabel
+OpBranch %76
+%77 = OpLabel
+OpBranch %59
+%76 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

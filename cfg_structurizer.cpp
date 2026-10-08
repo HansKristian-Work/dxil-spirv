@@ -8522,11 +8522,17 @@ bool CFGStructurizer::split_merge_blocks(CFGNode *node)
 void CFGStructurizer::split_merge_blocks_and_visit_orphan_preds(
 	Vector<const CFGNode *> &visited_orphans, CFGNode *merge, CFGNode *node)
 {
-	if (split_merge_blocks(node))
-		return;
-
+	Vector<CFGNode *> preds;
 	for (auto *pred : node->pred)
+		if (is_rewind_candidate_split_node(visited_orphans, merge, pred))
+			preds.push_back(pred);
+
+	split_merge_blocks(node);
+
+	// Only traverse preds which existed before we did the split, otherwise we end up with some really awkward splits.
+	for (auto *pred : preds)
 	{
+		// In case visited orphans got updated after we made the original check.
 		if (is_rewind_candidate_split_node(visited_orphans, merge, pred))
 		{
 			visited_orphans.push_back(pred);
