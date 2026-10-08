@@ -6081,6 +6081,53 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 	}
 }
 
+const CFGNode *CFGStructurizer::get_innermost_loop_header_back_edge_post_dominance(const CFGNode *node) const
+{
+	auto *target_node = node;
+
+	while (node != entry_block)
+	{
+		if (node->pred_back_edge && node->pred_back_edge->post_dominates(target_node))
+			break;
+
+		node = node->immediate_dominator;
+	}
+
+	return node->pred_back_edge ? node : nullptr;
+}
+
+int CFGStructurizer::node_order_compare(const CFGNode *a, const CFGNode *b) const
+{
+	if (a == b)
+		return 0;
+
+	if (a && !b)
+		return -1;
+	if (!a && b)
+		return 1;
+
+	if (query_reachability(*a, *b))
+		return -1;
+	else if (query_reachability(*b, *a))
+		return 1;
+
+	// Cannot determine through reachability, check scoping.
+	auto *header_a = get_innermost_loop_header_back_edge_post_dominance(a);
+	auto *header_b = get_innermost_loop_header_back_edge_post_dominance(b);
+
+	if (header_a && !header_b)
+		return -1;
+	if (header_b && !header_a)
+		return 1;
+
+	if (a->forward_post_visit_order > b->forward_post_visit_order)
+		return -1;
+	if (b->forward_post_visit_order > a->forward_post_visit_order)
+		return 1;
+
+	return 0;
+}
+
 const CFGNode *CFGStructurizer::get_innermost_loop_header_for(const CFGNode *header, const CFGNode *other) const
 {
 	auto *node = other;

@@ -157,6 +157,10 @@ private:
 	const CFGNode *get_innermost_loop_header_for(const CFGNode *header, const CFGNode *node) const;
 	bool loop_exit_supports_infinite_loop(const CFGNode *header, const CFGNode *loop_exit) const;
 
+	const CFGNode *get_innermost_loop_header_back_edge_post_dominance(const CFGNode *node) const;
+
+	int node_order_compare(const CFGNode *a, const CFGNode *b) const;
+
 	void split_merge_blocks();
 	bool split_merge_blocks(CFGNode *node);
 	void split_merge_blocks_and_visit_orphan_preds(Vector<const CFGNode *> &visited, CFGNode *merge, CFGNode *node);
