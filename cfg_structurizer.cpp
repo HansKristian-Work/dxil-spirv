@@ -6091,7 +6091,7 @@ void CFGStructurizer::find_selection_merges(unsigned pass)
 	}
 }
 
-const CFGNode *CFGStructurizer::get_innermost_loop_header_back_edge_post_dominance(const CFGNode *node) const
+CFGNode *CFGStructurizer::get_innermost_loop_header_back_edge_post_dominance(CFGNode *node) const
 {
 	auto *target_node = node;
 
@@ -6106,7 +6106,7 @@ const CFGNode *CFGStructurizer::get_innermost_loop_header_back_edge_post_dominan
 	return node->pred_back_edge ? node : nullptr;
 }
 
-int CFGStructurizer::node_order_compare(const CFGNode *a, const CFGNode *b) const
+int CFGStructurizer::node_order_compare(CFGNode *a, CFGNode *b) const
 {
 	if (a == b)
 		return 0;
@@ -7691,6 +7691,15 @@ CFGNode *CFGStructurizer::earliest_dominance_frontier_post_visit_order(const CFG
 	CFGNode *node = nullptr;
 	for (auto *df : n->dominance_frontier)
 		if (!node || node_order_compare(df, node) < 0)
+			node = df;
+	return node;
+}
+
+CFGNode *CFGStructurizer::latest_dominance_frontier_post_visit_order(const CFGNode *n) const
+{
+	CFGNode *node = nullptr;
+	for (auto *df : n->dominance_frontier)
+		if (!node || node_order_compare(df, node) > 0)
 			node = df;
 	return node;
 }
