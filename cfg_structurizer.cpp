@@ -1563,7 +1563,17 @@ bool CFGStructurizer::run()
 
 	// Defer recomputing the structurization.
 	if (need_restructure)
+	{
 		structurize(1);
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_final = graphviz_path + ".struct1";
+			log_cfg_graphviz(graphviz_final.c_str());
+		}
+#endif
+	}
 
 	while (rewrite_invalid_real_loop_breaks())
 	{
