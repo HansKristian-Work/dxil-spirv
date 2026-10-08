@@ -7566,7 +7566,7 @@ bool CFGStructurizer::rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, 
 		// in this scenario. The shared frontier node is the more plausible true merge target,
 		// and the outer merge was a red herring, but since we don't have a proper ladder block,
 		// it will complicate things.
-		Vector<const CFGNode *> frontier_nodes;
+		Vector<CFGNode *> frontier_nodes;
 		for (auto *n : dominated_exits)
 		{
 			frontier_nodes.insert(frontier_nodes.end(),
@@ -7670,6 +7670,31 @@ bool CFGStructurizer::rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, 
 			// Then collect the outer layer.
 			dominated_exits = std::move(frontier_nodes);
 			common_idom = merge->immediate_dominator;
+		}
+
+		if (frontier_nodes.empty())
+		{
+			// Try to detect impossibly complicated schemes which require a fixup.
+			// If we lose agreement on which frontiers are contained in certain scopes.
+			auto frontiers = dominated_exits;
+			for (auto *&frontier : frontiers)
+				frontier = latest_dominance_frontier_post_visit_order(frontier);
+
+			if (frontiers.front())
+			{
+				for (auto *frontier : frontiers)
+				{
+					if (frontier && frontier != frontiers.front())
+					{
+						if (!query_reachability(*frontier, *frontiers.front()) &&
+							!query_reachability(*frontiers.front(), *frontier))
+						{
+							needs_early_explicit_ladder = true;
+							break;
+						}
+					}
+				}
+			}
 		}
 	}
 
