@@ -7791,6 +7791,18 @@ bool CFGStructurizer::find_loops(unsigned pass)
 			if (pass == 0 && rewrite_complex_loop_exits(node, merge, dominated_exit))
 				return true;
 
+			// Avoid a transposition where we don't dominate merge due to a missing ladder,
+			// and dominated_merge is a breaking construct.
+			// Avoid succs which are added to resolve infinite loops. Must be a true conditional branch.
+			if (node->pred_back_edge->succ.size() == 1 &&
+			    node->pred_back_edge->succ.front() == merge &&
+			    node->pred_back_edge->ir.terminator.type == Terminator::Type::Condition &&
+			    !merge->headers.empty() && dominated_merge && merge != dominated_merge)
+			{
+				auto *ladder = create_ladder_block(node, merge, ".merge");
+				dominated_merge = ladder;
+			}
+
 			if (!merge)
 			{
 				// Most likely this means we have an early return somewhere. Try the weak merge candidate.
