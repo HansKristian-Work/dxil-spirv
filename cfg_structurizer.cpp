@@ -9110,10 +9110,16 @@ bool CFGStructurizer::rewrite_invalid_real_loop_breaks()
 				auto result = analyze_loop(node);
 				result.dominated_exit.insert(result.dominated_exit.end(), result.non_dominated_exit.begin(),
 											 result.non_dominated_exit.end());
-				collect_and_dispatch_control_flow(node, node->loop_merge_block, result.dominated_exit, false,
-												  false);
-				recompute_cfg();
-				return true;
+				result.dominated_exit.insert(result.dominated_exit.end(), result.inner_dominated_exit.begin(),
+											 result.inner_dominated_exit.end());
+
+				if (result.dominated_exit.size() >= 2)
+				{
+					collect_and_dispatch_control_flow(
+						node, node->loop_merge_block, result.dominated_exit, false, false);
+					recompute_cfg();
+					return true;
+				}
 			}
 		}
 	}
