@@ -91,7 +91,9 @@ private:
 	bool merges_to_outer_real_loop(const CFGNode *node) const;
 	bool rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, Vector<CFGNode *> &dominated_exits);
 	bool rewrite_transposed_loops();
-	static uint32_t earliest_dominance_frontier_post_visit_order(const CFGNode *node);
+	CFGNode *earliest_dominance_frontier_post_visit_order(const CFGNode *node) const;
+	CFGNode *latest_dominance_frontier_post_visit_order(const CFGNode *node) const;
+	CFGNode *latest_post_dominance_frontier_post_visit_order(const CFGNode *node) const;
 
 	struct LoopAnalysis
 	{
@@ -155,6 +157,10 @@ private:
 	const CFGNode *get_innermost_loop_header_for(const CFGNode *node) const;
 	const CFGNode *get_innermost_loop_header_for(const CFGNode *header, const CFGNode *node) const;
 	bool loop_exit_supports_infinite_loop(const CFGNode *header, const CFGNode *loop_exit) const;
+
+	CFGNode *get_innermost_loop_header_back_edge_post_dominance(CFGNode *node) const;
+
+	int node_order_compare(CFGNode *a, CFGNode *b) const;
 
 	void split_merge_blocks();
 	bool split_merge_blocks(CFGNode *node);
