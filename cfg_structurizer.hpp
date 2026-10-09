@@ -298,7 +298,7 @@ private:
 		bool collect_all_code_paths_to_pdom, bool allow_crossing_branches);
 
 	void collect_and_dispatch_control_flow_from_anchor(
-		CFGNode *anchor, const Vector<CFGNode *> &constructs);
+		CFGNode *anchor_start, CFGNode *anchor_end, const Vector<CFGNode *> &constructs);
 
 	void sink_ssa_constructs();
 	void sink_ssa_constructs_run(bool dry_run);
