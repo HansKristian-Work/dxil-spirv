@@ -1463,6 +1463,18 @@ bool CFGStructurizer::run()
 	}
 #endif
 
+	// After splitting ladder blocks, we may expose new possibilities for interleaving.
+	while (serialize_interleaved_merge_scopes())
+	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".serialize";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
+#endif
+	}
+
 	while (rewrite_complex_loop_header_switch_constructs())
 	{
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
