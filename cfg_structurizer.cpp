@@ -1463,6 +1463,18 @@ bool CFGStructurizer::run()
 	}
 #endif
 
+	// After splitting ladder blocks, we may expose new possibilities for interleaving.
+	while (serialize_interleaved_merge_scopes())
+	{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+		if (!graphviz_path.empty())
+		{
+			auto graphviz_split = graphviz_path + ".serialize";
+			log_cfg_graphviz(graphviz_split.c_str());
+		}
+#endif
+	}
+
 	while (rewrite_complex_loop_header_switch_constructs())
 	{
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
@@ -7683,30 +7695,22 @@ bool CFGStructurizer::rewrite_complex_loop_exits(CFGNode *node, CFGNode *merge, 
 			dominated_exits = std::move(frontier_nodes);
 			common_idom = merge->immediate_dominator;
 		}
-
-		if (frontier_nodes.empty())
+		else
 		{
 			// Try to detect impossibly complicated schemes which require a fixup.
 			// If we lose agreement on which frontiers are contained in certain scopes.
-			auto frontiers = dominated_exits;
-			for (auto *&frontier : frontiers)
+			auto early_frontiers = dominated_exits;
+			auto late_frontiers = dominated_exits;
+			for (auto *&frontier : early_frontiers)
+				frontier = earliest_dominance_frontier_post_visit_order(frontier);
+			for (auto *&frontier : late_frontiers)
 				frontier = latest_dominance_frontier_post_visit_order(frontier);
 
-			if (frontiers.front())
-			{
-				for (auto *frontier : frontiers)
-				{
-					if (frontier && frontier != frontiers.front())
-					{
-						if (!query_reachability(*frontier, *frontiers.front()) &&
-							!query_reachability(*frontiers.front(), *frontier))
-						{
-							needs_early_explicit_ladder = true;
-							break;
-						}
-					}
-				}
-			}
+			auto *early_common_pdom = find_common_post_dominator(early_frontiers);
+			auto *late_common_pdom = find_common_post_dominator(late_frontiers);
+
+			needs_early_explicit_ladder =
+				early_common_pdom != late_common_pdom && has_element(early_frontiers, early_common_pdom);
 		}
 	}
 
@@ -8040,7 +8044,7 @@ bool CFGStructurizer::find_loops(unsigned pass)
 						dominated_merge = df;
 						for (auto *exit : dominated_exit)
 						{
-							if (earliest_dominance_frontier_post_visit_order(exit) != df)
+							if (exit != df && earliest_dominance_frontier_post_visit_order(exit) != df)
 							{
 								dominated_merge = nullptr;
 								break;
