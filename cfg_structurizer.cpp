@@ -8052,7 +8052,7 @@ bool CFGStructurizer::find_loops(unsigned pass)
 						dominated_merge = df;
 						for (auto *exit : dominated_exit)
 						{
-							if (earliest_dominance_frontier_post_visit_order(exit) != df)
+							if (exit != df && earliest_dominance_frontier_post_visit_order(exit) != df)
 							{
 								dominated_merge = nullptr;
 								break;
