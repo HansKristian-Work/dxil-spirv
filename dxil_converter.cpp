@@ -9052,6 +9052,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		spirv_module.enable_min16float_min_spec_simulation(true);
 	}
 
+	if (GlobalConfiguration::get().experimental_unstructured_control_flow)
+		builder().addExtension("SPV_FROG_unstructured_control_flow");
+
 	if (module_is_dxbc_spirv(module))
 	{
 		backend.skip_non_uniform_promotion = true;
@@ -9992,6 +9995,8 @@ GlobalConfiguration::GlobalConfiguration()
 			wmma_conv_hack = true;
 		else if (strcmp(env, "debug_simulate_min16float_min_spec") == 0)
 			simulate_min16float_min_spec = true;
+		else if (strcmp(env, "experimental_unstructured_cfg") == 0)
+			experimental_unstructured_control_flow = true;
 	}
 }
 } // namespace dxil_spv

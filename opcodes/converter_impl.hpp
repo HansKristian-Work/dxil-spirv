@@ -171,6 +171,7 @@ public:
 	bool wmma_rdna3_workaround = false;
 	bool wmma_conv_hack = false;
 	bool simulate_min16float_min_spec = false;
+	bool experimental_unstructured_control_flow = false;
 
 private:
 	GlobalConfiguration();

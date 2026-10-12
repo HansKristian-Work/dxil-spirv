@@ -31,6 +31,7 @@
 #include "llvm_bitcode_parser.hpp"
 #include "logging.hpp"
 #include "spirv_module.hpp"
+#include "opcodes/converter_impl.hpp"
 #include <string.h>
 #include <new>
 
@@ -799,6 +800,8 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 		if (entry_point.entry.is_structured)
 			structurizer.run_trivial();
+		else if (GlobalConfiguration::get().experimental_unstructured_control_flow)
+			structurizer.run_experimental_unstructured();
 		else
 			structurizer.run();
 
@@ -820,6 +823,8 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 		if (leaf.is_structured)
 			structurizer.run_trivial();
+		else if (GlobalConfiguration::get().experimental_unstructured_control_flow)
+			structurizer.run_experimental_unstructured();
 		else
 			structurizer.run();
 
