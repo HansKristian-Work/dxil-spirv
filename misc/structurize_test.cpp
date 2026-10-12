@@ -192,6 +192,70 @@ int main(int argc, char **argv)
 	Emitter emitter;
 	CFGNodePool pool;
 
+	// Generate a dummy compute shader where we can trace the execution paths.
+	emitter.module.emit_entry_point(spv::ExecutionModelGLCompute, "main", false, spv::MemoryModelGLSL450);
+	auto &builder = emitter.module.get_builder();
+
+	builder.addExecutionMode(emitter.module.get_entry_function(), spv::ExecutionModeLocalSize, 1, 1, 1);
+
+	spv::Id u32_type = builder.makeUintType(32);
+	spv::Id u32_array_type = builder.makeRuntimeArray(u32_type);
+	builder.addDecoration(u32_array_type, spv::DecorationArrayStride, 4);
+
+	spv::Id block_type_id = builder.makeStructType({ u32_array_type }, "SSBO");
+	builder.addDecoration(block_type_id, spv::DecorationBlock);
+	builder.addMemberDecoration(block_type_id, 0, spv::DecorationOffset, 0);
+	builder.addMemberName(block_type_id, 0, "data");
+
+	spv::Id condition_var_id = builder.createVariable(spv::StorageClassStorageBuffer, block_type_id, "Conditions");
+	builder.addDecoration(condition_var_id, spv::DecorationDescriptorSet, 0);
+	builder.addDecoration(condition_var_id, spv::DecorationBinding, 0);
+
+	spv::Id feedback_var_id = builder.createVariable(spv::StorageClassStorageBuffer, block_type_id, "Feedback");
+	builder.addDecoration(feedback_var_id, spv::DecorationDescriptorSet, 0);
+	builder.addDecoration(feedback_var_id, spv::DecorationBinding, 1);
+
+	spv::Id condition_counter_id = builder.createVariableWithInitializer(
+		spv::StorageClassFunction,
+		builder.makeUintType(32),
+		builder.makeUintConstant(0), "ConditionCounter");
+
+	spv::Id current_block_counter_id = builder.createVariableWithInitializer(
+		spv::StorageClassFunction,
+		builder.makeUintType(32),
+		builder.makeUintConstant(0), "CurrentBlockCounter");
+
+	uint32_t block_id = 0;
+
+	const auto record_feedback = [&](CFGNode *node, spv::Id value) {
+		// Record that we executed this node.
+		auto *load_op = emitter.module.allocate_op(spv::OpLoad, emitter.module.allocate_id(), u32_type);
+		load_op->add_id(current_block_counter_id);
+		node->ir.operations.push_back(load_op);
+
+		auto *increment = emitter.module.allocate_op(spv::OpIAdd, emitter.module.allocate_id(), u32_type);
+		increment->add_id(load_op->id);
+		increment->add_id(builder.makeUintConstant(1));
+		node->ir.operations.push_back(increment);
+
+		auto *chain = emitter.module.allocate_op(spv::OpAccessChain, emitter.module.allocate_id(),
+			builder.makePointer(spv::StorageClassStorageBuffer, u32_type));
+		chain->add_id(feedback_var_id);
+		chain->add_id(builder.makeUintConstant(0));
+		chain->add_id(load_op->id);
+		node->ir.operations.push_back(chain);
+
+		auto *store_ssbo = emitter.module.allocate_op(spv::OpStore);
+		store_ssbo->add_id(chain->id);
+		store_ssbo->add_id(value);
+		node->ir.operations.push_back(store_ssbo);
+
+		auto *store_op = emitter.module.allocate_op(spv::OpStore);
+		store_op->add_id(current_block_counter_id);
+		store_op->add_id(increment->id);
+		node->ir.operations.push_back(store_op);
+	};
+
 	const auto get = [&](const String &name) -> CFGNode * {
 		auto itr = block_metas.find(name);
 		if (itr == block_metas.end())
@@ -200,11 +264,16 @@ int main(int argc, char **argv)
 			auto *node = pool.create_node();
 			node->ir.terminator.type = Terminator::Type::Return;
 			node->name = name;
+
+			// Record that we executed this node.
+			spv::Id block_value_id = builder.makeUintConstant(++block_id);
+			record_feedback(node, block_value_id);
+
 			new_entry = node;
 			return node;
 		}
-		else
-			return itr->second;
+
+		return itr->second;
 	};
 
 	const auto add_branch = [&](const char *from, const char *to) {
@@ -213,6 +282,35 @@ int main(int argc, char **argv)
 		f->add_branch(t);
 		f->ir.terminator.type = Terminator::Type::Branch;
 		f->ir.terminator.direct_block = t;
+	};
+
+	const auto build_condition = [&](CFGNode *node) {
+		auto *load_op = emitter.module.allocate_op(spv::OpLoad, emitter.module.allocate_id(), u32_type);
+		load_op->add_id(condition_counter_id);
+		node->ir.operations.push_back(load_op);
+
+		auto *increment = emitter.module.allocate_op(spv::OpIAdd, emitter.module.allocate_id(), u32_type);
+		increment->add_id(load_op->id);
+		increment->add_id(builder.makeUintConstant(1));
+		node->ir.operations.push_back(increment);
+
+		auto *chain = emitter.module.allocate_op(spv::OpAccessChain, emitter.module.allocate_id(),
+			builder.makePointer(spv::StorageClassStorageBuffer, u32_type));
+		chain->add_id(condition_var_id);
+		chain->add_id(builder.makeUintConstant(0));
+		chain->add_id(load_op->id);
+		node->ir.operations.push_back(chain);
+
+		auto *store_op = emitter.module.allocate_op(spv::OpStore);
+		store_op->add_id(condition_counter_id);
+		store_op->add_id(increment->id);
+		node->ir.operations.push_back(store_op);
+
+		auto *load_ssbo = emitter.module.allocate_op(spv::OpLoad, emitter.module.allocate_id(), u32_type);
+		load_ssbo->add_id(chain->id);
+		node->ir.operations.push_back(load_ssbo);
+
+		return load_ssbo->id;
 	};
 
 	const auto add_selection = [&](const char *from, const char *to0, const char *to1) {
@@ -224,14 +322,20 @@ int main(int argc, char **argv)
 		f->ir.terminator.type = Terminator::Type::Condition;
 		f->ir.terminator.true_block = t0;
 		f->ir.terminator.false_block = t1;
-		f->ir.terminator.conditional_id = emitter.module.get_builder().makeBoolConstant(true, true);
-		emitter.module.get_builder().addName(f->ir.terminator.conditional_id, (std::string(from) + "_sel").c_str());
+
+		auto *path = emitter.module.allocate_op(spv::OpINotEqual, emitter.module.allocate_id(), builder.makeBoolType());
+		path->add_id(build_condition(f));
+		path->add_id(builder.makeUintConstant(0));
+		f->ir.operations.push_back(path);
+
+		f->ir.terminator.conditional_id = path->id;
 	};
 
 	const auto add_switch = [&](const char *from, const String *nodes, size_t num_nodes) {
 		auto *f = get(from);
 		f->ir.terminator.type = Terminator::Type::Switch;
-		f->ir.terminator.conditional_id = emitter.module.get_builder().makeUintConstant(0, true);
+		f->ir.terminator.conditional_id = build_condition(f);
+
 		for (size_t i = 0; i < num_nodes; i++)
 		{
 			auto *t = get(nodes[i]);
@@ -240,6 +344,7 @@ int main(int argc, char **argv)
 			case_label.node = t;
 			case_label.global_order = i;
 			case_label.is_default = i == 0;
+			case_label.value = i;
 			f->ir.terminator.cases.push_back(case_label);
 		}
 	};
@@ -252,28 +357,17 @@ int main(int argc, char **argv)
 		phi_node.id = emitter.module.allocate_id();
 		emitter.module.get_builder().addName(phi_node.id, phi);
 
+		uint32_t count = 1000000;
 		for (auto &from : from_nodes)
 		{
 			IncomingValue value = {};
 			value.block = get(from);
-			value.id = emitter.module.get_builder().makeUintConstant(uint32_t(std::hash<std::string>()(from)), true);
-			emitter.module.get_builder().addName(value.id, (std::string("incoming_value_") + from).c_str());
+			value.id = emitter.module.get_builder().makeUintConstant(++count);
 			phi_node.incoming.push_back(value);
 		}
+
+		record_feedback(p, phi_node.id);
 	};
-
-	const auto add_sideeffect = [&](const char *block) {
-		auto *b = get(block);
-		auto &builder = emitter.module.get_builder();
-		spv::Id var_id = builder.createVariable(spv::StorageClassFunction, builder.makeUintType(32));
-
-		auto *op = emitter.module.allocate_op(spv::OpStore);
-		op->add_id(var_id);
-		op->add_id(builder.makeUintConstant(0));
-		b->ir.operations.push_back(op);
-	};
-
-	emitter.module.emit_entry_point(spv::ExecutionModelVertex, "main", false, spv::MemoryModelGLSL450);
 
 	FILE *file = fopen(argv[1], "r");
 	if (!file)
@@ -331,15 +425,6 @@ int main(int argc, char **argv)
 			for (auto itr = tokens.begin() + 2; itr != tokens.end(); ++itr)
 				src_blocks.push_back(itr->c_str());
 			add_phi(tokens[1].c_str(), src_blocks);
-		}
-		else if (tokens.front() == "sideeffect")
-		{
-			if (tokens.size() != 2)
-			{
-				LOGE("sideeffects token needs 2 elements.\n");
-				continue;;
-			}
-			add_sideeffect(tokens[1].c_str());
 		}
 		else
 		{

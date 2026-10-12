@@ -235,8 +235,6 @@ void CFGStructurizer::log_cfg_structurize_test(const char *path) const
 		auto *n = stack.back();
 		stack.pop_back();
 		auto &t = n->ir.terminator;
-		if (!n->ir.operations.empty())
-			fprintf(f, "sideeffect %s\n", name(n));
 		if (t.type == Terminator::Type::Branch)
 			fprintf(f, "b %s %s\n", name(n), name(t.direct_block));
 		else if (t.type == Terminator::Type::Condition)
