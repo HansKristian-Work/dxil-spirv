@@ -33,6 +33,7 @@ set_target_properties(dxil-debug PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
 option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." OFF)
+option(DXIL_SPV_MISC_CLI "Enable misc CLI apps." OFF)
 
 include(GNUInstallDirs)
 
@@ -129,14 +130,16 @@ target_compile_options(dxil-spirv-c-static PRIVATE ${DXIL_SPV_CXX_FLAGS})
 set_target_properties(dxil-spirv-c-static PROPERTIES PUBLIC_HEADERS dxil_spirv_c.h)
 set_target_properties(dxil-spirv-c-static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-if (DXIL_SPIRV_CLI)
+if (DXIL_SPIRV_CLI OR DXIL_SPIRV_MISC_CLI)
     add_library(cli-parser STATIC
             third_party/cli_parser/cli_parser.hpp
             third_party/cli_parser/cli_parser.cpp)
     target_include_directories(cli-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cli_parser)
     target_link_libraries(cli-parser PUBLIC dxil-debug)
     target_compile_options(cli-parser PRIVATE ${DXIL_SPV_CXX_FLAGS})
+endif()
 
+if (DXIL_SPIRV_CLI)
     add_executable(dxil-spirv dxil_spirv.cpp)
     add_executable(dxil-extract dxil_extract.cpp)
     target_link_libraries(dxil-spirv PRIVATE dxil-spirv-c-shared cli-parser SPIRV-Tools-static spirv-cross-c dxil-debug)
@@ -185,11 +188,9 @@ install(TARGETS dxil-spirv-c-shared
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv)
 install(EXPORT dxil_spirv_c_sharedConfig DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dxil_spirv_c_shared/cmake)
 
-option(DXIL_SPV_MISC_CLI "Enable misc CLI apps." OFF)
-
 if (DXIL_SPV_MISC_CLI)
     add_executable(structurize-test misc/structurize_test.cpp)
-    target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools-static spirv-cross-c dxil-debug dxil-utils)
+    target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools-static spirv-cross-c dxil-debug dxil-utils cli-parser)
     target_compile_options(structurize-test PRIVATE ${DXIL_SPV_CXX_FLAGS})
     target_compile_definitions(dxil-converter PUBLIC DXIL_SPIRV_DEBUG_DUMPING)
     target_compile_definitions(spirv-module PRIVATE DXIL_SPIRV_DEBUG_DUMPING)

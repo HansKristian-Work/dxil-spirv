@@ -35,6 +35,8 @@
 #include "logging.hpp"
 #include "spirv-tools/libspirv.hpp"
 #include "spirv_cross_c.h"
+#include "cli_parser.hpp"
+#include "thread_local_allocator.hpp"
 
 using namespace dxil_spv;
 
@@ -270,6 +272,7 @@ static bool validate_spirv(const Vector<uint32_t> &code)
 	tools.SetMessageConsumer([](spv_message_level_t, const char *, const spv_position_t &, const char *message) {
 		LOGE("Message: %s\n", message);
 	});
+
 	if (!tools.Validate(code.data(), code.size()))
 	{
 		LOGE("Validation error.\n");
@@ -277,7 +280,6 @@ static bool validate_spirv(const Vector<uint32_t> &code)
 	}
 	else
 	{
-		LOGE("Validated successfully!\n");
 		return true;
 	}
 }
@@ -396,11 +398,39 @@ CFGNode *Emitter::get(const String &name)
 	return itr->second;
 }
 
+static void print_help()
+{
+	LOGE("Usage: structurize-test [input] [--output out.spv] [--skip-validation] [--help]\n");
+}
+
 int main(int argc, char **argv)
 {
-	if (argc != 2)
+	begin_thread_allocator_context();
+
+	String input_path;
+	String output_path;
+	bool skip_validation = false;
+	CLICallbacks cbs;
+	cbs.default_handler = [&](const char *path) { input_path = path; };
+	cbs.add("--help", [&](CLIParser &parser) { parser.end(); });
+	cbs.add("--output", [&](CLIParser &parser) { output_path = parser.next_string(); });
+	cbs.add("--skip-validation", [&](CLIParser &) { skip_validation = true; });
+
+	CLIParser parser(std::move(cbs), argc - 1, argv + 1);
+	if (!parser.parse())
 	{
-		fprintf(stderr, "Usage: structurize-test <input test>\n");
+		print_help();
+		return EXIT_FAILURE;
+	}
+	else if (parser.is_ended_state())
+	{
+		print_help();
+		return EXIT_SUCCESS;
+	}
+
+	if (input_path.empty())
+	{
+		LOGE("Need at least input path.\n");
 		return EXIT_FAILURE;
 	}
 
@@ -472,18 +502,46 @@ int main(int argc, char **argv)
 
 	CFGStructurizer traverser(emitter.get("entry"), emitter.pool, emitter.module);
 	traverser.run();
-	traverser.traverse(emitter);
 
-	emitter.pool.for_each_node([](CFGNode &node) {
-		node.userdata = nullptr;
-		node.id = 0;
-	});
+	if (output_path.empty())
+	{
+		traverser.traverse(emitter);
+		emitter.pool.for_each_node([](CFGNode &node) {
+			node.userdata = nullptr;
+			node.id = 0;
+		});
+	}
 
 	emitter.module.emit_entry_point_function_body(traverser);
 	Vector<uint32_t> code;
 	emitter.module.finalize_spirv(code);
 
-	print_glsl(code);
-	print_spirv_assembly(code);
-	return validate_spirv(code) ? EXIT_SUCCESS : EXIT_FAILURE;
+	if (output_path.empty())
+	{
+		print_glsl(code);
+		print_spirv_assembly(code);
+	}
+	else
+	{
+		FILE *f = fopen(output_path.c_str(), "wb");
+		if (!f)
+		{
+			LOGE("Failed to open file %s for writing.\n", output_path.c_str());
+			return EXIT_FAILURE;
+		}
+
+		if (fwrite(code.data(), sizeof(uint32_t), code.size(), f) != code.size())
+		{
+			LOGE("Failed to write file %s.\n", output_path.c_str());
+			return EXIT_FAILURE;
+		}
+
+		fclose(f);
+	}
+
+	bool success = true;
+	if (!skip_validation)
+		success = validate_spirv(code);
+
+	return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
