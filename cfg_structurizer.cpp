@@ -1338,6 +1338,12 @@ bool CFGStructurizer::run_trivial()
 	return true;
 }
 
+bool CFGStructurizer::run_experimental_unstructured()
+{
+	experimental_unstructured_flow = true;
+	return run_trivial();
+}
+
 bool CFGStructurizer::run()
 {
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
@@ -3443,8 +3449,7 @@ void CFGStructurizer::visit(CFGNode &entry)
 		if (succ->traversing)
 		{
 			// For now, only support one back edge.
-			// DXIL seems to obey this.
-			assert(!entry.succ_back_edge || entry.succ_back_edge == succ);
+			assert(experimental_unstructured_flow || !entry.succ_back_edge || entry.succ_back_edge == succ);
 			entry.succ_back_edge = succ;
 
 			// For now, only support one back edge.

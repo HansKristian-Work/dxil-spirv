@@ -50,6 +50,7 @@ class CFGStructurizer
 public:
 	CFGStructurizer(CFGNode *entry, CFGNodePool &pool, SPIRVModule &module);
 	bool run();
+	bool run_experimental_unstructured();
 	bool run_trivial();
 	void traverse(BlockEmissionInterface &iface);
 	CFGNode *get_entry_block() const;
@@ -74,6 +75,7 @@ private:
 
 	Vector<uint32_t> reachability_bitset;
 	unsigned reachability_stride = 0;
+	bool experimental_unstructured_flow = false;
 
 	UnorderedSet<const CFGNode *> reachable_nodes;
 	UnorderedSet<const CFGNode *> structured_loop_merge_targets;
