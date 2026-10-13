@@ -34,6 +34,7 @@ set_target_properties(dxil-debug PROPERTIES POSITION_INDEPENDENT_CODE ON)
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
 option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." OFF)
 option(DXIL_SPV_MISC_CLI "Enable misc CLI apps." OFF)
+option(DXIL_SPV_FUZZ_CLI "Enable fuzzer CLI apps. Requires Granite to be symlinked in." OFF)
 
 include(GNUInstallDirs)
 
@@ -68,7 +69,7 @@ add_library(dxil-converter STATIC
         llvm_bitcode_parser.hpp llvm_bitcode_parser.cpp
         dxil.hpp
         dxil_converter.hpp dxil_converter.cpp
-        cfg_structurizer.hpp cfg_structurizer.cpp
+        cfg_structurizer.hpp cfg_structurizer.cpp cfg_structurizer_new.cpp
         node_pool.hpp node_pool.cpp
         node.hpp node.cpp
         dxil_parser.hpp dxil_parser.cpp
@@ -162,7 +163,7 @@ if (DXIL_SPIRV_CLI)
 endif()
 
 set(DXIL_SPV_VERSION_MAJOR 2)
-set(DXIL_SPV_VERSION_MINOR 75)
+set(DXIL_SPV_VERSION_MINOR 76)
 set(DXIL_SPV_VERSION_PATCH 0)
 set(DXIL_SPV_VERSION ${DXIL_SPV_VERSION_MAJOR}.${DXIL_SPV_VERSION_MINOR}.${DXIL_SPV_VERSION_PATCH})
 set_target_properties(dxil-spirv-c-shared PROPERTIES
@@ -189,11 +190,7 @@ install(TARGETS dxil-spirv-c-shared
 install(EXPORT dxil_spirv_c_sharedConfig DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dxil_spirv_c_shared/cmake)
 
 if (DXIL_SPV_MISC_CLI)
-    include(FindPkgConfig)
-    pkg_check_modules(VULKAN REQUIRED IMPORTED_TARGET vulkan)
-    add_executable(structurize-test misc/structurize_test.cpp)
-    target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools-static spirv-cross-c dxil-debug dxil-utils cli-parser PkgConfig::VULKAN)
-    target_compile_options(structurize-test PRIVATE ${DXIL_SPV_CXX_FLAGS})
     target_compile_definitions(dxil-converter PUBLIC DXIL_SPIRV_DEBUG_DUMPING)
     target_compile_definitions(spirv-module PRIVATE DXIL_SPIRV_DEBUG_DUMPING)
+    add_subdirectory(misc)
 endif()

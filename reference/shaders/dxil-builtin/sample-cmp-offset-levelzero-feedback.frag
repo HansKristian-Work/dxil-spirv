@@ -1,5 +1,6 @@
 #version 460
 #extension GL_ARB_sparse_texture2 : require
+#extension GL_EXT_texture_shadow_lod : require
 
 struct SparseTexel
 {
@@ -47,7 +48,7 @@ void main()
     _56 _91 = _56(_90, _90, _90, _90, _85._m0);
     uint _127;
     float _128;
-    _127 = sparseTextureGradOffsetARB(sampler2DArrayShadow(_17, _20), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), vec2(0.0), vec2(0.0), ivec2(4, 5), _128);
+    _127 = sparseTextureLodOffsetARB(sampler2DArrayShadow(_17, _20), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), 0.0, ivec2(4, 5), _128);
     SparseTexel _103 = SparseTexel(_127, _128);
     float _108 = _103._m1;
     _56 _109 = _56(_108, _108, _108, _108, _103._m0);
@@ -60,7 +61,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 121
 ; Schema: 0
@@ -68,7 +69,7 @@ OpCapability Shader
 OpCapability SparseResidency
 OpCapability Sampled1D
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %23 %26
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %23 "TEXCOORD"

@@ -790,6 +790,7 @@ struct Converter::Impl
 		bool nv_cooperative_matrix2_conversions = false;
 		bool ssbo_wraps_32bit_before_robustness = false;
 		bool raw_access_chain_wraps_32bit_before_robustness = false;
+		bool legacy_structurizer = false;
 		struct
 		{
 			bool enabled = false;

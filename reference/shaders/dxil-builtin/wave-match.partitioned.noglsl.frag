@@ -1,5 +1,5 @@
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 85
 ; Schema: 0
@@ -10,7 +10,7 @@ OpCapability GroupNonUniformBallot
 OpCapability GroupNonUniformPartitionedEXT
 OpExtension "SPV_NV_shader_subgroup_partitioned"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %13 %83
+OpEntryPoint Fragment %3 "main" %8 %11 %13 %83
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %13 "THR"

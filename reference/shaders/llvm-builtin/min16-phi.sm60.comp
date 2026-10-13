@@ -9,49 +9,41 @@ layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _14;
 
 void main()
 {
-    float _45;
-    float _48;
-    float _51;
-    float _54;
+    float _81;
+    float _82;
+    float _83;
+    float _84;
     if (gl_GlobalInvocationID.x < 20u)
     {
         mediump vec4 _36 = texelFetch(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
-        _45 = _36.x;
-        _48 = _36.y;
-        _51 = _36.z;
-        _54 = _36.w;
+        _81 = _36.x;
+        _82 = _36.y;
+        _83 = _36.z;
+        _84 = _36.w;
     }
     else
     {
-        float frontier_phi_3_2_ladder;
-        float frontier_phi_3_2_ladder_1;
-        float frontier_phi_3_2_ladder_2;
-        float frontier_phi_3_2_ladder_3;
         if (gl_GlobalInvocationID.y < 40u)
         {
             mediump vec4 _76 = texelFetch(_9, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
-            frontier_phi_3_2_ladder = _76.x;
-            frontier_phi_3_2_ladder_1 = _76.y;
-            frontier_phi_3_2_ladder_2 = _76.z;
-            frontier_phi_3_2_ladder_3 = _76.w;
+            _81 = _76.x;
+            _82 = _76.y;
+            _83 = _76.z;
+            _84 = _76.w;
         }
         else
         {
             mediump vec4 _78 = texelFetch(_10, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
-            frontier_phi_3_2_ladder = _78.x;
-            frontier_phi_3_2_ladder_1 = _78.y;
-            frontier_phi_3_2_ladder_2 = _78.z;
-            frontier_phi_3_2_ladder_3 = _78.w;
+            _81 = _78.x;
+            _82 = _78.y;
+            _83 = _78.z;
+            _84 = _78.w;
         }
-        _45 = frontier_phi_3_2_ladder;
-        _48 = frontier_phi_3_2_ladder_1;
-        _51 = frontier_phi_3_2_ladder_2;
-        _54 = frontier_phi_3_2_ladder_3;
     }
-    mediump float _57 = _54;
-    mediump float _58 = _51;
-    mediump float _59 = _48;
-    mediump float _60 = _45;
+    mediump float _57 = _84;
+    mediump float _58 = _83;
+    mediump float _59 = _82;
+    mediump float _60 = _81;
     uint _61 = gl_GlobalInvocationID.x * 4u;
     imageStore(_14, int(_61), uvec4(floatBitsToUint(_60)));
     imageStore(_14, int(_61 + 1u), uvec4(floatBitsToUint(_59)));
@@ -63,20 +55,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 92
+; Bound: 95
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %21
+OpEntryPoint GLCompute %3 "main" %8 %9 %10 %14 %21
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
-OpName %80 "frontier_phi_3.2.ladder"
-OpName %81 "frontier_phi_3.2.ladder"
-OpName %82 "frontier_phi_3.2.ladder"
-OpName %83 "frontier_phi_3.2.ladder"
 OpDecorate %8 RelaxedPrecision
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
@@ -121,10 +109,15 @@ OpDecorate %60 RelaxedPrecision
 %62 = OpConstant %11 4
 %67 = OpTypeVector %11 4
 %75 = OpConstant %11 3
+%80 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %84
-%84 = OpLabel
+%81 = OpVariable %80 Function
+%82 = OpVariable %80 Function
+%83 = OpVariable %80 Function
+%84 = OpVariable %80 Function
+OpBranch %85
+%85 = OpLabel
 %15 = OpLoad %12 %14
 %16 = OpLoad %6 %10
 %17 = OpLoad %6 %9
@@ -136,47 +129,59 @@ OpBranch %84
 %29 = OpAccessChain %22 %21 %30
 %31 = OpLoad %11 %29
 %33 = OpULessThan %32 %25 %34
-OpSelectionMerge %90 None
-OpBranchConditional %33 %89 %85
-%89 = OpLabel
+OpSelectionMerge %91 None
+OpBranchConditional %33 %90 %86
+%90 = OpLabel
 %38 = OpCompositeConstruct %37 %25 %28
 %36 = OpImageFetch %35 %18 %38 Lod %31
 %39 = OpCompositeExtract %5 %36 0
 %40 = OpCompositeExtract %5 %36 1
 %41 = OpCompositeExtract %5 %36 2
 %42 = OpCompositeExtract %5 %36 3
-OpBranch %90
-%85 = OpLabel
+OpStore %81 %39
+OpStore %82 %40
+OpStore %83 %41
+OpStore %84 %42
+OpBranch %91
+%86 = OpLabel
 %43 = OpULessThan %32 %28 %44
-OpSelectionMerge %88 None
-OpBranchConditional %43 %87 %86
-%87 = OpLabel
+OpSelectionMerge %89 None
+OpBranchConditional %43 %88 %87
+%88 = OpLabel
 %77 = OpCompositeConstruct %37 %25 %28
 %76 = OpImageFetch %35 %17 %77 Lod %31
 %46 = OpCompositeExtract %5 %76 0
 %49 = OpCompositeExtract %5 %76 1
 %52 = OpCompositeExtract %5 %76 2
 %55 = OpCompositeExtract %5 %76 3
-OpBranch %88
-%86 = OpLabel
+OpStore %81 %46
+OpStore %82 %49
+OpStore %83 %52
+OpStore %84 %55
+OpBranch %89
+%87 = OpLabel
 %79 = OpCompositeConstruct %37 %25 %28
 %78 = OpImageFetch %35 %16 %79 Lod %31
 %47 = OpCompositeExtract %5 %78 0
 %50 = OpCompositeExtract %5 %78 1
 %53 = OpCompositeExtract %5 %78 2
 %56 = OpCompositeExtract %5 %78 3
-OpBranch %88
-%88 = OpLabel
-%80 = OpPhi %5 %46 %87 %47 %86
-%81 = OpPhi %5 %49 %87 %50 %86
-%82 = OpPhi %5 %52 %87 %53 %86
-%83 = OpPhi %5 %55 %87 %56 %86
-OpBranch %90
-%90 = OpLabel
-%45 = OpPhi %5 %39 %89 %80 %88
-%48 = OpPhi %5 %40 %89 %81 %88
-%51 = OpPhi %5 %41 %89 %82 %88
-%54 = OpPhi %5 %42 %89 %83 %88
+OpStore %81 %47
+OpStore %82 %50
+OpStore %83 %53
+OpStore %84 %56
+OpBranch %89
+%89 = OpLabel
+OpBranch %91
+%91 = OpLabel
+OpBranch %92
+%92 = OpLabel
+OpBranch %93
+%93 = OpLabel
+%54 = OpLoad %5 %84
+%51 = OpLoad %5 %83
+%48 = OpLoad %5 %82
+%45 = OpLoad %5 %81
 %57 = OpCopyObject %5 %54
 %58 = OpCopyObject %5 %51
 %59 = OpCopyObject %5 %48

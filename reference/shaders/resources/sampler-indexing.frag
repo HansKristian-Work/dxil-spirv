@@ -21,14 +21,14 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 74
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledImageArrayDynamicIndexing
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %16 %19
+OpEntryPoint Fragment %3 "main" %8 %14 %16 %19
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %16 "V"

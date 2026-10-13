@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_texture_shadow_lod : require
 
 layout(set = 1, binding = 0) uniform texture1D _8;
 layout(set = 1, binding = 1) uniform texture1DArray _11;
@@ -11,7 +12,7 @@ layout(location = 0) out vec2 SV_Target;
 
 void main()
 {
-    float _87 = ((vec4(textureLodOffset(sampler1DArrayShadow(_11, _20), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0, 2)).x + vec4(textureLodOffset(sampler1DShadow(_8, _20), vec2(TEXCOORD.x, TEXCOORD.w), 0.0, 1)).x) + vec4(textureLodOffset(sampler2DShadow(_14, _20), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0, ivec2(-3, -2))).x) + vec4(textureGradOffset(sampler2DArrayShadow(_17, _20), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), vec2(0.0), vec2(0.0), ivec2(4, 5))).x;
+    float _87 = ((vec4(textureLodOffset(sampler1DArrayShadow(_11, _20), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0, 2)).x + vec4(textureLodOffset(sampler1DShadow(_8, _20), vec2(TEXCOORD.x, TEXCOORD.w), 0.0, 1)).x) + vec4(textureLodOffset(sampler2DShadow(_14, _20), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0, ivec2(-3, -2))).x) + vec4(textureLodOffset(sampler2DArrayShadow(_17, _20), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), 0.0, ivec2(4, 5))).x;
     SV_Target.x = _87;
     SV_Target.y = _87;
 }
@@ -20,14 +21,14 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 93
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %23 %26
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %23 "TEXCOORD"

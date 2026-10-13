@@ -192,7 +192,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 423
 ; Schema: 0
@@ -206,7 +206,7 @@ OpCapability FloatControls2
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_float_controls2"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %32 %35 %38 %41 %43
+OpEntryPoint Fragment %3 "main" %8 %12 %16 %19 %22 %25 %28 %29 %32 %35 %38 %41 %43
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
 OpExecutionModeId %3 FPFastMathDefault %5 %420

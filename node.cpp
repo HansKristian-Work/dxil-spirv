@@ -74,6 +74,10 @@ void CFGNode::clear_branches()
 			s->pred.erase(itr);
 	}
 	succ.clear();
+
+	if (succ_back_edge)
+		succ_back_edge->pred_back_edge = nullptr;
+	succ_back_edge = nullptr;
 }
 
 void CFGNode::add_fake_branch(CFGNode *to)
@@ -485,10 +489,37 @@ void CFGNode::retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *
 		rewrite_branch_through_intermediate_node(to_prev, to_next);
 }
 
+void CFGNode::collapse_conditional_to_direct(CFGNode *to_next)
+{
+	if (ir.terminator.true_block != to_next || ir.terminator.false_block != to_next)
+	{
+		// Used by new structurizer.
+		assert(std::find(to_next->pred.begin(), to_next->pred.end(), this) == to_next->pred.end());
+		assert(ir.terminator.type == Terminator::Type::Condition);
+		assert(std::find(succ.begin(), succ.end(), to_next) == succ.end());
+
+		auto &true_pred = ir.terminator.true_block->pred;
+		auto &false_pred = ir.terminator.false_block->pred;
+		true_pred.erase(std::find(true_pred.begin(), true_pred.end(), this));
+		false_pred.erase(std::find(false_pred.begin(), false_pred.end(), this));
+		succ.erase(std::find(succ.begin(), succ.end(), ir.terminator.true_block));
+		succ.erase(std::find(succ.begin(), succ.end(), ir.terminator.false_block));
+		add_unique_succ(to_next);
+		to_next->add_unique_pred(this);
+	}
+
+	ir.terminator.direct_block = to_next;
+	ir.terminator.type = Terminator::Type::Branch;
+	ir.terminator.true_block = nullptr;
+	ir.terminator.false_block = nullptr;
+	ir.terminator.conditional_id = 0;
+	ir.merge_info.merge_type = MergeType::None;
+	ir.merge_info.merge_block = nullptr;
+}
+
 void CFGNode::retarget_branch_pre_traversal(CFGNode *to_prev, CFGNode *to_next)
 {
 	//LOGI("Retargeting branch for %s: %s -> %s\n", name.c_str(), to_prev->name.c_str(), to_next->name.c_str());
-
 	assert(std::find(succ.begin(), succ.end(), to_prev) != succ.end());
 	assert(std::find(to_prev->pred.begin(), to_prev->pred.end(), this) != to_prev->pred.end());
 	assert(std::find(succ.begin(), succ.end(), to_next) == succ.end());

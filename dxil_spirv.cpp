@@ -206,7 +206,8 @@ static void print_help()
 	     "\t[--view-instance-to-viewport-spec-id <id>]\n"
 	     "\t[--view-index-to-view-instance-spec-id <id>]\n"
 	     "\t[--meta-descriptor descriptor kind set binding]\n"
-	     "\t[--ray-query-force-opacity-micromap]\n");
+	     "\t[--ray-query-force-opacity-micromap]\n"
+	     "\t[--legacy-structurizer]\n");
 }
 
 struct MetaDescriptor
@@ -266,6 +267,7 @@ struct Arguments
 	bool wmma_nv_coopmat2 = false;
 	bool non_semantic = false;
 	bool mixed_float_dot_product = false;
+	bool legacy_structurizer = false;
 	std::vector<dxil_spv_shader_quirk> quirks;
 
 	unsigned ssbo_alignment = 1;
@@ -942,6 +944,7 @@ int main(int argc, char **argv)
 	cbs.add("--assume-ssbo-32bit-wrapping", [&](CLIParser &parser) {
 		args.ssbo_32bit_wrapping = true;
 	});
+	cbs.add("--legacy-structurizer", [&](CLIParser &) { args.legacy_structurizer = true; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1353,6 +1356,12 @@ int main(int argc, char **argv)
 	{
 		dxil_spv_options_float_controls_2 fc2 = { { DXIL_SPV_OPTION_FLOAT_CONTROLS_2 }, DXIL_SPV_TRUE };
 		dxil_spv_converter_add_option(converter, &fc2.base);
+	}
+
+	if (args.legacy_structurizer)
+	{
+		dxil_spv_option_legacy_structurizer legacy = { { DXIL_SPV_OPTION_LEGACY_STRUCTURIZER }, DXIL_SPV_TRUE };
+		dxil_spv_converter_add_option(converter, &legacy.base);
 	}
 
 	for (auto &quirk : args.quirks)

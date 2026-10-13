@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 75
+#define DXIL_SPV_API_VERSION_MINOR 76
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
@@ -500,6 +500,7 @@ typedef enum dxil_spv_option
 	DXIL_SPV_OPTION_FLOAT_CONTROLS_2 = 54,
 	DXIL_SPV_OPTION_SHADER_ABORT = 55,
 	DXIL_SPV_OPTION_CONSERVATIVE_SSBO_VECTORIZATION = 56,
+	DXIL_SPV_OPTION_LEGACY_STRUCTURIZER = 57, /* This is immediately deprecated and will be removed at some point. */
 	DXIL_SPV_OPTION_INT_MAX = 0x7fffffff
 } dxil_spv_option;
 
@@ -913,6 +914,12 @@ typedef struct dxil_spv_option_conservative_ssbo_vectorization
 	dxil_spv_option_base base;
 	dxil_spv_bool enabled;
 } dxil_spv_option_conservative_ssbo_vectorization;
+
+typedef struct dxil_spv_option_legacy_structurizer
+{
+	dxil_spv_option_base base;
+	dxil_spv_bool enabled;
+} dxil_spv_option_legacy_structurizer;
 
 /* Gets the ABI version used to build this library. Used to detect API/ABI mismatches. */
 DXIL_SPV_PUBLIC_API void dxil_spv_get_version(unsigned *major, unsigned *minor, unsigned *patch);

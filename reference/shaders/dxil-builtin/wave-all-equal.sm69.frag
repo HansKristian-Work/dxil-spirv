@@ -44,7 +44,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 72
+; Bound: 76
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -58,7 +58,7 @@ OpName %16 "discard_state"
 OpName %48 "ByteAddressMask"
 OpName %46 "index"
 OpName %47 "stride"
-OpName %64 "discard_exit"
+OpName %68 "discard_exit"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
@@ -92,7 +92,7 @@ OpDecorate %10 Location 0
 %51 = OpConstant %5 4294967295
 %55 = OpConstant %5 4
 %56 = OpTypeVector %5 4
-%63 = OpConstantTrue %12
+%67 = OpConstantTrue %12
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpStore %16 %17
@@ -104,9 +104,13 @@ OpBranch %58
 OpSelectionMerge %60 None
 OpBranchConditional %13 %59 %60
 %59 = OpLabel
-OpStore %16 %63
+OpStore %16 %67
 OpBranch %60
 %60 = OpLabel
+OpBranch %61
+%61 = OpLabel
+OpBranch %62
+%62 = OpLabel
 %19 = OpConvertUToF %18 %11
 %20 = OpIAdd %5 %11 %21
 %22 = OpConvertUToF %18 %20
@@ -120,17 +124,21 @@ OpBranch %60
 %38 = OpSelect %35 %28 %37 %36
 %39 = OpINotEqual %27 %38 %40
 %41 = OpCompositeExtract %12 %39 0
-OpSelectionMerge %62 None
-OpBranchConditional %41 %61 %62
-%61 = OpLabel
+OpSelectionMerge %64 None
+OpBranchConditional %41 %63 %64
+%63 = OpLabel
 %42 = OpShiftLeftLogical %5 %11 %43
 %44 = OpLoad %6 %8
 %54 = OpFunctionCall %5 %48 %11 %55
 %57 = OpCompositeConstruct %56 %21 %21 %21 %21
 OpImageWrite %44 %54 %57
-OpBranch %62
-%62 = OpLabel
-%70 = OpFunctionCall %1 %64
+OpBranch %64
+%64 = OpLabel
+OpBranch %65
+%65 = OpLabel
+OpBranch %66
+%66 = OpLabel
+%74 = OpFunctionCall %1 %68
 OpReturn
 OpFunctionEnd
 %48 = OpFunction %5 None %45
@@ -141,14 +149,14 @@ OpFunctionEnd
 %52 = OpBitwiseAnd %5 %46 %50
 OpReturnValue %52
 OpFunctionEnd
-%64 = OpFunction %1 None %2
-%65 = OpLabel
-%68 = OpLoad %12 %16
-OpSelectionMerge %67 None
-OpBranchConditional %68 %66 %67
-%66 = OpLabel
+%68 = OpFunction %1 None %2
+%69 = OpLabel
+%72 = OpLoad %12 %16
+OpSelectionMerge %71 None
+OpBranchConditional %72 %70 %71
+%70 = OpLabel
 OpKill
-%67 = OpLabel
+%71 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

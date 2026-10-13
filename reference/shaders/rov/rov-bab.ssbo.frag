@@ -38,7 +38,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 58
 ; Schema: 0
@@ -46,7 +46,7 @@ OpCapability Shader
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_fragment_shader_interlock"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %14
+OpEntryPoint Fragment %3 "main" %10 %14
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
 OpExecutionMode %3 PixelInterlockOrderedEXT

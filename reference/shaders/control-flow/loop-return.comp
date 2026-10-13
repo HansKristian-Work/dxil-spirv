@@ -10,211 +10,223 @@ uint ByteAddressMask(uint index, uint stride)
 
 void main()
 {
-    uint _28;
+    uint _93;
     if (gl_GlobalInvocationID.x < 100u)
     {
-        uint frontier_phi_3_1_ladder;
         if (gl_GlobalInvocationID.x == 0u)
         {
-            frontier_phi_3_1_ladder = 0u;
+            _93 = 0u;
         }
         else
         {
-            uint _35;
-            _35 = 0u;
             uint _31;
-            uint frontier_phi_12;
-            uint _37 = 0u;
+            uint _36;
+            uint _94;
+            bool _105;
+            uint _115;
+            uint _119;
+            uint _123;
+            uint _97 = 0u;
+            uint _98 = 0u;
+            uint _35;
+            uint _37;
             bool _38;
             for (;;)
             {
+                _37 = _98;
+                _35 = _97;
                 _38 = gl_GlobalInvocationID.y == 0u;
-                uint frontier_phi_8_pred;
                 if (_38)
                 {
-                    frontier_phi_8_pred = _37;
+                    _94 = _37;
                 }
                 else
                 {
-                    bool ladder_phi_20;
-                    uint frontier_phi_20_pred;
-                    uint frontier_phi_20_pred_1;
-                    uint _47 = _37;
-                    uint _48 = 0u;
+                    uint _43;
+                    uint _49;
+                    bool _108;
+                    uint _95 = _37;
+                    uint _96 = 0u;
+                    uint _47;
+                    uint _48;
                     bool _65;
                     for (;;)
                     {
+                        _48 = _96;
+                        _47 = _95;
                         uint _50 = _48 ^ _35;
                         _65 = imageLoad(_8, int(ByteAddressMask(_50, 4u))).x == 100u;
+                        _108 = false;
+                        _123 = _47;
                         if (_65)
                         {
-                            ladder_phi_20 = true;
-                            frontier_phi_20_pred = _37;
-                            frontier_phi_20_pred_1 = imageLoad(_8, int(32u)).x + _47;
+                            _108 = true;
+                            _105 = true;
                             break;
+                        }
+                        _43 = imageLoad(_8, int(((_35 << 2u) * _48) >> 2u)).x + _47;
+                        _49 = _48 + 1u;
+                        _119 = _43;
+                        if (_49 < gl_GlobalInvocationID.y)
+                        {
+                            _95 = _43;
+                            _96 = _49;
+                            continue;
                         }
                         else
                         {
-                            uint _43 = imageLoad(_8, int(((_35 << 2u) * _48) >> 2u)).x + _47;
-                            uint _49 = _48 + 1u;
-                            if (_49 < gl_GlobalInvocationID.y)
-                            {
-                                _47 = _43;
-                                _48 = _49;
-                                continue;
-                            }
-                            else
-                            {
-                                ladder_phi_20 = false;
-                                frontier_phi_20_pred = _43;
-                                frontier_phi_20_pred_1 = 0u;
-                                break;
-                            }
+                            break;
                         }
                     }
-                    if (ladder_phi_20)
+                    if (_108)
                     {
-                        frontier_phi_12 = frontier_phi_20_pred_1;
                         break;
                     }
-                    frontier_phi_8_pred = frontier_phi_20_pred;
+                    _94 = _119;
                 }
-                _31 = frontier_phi_8_pred;
-                uint _36 = _35 + 1u;
+                _31 = _94;
+                _36 = _35 + 1u;
+                _115 = _31;
                 if (_36 < gl_GlobalInvocationID.x)
                 {
-                    _35 = _36;
-                    _37 = _31;
+                    _97 = _36;
+                    _98 = _31;
                     continue;
                 }
                 else
                 {
-                    frontier_phi_12 = _31;
+                    _105 = false;
                     break;
                 }
             }
-            frontier_phi_3_1_ladder = frontier_phi_12;
+            if (_105)
+            {
+                _93 = imageLoad(_8, int(32u)).x + _123;
+            }
+            else
+            {
+                _93 = _115;
+            }
         }
-        _28 = frontier_phi_3_1_ladder;
     }
     else
     {
-        uint frontier_phi_3_2_ladder;
         if (gl_GlobalInvocationID.z == 0u)
         {
-            frontier_phi_3_2_ladder = 0u;
+            _93 = 0u;
         }
         else
         {
-            uint _39;
-            _39 = 0u;
             uint _32;
-            uint frontier_phi_14;
-            uint _41 = 0u;
+            uint _40;
+            uint _99;
+            bool _111;
+            uint _117;
+            uint _121;
+            uint _125;
+            uint _102 = 0u;
+            uint _103 = 0u;
+            uint _39;
+            uint _41;
             bool _42;
             for (;;)
             {
+                _41 = _103;
+                _39 = _102;
                 _42 = gl_GlobalInvocationID.y == 0u;
-                uint frontier_phi_10_pred;
                 if (_42)
                 {
-                    frontier_phi_10_pred = _41;
+                    _99 = _41;
                 }
                 else
                 {
-                    bool ladder_phi_21;
-                    uint frontier_phi_21_pred;
-                    uint frontier_phi_21_pred_1;
-                    uint _66 = 0u;
-                    uint _68 = _41;
+                    uint _45;
+                    uint _67;
+                    bool _113;
+                    uint _100 = 0u;
+                    uint _101 = _41;
+                    uint _66;
+                    uint _68;
                     bool _74;
                     for (;;)
                     {
+                        _68 = _101;
+                        _66 = _100;
                         uint _69 = _66 ^ _39;
                         _74 = imageLoad(_8, int(ByteAddressMask(_69, 4u))).x == 100u;
+                        _113 = false;
+                        _125 = _68;
                         if (_74)
                         {
-                            ladder_phi_21 = true;
-                            frontier_phi_21_pred = _41;
-                            frontier_phi_21_pred_1 = imageLoad(_8, int(32u)).x + _68;
+                            _113 = true;
+                            _111 = true;
                             break;
+                        }
+                        _45 = imageLoad(_8, int(((_39 << 2u) * _66) >> 2u)).x + _68;
+                        _67 = _66 + 1u;
+                        _121 = _45;
+                        if (_67 < gl_GlobalInvocationID.y)
+                        {
+                            _100 = _67;
+                            _101 = _45;
+                            continue;
                         }
                         else
                         {
-                            uint _45 = imageLoad(_8, int(((_39 << 2u) * _66) >> 2u)).x + _68;
-                            uint _67 = _66 + 1u;
-                            if (_67 < gl_GlobalInvocationID.y)
-                            {
-                                _66 = _67;
-                                _68 = _45;
-                                continue;
-                            }
-                            else
-                            {
-                                ladder_phi_21 = false;
-                                frontier_phi_21_pred = _45;
-                                frontier_phi_21_pred_1 = 0u;
-                                break;
-                            }
+                            break;
                         }
                     }
-                    if (ladder_phi_21)
+                    if (_113)
                     {
-                        frontier_phi_14 = frontier_phi_21_pred_1;
                         break;
                     }
-                    frontier_phi_10_pred = frontier_phi_21_pred;
+                    _99 = _121;
                 }
-                _32 = frontier_phi_10_pred;
-                uint _40 = _39 + 1u;
+                _32 = _99;
+                _40 = _39 + 1u;
+                _117 = _32;
                 if (_40 < gl_GlobalInvocationID.z)
                 {
-                    _39 = _40;
-                    _41 = _32;
+                    _102 = _40;
+                    _103 = _32;
                     continue;
                 }
                 else
                 {
-                    frontier_phi_14 = _32;
+                    _111 = false;
                     break;
                 }
             }
-            frontier_phi_3_2_ladder = frontier_phi_14;
+            if (_111)
+            {
+                _93 = imageLoad(_8, int(32u)).x + _125;
+            }
+            else
+            {
+                _93 = _117;
+            }
         }
-        _28 = frontier_phi_3_2_ladder;
     }
-    imageStore(_8, int(0u), uvec4(_28));
+    imageStore(_8, int(0u), uvec4(_93));
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 143
+; Bound: 194
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %12
+OpEntryPoint GLCompute %3 "main" %8 %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
 OpName %55 "ByteAddressMask"
 OpName %53 "index"
 OpName %54 "stride"
-OpName %92 "ladder_phi_20"
-OpName %95 "ladder_phi_21"
-OpName %96 "frontier_phi_21.pred"
-OpName %97 "frontier_phi_10.pred"
-OpName %98 "frontier_phi_20.pred"
-OpName %99 "frontier_phi_8.pred"
-OpName %100 "frontier_phi_21.pred"
-OpName %101 "frontier_phi_14"
-OpName %102 "frontier_phi_3.2.ladder"
-OpName %103 "frontier_phi_20.pred"
-OpName %104 "frontier_phi_12"
-OpName %105 "frontier_phi_3.1.ladder"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %12 BuiltIn GlobalInvocationId
@@ -238,12 +250,35 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %58 = OpConstant %5 4294967295
 %62 = OpConstant %5 4
 %75 = OpConstant %5 32
-%93 = OpConstantFalse %23
-%94 = OpConstantTrue %23
+%92 = OpTypePointer Function %5
+%104 = OpTypePointer Function %23
+%107 = OpConstantTrue %23
+%109 = OpConstantFalse %23
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %106
-%106 = OpLabel
+%93 = OpVariable %92 Function
+%94 = OpVariable %92 Function
+%95 = OpVariable %92 Function
+%96 = OpVariable %92 Function
+%97 = OpVariable %92 Function
+%98 = OpVariable %92 Function
+%99 = OpVariable %92 Function
+%100 = OpVariable %92 Function
+%101 = OpVariable %92 Function
+%102 = OpVariable %92 Function
+%103 = OpVariable %92 Function
+%105 = OpVariable %104 Function
+%108 = OpVariable %104 Function
+%111 = OpVariable %104 Function
+%113 = OpVariable %104 Function
+%115 = OpVariable %92 Function
+%117 = OpVariable %92 Function
+%119 = OpVariable %92 Function
+%121 = OpVariable %92 Function
+%123 = OpVariable %92 Function
+%125 = OpVariable %92 Function
+OpBranch %127
+%127 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
@@ -252,49 +287,56 @@ OpBranch %106
 %20 = OpAccessChain %13 %12 %21
 %22 = OpLoad %5 %20
 %24 = OpULessThan %23 %16 %25
-OpSelectionMerge %137 None
-OpBranchConditional %24 %122 %107
-%122 = OpLabel
+OpSelectionMerge %186 None
+OpBranchConditional %24 %157 %128
+%157 = OpLabel
 %26 = OpIEqual %23 %16 %15
-OpSelectionMerge %136 None
-OpBranchConditional %26 %136 %123
-%123 = OpLabel
-OpBranch %124
-%124 = OpLabel
-%35 = OpPhi %5 %15 %123 %36 %134
-%37 = OpPhi %5 %15 %123 %31 %134
+OpSelectionMerge %185 None
+OpBranchConditional %26 %184 %158
+%184 = OpLabel
+OpStore %93 %15
+OpBranch %185
+%158 = OpLabel
+OpStore %97 %15
+OpStore %98 %15
+OpBranch %159
+%159 = OpLabel
+%37 = OpLoad %5 %98
+%35 = OpLoad %5 %97
 %38 = OpIEqual %23 %19 %15
-OpLoopMerge %135 %134 None
-OpBranch %125
-%125 = OpLabel
-OpSelectionMerge %133 None
-OpBranchConditional %38 %133 %126
-%126 = OpLabel
-OpBranch %127
-%127 = OpLabel
-%47 = OpPhi %5 %37 %126 %43 %129
-%48 = OpPhi %5 %15 %126 %49 %129
+OpLoopMerge %179 %177 None
+OpBranch %160
+%160 = OpLabel
+OpSelectionMerge %174 None
+OpBranchConditional %38 %173 %161
+%173 = OpLabel
+OpStore %94 %37
+OpBranch %174
+%161 = OpLabel
+OpStore %95 %37
+OpStore %96 %15
+OpBranch %162
+%162 = OpLabel
+%48 = OpLoad %5 %96
+%47 = OpLoad %5 %95
 %50 = OpBitwiseXor %5 %48 %35
 %51 = OpShiftLeftLogical %5 %50 %21
 %61 = OpFunctionCall %5 %55 %50 %62
 %63 = OpImageRead %33 %9 %61
 %64 = OpCompositeExtract %5 %63 0
 %65 = OpIEqual %23 %64 %25
-OpLoopMerge %131 %129 None
-OpBranch %140
-%140 = OpLabel
-OpSelectionMerge %141 None
-OpBranchConditional %65 %130 %128
-%130 = OpLabel
-%76 = OpImageRead %33 %9 %75
-%77 = OpCompositeExtract %5 %76 0
-%29 = OpIAdd %5 %77 %47
-OpBranch %131
-%128 = OpLabel
-OpBranch %129
-%141 = OpLabel
-OpUnreachable
-%129 = OpLabel
+OpStore %108 %109
+OpStore %123 %47
+OpLoopMerge %168 %165 None
+OpBranch %163
+%163 = OpLabel
+OpSelectionMerge %164 None
+OpBranchConditional %65 %167 %164
+%167 = OpLabel
+OpStore %108 %107
+OpStore %105 %107
+OpBranch %168
+%164 = OpLabel
 %78 = OpShiftLeftLogical %5 %35 %21
 %79 = OpIMul %5 %78 %48
 %80 = OpShiftRightLogical %5 %79 %21
@@ -303,70 +345,120 @@ OpUnreachable
 %43 = OpIAdd %5 %82 %47
 %49 = OpIAdd %5 %48 %18
 %83 = OpULessThan %23 %49 %19
-OpBranchConditional %83 %127 %131
-%131 = OpLabel
-%92 = OpPhi %23 %93 %129 %94 %130
-%98 = OpPhi %5 %43 %129 %37 %130
-%103 = OpPhi %5 %15 %129 %29 %130
-OpSelectionMerge %132 None
-OpBranchConditional %92 %135 %132
-%132 = OpLabel
-OpBranch %133
-%133 = OpLabel
-%99 = OpPhi %5 %37 %125 %98 %132
-%31 = OpCopyObject %5 %99
-OpBranch %134
-%134 = OpLabel
+OpStore %119 %43
+OpSelectionMerge %191 None
+OpBranchConditional %83 %165 %166
+%166 = OpLabel
+OpBranch %168
+%191 = OpLabel
+OpUnreachable
+%165 = OpLabel
+OpStore %95 %43
+OpStore %96 %49
+OpBranch %162
+%168 = OpLabel
+%110 = OpLoad %23 %108
+OpSelectionMerge %169 None
+OpBranchConditional %110 %179 %169
+%169 = OpLabel
+OpBranch %170
+%170 = OpLabel
+OpBranch %171
+%171 = OpLabel
+%120 = OpLoad %5 %119
+OpStore %94 %120
+OpBranch %172
+%172 = OpLabel
+OpBranch %174
+%174 = OpLabel
+OpBranch %175
+%175 = OpLabel
+OpBranch %176
+%176 = OpLabel
+%31 = OpLoad %5 %94
 %36 = OpIAdd %5 %35 %18
 %44 = OpULessThan %23 %36 %16
-OpBranchConditional %44 %124 %135
-%135 = OpLabel
-%104 = OpPhi %5 %31 %134 %103 %131
-OpBranch %136
-%136 = OpLabel
-%105 = OpPhi %5 %15 %122 %104 %135
-OpBranch %137
-%107 = OpLabel
+OpStore %115 %31
+OpSelectionMerge %192 None
+OpBranchConditional %44 %177 %178
+%178 = OpLabel
+OpStore %105 %109
+OpBranch %179
+%192 = OpLabel
+OpUnreachable
+%177 = OpLabel
+OpStore %97 %36
+OpStore %98 %31
+OpBranch %159
+%179 = OpLabel
+OpBranch %180
+%180 = OpLabel
+%106 = OpLoad %23 %105
+OpSelectionMerge %183 None
+OpBranchConditional %106 %181 %182
+%181 = OpLabel
+%124 = OpLoad %5 %123
+%76 = OpImageRead %33 %9 %75
+%77 = OpCompositeExtract %5 %76 0
+%29 = OpIAdd %5 %77 %124
+OpStore %93 %29
+OpBranch %183
+%182 = OpLabel
+%116 = OpLoad %5 %115
+OpStore %93 %116
+OpBranch %183
+%183 = OpLabel
+OpBranch %185
+%185 = OpLabel
+OpBranch %186
+%128 = OpLabel
 %27 = OpIEqual %23 %22 %15
-OpSelectionMerge %121 None
-OpBranchConditional %27 %121 %108
-%108 = OpLabel
-OpBranch %109
-%109 = OpLabel
-%39 = OpPhi %5 %15 %108 %40 %119
-%41 = OpPhi %5 %15 %108 %32 %119
+OpSelectionMerge %156 None
+OpBranchConditional %27 %155 %129
+%155 = OpLabel
+OpStore %93 %15
+OpBranch %156
+%129 = OpLabel
+OpStore %102 %15
+OpStore %103 %15
+OpBranch %130
+%130 = OpLabel
+%41 = OpLoad %5 %103
+%39 = OpLoad %5 %102
 %42 = OpIEqual %23 %19 %15
-OpLoopMerge %120 %119 None
-OpBranch %110
-%110 = OpLabel
-OpSelectionMerge %118 None
-OpBranchConditional %42 %118 %111
-%111 = OpLabel
-OpBranch %112
-%112 = OpLabel
-%66 = OpPhi %5 %15 %111 %67 %114
-%68 = OpPhi %5 %41 %111 %45 %114
+OpLoopMerge %150 %148 None
+OpBranch %131
+%131 = OpLabel
+OpSelectionMerge %145 None
+OpBranchConditional %42 %144 %132
+%144 = OpLabel
+OpStore %99 %41
+OpBranch %145
+%132 = OpLabel
+OpStore %100 %15
+OpStore %101 %41
+OpBranch %133
+%133 = OpLabel
+%68 = OpLoad %5 %101
+%66 = OpLoad %5 %100
 %69 = OpBitwiseXor %5 %66 %39
 %70 = OpShiftLeftLogical %5 %69 %21
 %71 = OpFunctionCall %5 %55 %69 %62
 %72 = OpImageRead %33 %9 %71
 %73 = OpCompositeExtract %5 %72 0
 %74 = OpIEqual %23 %73 %25
-OpLoopMerge %116 %114 None
-OpBranch %138
+OpStore %113 %109
+OpStore %125 %68
+OpLoopMerge %139 %136 None
+OpBranch %134
+%134 = OpLabel
+OpSelectionMerge %135 None
+OpBranchConditional %74 %138 %135
 %138 = OpLabel
-OpSelectionMerge %139 None
-OpBranchConditional %74 %115 %113
-%115 = OpLabel
-%84 = OpImageRead %33 %9 %75
-%85 = OpCompositeExtract %5 %84 0
-%30 = OpIAdd %5 %85 %68
-OpBranch %116
-%113 = OpLabel
-OpBranch %114
-%139 = OpLabel
-OpUnreachable
-%114 = OpLabel
+OpStore %113 %107
+OpStore %111 %107
+OpBranch %139
+%135 = OpLabel
 %86 = OpShiftLeftLogical %5 %39 %21
 %87 = OpIMul %5 %86 %66
 %88 = OpShiftRightLogical %5 %87 %21
@@ -375,31 +467,78 @@ OpUnreachable
 %45 = OpIAdd %5 %90 %68
 %67 = OpIAdd %5 %66 %18
 %91 = OpULessThan %23 %67 %19
-OpBranchConditional %91 %112 %116
-%116 = OpLabel
-%95 = OpPhi %23 %93 %114 %94 %115
-%96 = OpPhi %5 %45 %114 %41 %115
-%100 = OpPhi %5 %15 %114 %30 %115
-OpSelectionMerge %117 None
-OpBranchConditional %95 %120 %117
-%117 = OpLabel
-OpBranch %118
-%118 = OpLabel
-%97 = OpPhi %5 %41 %110 %96 %117
-%32 = OpCopyObject %5 %97
-OpBranch %119
-%119 = OpLabel
+OpStore %121 %45
+OpSelectionMerge %189 None
+OpBranchConditional %91 %136 %137
+%137 = OpLabel
+OpBranch %139
+%189 = OpLabel
+OpUnreachable
+%136 = OpLabel
+OpStore %100 %67
+OpStore %101 %45
+OpBranch %133
+%139 = OpLabel
+%114 = OpLoad %23 %113
+OpSelectionMerge %140 None
+OpBranchConditional %114 %150 %140
+%140 = OpLabel
+OpBranch %141
+%141 = OpLabel
+OpBranch %142
+%142 = OpLabel
+%122 = OpLoad %5 %121
+OpStore %99 %122
+OpBranch %143
+%143 = OpLabel
+OpBranch %145
+%145 = OpLabel
+OpBranch %146
+%146 = OpLabel
+OpBranch %147
+%147 = OpLabel
+%32 = OpLoad %5 %99
 %40 = OpIAdd %5 %39 %18
 %46 = OpULessThan %23 %40 %22
-OpBranchConditional %46 %109 %120
-%120 = OpLabel
-%101 = OpPhi %5 %32 %119 %100 %116
-OpBranch %121
-%121 = OpLabel
-%102 = OpPhi %5 %15 %107 %101 %120
-OpBranch %137
-%137 = OpLabel
-%28 = OpPhi %5 %105 %136 %102 %121
+OpStore %117 %32
+OpSelectionMerge %190 None
+OpBranchConditional %46 %148 %149
+%149 = OpLabel
+OpStore %111 %109
+OpBranch %150
+%190 = OpLabel
+OpUnreachable
+%148 = OpLabel
+OpStore %102 %40
+OpStore %103 %32
+OpBranch %130
+%150 = OpLabel
+OpBranch %151
+%151 = OpLabel
+%112 = OpLoad %23 %111
+OpSelectionMerge %154 None
+OpBranchConditional %112 %152 %153
+%152 = OpLabel
+%126 = OpLoad %5 %125
+%84 = OpImageRead %33 %9 %75
+%85 = OpCompositeExtract %5 %84 0
+%30 = OpIAdd %5 %85 %126
+OpStore %93 %30
+OpBranch %154
+%153 = OpLabel
+%118 = OpLoad %5 %117
+OpStore %93 %118
+OpBranch %154
+%154 = OpLabel
+OpBranch %156
+%156 = OpLabel
+OpBranch %186
+%186 = OpLabel
+OpBranch %187
+%187 = OpLabel
+OpBranch %188
+%188 = OpLabel
+%28 = OpLoad %5 %93
 %34 = OpCompositeConstruct %33 %28 %28 %28 %28
 OpImageWrite %9 %15 %34
 OpReturn

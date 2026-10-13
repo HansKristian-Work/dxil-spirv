@@ -21,7 +21,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 35
 ; Schema: 0
@@ -30,7 +30,7 @@ OpCapability MultiViewport
 OpCapability ShaderViewportIndexLayerEXT
 OpExtension "SPV_EXT_shader_viewport_index_layer"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Vertex %3 "main" %7 %11 %13
+OpEntryPoint Vertex %3 "main" %7 %11 %13 %17
 OpName %3 "main"
 OpName %7 "VP"
 OpName %11 "SV_Position"

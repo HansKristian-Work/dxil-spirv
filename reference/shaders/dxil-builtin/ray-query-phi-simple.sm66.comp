@@ -17,14 +17,14 @@ rayQueryEXT RayQueryHeap;
 void main()
 {
     uvec4 _38 = floatBitsToUint(_16._m0[0u]);
-    uint _42;
+    uint _58;
     if (_38.y == 0u)
     {
-        _42 = 0u;
+        _58 = 0u;
     }
     else
     {
-        _42 = 0u;
+        _58 = 0u;
     }
     rayQueryInitializeEXT(RayQueryHeap, _8[_38.x], 4u, 255u, vec3(float(gl_GlobalInvocationID.x) + 0.5, float(gl_GlobalInvocationID.y) + 0.5, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
 }
@@ -33,9 +33,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 61
+; Bound: 66
 ; Schema: 0
 OpCapability Shader
 OpCapability RayQueryKHR
@@ -44,7 +44,7 @@ OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_query"
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %22
+OpEntryPoint GLCompute %3 "main" %8 %16 %19 %22
 OpExecutionMode %3 LocalSize 8 8 1
 OpName %3 "main"
 OpName %14 ""
@@ -92,10 +92,12 @@ OpDecorate %22 BuiltIn GlobalInvocationId
 %52 = OpTypeVector %11 3
 %54 = OpConstant %11 0.100000001
 %56 = OpConstant %11 1000
+%57 = OpTypePointer Function %9
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %57
-%57 = OpLabel
+%58 = OpVariable %57 Function
+OpBranch %59
+%59 = OpLabel
 %24 = OpAccessChain %23 %22 %25
 %26 = OpLoad %9 %24
 %27 = OpAccessChain %23 %22 %10
@@ -109,12 +111,20 @@ OpBranch %57
 %38 = OpBitcast %37 %36
 %39 = OpCompositeExtract %9 %38 1
 %41 = OpIEqual %40 %39 %25
-OpSelectionMerge %59 None
-OpBranchConditional %41 %59 %58
-%58 = OpLabel
-OpBranch %59
-%59 = OpLabel
-%42 = OpPhi %9 %25 %57 %25 %58
+OpSelectionMerge %62 None
+OpBranchConditional %41 %61 %60
+%61 = OpLabel
+OpStore %58 %25
+OpBranch %62
+%60 = OpLabel
+OpStore %58 %25
+OpBranch %62
+%62 = OpLabel
+OpBranch %63
+%63 = OpLabel
+OpBranch %64
+%64 = OpLabel
+%42 = OpLoad %9 %58
 %43 = OpCompositeExtract %9 %38 0
 %45 = OpAccessChain %44 %8 %43
 %46 = OpLoad %5 %45

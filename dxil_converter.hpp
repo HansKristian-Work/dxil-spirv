@@ -279,6 +279,7 @@ enum class Option : uint32_t
 	FloatControls2 = 54,
 	ShaderAbort = 55,
 	ConservativeSSBOVectorization = 56,
+	LegacyStructurizer = 57,
 	Count
 };
 
@@ -945,6 +946,16 @@ struct OptionConservativeSSBOVectorization : OptionBase
 {
 	OptionConservativeSSBOVectorization()
 		: OptionBase(Option::ConservativeSSBOVectorization)
+	{
+	}
+
+	bool enabled = false;
+};
+
+struct OptionLegacyStructurizer : OptionBase
+{
+	OptionLegacyStructurizer()
+		: OptionBase(Option::LegacyStructurizer)
 	{
 	}
 

@@ -742,7 +742,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 2194
 ; Schema: 0
@@ -764,7 +764,7 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_EXT_shader_image_int64"
 %79 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %42 %45 %46 %48 %51 %2192
+OpEntryPoint Fragment %3 "main" %9 %13 %16 %19 %22 %24 %27 %30 %33 %36 %39 %42 %45 %46 %48 %51 %2192
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %42 "SV_Position"

@@ -22,9 +22,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 29
+; Bound: 31
 ; Schema: 0
 OpCapability Shader
 OpCapability DemoteToHelperInvocation
@@ -72,6 +72,10 @@ OpBranch %25
 %25 = OpLabel
 OpBranch %27
 %27 = OpLabel
+OpBranch %28
+%28 = OpLabel
+OpBranch %29
+%29 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

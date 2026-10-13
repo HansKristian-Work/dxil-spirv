@@ -1,18 +1,18 @@
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 33
+; Bound: 35
 ; Schema: 0
 OpCapability Shader
 OpCapability FragmentFullyCoveredEXT
 OpExtension "SPV_EXT_fragment_fully_covered"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %7 %10
+OpEntryPoint Fragment %3 "main" %7 %10 %18
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %7 "SV_Target"
 OpName %18 "discard_state"
-OpName %25 "discard_exit"
+OpName %27 "discard_exit"
 OpDecorate %7 Location 0
 OpDecorate %10 BuiltIn FullyCoveredEXT
 %1 = OpTypeVoid
@@ -30,7 +30,7 @@ OpDecorate %10 BuiltIn FullyCoveredEXT
 %18 = OpVariable %17 Private
 %19 = OpConstantFalse %8
 %20 = OpConstant %5 1
-%24 = OpConstantTrue %8
+%26 = OpConstantTrue %8
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpStore %18 %19
@@ -42,21 +42,25 @@ OpBranch %21
 OpSelectionMerge %23 None
 OpBranchConditional %16 %22 %23
 %22 = OpLabel
-OpStore %18 %24
+OpStore %18 %26
 OpBranch %23
 %23 = OpLabel
+OpBranch %24
+%24 = OpLabel
+OpBranch %25
+%25 = OpLabel
 OpStore %7 %20
-%31 = OpFunctionCall %1 %25
+%33 = OpFunctionCall %1 %27
 OpReturn
 OpFunctionEnd
-%25 = OpFunction %1 None %2
-%26 = OpLabel
-%29 = OpLoad %8 %18
-OpSelectionMerge %28 None
-OpBranchConditional %29 %27 %28
-%27 = OpLabel
-OpKill
+%27 = OpFunction %1 None %2
 %28 = OpLabel
+%31 = OpLoad %8 %18
+OpSelectionMerge %30 None
+OpBranchConditional %31 %29 %30
+%29 = OpLabel
+OpKill
+%30 = OpLabel
 OpReturn
 OpFunctionEnd
 

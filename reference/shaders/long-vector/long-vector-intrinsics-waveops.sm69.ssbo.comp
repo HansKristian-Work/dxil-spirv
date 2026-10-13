@@ -237,110 +237,139 @@ void main()
     vector<uint, 8> _186 = WaveMultiPrefixBitXor(_10._m0[_24], uvec4(_10._m0[_31][0], _10._m0[_31][1], _10._m0[_31][2], _10._m0[_31][3]));
     vector<uint, 8> _206 = WaveMultiPrefixProduct(_10._m0[_24], uvec4(_10._m0[_31][0], _10._m0[_31][1], _10._m0[_31][2], _10._m0[_31][3]));
     vector<uint, 8> _226 = WaveMultiPrefixSum(_10._m0[_24], uvec4(_10._m0[_31][0], _10._m0[_31][1], _10._m0[_31][2], _10._m0[_31][3]));
-    vector<uint, 8> _228;
-    switch (gl_GlobalInvocationID.x)
+    vector<uint, 8> _255;
+    if (gl_GlobalInvocationID.x == 0u)
     {
-        case 0u:
+        _255 = _40;
+    }
+    else
+    {
+        if (gl_GlobalInvocationID.x == 1u)
         {
-            _228 = _40;
-            break;
+            _255 = _41;
         }
-        case 1u:
+        else
         {
-            _228 = _41;
-            break;
-        }
-        case 2u:
-        {
-            _228 = _42;
-            break;
-        }
-        case 3u:
-        {
-            _228 = _43;
-            break;
-        }
-        case 4u:
-        {
-            _228 = _44;
-            break;
-        }
-        case 5u:
-        {
-            _228 = _45;
-            break;
-        }
-        case 6u:
-        {
-            _228 = _46;
-            break;
-        }
-        case 7u:
-        {
-            _228 = _47;
-            break;
-        }
-        case 8u:
-        {
-            _228 = _48;
-            break;
-        }
-        case 9u:
-        {
-            _228 = _49;
-            break;
-        }
-        case 10u:
-        {
-            _228 = _51;
-            break;
-        }
-        case 11u:
-        {
-            _228 = ((mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_73, _75, _77, _79, _81, _83, _85, _87)) << (vector<uint, 8>(8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u))) | mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_56, _58, _60, _62, _64, _66, _68, _70))) | (mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_90, _92, _94, _96, _98, _100, _102, _104)) << (vector<uint, 8>(16u, 16u, 16u, 16u, 16u, 16u, 16u, 16u)));
-            break;
-        }
-        case 12u:
-        {
-            vector<uint, 8> _246 = vector<uint, 8>(_247, _248, _249, 0u, 0u, 0u, 0u, 0u);
-            _246[0] = _118.x;
-            _246[1] = _119.x;
-            _246[2] = _120.x;
-            _228 = _246;
-            break;
-        }
-        case 13u:
-        {
-            _228 = _146;
-            break;
-        }
-        case 14u:
-        {
-            _228 = _166;
-            break;
-        }
-        case 15u:
-        {
-            _228 = _186;
-            break;
-        }
-        case 16u:
-        {
-            _228 = _206;
-            break;
-        }
-        case 17u:
-        {
-            _228 = _226;
-            break;
-        }
-        default:
-        {
-            _228 = vector<uint, 8>(0);
-            break;
+            if (gl_GlobalInvocationID.x == 2u)
+            {
+                _255 = _42;
+            }
+            else
+            {
+                if (gl_GlobalInvocationID.x == 3u)
+                {
+                    _255 = _43;
+                }
+                else
+                {
+                    if (gl_GlobalInvocationID.x == 4u)
+                    {
+                        _255 = _44;
+                    }
+                    else
+                    {
+                        if (gl_GlobalInvocationID.x == 5u)
+                        {
+                            _255 = _45;
+                        }
+                        else
+                        {
+                            if (gl_GlobalInvocationID.x == 6u)
+                            {
+                                _255 = _46;
+                            }
+                            else
+                            {
+                                if (gl_GlobalInvocationID.x == 7u)
+                                {
+                                    _255 = _47;
+                                }
+                                else
+                                {
+                                    if (gl_GlobalInvocationID.x == 8u)
+                                    {
+                                        _255 = _48;
+                                    }
+                                    else
+                                    {
+                                        if (gl_GlobalInvocationID.x == 9u)
+                                        {
+                                            _255 = _49;
+                                        }
+                                        else
+                                        {
+                                            if (gl_GlobalInvocationID.x == 10u)
+                                            {
+                                                _255 = _51;
+                                            }
+                                            else
+                                            {
+                                                if (gl_GlobalInvocationID.x == 11u)
+                                                {
+                                                    _255 = ((mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_73, _75, _77, _79, _81, _83, _85, _87)) << (vector<uint, 8>(8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u))) | mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_56, _58, _60, _62, _64, _66, _68, _70))) | (mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_90, _92, _94, _96, _98, _100, _102, _104)) << (vector<uint, 8>(16u, 16u, 16u, 16u, 16u, 16u, 16u, 16u)));
+                                                }
+                                                else
+                                                {
+                                                    if (gl_GlobalInvocationID.x == 12u)
+                                                    {
+                                                        vector<uint, 8> _246 = vector<uint, 8>(_247, _248, _249, 0u, 0u, 0u, 0u, 0u);
+                                                        _246[0] = _118.x;
+                                                        _246[1] = _119.x;
+                                                        _246[2] = _120.x;
+                                                        _255 = _246;
+                                                    }
+                                                    else
+                                                    {
+                                                        if (gl_GlobalInvocationID.x == 13u)
+                                                        {
+                                                            _255 = _146;
+                                                        }
+                                                        else
+                                                        {
+                                                            if (gl_GlobalInvocationID.x == 14u)
+                                                            {
+                                                                _255 = _166;
+                                                            }
+                                                            else
+                                                            {
+                                                                if (gl_GlobalInvocationID.x == 15u)
+                                                                {
+                                                                    _255 = _186;
+                                                                }
+                                                                else
+                                                                {
+                                                                    if (gl_GlobalInvocationID.x == 16u)
+                                                                    {
+                                                                        _255 = _206;
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (gl_GlobalInvocationID.x == 17u)
+                                                                        {
+                                                                            _255 = _226;
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            _255 = vector<uint, 8>(0);
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
-    _14._m0[gl_GlobalInvocationID.x] = _228;
+    _14._m0[gl_GlobalInvocationID.x] = _255;
 }
 
 
@@ -350,7 +379,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 275
+; Bound: 344
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniform
@@ -425,10 +454,23 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %248 = OpUndef %5
 %249 = OpUndef %5
 %250 = OpConstantComposite %6 %247 %248 %249 %20 %20 %20 %20 %20
+%254 = OpTypePointer Function %6
+%261 = OpConstant %5 4
+%263 = OpConstant %5 5
+%265 = OpConstant %5 6
+%267 = OpConstant %5 7
+%271 = OpConstant %5 10
+%273 = OpConstant %5 11
+%275 = OpConstant %5 12
+%277 = OpConstant %5 13
+%279 = OpConstant %5 14
+%281 = OpConstant %5 15
+%284 = OpConstant %5 17
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %254
-%254 = OpLabel
+%255 = OpVariable %254 Function
+OpBranch %285
+%285 = OpLabel
 %19 = OpAccessChain %18 %17 %20
 %21 = OpLoad %5 %19
 %22 = OpIMul %5 %21 %23
@@ -524,31 +566,87 @@ OpBranch %254
 %206 = OpFunctionCall %6 %190 %27 %207
 %227 = OpCompositeConstruct %105 %121 %122 %123 %124
 %226 = OpFunctionCall %6 %210 %27 %227
-OpSelectionMerge %273 None
-OpSwitch %21 %273 0 %272 1 %271 2 %270 3 %269 4 %268 5 %267 6 %266 7 %265 8 %264 9 %263 10 %262 11 %261 12 %260 13 %259 14 %258 15 %257 16 %256 17 %255
-%272 = OpLabel
-OpBranch %273
-%271 = OpLabel
-OpBranch %273
-%270 = OpLabel
-OpBranch %273
-%269 = OpLabel
-OpBranch %273
-%268 = OpLabel
-OpBranch %273
-%267 = OpLabel
-OpBranch %273
-%266 = OpLabel
-OpBranch %273
-%265 = OpLabel
-OpBranch %273
-%264 = OpLabel
-OpBranch %273
-%263 = OpLabel
-OpBranch %273
-%262 = OpLabel
-OpBranch %273
-%261 = OpLabel
+%256 = OpIEqual %52 %21 %20
+OpSelectionMerge %340 None
+OpBranchConditional %256 %339 %286
+%339 = OpLabel
+OpStore %255 %40
+OpBranch %340
+%286 = OpLabel
+%257 = OpIEqual %52 %21 %29
+OpSelectionMerge %338 None
+OpBranchConditional %257 %337 %287
+%337 = OpLabel
+OpStore %255 %41
+OpBranch %338
+%287 = OpLabel
+%258 = OpIEqual %52 %21 %35
+OpSelectionMerge %336 None
+OpBranchConditional %258 %335 %288
+%335 = OpLabel
+OpStore %255 %42
+OpBranch %336
+%288 = OpLabel
+%259 = OpIEqual %52 %21 %23
+OpSelectionMerge %334 None
+OpBranchConditional %259 %333 %289
+%333 = OpLabel
+OpStore %255 %43
+OpBranch %334
+%289 = OpLabel
+%260 = OpIEqual %52 %21 %261
+OpSelectionMerge %332 None
+OpBranchConditional %260 %331 %290
+%331 = OpLabel
+OpStore %255 %44
+OpBranch %332
+%290 = OpLabel
+%262 = OpIEqual %52 %21 %263
+OpSelectionMerge %330 None
+OpBranchConditional %262 %329 %291
+%329 = OpLabel
+OpStore %255 %45
+OpBranch %330
+%291 = OpLabel
+%264 = OpIEqual %52 %21 %265
+OpSelectionMerge %328 None
+OpBranchConditional %264 %327 %292
+%327 = OpLabel
+OpStore %255 %46
+OpBranch %328
+%292 = OpLabel
+%266 = OpIEqual %52 %21 %267
+OpSelectionMerge %326 None
+OpBranchConditional %266 %325 %293
+%325 = OpLabel
+OpStore %255 %47
+OpBranch %326
+%293 = OpLabel
+%268 = OpIEqual %52 %21 %238
+OpSelectionMerge %324 None
+OpBranchConditional %268 %323 %294
+%323 = OpLabel
+OpStore %255 %48
+OpBranch %324
+%294 = OpLabel
+%269 = OpIEqual %52 %21 %50
+OpSelectionMerge %322 None
+OpBranchConditional %269 %321 %295
+%321 = OpLabel
+OpStore %255 %49
+OpBranch %322
+%295 = OpLabel
+%270 = OpIEqual %52 %21 %271
+OpSelectionMerge %320 None
+OpBranchConditional %270 %319 %296
+%319 = OpLabel
+OpStore %255 %51
+OpBranch %320
+%296 = OpLabel
+%272 = OpIEqual %52 %21 %273
+OpSelectionMerge %318 None
+OpBranchConditional %272 %317 %297
+%317 = OpLabel
 %235 = OpSelect %6 %54 %234 %233
 %236 = OpSelect %6 %71 %234 %233
 %237 = OpShiftLeftLogical %6 %236 %239
@@ -556,27 +654,101 @@ OpBranch %273
 %241 = OpSelect %6 %88 %234 %233
 %242 = OpShiftLeftLogical %6 %241 %244
 %231 = OpBitwiseOr %6 %240 %242
-OpBranch %273
-%260 = OpLabel
+OpStore %255 %231
+OpBranch %318
+%297 = OpLabel
+%274 = OpIEqual %52 %21 %275
+OpSelectionMerge %316 None
+OpBranchConditional %274 %315 %298
+%315 = OpLabel
 %245 = OpCompositeExtract %5 %118 0
 %246 = OpCompositeInsert %6 %245 %250 0
 %251 = OpCompositeExtract %5 %119 0
 %252 = OpCompositeInsert %6 %251 %246 1
 %253 = OpCompositeExtract %5 %120 0
 %230 = OpCompositeInsert %6 %253 %252 2
-OpBranch %273
-%259 = OpLabel
-OpBranch %273
-%258 = OpLabel
-OpBranch %273
-%257 = OpLabel
-OpBranch %273
-%256 = OpLabel
-OpBranch %273
-%255 = OpLabel
-OpBranch %273
-%273 = OpLabel
-%228 = OpPhi %6 %229 %254 %40 %272 %41 %271 %42 %270 %43 %269 %44 %268 %45 %267 %46 %266 %47 %265 %48 %264 %49 %263 %51 %262 %231 %261 %230 %260 %146 %259 %166 %258 %186 %257 %206 %256 %226 %255
+OpStore %255 %230
+OpBranch %316
+%298 = OpLabel
+%276 = OpIEqual %52 %21 %277
+OpSelectionMerge %314 None
+OpBranchConditional %276 %313 %299
+%313 = OpLabel
+OpStore %255 %146
+OpBranch %314
+%299 = OpLabel
+%278 = OpIEqual %52 %21 %279
+OpSelectionMerge %312 None
+OpBranchConditional %278 %311 %300
+%311 = OpLabel
+OpStore %255 %166
+OpBranch %312
+%300 = OpLabel
+%280 = OpIEqual %52 %21 %281
+OpSelectionMerge %310 None
+OpBranchConditional %280 %309 %301
+%309 = OpLabel
+OpStore %255 %186
+OpBranch %310
+%301 = OpLabel
+%282 = OpIEqual %52 %21 %243
+OpSelectionMerge %308 None
+OpBranchConditional %282 %307 %302
+%307 = OpLabel
+OpStore %255 %206
+OpBranch %308
+%302 = OpLabel
+%283 = OpIEqual %52 %21 %284
+OpSelectionMerge %306 None
+OpBranchConditional %283 %305 %303
+%305 = OpLabel
+OpStore %255 %226
+OpBranch %306
+%303 = OpLabel
+OpBranch %304
+%304 = OpLabel
+OpStore %255 %229
+OpBranch %306
+%306 = OpLabel
+OpBranch %308
+%308 = OpLabel
+OpBranch %310
+%310 = OpLabel
+OpBranch %312
+%312 = OpLabel
+OpBranch %314
+%314 = OpLabel
+OpBranch %316
+%316 = OpLabel
+OpBranch %318
+%318 = OpLabel
+OpBranch %320
+%320 = OpLabel
+OpBranch %322
+%322 = OpLabel
+OpBranch %324
+%324 = OpLabel
+OpBranch %326
+%326 = OpLabel
+OpBranch %328
+%328 = OpLabel
+OpBranch %330
+%330 = OpLabel
+OpBranch %332
+%332 = OpLabel
+OpBranch %334
+%334 = OpLabel
+OpBranch %336
+%336 = OpLabel
+OpBranch %338
+%338 = OpLabel
+OpBranch %340
+%340 = OpLabel
+OpBranch %341
+%341 = OpLabel
+OpBranch %342
+%342 = OpLabel
+%228 = OpLoad %6 %255
 %232 = OpAccessChain %25 %14 %20 %21
 OpStore %232 %228
 OpReturn

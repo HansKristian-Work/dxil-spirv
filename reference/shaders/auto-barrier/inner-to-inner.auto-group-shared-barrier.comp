@@ -37,14 +37,14 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 56
+; Bound: 60
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %17
+OpEntryPoint GLCompute %3 "main" %8 %9 %13 %17
 OpExecutionMode %3 LocalSize 32 1 1
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
@@ -74,8 +74,8 @@ OpDecorate %17 BuiltIn LocalInvocationIndex
 %34 = OpConstant %5 1
 %39 = OpConstant %5 50
 %41 = OpConstant %5 31
-%53 = OpConstant %5 3
-%54 = OpConstant %5 264
+%57 = OpConstant %5 3
+%58 = OpConstant %5 264
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %45
@@ -103,25 +103,33 @@ OpBranch %48
 OpStore %35 %32
 OpBranch %48
 %48 = OpLabel
-OpControlBarrier %53 %53 %54
-OpSelectionMerge %52 None
-OpBranchConditional %20 %49 %52
+OpBranch %49
 %49 = OpLabel
+OpBranch %50
+%50 = OpLabel
+OpControlBarrier %57 %57 %58
+OpSelectionMerge %54 None
+OpBranchConditional %20 %51 %54
+%51 = OpLabel
 %36 = OpImageRead %25 %15 %18
 %37 = OpCompositeExtract %5 %36 0
 %38 = OpIEqual %19 %37 %39
-OpSelectionMerge %51 None
-OpBranchConditional %38 %50 %51
-%50 = OpLabel
+OpSelectionMerge %53 None
+OpBranchConditional %38 %52 %53
+%52 = OpLabel
 %40 = OpBitwiseXor %5 %18 %41
 %42 = OpAccessChain %28 %13 %40
 %43 = OpLoad %5 %42
 %44 = OpCompositeConstruct %25 %43 %43 %43 %43
 OpImageWrite %15 %18 %44
-OpBranch %51
-%51 = OpLabel
-OpBranch %52
-%52 = OpLabel
+OpBranch %53
+%53 = OpLabel
+OpBranch %54
+%54 = OpLabel
+OpBranch %55
+%55 = OpLabel
+OpBranch %56
+%56 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

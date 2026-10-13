@@ -28,16 +28,19 @@ void main()
     SPIRV_Cross_beginInvocationInterlock();
     if (!(_45 == 0u))
     {
-        uint _48;
-        _48 = 0u;
+        uint _64 = 0u;
+        uint _49;
+        bool _62;
         for (;;)
         {
             vec4 _50 = imageLoad(_8, ivec2(uvec2(_26, _27)));
             imageStore(_8, ivec2(uvec2(_26, _27)), vec4(_50.x + 1.0, _50.y + 2.0, _50.z + 3.0, _50.w + 4.0));
-            uint _49 = _48 + 1u;
-            if (_49 < _45)
+            _49 = _64 + 1u;
+            _62 = _49 < _45;
+            if (_62)
             {
-                _48 = _49;
+                _64 = _49;
+                continue;
             }
             else
             {
@@ -52,16 +55,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 69
+; Bound: 80
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_fragment_shader_interlock"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %12
+OpEntryPoint Fragment %3 "main" %8 %9 %12
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
 OpExecutionMode %3 PixelInterlockOrderedEXT
@@ -94,10 +97,12 @@ OpDecorate %12 BuiltIn FragCoord
 %40 = OpConstant %5 3
 %42 = OpConstant %5 4
 %46 = OpTypeBool
+%63 = OpTypePointer Function %17
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %63
-%63 = OpLabel
+%64 = OpVariable %63 Function
+OpBranch %65
+%65 = OpLabel
 %13 = OpLoad %6 %9
 %14 = OpLoad %6 %8
 %16 = OpAccessChain %15 %12 %18
@@ -124,12 +129,13 @@ OpImageWrite %13 %43 %44
 %45 = OpConvertFToU %17 %25
 %47 = OpIEqual %46 %45 %18
 OpBeginInvocationInterlockEXT
-OpSelectionMerge %67 None
-OpBranchConditional %47 %67 %64
-%64 = OpLabel
-OpBranch %65
-%65 = OpLabel
-%48 = OpPhi %17 %18 %64 %49 %65
+OpSelectionMerge %75 None
+OpBranchConditional %47 %75 %66
+%66 = OpLabel
+OpStore %64 %18
+OpBranch %67
+%67 = OpLabel
+%48 = OpLoad %17 %64
 %51 = OpCompositeConstruct %29 %26 %27
 %50 = OpImageRead %10 %14 %51 None
 %52 = OpCompositeExtract %5 %50 0
@@ -145,11 +151,31 @@ OpBranch %65
 OpImageWrite %14 %60 %61
 %49 = OpIAdd %17 %48 %21
 %62 = OpULessThan %46 %49 %45
-OpLoopMerge %66 %65 None
-OpBranchConditional %62 %65 %66
-%66 = OpLabel
+OpLoopMerge %71 %69 None
+OpBranch %68
+%68 = OpLabel
+OpSelectionMerge %78 None
+OpBranchConditional %62 %69 %70
+%70 = OpLabel
+OpBranch %71
+%78 = OpLabel
+OpUnreachable
+%69 = OpLabel
+OpStore %64 %49
 OpBranch %67
-%67 = OpLabel
+%71 = OpLabel
+OpBranch %72
+%72 = OpLabel
+OpBranch %73
+%73 = OpLabel
+OpBranch %74
+%74 = OpLabel
+OpBranch %75
+%75 = OpLabel
+OpBranch %76
+%76 = OpLabel
+OpBranch %77
+%77 = OpLabel
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

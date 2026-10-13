@@ -44,16 +44,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 123
+; Bound: 125
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformArithmetic
 OpCapability GroupNonUniformBallot
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %12 %100
+OpEntryPoint Fragment %3 "main" %8 %9 %10 %12 %21 %102
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %12 "INDEX"
@@ -61,7 +61,7 @@ OpName %21 "discard_state"
 OpName %38 "ByteAddressMask"
 OpName %36 "index"
 OpName %37 "stride"
-OpName %115 "discard_exit"
+OpName %117 "discard_exit"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
@@ -73,7 +73,7 @@ OpDecorate %10 Binding 2
 OpDecorate %10 NonReadable
 OpDecorate %12 Flat
 OpDecorate %12 Location 0
-OpDecorate %100 BuiltIn HelperInvocation
+OpDecorate %102 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -101,9 +101,9 @@ OpDecorate %100 BuiltIn HelperInvocation
 %76 = OpTypeFloat 32
 %80 = OpConstant %76 0
 %88 = OpConstant %76 1
-%98 = OpConstantTrue %17
-%99 = OpTypePointer Input %17
-%100 = OpVariable %99 Input
+%100 = OpConstantTrue %17
+%101 = OpTypePointer Input %17
+%102 = OpVariable %101 Input
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpStore %21 %22
@@ -117,13 +117,17 @@ OpBranch %95
 OpSelectionMerge %97 None
 OpBranchConditional %18 %96 %97
 %96 = OpLabel
-OpStore %21 %98
+OpStore %21 %100
 OpBranch %97
 %97 = OpLabel
+OpBranch %98
+%98 = OpLabel
+OpBranch %99
+%99 = OpLabel
 %23 = OpULessThan %17 %16 %24
-%101 = OpLoad %17 %100
-%102 = OpLoad %17 %21
-%28 = OpLogicalOr %17 %101 %102
+%103 = OpLoad %17 %102
+%104 = OpLoad %17 %21
+%28 = OpLogicalOr %17 %103 %104
 %29 = OpLogicalNot %17 %28
 %30 = OpLogicalAnd %17 %23 %29
 %26 = OpGroupNonUniformBallot %25 %27 %30
@@ -133,18 +137,18 @@ OpBranch %97
 %44 = OpFunctionCall %5 %38 %33 %45
 %46 = OpCompositeConstruct %25 %31 %31 %31 %31
 OpImageWrite %15 %44 %46
-%103 = OpLoad %17 %100
-%104 = OpLoad %17 %21
-%48 = OpLogicalOr %17 %103 %104
+%105 = OpLoad %17 %102
+%106 = OpLoad %17 %21
+%48 = OpLogicalOr %17 %105 %106
 %50 = OpSelect %5 %48 %49 %16
 %47 = OpGroupNonUniformIAdd %5 %27 ExclusiveScan %50
 %51 = OpIMul %5 %16 %34
 %52 = OpFunctionCall %5 %38 %51 %45
 %53 = OpCompositeConstruct %25 %47 %47 %47 %47
 OpImageWrite %15 %52 %53
-%105 = OpLoad %17 %100
-%106 = OpLoad %17 %21
-%55 = OpLogicalOr %17 %105 %106
+%107 = OpLoad %17 %102
+%108 = OpLoad %17 %21
+%55 = OpLogicalOr %17 %107 %108
 %57 = OpSelect %5 %55 %56 %16
 %54 = OpGroupNonUniformIMul %5 %27 ExclusiveScan %57
 %58 = OpBitwiseOr %5 %32 %45
@@ -153,18 +157,18 @@ OpImageWrite %15 %52 %53
 %61 = OpFunctionCall %5 %38 %60 %45
 %62 = OpCompositeConstruct %25 %54 %54 %54 %54
 OpImageWrite %15 %61 %62
-%107 = OpLoad %17 %100
-%108 = OpLoad %17 %21
-%64 = OpLogicalOr %17 %107 %108
+%109 = OpLoad %17 %102
+%110 = OpLoad %17 %21
+%64 = OpLogicalOr %17 %109 %110
 %65 = OpSelect %5 %64 %49 %16
 %63 = OpGroupNonUniformIAdd %5 %27 ExclusiveScan %65
 %66 = OpIMul %5 %16 %34
 %67 = OpFunctionCall %5 %38 %66 %45
 %68 = OpCompositeConstruct %25 %63 %63 %63 %63
 OpImageWrite %14 %67 %68
-%109 = OpLoad %17 %100
-%110 = OpLoad %17 %21
-%70 = OpLogicalOr %17 %109 %110
+%111 = OpLoad %17 %102
+%112 = OpLoad %17 %21
+%70 = OpLogicalOr %17 %111 %112
 %71 = OpSelect %5 %70 %56 %16
 %69 = OpGroupNonUniformIMul %5 %27 ExclusiveScan %71
 %72 = OpIMul %5 %16 %34
@@ -173,9 +177,9 @@ OpImageWrite %14 %67 %68
 %75 = OpCompositeConstruct %25 %69 %69 %69 %69
 OpImageWrite %14 %74 %75
 %77 = OpConvertUToF %76 %16
-%111 = OpLoad %17 %100
-%112 = OpLoad %17 %21
-%79 = OpLogicalOr %17 %111 %112
+%113 = OpLoad %17 %102
+%114 = OpLoad %17 %21
+%79 = OpLogicalOr %17 %113 %114
 %81 = OpSelect %76 %79 %80 %77
 %78 = OpGroupNonUniformFAdd %76 %27 ExclusiveScan %81
 %82 = OpConvertFToU %5 %78
@@ -183,9 +187,9 @@ OpImageWrite %14 %74 %75
 %84 = OpFunctionCall %5 %38 %83 %45
 %85 = OpCompositeConstruct %25 %82 %82 %82 %82
 OpImageWrite %13 %84 %85
-%113 = OpLoad %17 %100
-%114 = OpLoad %17 %21
-%87 = OpLogicalOr %17 %113 %114
+%115 = OpLoad %17 %102
+%116 = OpLoad %17 %21
+%87 = OpLogicalOr %17 %115 %116
 %89 = OpSelect %76 %87 %88 %77
 %86 = OpGroupNonUniformFMul %76 %27 ExclusiveScan %89
 %90 = OpConvertFToU %5 %86
@@ -194,7 +198,7 @@ OpImageWrite %13 %84 %85
 %93 = OpFunctionCall %5 %38 %92 %45
 %94 = OpCompositeConstruct %25 %90 %90 %90 %90
 OpImageWrite %13 %93 %94
-%121 = OpFunctionCall %1 %115
+%123 = OpFunctionCall %1 %117
 OpReturn
 OpFunctionEnd
 %38 = OpFunction %5 None %35
@@ -205,14 +209,14 @@ OpFunctionEnd
 %42 = OpBitwiseAnd %5 %36 %40
 OpReturnValue %42
 OpFunctionEnd
-%115 = OpFunction %1 None %2
-%116 = OpLabel
-%119 = OpLoad %17 %21
-OpSelectionMerge %118 None
-OpBranchConditional %119 %117 %118
-%117 = OpLabel
-OpKill
+%117 = OpFunction %1 None %2
 %118 = OpLabel
+%121 = OpLoad %17 %21
+OpSelectionMerge %120 None
+OpBranchConditional %121 %119 %120
+%119 = OpLabel
+OpKill
+%120 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

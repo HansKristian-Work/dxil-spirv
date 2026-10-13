@@ -124,7 +124,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 391
 ; Schema: 0
@@ -133,7 +133,7 @@ OpCapability GroupNonUniformBallot
 OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %58 %62 %66
+OpEntryPoint Fragment %3 "main" %10 %15 %20 %26 %31 %36 %41 %46 %51 %56 %58 %62 %66
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "SSBO_Offsets"

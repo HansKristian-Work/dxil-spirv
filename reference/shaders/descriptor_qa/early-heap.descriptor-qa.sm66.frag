@@ -79,7 +79,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 138
 ; Schema: 0
@@ -87,7 +87,7 @@ OpCapability Shader
 OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %12 %15 %18
+OpEntryPoint Fragment %3 "main" %9 %12 %15 %18 %34 %76
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
 OpName %3 "main"

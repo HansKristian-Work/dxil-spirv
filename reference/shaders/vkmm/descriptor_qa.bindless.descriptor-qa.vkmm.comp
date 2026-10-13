@@ -121,136 +121,136 @@ uint RobustPhysicalAtomicCounter(uvec2 _398, uint _399, uint _400)
 
 void main()
 {
-    float _161;
+    float _426;
     if (gl_GlobalInvocationID.x > 2u)
     {
         uint _68 = descriptor_qa_check(registers._m5, 4u, 1u);
-        _161 = _47[_68]._m0[0u].x;
+        _426 = _47[_68]._m0[0u].x;
     }
     else
     {
-        _161 = 0.0;
+        _426 = 0.0;
     }
-    float _174;
+    float _425;
     if (gl_GlobalInvocationID.x > 3u)
     {
         uint _169 = descriptor_qa_check(registers._m5 + (gl_GlobalInvocationID.x + 1u), 4u, 2u);
-        _174 = _47[_169]._m0[0u].x + _161;
+        _425 = _47[_169]._m0[0u].x + _426;
     }
     else
     {
-        _174 = _161;
+        _425 = _426;
     }
-    float _195;
+    float _424;
     if (gl_GlobalInvocationID.x > 4u)
     {
         uint _180 = descriptor_qa_check(registers._m0, 1u, 3u);
-        _195 = textureLod(sampler2D(_13[_180], _51[registers._m2]), vec2(0.5), 0.0).x + _174;
+        _424 = textureLod(sampler2D(_13[_180], _51[registers._m2]), vec2(0.5), 0.0).x + _425;
     }
     else
     {
-        _195 = _174;
+        _424 = _425;
     }
-    float _209;
+    float _423;
     if (gl_GlobalInvocationID.x > 5u)
     {
         uint _203 = descriptor_qa_check(registers._m0 + ((gl_GlobalInvocationID.x & 1u) + 1u), 1u, 4u);
-        _209 = texelFetch(_13[_203], ivec2(uvec2(0u, gl_GlobalInvocationID.x)), int(0u)).x + _195;
+        _423 = texelFetch(_13[_203], ivec2(uvec2(0u, gl_GlobalInvocationID.x)), int(0u)).x + _424;
     }
     else
     {
-        _209 = _195;
+        _423 = _424;
     }
-    float _222;
+    float _422;
     if (gl_GlobalInvocationID.x > 6u)
     {
         uint _216 = descriptor_qa_check(registers._m1 + 3u, 16u, 5u);
-        _222 = texelFetch(_17[_216], int(gl_GlobalInvocationID.x)).x + _209;
+        _422 = texelFetch(_17[_216], int(gl_GlobalInvocationID.x)).x + _423;
     }
     else
     {
-        _222 = _209;
+        _422 = _423;
     }
-    float _235;
+    float _421;
     if (gl_GlobalInvocationID.x > 7u)
     {
         uint _230 = descriptor_qa_check(registers._m1 + ((gl_GlobalInvocationID.x & 1u) + 4u), 16u, 6u);
-        _235 = texelFetch(_17[_230], int(gl_GlobalInvocationID.x)).x + _222;
+        _421 = texelFetch(_17[_230], int(gl_GlobalInvocationID.x)).x + _422;
     }
     else
     {
-        _235 = _222;
+        _421 = _422;
     }
-    float _249;
+    float _420;
     if (gl_GlobalInvocationID.x > 8u)
     {
         uint _242 = descriptor_qa_check(registers._m1 + 6u, 16u, 7u);
-        _249 = uintBitsToFloat(texelFetch(_21[_242], int(gl_GlobalInvocationID.x)).x) + _235;
+        _420 = uintBitsToFloat(texelFetch(_21[_242], int(gl_GlobalInvocationID.x)).x) + _421;
     }
     else
     {
-        _249 = _235;
+        _420 = _421;
     }
-    float _263;
+    float _419;
     if (gl_GlobalInvocationID.x > 9u)
     {
         uint _257 = descriptor_qa_check(registers._m1 + ((gl_GlobalInvocationID.x & 1u) + 7u), 16u, 8u);
-        _263 = uintBitsToFloat(texelFetch(_21[_257], int(gl_GlobalInvocationID.x)).x) + _249;
+        _419 = uintBitsToFloat(texelFetch(_21[_257], int(gl_GlobalInvocationID.x)).x) + _420;
     }
     else
     {
-        _263 = _249;
+        _419 = _420;
     }
-    float _286;
+    float _418;
     if (gl_GlobalInvocationID.x > 10u)
     {
         uint _269 = descriptor_qa_check(registers._m1 + 9u, 16u, 9u);
-        _286 = uintBitsToFloat(texelFetch(_24[_269], int(ByteAddressMask(gl_GlobalInvocationID.x, 4u))).x) + _263;
+        _418 = uintBitsToFloat(texelFetch(_24[_269], int(ByteAddressMask(gl_GlobalInvocationID.x, 4u))).x) + _419;
     }
     else
     {
-        _286 = _263;
+        _418 = _419;
     }
-    float _302;
+    float _417;
     if (gl_GlobalInvocationID.x > 11u)
     {
         uint _295 = descriptor_qa_check(registers._m1 + ((gl_GlobalInvocationID.x & 1u) + 10u), 16u, 10u);
-        _302 = uintBitsToFloat(texelFetch(_24[_295], int(gl_GlobalInvocationID.x >> 2u)).x) + _286;
+        _417 = uintBitsToFloat(texelFetch(_24[_295], int(gl_GlobalInvocationID.x >> 2u)).x) + _418;
     }
     else
     {
-        _302 = _286;
+        _417 = _418;
     }
     if (gl_GlobalInvocationID.x > 1u)
     {
         uint _308 = descriptor_qa_check(registers._m4, 32u, 11u);
         uint _314 = descriptor_qa_check(registers._m4, 256u, 12u);
-        imageStore(_28[_308], int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(_302)));
+        imageStore(_28[_308], int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(_417)));
     }
     if (gl_GlobalInvocationID.x > 30u)
     {
         uint _328 = descriptor_qa_check(registers._m4 + ((gl_GlobalInvocationID.x & 1u) + 1u), 32u, 13u);
-        imageStore(_28[_328], int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(_302)));
+        imageStore(_28[_328], int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(_417)));
     }
     if (gl_GlobalInvocationID.x > 40u)
     {
         uint _339 = descriptor_qa_check(registers._m4 + 3u, 32u, 14u);
-        imageStore(_36[_339], int(ByteAddressMask(gl_GlobalInvocationID.x, 4u)), uvec4(floatBitsToUint(_302)));
+        imageStore(_36[_339], int(ByteAddressMask(gl_GlobalInvocationID.x, 4u)), uvec4(floatBitsToUint(_417)));
     }
     if (gl_GlobalInvocationID.x > 50u)
     {
         uint _356 = descriptor_qa_check(registers._m4 + ((gl_GlobalInvocationID.x & 1u) + 4u), 32u, 15u);
-        imageStore(_36[_356], int(ByteAddressMask(gl_GlobalInvocationID.x, 4u)), uvec4(floatBitsToUint(_302)));
+        imageStore(_36[_356], int(ByteAddressMask(gl_GlobalInvocationID.x, 4u)), uvec4(floatBitsToUint(_417)));
     }
     if (gl_GlobalInvocationID.x > 80u)
     {
         uint _368 = descriptor_qa_check(registers._m3 + 6u, 2u, 16u);
-        imageStore(_40[_368], ivec2(uvec2(gl_GlobalInvocationID.x, 0u)), vec4(_302));
+        imageStore(_40[_368], ivec2(uvec2(gl_GlobalInvocationID.x, 0u)), vec4(_417));
     }
     if (gl_GlobalInvocationID.x > 90u)
     {
         uint _380 = descriptor_qa_check(registers._m3 + ((gl_GlobalInvocationID.x & 1u) + 7u), 2u, 17u);
-        imageStore(_40[_380], ivec2(uvec2(0u, gl_GlobalInvocationID.x)), vec4(_302));
+        imageStore(_40[_380], ivec2(uvec2(0u, gl_GlobalInvocationID.x)), vec4(_417));
     }
     uint _388 = descriptor_qa_check(registers._m4, 32u, 18u);
     uint _394 = descriptor_qa_check(registers._m4, 256u, 19u);
@@ -264,7 +264,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 450
+; Bound: 503
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -505,16 +505,27 @@ OpDecorate %111 NonWritable
 %405 = OpTypeVector %59 2
 %406 = OpConstantNull %29
 %409 = OpTypePointer PhysicalStorageBuffer %5
+%416 = OpTypePointer Function %9
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %416
-%416 = OpLabel
+%417 = OpVariable %416 Function
+%418 = OpVariable %416 Function
+%419 = OpVariable %416 Function
+%420 = OpVariable %416 Function
+%421 = OpVariable %416 Function
+%422 = OpVariable %416 Function
+%423 = OpVariable %416 Function
+%424 = OpVariable %416 Function
+%425 = OpVariable %416 Function
+%426 = OpVariable %416 Function
+OpBranch %427
+%427 = OpLabel
 %56 = OpAccessChain %55 %54 %57
 %58 = OpLoad %5 %56
 %60 = OpUGreaterThan %59 %58 %61
-OpSelectionMerge %418 None
-OpBranchConditional %60 %417 %418
-%417 = OpLabel
+OpSelectionMerge %430 None
+OpBranchConditional %60 %429 %428
+%429 = OpLabel
 %65 = OpAccessChain %64 %8 %66
 %67 = OpLoad %5 %65
 %68 = OpFunctionCall %5 %116 %67 %85 %87
@@ -522,13 +533,21 @@ OpBranchConditional %60 %417 %418
 %158 = OpAccessChain %157 %63 %57 %57
 %159 = OpLoad %41 %158
 %160 = OpCompositeExtract %9 %159 0
-OpBranch %418
-%418 = OpLabel
-%161 = OpPhi %9 %162 %416 %160 %417
+OpStore %426 %160
+OpBranch %430
+%428 = OpLabel
+OpStore %426 %162
+OpBranch %430
+%430 = OpLabel
+OpBranch %431
+%431 = OpLabel
+OpBranch %432
+%432 = OpLabel
+%161 = OpLoad %9 %426
 %163 = OpUGreaterThan %59 %58 %92
-OpSelectionMerge %420 None
-OpBranchConditional %163 %419 %420
-%419 = OpLabel
+OpSelectionMerge %435 None
+OpBranchConditional %163 %434 %433
+%434 = OpLabel
 %164 = OpIAdd %5 %58 %87
 %166 = OpAccessChain %64 %8 %66
 %167 = OpLoad %5 %166
@@ -539,13 +558,21 @@ OpBranchConditional %163 %419 %420
 %171 = OpLoad %41 %170
 %172 = OpCompositeExtract %9 %171 0
 %173 = OpFAdd %9 %172 %161
-OpBranch %420
-%420 = OpLabel
-%174 = OpPhi %9 %161 %418 %173 %419
+OpStore %425 %173
+OpBranch %435
+%433 = OpLabel
+OpStore %425 %161
+OpBranch %435
+%435 = OpLabel
+OpBranch %436
+%436 = OpLabel
+OpBranch %437
+%437 = OpLabel
+%174 = OpLoad %9 %425
 %175 = OpUGreaterThan %59 %58 %85
-OpSelectionMerge %422 None
-OpBranchConditional %175 %421 %422
-%421 = OpLabel
+OpSelectionMerge %440 None
+OpBranchConditional %175 %439 %438
+%439 = OpLabel
 %178 = OpAccessChain %64 %8 %57
 %179 = OpLoad %5 %178
 %180 = OpFunctionCall %5 %116 %179 %87 %92
@@ -560,13 +587,21 @@ OpBranchConditional %175 %421 %422
 %190 = OpImageSampleExplicitLod %41 %188 %192 Lod %162
 %193 = OpCompositeExtract %9 %190 0
 %194 = OpFAdd %9 %193 %174
-OpBranch %422
-%422 = OpLabel
-%195 = OpPhi %9 %174 %420 %194 %421
+OpStore %424 %194
+OpBranch %440
+%438 = OpLabel
+OpStore %424 %174
+OpBranch %440
+%440 = OpLabel
+OpBranch %441
+%441 = OpLabel
+OpBranch %442
+%442 = OpLabel
+%195 = OpLoad %9 %424
 %196 = OpUGreaterThan %59 %58 %66
-OpSelectionMerge %424 None
-OpBranchConditional %196 %423 %424
-%423 = OpLabel
+OpSelectionMerge %445 None
+OpBranchConditional %196 %444 %443
+%444 = OpLabel
 %197 = OpBitwiseAnd %5 %58 %87
 %198 = OpIAdd %5 %197 %87
 %200 = OpAccessChain %64 %8 %57
@@ -579,13 +614,21 @@ OpBranchConditional %196 %423 %424
 %205 = OpImageFetch %41 %204 %206 Lod %57
 %207 = OpCompositeExtract %9 %205 0
 %208 = OpFAdd %9 %207 %195
-OpBranch %424
-%424 = OpLabel
-%209 = OpPhi %9 %195 %422 %208 %423
+OpStore %423 %208
+OpBranch %445
+%443 = OpLabel
+OpStore %423 %195
+OpBranch %445
+%445 = OpLabel
+OpBranch %446
+%446 = OpLabel
+OpBranch %447
+%447 = OpLabel
+%209 = OpLoad %9 %423
 %210 = OpUGreaterThan %59 %58 %96
-OpSelectionMerge %426 None
-OpBranchConditional %210 %425 %426
-%425 = OpLabel
+OpSelectionMerge %450 None
+OpBranchConditional %210 %449 %448
+%449 = OpLabel
 %213 = OpAccessChain %64 %8 %87
 %214 = OpLoad %5 %213
 %215 = OpIAdd %5 %214 %92
@@ -595,13 +638,21 @@ OpBranchConditional %210 %425 %426
 %219 = OpImageFetch %41 %218 %58
 %220 = OpCompositeExtract %9 %219 0
 %221 = OpFAdd %9 %220 %209
-OpBranch %426
-%426 = OpLabel
-%222 = OpPhi %9 %209 %424 %221 %425
+OpStore %422 %221
+OpBranch %450
+%448 = OpLabel
+OpStore %422 %209
+OpBranch %450
+%450 = OpLabel
+OpBranch %451
+%451 = OpLabel
+OpBranch %452
+%452 = OpLabel
+%222 = OpLoad %9 %422
 %223 = OpUGreaterThan %59 %58 %98
-OpSelectionMerge %428 None
-OpBranchConditional %223 %427 %428
-%427 = OpLabel
+OpSelectionMerge %455 None
+OpBranchConditional %223 %454 %453
+%454 = OpLabel
 %224 = OpBitwiseAnd %5 %58 %87
 %225 = OpIAdd %5 %224 %85
 %227 = OpAccessChain %64 %8 %87
@@ -613,13 +664,21 @@ OpBranchConditional %223 %427 %428
 %232 = OpImageFetch %41 %231 %58
 %233 = OpCompositeExtract %9 %232 0
 %234 = OpFAdd %9 %233 %222
-OpBranch %428
-%428 = OpLabel
-%235 = OpPhi %9 %222 %426 %234 %427
+OpStore %421 %234
+OpBranch %455
+%453 = OpLabel
+OpStore %421 %222
+OpBranch %455
+%455 = OpLabel
+OpBranch %456
+%456 = OpLabel
+OpBranch %457
+%457 = OpLabel
+%235 = OpLoad %9 %421
 %236 = OpUGreaterThan %59 %58 %106
-OpSelectionMerge %430 None
-OpBranchConditional %236 %429 %430
-%429 = OpLabel
+OpSelectionMerge %460 None
+OpBranchConditional %236 %459 %458
+%459 = OpLabel
 %239 = OpAccessChain %64 %8 %87
 %240 = OpLoad %5 %239
 %241 = OpIAdd %5 %240 %96
@@ -630,13 +689,21 @@ OpBranchConditional %236 %429 %430
 %246 = OpCompositeExtract %5 %245 0
 %247 = OpBitcast %9 %246
 %248 = OpFAdd %9 %247 %235
-OpBranch %430
-%430 = OpLabel
-%249 = OpPhi %9 %235 %428 %248 %429
+OpStore %420 %248
+OpBranch %460
+%458 = OpLabel
+OpStore %420 %235
+OpBranch %460
+%460 = OpLabel
+OpBranch %461
+%461 = OpLabel
+OpBranch %462
+%462 = OpLabel
+%249 = OpLoad %9 %420
 %250 = OpUGreaterThan %59 %58 %123
-OpSelectionMerge %432 None
-OpBranchConditional %250 %431 %432
-%431 = OpLabel
+OpSelectionMerge %465 None
+OpBranchConditional %250 %464 %463
+%464 = OpLabel
 %251 = OpBitwiseAnd %5 %58 %87
 %252 = OpIAdd %5 %251 %98
 %254 = OpAccessChain %64 %8 %87
@@ -649,13 +716,21 @@ OpBranchConditional %250 %431 %432
 %260 = OpCompositeExtract %5 %259 0
 %261 = OpBitcast %9 %260
 %262 = OpFAdd %9 %261 %249
-OpBranch %432
-%432 = OpLabel
-%263 = OpPhi %9 %249 %430 %262 %431
+OpStore %419 %262
+OpBranch %465
+%463 = OpLabel
+OpStore %419 %249
+OpBranch %465
+%465 = OpLabel
+OpBranch %466
+%466 = OpLabel
+OpBranch %467
+%467 = OpLabel
+%263 = OpLoad %9 %419
 %264 = OpUGreaterThan %59 %58 %135
-OpSelectionMerge %434 None
-OpBranchConditional %264 %433 %434
-%433 = OpLabel
+OpSelectionMerge %470 None
+OpBranchConditional %264 %469 %468
+%469 = OpLabel
 %266 = OpAccessChain %64 %8 %87
 %267 = OpLoad %5 %266
 %268 = OpIAdd %5 %267 %123
@@ -668,13 +743,21 @@ OpBranchConditional %264 %433 %434
 %283 = OpCompositeExtract %5 %282 0
 %284 = OpBitcast %9 %283
 %285 = OpFAdd %9 %284 %263
-OpBranch %434
-%434 = OpLabel
-%286 = OpPhi %9 %263 %432 %285 %433
+OpStore %418 %285
+OpBranch %470
+%468 = OpLabel
+OpStore %418 %263
+OpBranch %470
+%470 = OpLabel
+OpBranch %471
+%471 = OpLabel
+OpBranch %472
+%472 = OpLabel
+%286 = OpLoad %9 %418
 %287 = OpUGreaterThan %59 %58 %288
-OpSelectionMerge %436 None
-OpBranchConditional %287 %435 %436
-%435 = OpLabel
+OpSelectionMerge %475 None
+OpBranchConditional %287 %474 %473
+%474 = OpLabel
 %289 = OpBitwiseAnd %5 %58 %87
 %290 = OpIAdd %5 %289 %135
 %292 = OpAccessChain %64 %8 %87
@@ -688,13 +771,21 @@ OpBranchConditional %287 %435 %436
 %299 = OpCompositeExtract %5 %298 0
 %300 = OpBitcast %9 %299
 %301 = OpFAdd %9 %300 %286
-OpBranch %436
-%436 = OpLabel
-%302 = OpPhi %9 %286 %434 %301 %435
+OpStore %417 %301
+OpBranch %475
+%473 = OpLabel
+OpStore %417 %286
+OpBranch %475
+%475 = OpLabel
+OpBranch %476
+%476 = OpLabel
+OpBranch %477
+%477 = OpLabel
+%302 = OpLoad %9 %417
 %303 = OpUGreaterThan %59 %58 %87
-OpSelectionMerge %438 None
-OpBranchConditional %303 %437 %438
-%437 = OpLabel
+OpSelectionMerge %479 None
+OpBranchConditional %303 %478 %479
+%478 = OpLabel
 %306 = OpAccessChain %64 %8 %85
 %307 = OpLoad %5 %306
 %308 = OpFunctionCall %5 %116 %307 %309 %288
@@ -708,12 +799,16 @@ OpBranchConditional %303 %437 %438
 %318 = OpBitcast %5 %302
 %319 = OpCompositeConstruct %244 %318 %318 %318 %318
 OpImageWrite %310 %58 %319 NonPrivateTexel
-OpBranch %438
-%438 = OpLabel
+OpBranch %479
+%479 = OpLabel
+OpBranch %480
+%480 = OpLabel
+OpBranch %481
+%481 = OpLabel
 %320 = OpUGreaterThan %59 %58 %321
-OpSelectionMerge %440 None
-OpBranchConditional %320 %439 %440
-%439 = OpLabel
+OpSelectionMerge %483 None
+OpBranchConditional %320 %482 %483
+%482 = OpLabel
 %322 = OpBitwiseAnd %5 %58 %87
 %323 = OpIAdd %5 %322 %87
 %325 = OpAccessChain %64 %8 %85
@@ -725,12 +820,16 @@ OpBranchConditional %320 %439 %440
 %331 = OpBitcast %5 %302
 %332 = OpCompositeConstruct %244 %331 %331 %331 %331
 OpImageWrite %330 %58 %332 NonPrivateTexel
-OpBranch %440
-%440 = OpLabel
+OpBranch %483
+%483 = OpLabel
+OpBranch %484
+%484 = OpLabel
+OpBranch %485
+%485 = OpLabel
 %333 = OpUGreaterThan %59 %58 %334
-OpSelectionMerge %442 None
-OpBranchConditional %333 %441 %442
-%441 = OpLabel
+OpSelectionMerge %487 None
+OpBranchConditional %333 %486 %487
+%486 = OpLabel
 %336 = OpAccessChain %64 %8 %85
 %337 = OpLoad %5 %336
 %338 = OpIAdd %5 %337 %92
@@ -742,12 +841,16 @@ OpBranchConditional %333 %441 %442
 %344 = OpFunctionCall %5 %275 %58 %85
 %345 = OpCompositeConstruct %244 %342 %342 %342 %342
 OpImageWrite %341 %344 %345 NonPrivateTexel
-OpBranch %442
-%442 = OpLabel
+OpBranch %487
+%487 = OpLabel
+OpBranch %488
+%488 = OpLabel
+OpBranch %489
+%489 = OpLabel
 %346 = OpUGreaterThan %59 %58 %347
-OpSelectionMerge %444 None
-OpBranchConditional %346 %443 %444
-%443 = OpLabel
+OpSelectionMerge %491 None
+OpBranchConditional %346 %490 %491
+%490 = OpLabel
 %348 = OpBitwiseAnd %5 %58 %87
 %349 = OpBitcast %5 %302
 %350 = OpShiftLeftLogical %5 %58 %61
@@ -761,12 +864,16 @@ OpBranchConditional %346 %443 %444
 %359 = OpFunctionCall %5 %275 %58 %85
 %360 = OpCompositeConstruct %244 %349 %349 %349 %349
 OpImageWrite %358 %359 %360 NonPrivateTexel
-OpBranch %444
-%444 = OpLabel
+OpBranch %491
+%491 = OpLabel
+OpBranch %492
+%492 = OpLabel
+OpBranch %493
+%493 = OpLabel
 %361 = OpUGreaterThan %59 %58 %362
-OpSelectionMerge %446 None
-OpBranchConditional %361 %445 %446
-%445 = OpLabel
+OpSelectionMerge %495 None
+OpBranchConditional %361 %494 %495
+%494 = OpLabel
 %365 = OpAccessChain %64 %8 %92
 %366 = OpLoad %5 %365
 %367 = OpIAdd %5 %366 %96
@@ -776,12 +883,16 @@ OpBranchConditional %361 %445 %446
 %370 = OpCompositeConstruct %29 %58 %57
 %371 = OpCompositeConstruct %41 %302 %302 %302 %302
 OpImageWrite %369 %370 %371 NonPrivateTexel
-OpBranch %446
-%446 = OpLabel
+OpBranch %495
+%495 = OpLabel
+OpBranch %496
+%496 = OpLabel
+OpBranch %497
+%497 = OpLabel
 %372 = OpUGreaterThan %59 %58 %373
-OpSelectionMerge %448 None
-OpBranchConditional %372 %447 %448
-%447 = OpLabel
+OpSelectionMerge %499 None
+OpBranchConditional %372 %498 %499
+%498 = OpLabel
 %374 = OpBitwiseAnd %5 %58 %87
 %375 = OpIAdd %5 %374 %98
 %377 = OpAccessChain %64 %8 %92
@@ -793,8 +904,12 @@ OpBranchConditional %372 %447 %448
 %383 = OpCompositeConstruct %29 %57 %58
 %384 = OpCompositeConstruct %41 %302 %302 %302 %302
 OpImageWrite %382 %383 %384 NonPrivateTexel
-OpBranch %448
-%448 = OpLabel
+OpBranch %499
+%499 = OpLabel
+OpBranch %500
+%500 = OpLabel
+OpBranch %501
+%501 = OpLabel
 %386 = OpAccessChain %64 %8 %85
 %387 = OpLoad %5 %386
 %388 = OpFunctionCall %5 %116 %387 %309 %389

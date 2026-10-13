@@ -55,15 +55,15 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 173
+; Bound: 175
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformArithmetic
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %12
+OpEntryPoint Fragment %3 "main" %8 %9 %10 %12 %18
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %12 "INDEX"
@@ -71,7 +71,7 @@ OpName %18 "discard_state"
 OpName %30 "ByteAddressMask"
 OpName %28 "index"
 OpName %29 "stride"
-OpName %165 "discard_exit"
+OpName %167 "discard_exit"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
@@ -115,7 +115,7 @@ OpDecorate %12 Location 0
 %84 = OpConstant %5 24
 %88 = OpConstant %5 6
 %132 = OpTypeFloat 32
-%164 = OpConstantTrue %14
+%166 = OpConstantTrue %14
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpStore %18 %19
@@ -126,9 +126,13 @@ OpBranch %161
 OpSelectionMerge %163 None
 OpBranchConditional %15 %162 %163
 %162 = OpLabel
-OpStore %18 %164
+OpStore %18 %166
 OpBranch %163
 %163 = OpLabel
+OpBranch %164
+%164 = OpLabel
+OpBranch %165
+%165 = OpLabel
 %20 = OpGroupNonUniformIAdd %5 %21 Reduce %13
 %22 = OpIMul %5 %13 %23
 %24 = OpLoad %6 %8
@@ -264,7 +268,7 @@ OpImageWrite %149 %152 %153
 %159 = OpFunctionCall %5 %30 %158 %37
 %160 = OpCompositeConstruct %38 %155 %155 %155 %155
 OpImageWrite %156 %159 %160
-%171 = OpFunctionCall %1 %165
+%173 = OpFunctionCall %1 %167
 OpReturn
 OpFunctionEnd
 %30 = OpFunction %5 None %27
@@ -275,14 +279,14 @@ OpFunctionEnd
 %34 = OpBitwiseAnd %5 %28 %32
 OpReturnValue %34
 OpFunctionEnd
-%165 = OpFunction %1 None %2
-%166 = OpLabel
-%169 = OpLoad %14 %18
-OpSelectionMerge %168 None
-OpBranchConditional %169 %167 %168
-%167 = OpLabel
-OpKill
+%167 = OpFunction %1 None %2
 %168 = OpLabel
+%171 = OpLoad %14 %18
+OpSelectionMerge %170 None
+OpBranchConditional %171 %169 %170
+%169 = OpLabel
+OpKill
+%170 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

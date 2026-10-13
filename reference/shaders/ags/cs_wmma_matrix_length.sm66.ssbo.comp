@@ -34,23 +34,23 @@ void main()
     _13[7u] = uint(coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0).length());
     _13[8u] = uint(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length()) / 4u;
     _13[9u] = uint(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB>(0).length()) / 4u;
-    uint _56;
-    uint _58;
-    _56 = uint(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length());
-    _58 = 0u;
+    uint _76 = uint(coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length());
+    uint _77 = 0u;
     uint _59;
+    bool _74;
     for (;;)
     {
-        _9._m0[ByteAddressMask(_58, 4u)] = _56;
-        _59 = _58 + 1u;
-        if (_59 == 10u)
+        _9._m0[ByteAddressMask(_77, 4u)] = _76;
+        _59 = _77 + 1u;
+        _74 = _59 == 10u;
+        if (_74)
         {
             break;
         }
         else
         {
-            _56 = _13[_59];
-            _58 = _59;
+            _76 = _13[_59];
+            _77 = _59;
             continue;
         }
     }
@@ -63,7 +63,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 82
+; Bound: 88
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -121,8 +121,10 @@ OpDecorate %9 NonReadable
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %13 = OpVariable %12 Function
-OpBranch %76
-%76 = OpLabel
+%76 = OpVariable %21 Function
+%77 = OpVariable %21 Function
+OpBranch %78
+%78 = OpLabel
 %20 = OpCooperativeMatrixLengthKHR %5 %18
 %22 = OpInBoundsAccessChain %21 %13 %16
 OpStore %22 %20
@@ -157,25 +159,38 @@ OpStore %50 %49
 %53 = OpUDiv %5 %52 %34
 %54 = OpInBoundsAccessChain %21 %13 %55
 OpStore %54 %53
-OpBranch %77
-%77 = OpLabel
-%56 = OpPhi %5 %20 %76 %57 %79
-%58 = OpPhi %5 %16 %76 %59 %79
+OpStore %76 %20
+OpStore %77 %16
+OpBranch %79
+%79 = OpLabel
+%58 = OpLoad %5 %77
+%56 = OpLoad %5 %76
 %60 = OpShiftLeftLogical %5 %58 %28
 %70 = OpFunctionCall %5 %64 %58 %34
 %72 = OpAccessChain %71 %9 %16 %70
 OpStore %72 %56 NonPrivatePointer
 %59 = OpIAdd %5 %58 %23
 %74 = OpIEqual %73 %59 %10
-OpLoopMerge %80 %79 None
-OpBranchConditional %74 %80 %78
-%78 = OpLabel
-OpBranch %79
-%79 = OpLabel
+OpLoopMerge %83 %81 None
+OpBranch %80
+%80 = OpLabel
+OpSelectionMerge %86 None
+OpBranchConditional %74 %82 %81
+%82 = OpLabel
+OpBranch %83
+%86 = OpLabel
+OpUnreachable
+%81 = OpLabel
 %75 = OpInBoundsAccessChain %21 %13 %59
 %57 = OpLoad %5 %75
-OpBranch %77
-%80 = OpLabel
+OpStore %76 %57
+OpStore %77 %59
+OpBranch %79
+%83 = OpLabel
+OpBranch %84
+%84 = OpLabel
+OpBranch %85
+%85 = OpLabel
 OpReturn
 OpFunctionEnd
 %64 = OpFunction %5 None %61

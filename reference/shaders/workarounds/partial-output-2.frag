@@ -30,9 +30,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 44
+; Bound: 46
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -101,6 +101,10 @@ OpBranch %40
 %40 = OpLabel
 OpBranch %42
 %42 = OpLabel
+OpBranch %43
+%43 = OpLabel
+OpBranch %44
+%44 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

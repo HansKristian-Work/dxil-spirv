@@ -24,7 +24,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 72
 ; Schema: 0
@@ -32,7 +32,7 @@ OpCapability Shader
 OpCapability Image1D
 OpCapability StorageImageWriteWithoutFormat
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %24
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %24
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %24 "TEXCOORD"

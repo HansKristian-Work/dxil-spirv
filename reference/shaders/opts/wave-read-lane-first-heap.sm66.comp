@@ -55,7 +55,7 @@ void main()
 // SPIR-V disassembly
 // HeuristicWaveSize(32)
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 213
 ; Schema: 0
@@ -70,7 +70,7 @@ OpCapability RuntimeDescriptorArray
 OpCapability UniformTexelBufferArrayDynamicIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %42 %46
+OpEntryPoint GLCompute %3 "main" %13 %16 %20 %23 %26 %31 %36 %42 %46
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpName %10 "BindlessCBV"
