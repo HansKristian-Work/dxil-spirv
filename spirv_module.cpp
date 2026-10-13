@@ -276,6 +276,15 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 	case spv::BuiltInClusterIDNV:
 		return builder.makeUintType(32);
 
+	case spv::BuiltInHitLSSPositionsNV:
+		return builder.makeArrayType(builder.makeVectorType(builder.makeFloatType(32), 3), builder.makeUintConstant(2), 0);
+
+	case spv::BuiltInHitLSSRadiiNV:
+		return builder.makeArrayType(builder.makeFloatType(32), builder.makeUintConstant(2), 0);
+
+	case spv::BuiltInHitIsLSSNV:
+		return builder.makeBoolType();
+
 	default:
 		return 0;
 	}

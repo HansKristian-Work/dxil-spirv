@@ -1,0 +1,110 @@
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 74
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
+OpCapability RayTracingLinearSweptSpheresGeometryNV
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpExtension "SPV_NV_linear_swept_spheres"
+OpMemoryModel Logical Vulkan
+OpEntryPoint AnyHitKHR %3 "main" %10 %14 %18 %30 %33
+OpName %3 "main"
+OpName %8 ""
+OpName %10 "payload"
+OpName %12 ""
+OpName %14 "hit"
+OpDecorate %18 BuiltIn HitIsLSSNV
+OpDecorate %30 BuiltIn HitLSSPositionsNV
+OpDecorate %33 BuiltIn HitLSSRadiiNV
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeFloat 32
+%7 = OpTypeVector %6 4
+%8 = OpTypeStruct %5 %7 %7
+%9 = OpTypePointer IncomingRayPayloadKHR %8
+%10 = OpVariable %9 IncomingRayPayloadKHR
+%11 = OpTypeVector %6 2
+%12 = OpTypeStruct %11
+%13 = OpTypePointer HitAttributeKHR %12
+%14 = OpVariable %13 HitAttributeKHR
+%16 = OpTypeBool
+%17 = OpTypePointer Input %16
+%18 = OpVariable %17 Input
+%21 = OpConstant %5 1
+%22 = OpConstant %5 0
+%25 = OpTypeVector %6 3
+%26 = OpConstant %5 2
+%27 = OpTypeArray %25 %26
+%28 = OpTypeArray %6 %26
+%29 = OpTypePointer Input %27
+%30 = OpVariable %29 Input
+%32 = OpTypePointer Input %28
+%33 = OpVariable %32 Input
+%68 = OpTypePointer IncomingRayPayloadKHR %5
+%70 = OpTypePointer IncomingRayPayloadKHR %7
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%60 = OpUndef %7
+OpBranch %73
+%73 = OpLabel
+%19 = OpLoad %16 %18
+%20 = OpSelect %5 %19 %21 %22
+%23 = OpINotEqual %16 %20 %22
+%24 = OpSelect %5 %23 %21 %22
+%31 = OpLoad %27 %30
+%34 = OpLoad %28 %33
+%35 = OpCompositeExtract %6 %31 0 0
+%36 = OpBitcast %5 %35
+%37 = OpCompositeExtract %6 %31 0 1
+%38 = OpBitcast %5 %37
+%39 = OpCompositeExtract %6 %31 0 2
+%40 = OpBitcast %5 %39
+%41 = OpCompositeExtract %6 %34 0
+%42 = OpBitcast %5 %41
+%43 = OpCompositeExtract %6 %31 1 0
+%44 = OpBitcast %5 %43
+%45 = OpCompositeExtract %6 %31 1 1
+%46 = OpBitcast %5 %45
+%47 = OpCompositeExtract %6 %31 1 2
+%48 = OpBitcast %5 %47
+%49 = OpCompositeExtract %6 %34 1
+%50 = OpBitcast %5 %49
+%51 = OpBitcast %6 %36
+%52 = OpBitcast %6 %38
+%53 = OpBitcast %6 %40
+%54 = OpBitcast %6 %42
+%55 = OpBitcast %6 %44
+%56 = OpBitcast %6 %46
+%57 = OpBitcast %6 %48
+%58 = OpBitcast %6 %50
+%59 = OpCompositeInsert %7 %51 %60 0
+%61 = OpCompositeInsert %7 %52 %59 1
+%62 = OpCompositeInsert %7 %53 %61 2
+%63 = OpCompositeInsert %7 %54 %62 3
+%64 = OpCompositeInsert %7 %55 %60 0
+%65 = OpCompositeInsert %7 %56 %64 1
+%66 = OpCompositeInsert %7 %57 %65 2
+%67 = OpCompositeInsert %7 %58 %66 3
+%69 = OpInBoundsAccessChain %68 %10 %22
+OpStore %69 %24
+%71 = OpInBoundsAccessChain %70 %10 %21
+OpStore %71 %63
+%72 = OpInBoundsAccessChain %70 %10 %26
+OpStore %72 %67
+OpReturn
+OpFunctionEnd
+
