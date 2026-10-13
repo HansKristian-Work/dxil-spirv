@@ -189,8 +189,10 @@ install(TARGETS dxil-spirv-c-shared
 install(EXPORT dxil_spirv_c_sharedConfig DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dxil_spirv_c_shared/cmake)
 
 if (DXIL_SPV_MISC_CLI)
+    include(FindPkgConfig)
+    pkg_check_modules(VULKAN REQUIRED IMPORTED_TARGET vulkan)
     add_executable(structurize-test misc/structurize_test.cpp)
-    target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools-static spirv-cross-c dxil-debug dxil-utils cli-parser)
+    target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools-static spirv-cross-c dxil-debug dxil-utils cli-parser PkgConfig::VULKAN)
     target_compile_options(structurize-test PRIVATE ${DXIL_SPV_CXX_FLAGS})
     target_compile_definitions(dxil-converter PUBLIC DXIL_SPIRV_DEBUG_DUMPING)
     target_compile_definitions(spirv-module PRIVATE DXIL_SPIRV_DEBUG_DUMPING)
