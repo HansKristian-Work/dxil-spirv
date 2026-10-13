@@ -170,35 +170,41 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 	if (!level_blocks.empty())
 		levels.push_back({ std::move(level_blocks) });
 
-	for (auto *df : node->dominance_frontier)
+	if (!levels.empty())
 	{
-		for (auto *pred : df->pred)
+		for (auto *df : node->dominance_frontier)
 		{
-			// Only look for critical nodes inside this construct.
-			if (!node->dominates(pred))
-				continue;
-
-			// pred *can* exit the overall construct, so we must effectively skip all the way to the end.
-			// We could potentially model this as a big loop break, but ideally we don't.
-
-			for (auto &level : levels)
+			for (auto *pred : df->pred)
 			{
-				if (level.skippable)
+				// Only look for critical nodes inside this construct.
+				if (!node->dominates(pred))
 					continue;
 
-				// Conservative. It's always valid to make a block skippable.
-				// We'd just rather avoid it if possible.
-				level.skippable = true;
-				for (auto *path: level.paths)
+				// pred *can* exit the overall construct, so we must effectively skip all the way to the end.
+				// We could potentially model this as a big loop break, but ideally we don't.
+
+				for (auto &level : levels)
 				{
-					if (path->dominates(pred))
+					if (level.skippable)
+						continue;
+
+					// Conservative. It's always valid to make a block skippable.
+					// We'd just rather avoid it if possible.
+					level.skippable = true;
+					for (auto *path: level.paths)
 					{
-						level.skippable = false;
-						break;
+						if (path->dominates(pred))
+						{
+							level.skippable = false;
+							break;
+						}
 					}
 				}
 			}
 		}
+
+		// Direct branches will either just write a path variable and branch to merge node, or keep iterating.
+		assert(node->ir.terminator.type == Terminator::Type::Condition);
 	}
 
 	// Now, analyze if we can reach a level by skipping over previous levels.
@@ -267,11 +273,11 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		// TODO: Setup branch and merge targets.
 	}
 
-	auto break_levels = outer_levels;
-	break_levels.insert(break_levels.end(), levels.begin(), levels.end());
-
 	if (node->ir.terminator.type == Terminator::Type::Condition)
 	{
+		auto break_levels = outer_levels;
+		break_levels.insert(break_levels.end(), levels.begin(), levels.end());
+
 		CFGNode *merge_node = pool.create_node();
 		// Now we can either enter a path we dominate (and therefore we recursively keep structurizing),
 		// or we set path variables and stop.
@@ -280,28 +286,28 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		           node->ir.terminator.false_block,
 		           node->ir.terminator.conditional_id,
 		           levels, merge_node);
+
+		// All execution should have been collected at merge_node.
+		// Dispatch execution to those now.
+		while (!levels.empty())
+		{
+			auto level = std::move(levels.back());
+			levels.pop_back();
+			break_levels.pop_back();
+
+			for (auto *path : level.paths)
+				enter_succ(path, break_levels, level.output_node);
+		}
+
+		if (!node->dominance_frontier.empty() && outer_merge)
+		{
+			// Branch from last level to outer_merge.
+			// If we dominate everything in the path to exit, there is nothing to exit to.
+		}
 	}
 	else if (node->ir.terminator.type == Terminator::Type::Branch)
 	{
-		enter_succ(node->ir.terminator.direct_block, break_levels, outer_merge);
-	}
-
-	// All execution should have been collected at levels now.
-	// Dispatch execution to those now.
-	while (!levels.empty())
-	{
-		auto level = std::move(levels.back());
-		levels.pop_back();
-		break_levels.pop_back();
-
-		for (auto *path : level.paths)
-			enter_succ(path, break_levels, level.output_node);
-	}
-
-	if (!node->dominance_frontier.empty() && outer_merge)
-	{
-		// Branch from last level to outer_merge.
-		// If we dominate everything in the path to exit, there is nothing to exit to.
+		enter_succ(node->ir.terminator.direct_block, outer_levels, outer_merge);
 	}
 }
 
