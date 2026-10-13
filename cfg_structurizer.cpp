@@ -33,13 +33,6 @@
 
 namespace dxil_spv
 {
-template <typename Container, typename T>
-static inline bool has_element(const Container &c, const T &value)
-{
-	auto itr = std::find(c.begin(), c.end(), value);
-	return itr != c.end();
-}
-
 template <typename Op>
 void CFGStructurizer::iterate_dominated_node_range_bottom_up(const CFGNode *start, const CFGNode *end, const Op &op)
 {
@@ -1348,30 +1341,7 @@ bool CFGStructurizer::run()
 	String graphviz_path;
 	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
 		graphviz_path = env;
-
-	// Debug only: dump the input CFG in the format structurize-test reads.
-	if (const char *env = getenv("DXIL_SPIRV_STRUCTURIZE_TEST_PATH"))
-		log_cfg_structurize_test(env);
 #endif
-
-	// We make the assumption during traversal that there is only one back edge.
-	// Fix this up here.
-	rewrite_multiple_back_edges();
-
-#ifdef DXIL_SPIRV_DEBUG_DUMPING
-	//log_cfg("Input state");
-	if (!graphviz_path.empty())
-	{
-		reset_traversal();
-		visit(*entry_block);
-		auto graphviz_input = graphviz_path + ".input";
-		log_cfg_graphviz(graphviz_input.c_str());
-	}
-#endif
-
-	recompute_cfg();
-	sink_ssa_constructs();
-	propagate_branch_control_hints();
 
 	cleanup_breaking_phi_constructs();
 

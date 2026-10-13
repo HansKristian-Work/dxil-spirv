@@ -28,6 +28,7 @@
 #include "ir.hpp"
 
 #include <memory>
+#include <algorithm>
 #include <stdint.h>
 
 namespace dxil_spv
@@ -50,6 +51,7 @@ class CFGStructurizer
 public:
 	CFGStructurizer(CFGNode *entry, CFGNodePool &pool, SPIRVModule &module);
 	bool run();
+	bool run_experimental();
 	bool run_experimental_unstructured();
 	bool run_trivial();
 	void traverse(BlockEmissionInterface &iface);
@@ -307,5 +309,34 @@ private:
 
 	template <typename Op>
 	void iterate_dominated_node_range_bottom_up(const CFGNode *start, const CFGNode *end, const Op &op);
+
+	// The new structurizer rewritten from ground up.
+	struct SerializationLevel
+	{
+		Vector<CFGNode *> paths;
+		// If skipping is possible, a dummy path is.
+		// If number of paths + skip is 1: No selector.
+		// If number of paths + skip is 2: A simple boolean.
+		// If number of paths + skip is >2: Switch value.
+		spv::Id path_selector_id = 0;
+		bool skippable = false;
+
+		CFGNode *input_node = nullptr;
+		CFGNode *output_node = nullptr;
+	};
+
+	void run_common_preamble();
+	void rewrite_switch_blocks();
+	void convert_phi_to_variables();
+	void serialize_merge_levels_for_dominated_paths(CFGNode *node, const Vector<SerializationLevel> &levels);
+	void serialize_merge_levels_for_dominated_paths_entry();
+	Vector<CFGNode *> get_idom_children(CFGNode *node);
 };
+
+template <typename Container, typename T>
+static inline bool has_element(const Container &c, const T &value)
+{
+	auto itr = std::find(c.begin(), c.end(), value);
+	return itr != c.end();
+}
 } // namespace dxil_spv

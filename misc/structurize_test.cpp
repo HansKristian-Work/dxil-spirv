@@ -512,6 +512,7 @@ int main(int argc, char **argv)
 	bool skip_validation = false;
 	bool compile = false;
 	bool unstructured = false;
+	bool new_impl = false;
 	CLICallbacks cbs;
 	cbs.default_handler = [&](const char *path) { input_path = path; };
 	cbs.add("--help", [&](CLIParser &parser) { parser.end(); });
@@ -519,6 +520,7 @@ int main(int argc, char **argv)
 	cbs.add("--skip-validation", [&](CLIParser &) { skip_validation = true; });
 	cbs.add("--compile", [&](CLIParser &) { compile = true; });
 	cbs.add("--unstructured", [&](CLIParser &) { unstructured = true; skip_validation = true; });
+	cbs.add("--new", [&](CLIParser &) { new_impl = true; });
 
 	CLIParser parser(std::move(cbs), argc - 1, argv + 1);
 	if (!parser.parse())
@@ -606,7 +608,11 @@ int main(int argc, char **argv)
 
 	CFGStructurizer traverser(emitter.get("entry"), emitter.pool, emitter.module);
 
-	if (unstructured)
+	if (new_impl)
+	{
+		traverser.run_experimental();
+	}
+	else if (unstructured)
 	{
 		emitter.module.get_builder().addExtension("SPV_FROG_unstructured_control_flow");
 		traverser.run_experimental_unstructured();
