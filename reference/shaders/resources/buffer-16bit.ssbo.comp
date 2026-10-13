@@ -165,7 +165,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 382
 ; Schema: 0
@@ -181,7 +181,7 @@ OpCapability StorageBufferArrayNonUniformIndexing
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %83
+OpEntryPoint GLCompute %3 "main" %9 %14 %19 %24 %28 %32 %36 %41 %46 %50 %54 %58 %62 %66 %70 %75 %80 %83
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"

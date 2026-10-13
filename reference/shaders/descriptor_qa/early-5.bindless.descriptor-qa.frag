@@ -96,9 +96,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 169
+; Bound: 171
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -107,7 +107,7 @@ OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint Fragment %3 "main" %24 %27
+OpEntryPoint Fragment %3 "main" %8 %13 %17 %21 %24 %27 %49 %89
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %6 "RootConstants"
@@ -274,6 +274,10 @@ OpBranchConditional %36 %166 %167
 OpImageWrite %135 %139 %140
 OpBranch %167
 %167 = OpLabel
+OpBranch %168
+%168 = OpLabel
+OpBranch %169
+%169 = OpLabel
 %143 = OpAccessChain %40 %8 %30
 %144 = OpLoad %5 %143
 %145 = OpFunctionCall %5 %94 %144 %33 %70

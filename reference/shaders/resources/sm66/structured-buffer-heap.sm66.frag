@@ -75,7 +75,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 280
 ; Schema: 0
@@ -85,7 +85,7 @@ OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
 OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %18 %22 %26
+OpEntryPoint Fragment %3 "main" %9 %13 %16 %18 %22 %26
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %18 "INDEX"

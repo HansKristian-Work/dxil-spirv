@@ -59,15 +59,15 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 75
+; Bound: 79
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
 OpCapability Int64Atomics
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %17
+OpEntryPoint GLCompute %3 "main" %9 %14 %17
 OpExecutionMode %3 LocalSize 128 1 1
 OpName %3 "main"
 OpName %7 "SSBO"
@@ -126,6 +126,10 @@ OpBranchConditional %23 %70 %71
 OpStore %25 %26
 OpBranch %71
 %71 = OpLabel
+OpBranch %72
+%72 = OpLabel
+OpBranch %73
+%73 = OpLabel
 OpControlBarrier %27 %27 %28
 %29 = OpBitwiseAnd %10 %21 %30
 %31 = OpUConvert %5 %21
@@ -148,17 +152,21 @@ OpControlBarrier %27 %27 %28
 %51 = OpAtomicIAdd %5 %32 %27 %20 %31
 %52 = OpAtomicIAdd %5 %32 %27 %20 %31
 OpControlBarrier %27 %27 %28
-OpSelectionMerge %73 None
-OpBranchConditional %23 %72 %73
-%72 = OpLabel
+OpSelectionMerge %75 None
+OpBranchConditional %23 %74 %75
+%74 = OpLabel
 %53 = OpAccessChain %24 %14 %21
 %54 = OpLoad %5 %53
 %55 = OpShiftLeftLogical %10 %21 %30
 %65 = OpFunctionCall %10 %59 %21 %66
 %68 = OpAccessChain %67 %9 %20 %65
 OpStore %68 %54
-OpBranch %73
-%73 = OpLabel
+OpBranch %75
+%75 = OpLabel
+OpBranch %76
+%76 = OpLabel
+OpBranch %77
+%77 = OpLabel
 OpReturn
 OpFunctionEnd
 %59 = OpFunction %10 None %56

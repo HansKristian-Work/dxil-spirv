@@ -100,7 +100,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 137
 ; Schema: 0
@@ -111,7 +111,7 @@ OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint GLCompute %3 "main" %25
+OpEntryPoint GLCompute %3 "main" %9 %25
 OpExecutionMode %3 LocalSize 1 1 1
 OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"

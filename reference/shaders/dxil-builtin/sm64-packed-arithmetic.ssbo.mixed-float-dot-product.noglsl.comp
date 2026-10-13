@@ -1,5 +1,5 @@
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 143
 ; Schema: 0
@@ -12,7 +12,7 @@ OpCapability DotProductFloat16AccFloat32VALVE
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_VALVE_mixed_float_dot_product"
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %34
+OpEntryPoint GLCompute %3 "main" %9 %13 %19 %23 %27 %31 %34
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"

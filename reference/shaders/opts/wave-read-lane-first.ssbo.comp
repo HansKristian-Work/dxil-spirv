@@ -79,7 +79,7 @@ void main()
 // SPIR-V disassembly
 // HeuristicWaveSize(32)
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 219
 ; Schema: 0
@@ -91,7 +91,7 @@ OpCapability GroupNonUniformVote
 OpCapability GroupNonUniformArithmetic
 OpCapability GroupNonUniformBallot
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %50 %54
+OpEntryPoint GLCompute %3 "main" %9 %14 %20 %24 %28 %32 %38 %43 %50 %54
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpName %7 "SSBO"

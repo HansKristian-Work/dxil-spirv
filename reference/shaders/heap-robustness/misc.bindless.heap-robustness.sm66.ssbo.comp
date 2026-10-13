@@ -119,7 +119,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 332
 ; Schema: 0
@@ -142,7 +142,7 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 %85 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint GLCompute %3 "main" %72
+OpEntryPoint GLCompute %3 "main" %8 %13 %17 %21 %25 %30 %36 %43 %50 %53 %56 %61 %66 %69 %72
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpName %6 "RootConstants"

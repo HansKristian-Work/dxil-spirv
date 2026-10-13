@@ -46,12 +46,15 @@ void main()
     uvec4 _52 = PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u];
     if (!(_52.x == 0u))
     {
-        uint _70 = 0u;
+        uint _71;
+        uint _112 = 0u;
+        uint _70;
         uint _74;
         uint _81;
         bool _83;
         for (;;)
         {
+            _70 = _112;
             _74 = (_70 << 8u) + gl_LocalInvocationIndex;
             _81 = PhysicalPointerUintNonWriteArray(registers._m1).value[_74];
             groupMemoryBarrier();
@@ -63,11 +66,11 @@ void main()
                 vec4 _94 = PhysicalPointerFloat4Array(registers._m2).value[_81];
                 PhysicalPointerFloat4Array(registers._m2).value[_81] = vec4(_94.x + _87.x, _94.y + _87.y, _94.z + _87.z, _94.w + _87.w);
             }
-            uint _71 = _70 + 1u;
+            _71 = _70 + 1u;
             uvec4 _108 = PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u];
             if (_71 < _108.x)
             {
-                _70 = _71;
+                _112 = _71;
                 continue;
             }
             else
@@ -86,7 +89,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 121
+; Bound: 132
 ; Schema: 0
 OpCapability Shader
 OpCapability VulkanMemoryModel
@@ -180,10 +183,12 @@ OpMemberDecorate %76 0 NonWritable
 %79 = OpTypePointer PhysicalStorageBuffer %5
 %82 = OpConstant %5 26696
 %84 = OpConstant %5 256
+%111 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %111
-%111 = OpLabel
+%112 = OpVariable %111 Function
+OpBranch %113
+%113 = OpLabel
 %20 = OpAccessChain %19 %9 %21
 %22 = OpLoad %6 %20
 %23 = OpAccessChain %19 %9 %24
@@ -202,12 +207,13 @@ OpStore %42 %44 Aligned|NonPrivatePointer 4
 %52 = OpLoad %10 %51 Aligned 16
 %53 = OpCompositeExtract %5 %52 0
 %55 = OpIEqual %54 %53 %30
-OpSelectionMerge %119 None
-OpBranchConditional %55 %119 %112
-%112 = OpLabel
-OpBranch %113
-%113 = OpLabel
-%70 = OpPhi %5 %30 %112 %71 %117
+OpSelectionMerge %127 None
+OpBranchConditional %55 %127 %114
+%114 = OpLabel
+OpStore %112 %30
+OpBranch %115
+%115 = OpLabel
+%70 = OpLoad %5 %112
 %72 = OpShiftLeftLogical %5 %70 %73
 %74 = OpIAdd %5 %72 %34
 %78 = OpBitcast %77 %28
@@ -215,12 +221,12 @@ OpBranch %113
 %81 = OpLoad %5 %80 Aligned 4
 OpControlBarrier %24 %24 %82
 %83 = OpULessThan %54 %81 %84
-OpLoopMerge %118 %117 None
-OpBranch %114
-%114 = OpLabel
-OpSelectionMerge %116 None
-OpBranchConditional %83 %115 %116
-%115 = OpLabel
+OpLoopMerge %123 %121 None
+OpBranch %116
+%116 = OpLabel
+OpSelectionMerge %118 None
+OpBranchConditional %83 %117 %118
+%117 = OpLabel
 %85 = OpAccessChain %68 %14 %30 %74
 %86 = OpLoad %10 %85
 %87 = OpBitcast %36 %86
@@ -243,20 +249,40 @@ OpBranchConditional %83 %115 %116
 %104 = OpInBoundsAccessChain %41 %103 %30 %81
 %105 = OpCompositeConstruct %36 %99 %100 %101 %102
 OpStore %104 %105 Aligned|NonPrivatePointer 4
-OpBranch %116
-%116 = OpLabel
-OpBranch %117
-%117 = OpLabel
+OpBranch %118
+%118 = OpLabel
+OpBranch %119
+%119 = OpLabel
+OpBranch %120
+%120 = OpLabel
 %71 = OpIAdd %5 %70 %27
 %106 = OpBitcast %48 %31
 %107 = OpInBoundsAccessChain %50 %106 %30 %30
 %108 = OpLoad %10 %107 Aligned 16
 %109 = OpCompositeExtract %5 %108 0
 %110 = OpULessThan %54 %71 %109
-OpBranchConditional %110 %113 %118
-%118 = OpLabel
-OpBranch %119
-%119 = OpLabel
+OpSelectionMerge %130 None
+OpBranchConditional %110 %121 %122
+%122 = OpLabel
+OpBranch %123
+%130 = OpLabel
+OpUnreachable
+%121 = OpLabel
+OpStore %112 %71
+OpBranch %115
+%123 = OpLabel
+OpBranch %124
+%124 = OpLabel
+OpBranch %125
+%125 = OpLabel
+OpBranch %126
+%126 = OpLabel
+OpBranch %127
+%127 = OpLabel
+OpBranch %128
+%128 = OpLabel
+OpBranch %129
+%129 = OpLabel
 %56 = OpBitcast %39 %22
 %57 = OpInBoundsAccessChain %41 %56 %30 %34
 %58 = OpLoad %36 %57 Aligned|NonPrivatePointer 4

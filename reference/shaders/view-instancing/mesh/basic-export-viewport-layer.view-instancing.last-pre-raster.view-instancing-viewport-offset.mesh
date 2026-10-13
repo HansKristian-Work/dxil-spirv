@@ -41,9 +41,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.4
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 87
+; Bound: 89
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
@@ -139,11 +139,11 @@ OpSetMeshOutputsEXT %8 %15
 %45 = OpIEqual %38 %43 %29
 %46 = OpLogicalOr %38 %44 %45
 %47 = OpLogicalAnd %38 %39 %46
-OpSelectionMerge %84 None
-OpBranchConditional %47 %83 %84
-%83 = OpLabel
+OpSelectionMerge %86 None
+OpBranchConditional %47 %85 %86
+%85 = OpLabel
 OpReturn
-%84 = OpLabel
+%86 = OpLabel
 %48 = OpConvertUToF %5 %35
 %50 = OpAccessChain %49 %11 %35 %29
 OpStore %50 %48
@@ -184,6 +184,10 @@ OpStore %70 %65
 OpStore %79 %72
 OpBranch %82
 %82 = OpLabel
+OpBranch %83
+%83 = OpLabel
+OpBranch %84
+%84 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

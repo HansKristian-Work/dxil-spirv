@@ -48,6 +48,9 @@ public:
 
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 
+	const Vector<CFGNode *> get_pred() const { return pred; }
+	const Vector<CFGNode *> get_succ() const { return succ; }
+
 private:
 	friend class CFGNodePool;
 	friend class CFGStructurizer;
@@ -64,11 +67,17 @@ private:
 	bool freeze_structured_analysis = false;
 	bool is_pseudo_back_edge = false;
 
+	// In new structurizer, marks the node as inheriting its loop scope from its lone pred.
+	// This ensures that we don't end up needing super awkward ladder resolves just to get to a block
+	// that intends to set a simple PHI variable.
+	bool interposing = false;
+
 	MergeType merge = MergeType::None;
 	CFGNode *loop_merge_block = nullptr;
 	CFGNode *loop_ladder_block = nullptr;
 	CFGNode *selection_merge_block = nullptr;
 	Vector<CFGNode *> headers;
+	Vector<CFGNode *> idom_children;
 
 	CFGNode *immediate_dominator = nullptr;
 	CFGNode *immediate_post_dominator = nullptr;
@@ -115,6 +124,7 @@ private:
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void retarget_branch_pre_traversal(CFGNode *to_prev, CFGNode *to_next);
+	void collapse_conditional_to_direct(CFGNode *to_next);
 	void retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *to_next);
 	CFGNode *rewrite_branch_through_intermediate_node(CFGNode *to_prev, CFGNode *to_next);
 

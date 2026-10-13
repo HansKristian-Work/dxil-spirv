@@ -23,9 +23,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 38
+; Bound: 40
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformBallot
@@ -68,6 +68,10 @@ OpBranchConditional %13 %35 %36
 OpDemoteToHelperInvocation
 OpBranch %36
 %36 = OpLabel
+OpBranch %37
+%37 = OpLabel
+OpBranch %38
+%38 = OpLabel
 %15 = OpULessThan %12 %11 %16
 %17 = OpIsHelperInvocationEXT %12
 %18 = OpLogicalNot %12 %17

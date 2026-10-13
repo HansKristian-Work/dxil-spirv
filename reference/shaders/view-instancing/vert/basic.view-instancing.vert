@@ -18,13 +18,13 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 30
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
-OpEntryPoint Vertex %3 "main" %8
+OpEntryPoint Vertex %3 "main" %8 %12
 OpName %3 "main"
 OpName %8 "SV_Position"
 OpName %10 "ViewInstancingOffsetsUBO"

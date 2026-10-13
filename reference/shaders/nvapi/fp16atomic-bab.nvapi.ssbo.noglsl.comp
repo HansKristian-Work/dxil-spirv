@@ -1,5 +1,5 @@
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 65
 ; Schema: 0
@@ -14,7 +14,7 @@ OpExtension "SPV_KHR_untyped_pointers"
 OpExtension "SPV_NV_shader_atomic_fp16_vector"
 %15 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main"
+OpEntryPoint GLCompute %3 "main" %9 %13
 OpExecutionMode %3 LocalSize 32 1 1
 OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"

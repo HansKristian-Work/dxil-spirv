@@ -19,16 +19,16 @@ void main()
         }
     }
     bool _25 = helperInvocationEXT();
-    float _26;
-    float _29;
-    float _31;
-    float _33;
+    float _53;
+    float _54;
+    float _55;
+    float _56;
     if (_25)
     {
-        _26 = 0.0;
-        _29 = 0.0;
-        _31 = 0.0;
-        _33 = 0.0;
+        _53 = 0.0;
+        _54 = 0.0;
+        _55 = 0.0;
+        _56 = 0.0;
     }
     else
     {
@@ -36,24 +36,24 @@ void main()
         bool _46 = helperInvocationEXT();
         bool _48 = helperInvocationEXT();
         bool _50 = helperInvocationEXT();
-        _26 = subgroupExclusiveAdd(_44 ? 0.0 : TEXCOORD.x);
-        _29 = subgroupExclusiveAdd(_46 ? 0.0 : TEXCOORD.y);
-        _31 = subgroupExclusiveAdd(_48 ? 0.0 : (TEXCOORD.x * TEXCOORD.x));
-        _33 = subgroupExclusiveAdd(_50 ? 0.0 : (TEXCOORD.y * TEXCOORD.y));
+        _53 = subgroupExclusiveAdd(_44 ? 0.0 : TEXCOORD.x);
+        _54 = subgroupExclusiveAdd(_46 ? 0.0 : TEXCOORD.y);
+        _55 = subgroupExclusiveAdd(_48 ? 0.0 : (TEXCOORD.x * TEXCOORD.x));
+        _56 = subgroupExclusiveAdd(_50 ? 0.0 : (TEXCOORD.y * TEXCOORD.y));
     }
-    SV_Target.x = _26;
-    SV_Target.y = _29;
-    SV_Target.z = _31;
-    SV_Target.w = _33;
+    SV_Target.x = _53;
+    SV_Target.y = _54;
+    SV_Target.z = _55;
+    SV_Target.w = _56;
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 61
+; Bound: 71
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformArithmetic
@@ -87,34 +87,49 @@ OpDecorate %11 Location 0
 %35 = OpTypePointer Output %5
 %39 = OpConstant %14 2
 %41 = OpConstant %14 3
+%52 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %52
-%52 = OpLabel
+%53 = OpVariable %52 Function
+%54 = OpVariable %52 Function
+%55 = OpVariable %52 Function
+%56 = OpVariable %52 Function
+OpBranch %57
+%57 = OpLabel
 %13 = OpAccessChain %12 %8 %15
 %16 = OpLoad %5 %13
 %17 = OpAccessChain %12 %8 %18
 %19 = OpLoad %5 %17
 %21 = OpFOrdGreaterThan %20 %16 %22
-OpSelectionMerge %57 None
-OpBranchConditional %21 %56 %53
-%56 = OpLabel
+OpSelectionMerge %62 None
+OpBranchConditional %21 %61 %58
+%61 = OpLabel
 OpDemoteToHelperInvocation
-OpBranch %57
-%53 = OpLabel
-%23 = OpFOrdGreaterThan %20 %19 %24
-OpSelectionMerge %55 None
-OpBranchConditional %23 %54 %55
-%54 = OpLabel
-OpDemoteToHelperInvocation
-OpBranch %55
-%55 = OpLabel
-OpBranch %57
-%57 = OpLabel
-%25 = OpIsHelperInvocationEXT %20
-OpSelectionMerge %59 None
-OpBranchConditional %25 %59 %58
+OpBranch %62
 %58 = OpLabel
+%23 = OpFOrdGreaterThan %20 %19 %24
+OpSelectionMerge %60 None
+OpBranchConditional %23 %59 %60
+%59 = OpLabel
+OpDemoteToHelperInvocation
+OpBranch %60
+%60 = OpLabel
+OpBranch %62
+%62 = OpLabel
+OpBranch %63
+%63 = OpLabel
+OpBranch %64
+%64 = OpLabel
+%25 = OpIsHelperInvocationEXT %20
+OpSelectionMerge %67 None
+OpBranchConditional %25 %66 %65
+%66 = OpLabel
+OpStore %53 %27
+OpStore %54 %27
+OpStore %55 %27
+OpStore %56 %27
+OpBranch %67
+%65 = OpLabel
 %42 = OpFMul %5 %16 %16
 %43 = OpFMul %5 %19 %19
 %44 = OpIsHelperInvocationEXT %20
@@ -129,12 +144,20 @@ OpBranchConditional %25 %59 %58
 %50 = OpIsHelperInvocationEXT %20
 %51 = OpSelect %5 %50 %27 %43
 %34 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %51
-OpBranch %59
-%59 = OpLabel
-%26 = OpPhi %5 %27 %57 %28 %58
-%29 = OpPhi %5 %27 %57 %30 %58
-%31 = OpPhi %5 %27 %57 %32 %58
-%33 = OpPhi %5 %27 %57 %34 %58
+OpStore %53 %28
+OpStore %54 %30
+OpStore %55 %32
+OpStore %56 %34
+OpBranch %67
+%67 = OpLabel
+OpBranch %68
+%68 = OpLabel
+OpBranch %69
+%69 = OpLabel
+%33 = OpLoad %5 %56
+%31 = OpLoad %5 %55
+%29 = OpLoad %5 %54
+%26 = OpLoad %5 %53
 %36 = OpAccessChain %35 %11 %15
 OpStore %36 %26
 %37 = OpAccessChain %35 %11 %18

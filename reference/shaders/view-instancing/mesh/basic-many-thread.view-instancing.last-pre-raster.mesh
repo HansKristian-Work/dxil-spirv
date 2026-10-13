@@ -41,9 +41,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.4
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 78
+; Bound: 80
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
@@ -127,11 +127,11 @@ OpSetMeshOutputsEXT %8 %15
 %33 = OpIEqual %25 %30 %32
 %34 = OpLogicalOr %25 %31 %33
 %35 = OpLogicalAnd %25 %26 %34
-OpSelectionMerge %73 None
-OpBranchConditional %35 %72 %73
-%72 = OpLabel
+OpSelectionMerge %75 None
+OpBranchConditional %35 %74 %75
+%74 = OpLabel
 OpReturn
-%73 = OpLabel
+%75 = OpLabel
 %40 = OpAccessChain %39 %38 %32
 %41 = OpLoad %7 %40
 %42 = OpBitFieldUExtract %7 %41 %43 %43
@@ -139,12 +139,12 @@ OpReturn
 %48 = OpIAdd %7 %47 %32
 %49 = OpULessThan %25 %48 %15
 %51 = OpAccessChain %50 %46 %48
-OpSelectionMerge %76 None
-OpBranchConditional %49 %75 %76
-%75 = OpLabel
+OpSelectionMerge %78 None
+OpBranchConditional %49 %77 %78
+%77 = OpLabel
 OpStore %51 %42
-OpBranch %76
-%76 = OpLabel
+OpBranch %78
+%78 = OpLabel
 %52 = OpConvertUToF %5 %22
 %54 = OpAccessChain %53 %11 %22 %32
 OpStore %54 %52
@@ -170,6 +170,10 @@ OpBranchConditional %62 %70 %71
 OpStore %68 %66
 OpBranch %71
 %71 = OpLabel
+OpBranch %72
+%72 = OpLabel
+OpBranch %73
+%73 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

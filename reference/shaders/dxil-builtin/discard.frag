@@ -32,18 +32,18 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 40
+; Bound: 42
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %8
+OpEntryPoint Fragment %3 "main" %8 %18
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "TEXCOORD"
 OpName %18 "discard_state"
-OpName %32 "discard_exit"
+OpName %34 "discard_exit"
 OpDecorate %8 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -61,7 +61,7 @@ OpDecorate %8 Location 0
 %19 = OpConstantFalse %14
 %21 = OpConstant %11 1
 %24 = OpConstant %5 20
-%31 = OpConstantTrue %14
+%33 = OpConstantTrue %14
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpStore %18 %19
@@ -73,7 +73,7 @@ OpBranch %25
 OpSelectionMerge %30 None
 OpBranchConditional %15 %29 %26
 %29 = OpLabel
-OpStore %18 %31
+OpStore %18 %33
 OpBranch %30
 %26 = OpLabel
 %20 = OpAccessChain %9 %8 %21
@@ -82,22 +82,26 @@ OpBranch %30
 OpSelectionMerge %28 None
 OpBranchConditional %23 %27 %28
 %27 = OpLabel
-OpStore %18 %31
+OpStore %18 %33
 OpBranch %28
 %28 = OpLabel
 OpBranch %30
 %30 = OpLabel
-%38 = OpFunctionCall %1 %32
+OpBranch %31
+%31 = OpLabel
+OpBranch %32
+%32 = OpLabel
+%40 = OpFunctionCall %1 %34
 OpReturn
 OpFunctionEnd
-%32 = OpFunction %1 None %2
-%33 = OpLabel
-%36 = OpLoad %14 %18
-OpSelectionMerge %35 None
-OpBranchConditional %36 %34 %35
-%34 = OpLabel
-OpKill
+%34 = OpFunction %1 None %2
 %35 = OpLabel
+%38 = OpLoad %14 %18
+OpSelectionMerge %37 None
+OpBranchConditional %38 %36 %37
+%36 = OpLabel
+OpKill
+%37 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

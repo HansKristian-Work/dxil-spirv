@@ -17,7 +17,7 @@ void main()
 // SPIR-V disassembly
 // MultiviewCompatible
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 28
 ; Schema: 0

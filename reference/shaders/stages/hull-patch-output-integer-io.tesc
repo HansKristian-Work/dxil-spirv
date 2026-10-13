@@ -70,9 +70,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 162
+; Bound: 164
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
@@ -213,12 +213,16 @@ OpBranchConditional %152 %155 %156
 %153 = OpFunctionCall %1 %51
 OpBranch %156
 %156 = OpLabel
+OpBranch %157
+%157 = OpLabel
+OpBranch %158
+%158 = OpLabel
 OpReturn
 OpFunctionEnd
 %49 = OpFunction %1 None %2
 %50 = OpLabel
-OpBranch %158
-%158 = OpLabel
+OpBranch %160
+%160 = OpLabel
 %54 = OpAccessChain %53 %10 %55
 %56 = OpLoad %5 %54
 %57 = OpBitcast %6 %56
@@ -234,8 +238,8 @@ OpReturn
 OpFunctionEnd
 %51 = OpFunction %1 None %2
 %52 = OpLabel
-OpBranch %160
-%160 = OpLabel
+OpBranch %162
+%162 = OpLabel
 %69 = OpAccessChain %65 %18 %55
 %70 = OpLoad %14 %69
 %71 = OpAccessChain %65 %18 %61

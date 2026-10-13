@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_texture_shadow_lod : require
 
 layout(set = 1, binding = 0) uniform texture1D _8;
 layout(set = 1, binding = 1) uniform texture1DArray _11;
@@ -14,7 +15,7 @@ layout(location = 0) out vec2 SV_Target;
 void main()
 {
     vec4 _98 = vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w);
-    float _101 = ((((vec4(textureLod(sampler1DArrayShadow(_11, _26), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0)).x + vec4(textureLod(sampler1DShadow(_8, _26), vec2(TEXCOORD.x, TEXCOORD.w), 0.0)).x) + vec4(textureLod(sampler2DShadow(_14, _26), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0)).x) + vec4(textureGrad(sampler2DArrayShadow(_17, _26), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), vec2(0.0), vec2(0.0))).x) + vec4(textureGrad(samplerCubeShadow(_20, _26), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), vec3(0.0), vec3(0.0))).x) + vec4(textureGrad(samplerCubeArrayShadow(_23, _26), _98, TEXCOORD.w, vec3(0.0), vec3(0.0))).x;
+    float _101 = ((((vec4(textureLod(sampler1DArrayShadow(_11, _26), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0)).x + vec4(textureLod(sampler1DShadow(_8, _26), vec2(TEXCOORD.x, TEXCOORD.w), 0.0)).x) + vec4(textureLod(sampler2DShadow(_14, _26), vec3(vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.w), 0.0)).x) + vec4(textureLod(sampler2DArrayShadow(_17, _26), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), 0.0)).x) + vec4(textureLod(samplerCubeShadow(_20, _26), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), TEXCOORD.w), 0.0)).x) + vec4(textureLod(samplerCubeArrayShadow(_23, _26), _98, TEXCOORD.w, 0.0)).x;
     SV_Target.x = _101;
     SV_Target.y = _101;
 }
@@ -23,7 +24,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 107
 ; Schema: 0
@@ -31,7 +32,7 @@ OpCapability Shader
 OpCapability Sampled1D
 OpCapability SampledCubeArray
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %29 %32
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26 %29 %32
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %29 "TEXCOORD"

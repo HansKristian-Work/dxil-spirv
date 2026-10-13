@@ -5,61 +5,57 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    float _25;
+    float _47;
     if (V.x > 0.0)
     {
-        _25 = 20.0;
+        _47 = 20.0;
     }
     else
     {
-        _25 = 10.0;
+        _47 = 10.0;
     }
-    float _31;
-    float _33;
+    float _44;
+    float _45;
     if (V.y > 0.0)
     {
-        float _32;
+        float _46;
         if (V.x > 1.0)
         {
-            _32 = 10.0;
+            _46 = 10.0;
         }
         else
         {
-            _32 = 20.0;
+            _46 = 20.0;
         }
-        float frontier_phi_4_6_ladder;
-        float frontier_phi_4_6_ladder_1;
         if (V.z > 0.0)
         {
-            frontier_phi_4_6_ladder = _32;
-            frontier_phi_4_6_ladder_1 = 30.0;
+            _44 = _46;
+            _45 = 30.0;
         }
         else
         {
-            frontier_phi_4_6_ladder = _32;
-            frontier_phi_4_6_ladder_1 = 10.0;
+            _44 = _46;
+            _45 = 10.0;
         }
-        _31 = frontier_phi_4_6_ladder;
-        _33 = frontier_phi_4_6_ladder_1;
     }
     else
     {
-        _31 = 0.0;
-        _33 = 10.0;
+        _44 = 0.0;
+        _45 = 10.0;
     }
-    SV_Target.x = _25;
-    SV_Target.y = _31 + 10.0;
+    SV_Target.x = _47;
+    SV_Target.y = _44 + 10.0;
     SV_Target.z = 10.0;
-    SV_Target.w = _33;
+    SV_Target.w = _45;
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 55
+; Bound: 69
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -68,8 +64,6 @@ OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "V"
 OpName %10 "SV_Target"
-OpName %43 "frontier_phi_4.6.ladder"
-OpName %44 "frontier_phi_4.6.ladder"
 OpDecorate %8 Location 0
 OpDecorate %10 Location 0
 %1 = OpTypeVoid
@@ -93,10 +87,15 @@ OpDecorate %10 Location 0
 %34 = OpConstant %5 30
 %36 = OpTypePointer Output %5
 %41 = OpConstant %13 3
+%43 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %45
-%45 = OpLabel
+%44 = OpVariable %43 Function
+%45 = OpVariable %43 Function
+%46 = OpVariable %43 Function
+%47 = OpVariable %43 Function
+OpBranch %48
+%48 = OpLabel
 %12 = OpAccessChain %11 %8 %14
 %15 = OpLoad %5 %12
 %16 = OpAccessChain %11 %8 %17
@@ -104,35 +103,65 @@ OpBranch %45
 %19 = OpAccessChain %11 %8 %20
 %21 = OpLoad %5 %19
 %23 = OpFOrdGreaterThan %22 %15 %24
-OpSelectionMerge %47 None
-OpBranchConditional %23 %46 %47
-%46 = OpLabel
-OpBranch %47
-%47 = OpLabel
-%25 = OpPhi %5 %27 %45 %26 %46
-%28 = OpFOrdGreaterThan %22 %18 %24
-OpSelectionMerge %53 None
-OpBranchConditional %28 %48 %53
-%48 = OpLabel
-%29 = OpFOrdGreaterThan %22 %15 %30
-OpSelectionMerge %50 None
-OpBranchConditional %29 %49 %50
-%49 = OpLabel
-OpBranch %50
+OpSelectionMerge %51 None
+OpBranchConditional %23 %50 %49
 %50 = OpLabel
-%32 = OpPhi %5 %26 %48 %27 %49
-%42 = OpFOrdGreaterThan %22 %21 %24
-OpSelectionMerge %52 None
-OpBranchConditional %42 %51 %52
+OpStore %47 %26
+OpBranch %51
+%49 = OpLabel
+OpStore %47 %27
+OpBranch %51
 %51 = OpLabel
 OpBranch %52
 %52 = OpLabel
-%43 = OpPhi %5 %32 %51 %32 %50
-%44 = OpPhi %5 %34 %51 %27 %50
 OpBranch %53
 %53 = OpLabel
-%31 = OpPhi %5 %24 %47 %43 %52
-%33 = OpPhi %5 %27 %47 %44 %52
+%25 = OpLoad %5 %47
+%28 = OpFOrdGreaterThan %22 %18 %24
+OpSelectionMerge %65 None
+OpBranchConditional %28 %55 %54
+%55 = OpLabel
+%29 = OpFOrdGreaterThan %22 %15 %30
+OpSelectionMerge %58 None
+OpBranchConditional %29 %57 %56
+%57 = OpLabel
+OpStore %46 %27
+OpBranch %58
+%56 = OpLabel
+OpStore %46 %26
+OpBranch %58
+%58 = OpLabel
+OpBranch %59
+%59 = OpLabel
+OpBranch %60
+%60 = OpLabel
+%32 = OpLoad %5 %46
+%42 = OpFOrdGreaterThan %22 %21 %24
+OpSelectionMerge %63 None
+OpBranchConditional %42 %62 %61
+%62 = OpLabel
+OpStore %44 %32
+OpStore %45 %34
+OpBranch %63
+%61 = OpLabel
+OpStore %44 %32
+OpStore %45 %27
+OpBranch %63
+%63 = OpLabel
+OpBranch %64
+%64 = OpLabel
+OpBranch %65
+%54 = OpLabel
+OpStore %44 %24
+OpStore %45 %27
+OpBranch %65
+%65 = OpLabel
+OpBranch %66
+%66 = OpLabel
+OpBranch %67
+%67 = OpLabel
+%33 = OpLoad %5 %45
+%31 = OpLoad %5 %44
 %35 = OpFAdd %5 %31 %27
 %37 = OpAccessChain %36 %10 %14
 OpStore %37 %25

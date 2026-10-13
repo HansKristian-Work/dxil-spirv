@@ -6,47 +6,43 @@ layout(location = 0) out float SV_Target;
 void main()
 {
     uint _17 = uint(I.x);
+    uint _21 = uint(I.y);
+    uint _25 = uint(I.z);
     uint _29 = uint(I.w);
+    uint _40;
+    uint _41 = _17;
+    uint _42 = _21;
+    uint _43 = _25;
+    uint _44 = _29;
+    uint _30;
     uint _31;
     uint _32;
-    _31 = uint(I.y);
-    _32 = uint(I.z);
-    uint _34;
-    uint _30 = _17;
-    uint _33 = _29;
+    uint _33;
+    bool _46;
     for (;;)
     {
-        bool _41_ladder_break = false;
-        switch (_30)
+        _33 = _44;
+        _32 = _43;
+        _31 = _42;
+        _30 = _41;
+        _46 = _30 == 5u;
+        if (_46)
         {
-            case 5u:
+            _40 = 6u;
+        }
+        else
+        {
+            if (!(_30 == 7u))
             {
-                _34 = 6u;
-                _30 = _31;
-                _31 = _32;
-                _32 = _33;
-                _33 = _34;
-                continue;
-            }
-            case 7u:
-            {
-                _34 = 17u;
-                _30 = _31;
-                _31 = _32;
-                _32 = _33;
-                _33 = _34;
-                continue;
-            }
-            default:
-            {
-                _41_ladder_break = true;
                 break;
             }
+            _40 = 17u;
         }
-        if (_41_ladder_break)
-        {
-            break;
-        }
+        _41 = _31;
+        _42 = _32;
+        _43 = _33;
+        _44 = _40;
+        continue;
     }
     SV_Target = float(int(_32 + _31));
 }
@@ -55,9 +51,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 49
+; Bound: 64
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -86,10 +82,19 @@ OpDecorate %11 Location 0
 %27 = OpConstant %14 3
 %37 = OpConstant %14 17
 %38 = OpConstant %14 6
+%39 = OpTypePointer Function %14
+%45 = OpTypeBool
+%47 = OpConstant %14 5
+%49 = OpConstant %14 7
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %39
-%39 = OpLabel
+%40 = OpVariable %39 Function
+%41 = OpVariable %39 Function
+%42 = OpVariable %39 Function
+%43 = OpVariable %39 Function
+%44 = OpVariable %39 Function
+OpBranch %50
+%50 = OpLabel
 %13 = OpAccessChain %12 %8 %15
 %16 = OpLoad %5 %13
 %17 = OpBitcast %14 %16
@@ -102,29 +107,50 @@ OpBranch %39
 %26 = OpAccessChain %12 %8 %27
 %28 = OpLoad %5 %26
 %29 = OpBitcast %14 %28
-OpBranch %40
-%40 = OpLabel
-%30 = OpPhi %14 %17 %39 %31 %44
-%31 = OpPhi %14 %21 %39 %32 %44
-%32 = OpPhi %14 %25 %39 %33 %44
-%33 = OpPhi %14 %29 %39 %34 %44
-OpLoopMerge %46 %44 None
-OpBranch %41
-%41 = OpLabel
-OpSelectionMerge %47 None
-OpSwitch %30 %45 5 %43 7 %42
-%45 = OpLabel
-OpBranch %46
-%43 = OpLabel
-OpBranch %44
-%42 = OpLabel
-OpBranch %44
-%47 = OpLabel
-OpUnreachable
-%44 = OpLabel
-%34 = OpPhi %14 %37 %42 %38 %43
-OpBranch %40
-%46 = OpLabel
+OpStore %41 %17
+OpStore %42 %21
+OpStore %43 %25
+OpStore %44 %29
+OpBranch %51
+%51 = OpLabel
+%33 = OpLoad %14 %44
+%32 = OpLoad %14 %43
+%31 = OpLoad %14 %42
+%30 = OpLoad %14 %41
+%46 = OpIEqual %45 %30 %47
+OpLoopMerge %54 %62 None
+OpBranch %52
+%52 = OpLabel
+OpSelectionMerge %60 None
+OpBranchConditional %46 %59 %53
+%59 = OpLabel
+OpStore %40 %38
+OpBranch %60
+%53 = OpLabel
+%48 = OpIEqual %45 %30 %49
+OpSelectionMerge %58 None
+OpBranchConditional %48 %58 %54
+%58 = OpLabel
+OpStore %40 %37
+OpBranch %60
+%60 = OpLabel
+OpBranch %61
+%61 = OpLabel
+OpBranch %62
+%62 = OpLabel
+%34 = OpLoad %14 %40
+OpStore %41 %31
+OpStore %42 %32
+OpStore %43 %33
+OpStore %44 %34
+OpBranch %51
+%54 = OpLabel
+OpBranch %55
+%55 = OpLabel
+OpBranch %56
+%56 = OpLabel
+OpBranch %57
+%57 = OpLabel
 %35 = OpIAdd %14 %32 %31
 %36 = OpConvertSToF %9 %35
 OpStore %11 %36

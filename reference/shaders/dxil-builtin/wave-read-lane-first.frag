@@ -44,16 +44,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 90
+; Bound: 92
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformBallot
 OpCapability GroupNonUniformShuffle
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %11 %75
+OpEntryPoint Fragment %3 "main" %8 %11 %27 %77
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %11 "INDEX"
@@ -62,13 +62,13 @@ OpName %33 "WaveReadFirstLane"
 OpName %57 "ByteAddressMask"
 OpName %55 "index"
 OpName %56 "stride"
-OpName %82 "discard_exit"
+OpName %84 "discard_exit"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
 OpDecorate %11 Flat
 OpDecorate %11 Location 0
-OpDecorate %75 BuiltIn HelperInvocation
+OpDecorate %77 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -95,9 +95,9 @@ OpDecorate %75 BuiltIn HelperInvocation
 %54 = OpTypeFunction %5 %5 %5
 %60 = OpConstant %5 4294967295
 %64 = OpConstant %5 4
-%73 = OpConstantTrue %23
-%74 = OpTypePointer Input %23
-%75 = OpVariable %74 Input
+%75 = OpConstantTrue %23
+%76 = OpTypePointer Input %23
+%77 = OpVariable %76 Input
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpStore %27 %28
@@ -114,20 +114,24 @@ OpBranch %70
 OpSelectionMerge %72 None
 OpBranchConditional %24 %71 %72
 %71 = OpLabel
-OpStore %27 %73
+OpStore %27 %75
 OpBranch %72
 %72 = OpLabel
-%76 = OpLoad %23 %75
-%77 = OpLoad %23 %27
-%29 = OpLogicalOr %23 %76 %77
-%46 = OpFunctionCall %5 %33 %16 %29
-%78 = OpLoad %23 %75
+OpBranch %73
+%73 = OpLabel
+OpBranch %74
+%74 = OpLabel
+%78 = OpLoad %23 %77
 %79 = OpLoad %23 %27
-%47 = OpLogicalOr %23 %78 %79
-%48 = OpFunctionCall %5 %33 %19 %47
-%80 = OpLoad %23 %75
+%29 = OpLogicalOr %23 %78 %79
+%46 = OpFunctionCall %5 %33 %16 %29
+%80 = OpLoad %23 %77
 %81 = OpLoad %23 %27
-%49 = OpLogicalOr %23 %80 %81
+%47 = OpLogicalOr %23 %80 %81
+%48 = OpFunctionCall %5 %33 %19 %47
+%82 = OpLoad %23 %77
+%83 = OpLoad %23 %27
+%49 = OpLogicalOr %23 %82 %83
 %50 = OpFunctionCall %5 %33 %22 %49
 %51 = OpIMul %5 %16 %52
 %53 = OpIMul %5 %16 %38
@@ -140,7 +144,7 @@ OpImageWrite %12 %67 %66
 %68 = OpCompositeConstruct %35 %50 %50 %50 %50
 %69 = OpIAdd %5 %63 %21
 OpImageWrite %12 %69 %68
-%88 = OpFunctionCall %1 %82
+%90 = OpFunctionCall %1 %84
 OpReturn
 OpFunctionEnd
 %33 = OpFunction %5 None %30
@@ -164,14 +168,14 @@ OpFunctionEnd
 %61 = OpBitwiseAnd %5 %55 %59
 OpReturnValue %61
 OpFunctionEnd
-%82 = OpFunction %1 None %2
-%83 = OpLabel
-%86 = OpLoad %23 %27
-OpSelectionMerge %85 None
-OpBranchConditional %86 %84 %85
-%84 = OpLabel
-OpKill
+%84 = OpFunction %1 None %2
 %85 = OpLabel
+%88 = OpLoad %23 %27
+OpSelectionMerge %87 None
+OpBranchConditional %88 %86 %87
+%86 = OpLabel
+OpKill
+%87 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

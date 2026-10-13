@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 176
+; Bound: 180
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -67,21 +67,23 @@ OpDecorate %12 NonReadable
 %158 = OpConstantComposite %13 %24 %25 %25 %24
 %159 = OpConstantComposite %13 %25 %24 %25 %24
 %166 = OpTypeVector %22 2
+%169 = OpTypePointer Function %13
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %34 = OpVariable %33 Function
+%170 = OpVariable %169 Function
 %42 = OpUndef %29
 %142 = OpUndef %13
-OpBranch %169
-%169 = OpLabel
+OpBranch %171
+%171 = OpLabel
 %21 = OpLoad %6 %8
 %30 = OpCompositeConstruct %29 %24 %26 %27
 %31 = OpCompositeConstruct %29 %25 %25 %24
 OpHitObjectTraceRayEXT %34 %21 %23 %23 %23 %23 %23 %30 %24 %31 %28 %16
 %36 = OpHitObjectIsHitEXT %35 %34
-OpSelectionMerge %172 None
-OpBranchConditional %36 %171 %170
-%171 = OpLabel
+OpSelectionMerge %174 None
+OpBranchConditional %36 %173 %172
+%173 = OpLabel
 %38 = OpInBoundsAccessChain %37 %16 %23
 %39 = OpLoad %13 %38
 %40 = OpHitObjectGetRayTMinEXT %9 %34
@@ -179,12 +181,12 @@ OpBranchConditional %36 %171 %170
 OpHitObjectGetAttributesEXT %34 %20
 %134 = OpHitObjectIsHitEXT %35 %34
 %135 = OpLogicalNot %35 %134
-OpSelectionMerge %174 None
-OpBranchConditional %135 %173 %174
-%173 = OpLabel
+OpSelectionMerge %178 None
+OpBranchConditional %135 %177 %178
+%177 = OpLabel
 OpStore %20 %136
-OpBranch %174
-%174 = OpLabel
+OpBranch %178
+%178 = OpLabel
 %137 = OpCompositeExtract %9 %120 0
 %138 = OpCompositeExtract %9 %120 1
 %139 = OpCompositeExtract %9 %120 2
@@ -202,13 +204,19 @@ OpBranch %174
 %153 = OpCompositeInsert %13 %150 %152 2
 %154 = OpCompositeInsert %13 %24 %153 3
 %155 = OpFAdd %13 %154 %145
-OpBranch %172
-%170 = OpLabel
+OpStore %170 %155
+OpBranch %174
+%172 = OpLabel
 %156 = OpHitObjectIsMissEXT %35 %34
 %157 = OpSelect %13 %156 %158 %159
-OpBranch %172
-%172 = OpLabel
-%160 = OpPhi %13 %155 %174 %157 %170
+OpStore %170 %157
+OpBranch %174
+%174 = OpLabel
+OpBranch %175
+%175 = OpLabel
+OpBranch %176
+%176 = OpLabel
+%160 = OpLoad %13 %170
 %161 = OpLoad %10 %12
 %162 = OpCompositeExtract %9 %160 0
 %163 = OpCompositeExtract %9 %160 1

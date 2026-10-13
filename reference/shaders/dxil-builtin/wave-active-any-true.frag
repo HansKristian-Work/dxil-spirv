@@ -37,15 +37,15 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 60
+; Bound: 64
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformVote
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %10 %49
+OpEntryPoint Fragment %3 "main" %8 %10 %17 %53
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %10 "INDEX"
@@ -53,13 +53,13 @@ OpName %17 "discard_state"
 OpName %31 "ByteAddressMask"
 OpName %29 "index"
 OpName %30 "stride"
-OpName %52 "discard_exit"
+OpName %56 "discard_exit"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
 OpDecorate %10 Flat
 OpDecorate %10 Location 0
-OpDecorate %49 BuiltIn HelperInvocation
+OpDecorate %53 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -81,9 +81,9 @@ OpDecorate %49 BuiltIn HelperInvocation
 %38 = OpConstant %5 4
 %39 = OpConstant %5 1
 %40 = OpTypeVector %5 4
-%47 = OpConstantTrue %13
-%48 = OpTypePointer Input %13
-%49 = OpVariable %48 Input
+%51 = OpConstantTrue %13
+%52 = OpTypePointer Input %13
+%53 = OpVariable %52 Input
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpStore %17 %18
@@ -95,26 +95,34 @@ OpBranch %42
 OpSelectionMerge %44 None
 OpBranchConditional %14 %43 %44
 %43 = OpLabel
-OpStore %17 %47
+OpStore %17 %51
 OpBranch %44
 %44 = OpLabel
+OpBranch %45
+%45 = OpLabel
+OpBranch %46
+%46 = OpLabel
 %19 = OpULessThan %13 %12 %20
-%50 = OpLoad %13 %49
-%51 = OpLoad %13 %17
-%23 = OpLogicalOr %13 %50 %51
+%54 = OpLoad %13 %53
+%55 = OpLoad %13 %17
+%23 = OpLogicalOr %13 %54 %55
 %24 = OpLogicalNot %13 %23
 %25 = OpLogicalAnd %13 %19 %24
 %21 = OpGroupNonUniformAny %13 %22 %25
-OpSelectionMerge %46 None
-OpBranchConditional %21 %45 %46
-%45 = OpLabel
+OpSelectionMerge %48 None
+OpBranchConditional %21 %47 %48
+%47 = OpLabel
 %26 = OpShiftLeftLogical %5 %12 %27
 %37 = OpFunctionCall %5 %31 %12 %38
 %41 = OpCompositeConstruct %40 %39 %39 %39 %39
 OpImageWrite %11 %37 %41
-OpBranch %46
-%46 = OpLabel
-%58 = OpFunctionCall %1 %52
+OpBranch %48
+%48 = OpLabel
+OpBranch %49
+%49 = OpLabel
+OpBranch %50
+%50 = OpLabel
+%62 = OpFunctionCall %1 %56
 OpReturn
 OpFunctionEnd
 %31 = OpFunction %5 None %28
@@ -125,14 +133,14 @@ OpFunctionEnd
 %35 = OpBitwiseAnd %5 %29 %33
 OpReturnValue %35
 OpFunctionEnd
-%52 = OpFunction %1 None %2
-%53 = OpLabel
-%56 = OpLoad %13 %17
-OpSelectionMerge %55 None
-OpBranchConditional %56 %54 %55
-%54 = OpLabel
+%56 = OpFunction %1 None %2
+%57 = OpLabel
+%60 = OpLoad %13 %17
+OpSelectionMerge %59 None
+OpBranchConditional %60 %58 %59
+%58 = OpLabel
 OpKill
-%55 = OpLabel
+%59 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

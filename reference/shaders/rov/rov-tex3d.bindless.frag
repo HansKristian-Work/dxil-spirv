@@ -46,7 +46,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 56
 ; Schema: 0
@@ -59,7 +59,7 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_EXT_fragment_shader_interlock"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint Fragment %3 "main" %16
+OpEntryPoint Fragment %3 "main" %8 %13 %16
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
 OpExecutionMode %3 PixelInterlockOrderedEXT

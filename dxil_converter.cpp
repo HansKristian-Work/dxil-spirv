@@ -9003,6 +9003,12 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	execution_model = get_execution_model(module, entry_point_meta);
 	execution_model_lib_target = get_execution_model_lib_target(module, entry_point_meta);
 
+	if (!module_is_dxbc_spirv(module) && !options.legacy_structurizer)
+	{
+		// New code, just finally go with SPIR-V 1.6 by default.
+		spirv_module.set_override_spirv_version(0x10600);
+	}
+
 	if (execution_model_lib_target && execution_model == spv::ExecutionModelGLCompute)
 	{
 		// Might as well go with SPIR-V 1.6. Then we get subgroup size control semantics for "free".
@@ -9910,6 +9916,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &c = static_cast<const OptionConservativeSSBOVectorization &>(cap);
 		options.conservative_ssbo_vectorization = c.enabled;
+		break;
+	}
+
+	case Option::LegacyStructurizer:
+	{
+		auto &c = static_cast<const OptionLegacyStructurizer &>(cap);
+		options.legacy_structurizer = c.enabled;
 		break;
 	}
 

@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 67
+; Bound: 71
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -83,20 +83,28 @@ OpBranch %63
 OpHitObjectRecordMissEXT %30 %31 %25 %36 %21 %37 %22
 OpBranch %63
 %63 = OpLabel
+OpBranch %64
+%64 = OpLabel
+OpBranch %65
+%65 = OpLabel
 %38 = OpHitObjectIsHitEXT %26 %30
 %39 = OpSelect %5 %38 %40 %41
 %42 = OpBitwiseAnd %5 %31 %39
 OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %42
 %43 = OpBitwiseAnd %5 %19 %31
 %44 = OpIEqual %26 %43 %18
-OpSelectionMerge %65 None
-OpBranchConditional %44 %65 %64
-%64 = OpLabel
+OpSelectionMerge %67 None
+OpBranchConditional %44 %67 %66
+%66 = OpLabel
 %58 = OpCompositeConstruct %35 %21 %32 %33
 %59 = OpCompositeConstruct %35 %32 %21 %34
 OpHitObjectRecordMissEXT %30 %57 %25 %58 %21 %59 %22
-OpBranch %65
-%65 = OpLabel
+OpBranch %67
+%67 = OpLabel
+OpBranch %68
+%68 = OpLabel
+OpBranch %69
+%69 = OpLabel
 %45 = OpHitObjectIsHitEXT %26 %30
 %46 = OpSelect %5 %45 %40 %41
 %47 = OpBitwiseAnd %5 %25 %46

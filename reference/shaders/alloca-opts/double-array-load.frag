@@ -50,7 +50,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 147
 ; Schema: 0
@@ -59,7 +59,7 @@ OpCapability Float64
 OpCapability DenormPreserve
 OpExtension "SPV_KHR_float_controls"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %14 %18 %20
+OpEntryPoint Fragment %3 "main" %12 %14 %18 %20
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 64
 OpName %3 "main"

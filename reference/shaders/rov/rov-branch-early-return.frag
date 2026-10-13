@@ -21,36 +21,33 @@ layout(set = 0, binding = 2, r32f) uniform image2D _10;
 
 void main()
 {
-    uint _25;
-    uint _26;
-    bool _45;
-    for (;;)
+    uint _25 = uint(gl_FragCoord.x);
+    uint _26 = uint(gl_FragCoord.y);
+    vec4 _27 = imageLoad(_10, ivec2(uvec2(_25, _26)));
+    imageStore(_10, ivec2(uvec2(_25, _26)), vec4(_27.x + 1.0, _27.y + 2.0, _27.z + 3.0, _27.w + 4.0));
+    SPIRV_Cross_beginInvocationInterlock();
+    bool _91 = false;
+    if (gl_FragCoord.x < 10.0)
     {
-        _25 = uint(gl_FragCoord.x);
-        _26 = uint(gl_FragCoord.y);
-        vec4 _27 = imageLoad(_10, ivec2(uvec2(_25, _26)));
-        imageStore(_10, ivec2(uvec2(_25, _26)), vec4(_27.x + 1.0, _27.y + 2.0, _27.z + 3.0, _27.w + 4.0));
-        _45 = gl_FragCoord.x < 10.0;
-        SPIRV_Cross_beginInvocationInterlock();
-        if (_45)
+        vec4 _47 = imageLoad(_8, ivec2(uvec2(_25, _26)));
+        imageStore(_8, ivec2(uvec2(_25, _26)), vec4(_47.x + 1.0, _47.y + 2.0, _47.z + 3.0, _47.w + 4.0));
+        if (!(imageLoad(_10, ivec2(uvec2(_25, _26))).z > 100.0))
         {
-            vec4 _47 = imageLoad(_8, ivec2(uvec2(_25, _26)));
-            imageStore(_8, ivec2(uvec2(_25, _26)), vec4(_47.x + 1.0, _47.y + 2.0, _47.z + 3.0, _47.w + 4.0));
-            if (imageLoad(_10, ivec2(uvec2(_25, _26))).z > 100.0)
-            {
-                break;
-            }
+            _91 = true;
         }
-        else
-        {
-            vec4 _64 = imageLoad(_9, ivec2(uvec2(_25, _26)));
-            imageStore(_9, ivec2(uvec2(_25, _26)), vec4(_64.x + 1.0, _64.y + 2.0, _64.z + 3.0, _64.w + 4.0));
-        }
+    }
+    else
+    {
+        vec4 _64 = imageLoad(_9, ivec2(uvec2(_25, _26)));
+        imageStore(_9, ivec2(uvec2(_25, _26)), vec4(_64.x + 1.0, _64.y + 2.0, _64.z + 3.0, _64.w + 4.0));
+        _91 = true;
+    }
+    if (_91)
+    {
         uint _76 = _25 ^ 1u;
         uint _77 = _26 ^ 1u;
         vec4 _78 = imageLoad(_10, ivec2(uvec2(_76, _77)));
         imageStore(_10, ivec2(uvec2(_76, _77)), vec4(_78.x + 1.0, _78.y + 2.0, _78.z + 3.0, _78.w + 4.0));
-        break;
     }
     SPIRV_Cross_endInvocationInterlock();
 }
@@ -59,16 +56,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 99
+; Bound: 107
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_fragment_shader_interlock"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %13
+OpEntryPoint Fragment %3 "main" %8 %9 %10 %13
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
 OpExecutionMode %3 PixelInterlockOrderedEXT
@@ -106,10 +103,14 @@ OpDecorate %13 BuiltIn FragCoord
 %44 = OpTypeBool
 %46 = OpConstant %5 10
 %63 = OpConstant %5 100
+%90 = OpTypePointer Function %44
+%92 = OpConstantFalse %44
+%94 = OpConstantTrue %44
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %90
-%90 = OpLabel
+%91 = OpVariable %90 Function
+OpBranch %95
+%95 = OpLabel
 %14 = OpLoad %6 %10
 %15 = OpLoad %6 %9
 %16 = OpLoad %6 %8
@@ -134,12 +135,10 @@ OpBranch %90
 OpImageWrite %14 %42 %43
 %45 = OpFOrdLessThan %44 %21 %46
 OpBeginInvocationInterlockEXT
-OpLoopMerge %96 %97 None
-OpBranch %91
-%91 = OpLabel
-OpSelectionMerge %95 None
-OpBranchConditional %45 %93 %92
-%93 = OpLabel
+OpStore %91 %92
+OpSelectionMerge %100 None
+OpBranchConditional %45 %97 %96
+%97 = OpLabel
 %48 = OpCompositeConstruct %28 %25 %26
 %47 = OpImageRead %11 %16 %48 None
 %49 = OpCompositeExtract %5 %47 0
@@ -157,11 +156,14 @@ OpImageWrite %16 %57 %58
 %59 = OpImageRead %11 %14 %60 None
 %61 = OpCompositeExtract %5 %59 2
 %62 = OpFOrdGreaterThan %44 %61 %63
-OpSelectionMerge %94 None
-OpBranchConditional %62 %96 %94
-%94 = OpLabel
-OpBranch %95
-%92 = OpLabel
+OpSelectionMerge %99 None
+OpBranchConditional %62 %99 %98
+%98 = OpLabel
+OpStore %91 %94
+OpBranch %99
+%99 = OpLabel
+OpBranch %100
+%96 = OpLabel
 %65 = OpCompositeConstruct %28 %25 %26
 %64 = OpImageRead %11 %15 %65 None
 %66 = OpCompositeExtract %5 %64 0
@@ -175,8 +177,15 @@ OpBranch %95
 %74 = OpCompositeConstruct %28 %25 %26
 %75 = OpCompositeConstruct %11 %70 %71 %72 %73
 OpImageWrite %15 %74 %75
-OpBranch %95
-%95 = OpLabel
+OpStore %91 %94
+OpBranch %100
+%100 = OpLabel
+OpBranch %101
+%101 = OpLabel
+%93 = OpLoad %44 %91
+OpSelectionMerge %103 None
+OpBranchConditional %93 %102 %103
+%102 = OpLabel
 %76 = OpBitwiseXor %19 %25 %23
 %77 = OpBitwiseXor %19 %26 %23
 %79 = OpCompositeConstruct %28 %76 %77
@@ -192,10 +201,12 @@ OpBranch %95
 %88 = OpCompositeConstruct %28 %76 %77
 %89 = OpCompositeConstruct %11 %84 %85 %86 %87
 OpImageWrite %14 %88 %89
-OpBranch %96
-%97 = OpLabel
-OpBranch %90
-%96 = OpLabel
+OpBranch %103
+%103 = OpLabel
+OpBranch %104
+%104 = OpLabel
+OpBranch %105
+%105 = OpLabel
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd
