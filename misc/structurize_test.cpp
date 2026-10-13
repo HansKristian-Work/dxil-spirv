@@ -38,6 +38,8 @@
 #include "cli_parser.hpp"
 #include "thread_local_allocator.hpp"
 
+#include <vulkan/vulkan.h>
+
 using namespace dxil_spv;
 
 struct Emitter : BlockEmissionInterface
@@ -400,7 +402,105 @@ CFGNode *Emitter::get(const String &name)
 
 static void print_help()
 {
-	LOGE("Usage: structurize-test [input] [--output out.spv] [--skip-validation] [--help]\n");
+	LOGE("Usage: structurize-test [input] [--output out.spv] [--skip-validation] [--help] [--compile] [--unstructured]\n");
+}
+
+static void compile_compute_shader(const Vector<uint32_t> &spirv)
+{
+	VkInstanceCreateInfo instance_info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+	VkApplicationInfo app_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
+	app_info.apiVersion = VK_API_VERSION_1_4;
+	app_info.pApplicationName = "structurize-test";
+	app_info.pEngineName = "dxil-spirv";
+	instance_info.pApplicationInfo = &app_info;
+
+	VkInstance instance;
+	VkDevice device;
+	VkResult vr;
+
+	vr = vkCreateInstance(&instance_info, nullptr, &instance);
+	if (vr != VK_SUCCESS)
+	{
+		LOGE("Failed to create VkInstance");
+		return;
+	}
+
+	VkDeviceCreateInfo device_info = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+	VkDeviceQueueCreateInfo queue_info = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+	queue_info.queueCount = 1;
+	device_info.pQueueCreateInfos = &queue_info;
+
+	uint32_t count = 1;
+	VkPhysicalDevice gpu;
+	if (vkEnumeratePhysicalDevices(instance, &count, &gpu) < 0)
+	{
+		LOGE("Failed to enumerate GPUs.\n");
+		return;
+	}
+
+	VkPhysicalDeviceVulkan14Features vk14 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES };
+	VkPhysicalDeviceFeatures2 features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+	features.pNext = &vk14;
+	vkGetPhysicalDeviceFeatures2(gpu, &features);
+	device_info.pNext = &features;
+
+	vr = vkCreateDevice(gpu, &device_info, nullptr, &device);
+	if (vr != VK_SUCCESS)
+	{
+		LOGE("Failed to create VkDevice");
+		return;
+	}
+
+	VkDescriptorSetLayoutCreateInfo layout_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	layout_info.bindingCount = 2;
+	VkDescriptorSetLayoutBinding bindings[2] = {};
+	bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	bindings[0].descriptorCount = 1;
+	bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	bindings[1] = bindings[0];
+	bindings[1].binding = 1;
+	layout_info.pBindings = bindings;
+
+	VkDescriptorSetLayout set_layout;
+	VkPipelineLayout pipeline_layout;
+	if (vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &set_layout) != VK_SUCCESS)
+	{
+		LOGE("Failed to create VkDescriptorSetLayout");
+		return;
+	}
+
+	VkPipelineLayoutCreateInfo pipe_layout_info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+	pipe_layout_info.setLayoutCount = 1;
+	pipe_layout_info.pSetLayouts = &set_layout;
+	if (vkCreatePipelineLayout(device, &pipe_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS)
+	{
+		LOGE("Failed to create VkPipelineLayout");
+		return;
+	}
+
+	VkComputePipelineCreateInfo pipe_info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+	pipe_info.layout = pipeline_layout;
+	pipe_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	pipe_info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	pipe_info.stage.pName = "main";
+
+	VkShaderModuleCreateInfo module_info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+	module_info.codeSize = spirv.size() * sizeof(spirv.front());
+	module_info.pCode = spirv.data();
+	pipe_info.stage.pNext = &module_info;
+
+	VkPipeline pipe;
+	if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipe_info, nullptr, &pipe) != VK_SUCCESS)
+	{
+		LOGE("Failed to create pipeline.\n");
+		return;
+	}
+
+	vkDestroyPipeline(device, pipe, nullptr);
+	vkDestroyDescriptorSetLayout(device, set_layout, nullptr);
+	vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
+	vkDestroyDevice(device, nullptr);
+	vkDestroyInstance(instance, nullptr);
 }
 
 int main(int argc, char **argv)
@@ -410,11 +510,15 @@ int main(int argc, char **argv)
 	String input_path;
 	String output_path;
 	bool skip_validation = false;
+	bool compile = false;
+	bool unstructured = false;
 	CLICallbacks cbs;
 	cbs.default_handler = [&](const char *path) { input_path = path; };
 	cbs.add("--help", [&](CLIParser &parser) { parser.end(); });
 	cbs.add("--output", [&](CLIParser &parser) { output_path = parser.next_string(); });
 	cbs.add("--skip-validation", [&](CLIParser &) { skip_validation = true; });
+	cbs.add("--compile", [&](CLIParser &) { compile = true; });
+	cbs.add("--unstructured", [&](CLIParser &) { unstructured = true; skip_validation = true; });
 
 	CLIParser parser(std::move(cbs), argc - 1, argv + 1);
 	if (!parser.parse())
@@ -501,7 +605,16 @@ int main(int argc, char **argv)
 	}
 
 	CFGStructurizer traverser(emitter.get("entry"), emitter.pool, emitter.module);
-	traverser.run();
+
+	if (unstructured)
+	{
+		emitter.module.get_builder().addExtension("SPV_FROG_unstructured_control_flow");
+		traverser.run_experimental_unstructured();
+	}
+	else
+	{
+		traverser.run();
+	}
 
 	if (output_path.empty())
 	{
@@ -515,6 +628,13 @@ int main(int argc, char **argv)
 	emitter.module.emit_entry_point_function_body(traverser);
 	Vector<uint32_t> code;
 	emitter.module.finalize_spirv(code);
+
+	bool success = true;
+	if (!skip_validation)
+		success = validate_spirv(code);
+
+	if (compile && success)
+		compile_compute_shader(code);
 
 	if (output_path.empty())
 	{
@@ -538,10 +658,6 @@ int main(int argc, char **argv)
 
 		fclose(f);
 	}
-
-	bool success = true;
-	if (!skip_validation)
-		success = validate_spirv(code);
 
 	return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
