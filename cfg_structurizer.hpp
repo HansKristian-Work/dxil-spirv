@@ -78,6 +78,7 @@ private:
 	Vector<uint32_t> reachability_bitset;
 	unsigned reachability_stride = 0;
 	bool experimental_unstructured_flow = false;
+	bool experimental_flow = false;
 
 	UnorderedSet<const CFGNode *> reachable_nodes;
 	UnorderedSet<const CFGNode *> structured_loop_merge_targets;
@@ -339,7 +340,6 @@ private:
 	void resolve_direct_path(CFGNode *from, CFGNode *succ, const SerializationLevel &level);
 
 	void serialize_merge_levels_for_dominated_paths_entry();
-	Vector<CFGNode *> get_idom_children(CFGNode *node);
 	static const SerializationLevel *find_level_for_block(const Vector<SerializationLevel> &levels, CFGNode *block);
 };
 

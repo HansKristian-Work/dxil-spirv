@@ -75,16 +75,6 @@ void CFGStructurizer::rewrite_switch_blocks()
 
 }
 
-Vector<CFGNode *> CFGStructurizer::get_idom_children(CFGNode *node)
-{
-	// TODO: Extremely inefficient, should be replaced by an array in recompute_cfg().
-	Vector<CFGNode *> nodes;
-	for (auto *n : forward_post_visit_order)
-		if (n->immediate_dominator == node)
-			nodes.push_back(n);
-	return nodes;
-}
-
 const CFGStructurizer::SerializationLevel *CFGStructurizer::find_level_for_block(
 		const Vector<SerializationLevel> &levels, CFGNode *block)
 {
@@ -116,20 +106,16 @@ const CFGStructurizer::SerializationLevel *CFGStructurizer::find_level_for_block
 void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		CFGNode *node, const Vector<SerializationLevel> &outer_levels, CFGNode *outer_merge)
 {
-	auto children = get_idom_children(node);
 	Vector<CFGNode *> frontier_nodes;
 
 	// Only consider blocks that the header dominates.
 	// If we're exiting a dominance relationship, those branches will be handled specially.
-	for (auto *child: children)
+	for (auto *child : node->idom_children)
 	{
-		// Rewriting control flow screws with idom analysis it seems since we don't recompute the CFG properly.
-		// For now, sanity check the results against existing levels.
-		if (find_level_for_block(outer_levels, child))
-			continue;
-
 		for (auto *front: child->dominance_frontier)
 		{
+			// Only consider new frontiers if we're the first scope to identify it.
+			// A block must only belong to one scope.
 			if (!has_element(frontier_nodes, front) && node->dominates(front) &&
 			    !find_level_for_block(outer_levels, front))
 			{
@@ -524,6 +510,8 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths_entry()
 
 bool CFGStructurizer::run_experimental()
 {
+	experimental_flow = true;
+
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
 	String graphviz_path;
 	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))

@@ -3114,6 +3114,9 @@ void CFGStructurizer::build_immediate_dominators()
 	{
 		auto *block = forward_post_visit_order[i - 1];
 		block->recompute_immediate_dominator();
+
+		if (experimental_flow && block->immediate_dominator && block->immediate_dominator != block)
+			block->immediate_dominator->idom_children.push_back(block);
 	}
 }
 
@@ -3138,6 +3141,7 @@ void CFGStructurizer::reset_traversal()
 		node.traversing = false;
 		node.immediate_dominator = nullptr;
 		node.immediate_post_dominator = nullptr;
+		node.idom_children.clear();
 		node.fake_pred.clear();
 		node.fake_succ.clear();
 		node.headers.clear();
@@ -5107,13 +5111,19 @@ void CFGStructurizer::recompute_cfg()
 	// Need to prune dead preds before computing dominance.
 	prune_dead_preds();
 	build_immediate_dominators();
-	build_reachability();
 
-	backwards_visit();
-	build_immediate_post_dominators();
+	if (!experimental_flow)
+	{
+		build_reachability();
+
+		backwards_visit();
+		build_immediate_post_dominators();
+	}
 
 	compute_dominance_frontier();
-	compute_post_dominance_frontier();
+
+	if (!experimental_flow)
+		compute_post_dominance_frontier();
 }
 
 CFGNode *CFGStructurizer::find_natural_switch_merge_block(CFGNode *node, CFGNode *post_dominator) const

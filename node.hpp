@@ -69,6 +69,7 @@ private:
 	CFGNode *loop_ladder_block = nullptr;
 	CFGNode *selection_merge_block = nullptr;
 	Vector<CFGNode *> headers;
+	Vector<CFGNode *> idom_children;
 
 	CFGNode *immediate_dominator = nullptr;
 	CFGNode *immediate_post_dominator = nullptr;
