@@ -222,13 +222,23 @@ ChildProcess::~ChildProcess()
 		std::terminate();
 }
 
+struct FuzzState
+{
+	int sync_fd = -1;
+	Vulkan::BufferHandle unstructured_result;
+	Vulkan::BufferHandle structured_result;
+};
+
 struct FuzzGroup
 {
 	ChildProcess unstructured;
 	ChildProcess structured;
+	FuzzState result;
+
 	FuzzGroup(int epoll_fd, char **argv_unstructured, char **argv_structured, const void *stdin_data, size_t size);
 
-	void process(int fd);
+	bool find_fd(int fd) const;
+	bool process(Vulkan::Device &device, int fd);
 	bool complete() const;
 	void drain();
 };
@@ -242,17 +252,75 @@ static void add_fd_to_epoll(int epoll_fd, int fd, int events = EPOLLIN)
 		throw std::runtime_error("epoll_ctl failed");
 }
 
-void FuzzGroup::process(int fd)
+bool FuzzGroup::find_fd(int fd) const
 {
+	return fd == result.sync_fd || unstructured.find_fd(fd) || structured.find_fd(fd);
+}
+
+static constexpr uint32_t MaxBlocks = 1024;
+static constexpr uint32_t MaxFeedback = 4096;
+
+static bool validate_fuzzing_result(Vulkan::Device &device, FuzzState &state)
+{
+	auto *unstructured = static_cast<const uint32_t *>(device.map_host_buffer(*state.unstructured_result, Vulkan::MEMORY_ACCESS_READ_BIT));
+	auto *structured = static_cast<const uint32_t *>(device.map_host_buffer(*state.structured_result, Vulkan::MEMORY_ACCESS_READ_BIT));
+
+	for (size_t i = 0; i < MaxFeedback; i++)
+	{
+		if (unstructured[MaxBlocks * i] == 0)
+		{
+			LOGE("The buffer is not written for block %zu.\n", i);
+			return false;
+		}
+	}
+
+	size_t words = state.unstructured_result->get_create_info().size / sizeof(uint32_t);
+	for (size_t i = 0; i < words; i++)
+	{
+		if (unstructured[i] != structured[i])
+		{
+			LOGE("Fuzzing failed at word %zu, expected %u, got %u.\n", i, unstructured[i], structured[i]);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool FuzzGroup::process(Vulkan::Device &device, int fd)
+{
+	if (result.sync_fd == fd)
+	{
+		if (!validate_fuzzing_result(device, result))
+		{
+			LOGE("Fuzzing failed!\n");
+			return false;
+		}
+
+		close_and_reset(result.sync_fd);
+		return true;
+	}
+
 	if (unstructured.find_fd(fd))
-		return unstructured.process(fd);
+	{
+		unstructured.process(fd);
+		return true;
+	}
+
 	if (structured.find_fd(fd))
-		return structured.process(fd);
+	{
+		structured.process(fd);
+		return true;
+	}
+
 	throw std::logic_error("Should not reach here.");
 }
 
 bool FuzzGroup::complete() const
 {
+	if (result.structured_result)
+		return result.sync_fd < 0;
+
 	return unstructured.complete() && structured.complete();
 }
 
@@ -260,6 +328,10 @@ void FuzzGroup::drain()
 {
 	unstructured.drain();
 	structured.drain();
+
+	close_and_reset(result.sync_fd);
+	result.structured_result.reset();
+	result.unstructured_result.reset();
 }
 
 FuzzGroup::FuzzGroup(int epoll_fd, char **argv_unstructured, char **argv_structured, const void *stdin_data, size_t size)
@@ -274,10 +346,13 @@ FuzzGroup::FuzzGroup(int epoll_fd, char **argv_unstructured, char **argv_structu
 	add_fd_to_epoll(epoll_fd, structured.stdout_pipefds[0]);
 }
 
-static void queue_fuzz(std::mt19937 &rnd, Vulkan::Device &device, const std::vector<uint8_t> &reference, const std::vector<uint8_t> &candidate)
+static FuzzState queue_fuzz(
+	std::mt19937 &rnd, Vulkan::Device &device,
+	const std::vector<uint8_t> &reference, const std::vector<uint8_t> &candidate)
 {
 	std::vector<uint32_t> conditions;
-	for (uint32_t i = 0; i < 1024; i++)
+	conditions.reserve(MaxBlocks * MaxFeedback);
+	for (uint32_t i = 0; i < MaxBlocks * MaxFeedback; i++)
 		conditions.push_back(rnd() % 2);
 
 	Vulkan::BufferCreateInfo bufinfo = {};
@@ -286,7 +361,7 @@ static void queue_fuzz(std::mt19937 &rnd, Vulkan::Device &device, const std::vec
 	bufinfo.domain = Vulkan::BufferDomain::Device;
 	auto condition_buffer = device.create_buffer(bufinfo, conditions.data());
 
-	bufinfo.size = 1024 * 1024;
+	bufinfo.size = MaxBlocks * MaxFeedback * sizeof(uint32_t);
 	bufinfo.domain = Vulkan::BufferDomain::CachedHost;
 	bufinfo.misc = Vulkan::BUFFER_MISC_ZERO_INITIALIZE_BIT;
 	auto feedback_buffer_unstructured = device.create_buffer(bufinfo);
@@ -297,33 +372,48 @@ static void queue_fuzz(std::mt19937 &rnd, Vulkan::Device &device, const std::vec
 	auto *reference_program = device.request_program(reinterpret_cast<const uint32_t *>(reference.data()), reference.size());
 	auto *candidate_program = device.request_program(reinterpret_cast<const uint32_t *>(candidate.data()), candidate.size());
 
-	cmd->set_program(reference_program);
-	cmd->set_storage_buffer(0, 0, *condition_buffer);
-	cmd->set_storage_buffer(0, 1, *feedback_buffer_unstructured);
-	cmd->dispatch(1, 1, 1);
+	for (uint32_t i = 0; i < MaxFeedback; i++)
+	{
+		cmd->set_program(reference_program);
+		cmd->set_storage_buffer(0, 0, *condition_buffer, MaxBlocks * i * sizeof(uint32_t), MaxBlocks * sizeof(uint32_t));
+		cmd->set_storage_buffer(0, 1, *feedback_buffer_unstructured, MaxBlocks * i * sizeof(uint32_t), MaxBlocks * sizeof(uint32_t));
+		cmd->dispatch(1, 1, 1);
 
-	cmd->set_program(candidate_program);
-	cmd->set_storage_buffer(0, 0, *condition_buffer);
-	cmd->set_storage_buffer(0, 1, *feedback_buffer_structured);
-	cmd->dispatch(1, 1, 1);
+		cmd->set_program(candidate_program);
+		cmd->set_storage_buffer(0, 0, *condition_buffer, MaxBlocks * i * sizeof(uint32_t), MaxBlocks * sizeof(uint32_t));
+		cmd->set_storage_buffer(0, 1, *feedback_buffer_structured, MaxBlocks * i * sizeof(uint32_t), MaxBlocks * sizeof(uint32_t));
+		cmd->dispatch(1, 1, 1);
+	}
 
 	cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
 	             VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
 
-	Vulkan::Fence fence;
-	device.submit(cmd, &fence);
-	fence->wait();
+	auto sig = device.request_semaphore_external(VK_SEMAPHORE_TYPE_BINARY, VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT);
+	device.submit(cmd);
+	device.submit_empty(Vulkan::CommandBuffer::Type::Generic, nullptr, sig.get());
+	auto handle = sig->export_to_handle();
 
-	auto *unstructured = static_cast<const uint32_t *>(device.map_host_buffer(*feedback_buffer_unstructured, Vulkan::MEMORY_ACCESS_READ_BIT));
-	auto *structured = static_cast<const uint32_t *>(device.map_host_buffer(*feedback_buffer_structured, Vulkan::MEMORY_ACCESS_READ_BIT));
-
-	if (unstructured[0] == 0)
-		LOGE("Unexpected!\n");
-
-	if (memcmp(unstructured, structured, bufinfo.size) != 0)
-		LOGE("Mismatch!\n");
-
+	FuzzState result;
+	result.sync_fd = handle.handle;
+	result.structured_result = std::move(feedback_buffer_structured);
+	result.unstructured_result = std::move(feedback_buffer_unstructured);
 	device.next_frame_context();
+	return result;
+}
+
+static void dump_file(const char *path, const void *data, size_t size)
+{
+	FILE *f = fopen(path, "wb");
+	if (f)
+	{
+		if (fwrite(data, 1, size, f) != size)
+			LOGE("Failed to write file completely to: %s\n", path);
+		fclose(f);
+	}
+	else
+	{
+		LOGE("Failed to write file to: %s\n", path);
+	}
 }
 
 int main(int argc, char **argv)
@@ -416,23 +506,45 @@ int main(int argc, char **argv)
 			auto &e = events[i];
 			int fd = e.data.fd;
 
-			auto itr = std::find_if(fuzz_groups.begin(), fuzz_groups.end(), [&](const std::unique_ptr<FuzzGroup> &fuzz_group)
-			{
-				return fuzz_group->unstructured.find_fd(fd) || fuzz_group->structured.find_fd(fd);
-			});
+			auto itr = std::find_if(fuzz_groups.begin(), fuzz_groups.end(),
+				[&](const std::unique_ptr<FuzzGroup> &fuzz_group) { return fuzz_group->find_fd(fd); });
 
 			if (itr == fuzz_groups.end())
 				continue;
 
 			auto &group = *itr;
 
-			group->process(fd);
+			if (!group->process(device, fd))
+			{
+				LOGE("Found a failure to execute.\n");
+				dump_file("/tmp/failure.st", group->unstructured.in_data.data(), group->unstructured.in_data.size());
+				exit(EXIT_FAILURE);
+			}
 
 			if (group->complete())
 			{
-				group->drain();
-				queue_fuzz(rnd, device, group->unstructured.out_data, group->structured.out_data);
-				fuzz_groups.erase(itr);
+				if (group->result.structured_result)
+				{
+					// We're totally done now.
+					fuzz_groups.erase(itr);
+				}
+				else
+				{
+					group->drain();
+
+					if (group->unstructured.exit_code != 0 || group->structured.exit_code != 0)
+					{
+						if (group->unstructured.exit_code != 0)
+							LOGE("Unstructured path failed with code %d.\n", group->unstructured.exit_code);
+						if (group->structured.exit_code != 0)
+							LOGE("Structured path failed with code %d.\n", group->structured.exit_code);
+
+						dump_file("/tmp/failure.st", group->unstructured.in_data.data(), group->unstructured.in_data.size());
+						exit(EXIT_FAILURE);
+					}
+					group->result = queue_fuzz(rnd, device, group->unstructured.out_data, group->structured.out_data);
+					add_fd_to_epoll(epoll_fd, group->result.sync_fd);
+				}
 			}
 		}
 	}
