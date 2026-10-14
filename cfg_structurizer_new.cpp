@@ -429,7 +429,7 @@ void CFGStructurizer::enter_succ(
 	{
 		// Write path variables and leave.
 		resolve_direct_path(node, succ, *level);
-		node->retarget_branch(succ, merge_node);
+		node->retarget_branch_pre_traversal(succ, merge_node);
 	}
 	else
 	{
@@ -469,12 +469,10 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 			dummy_true->add_branch(true_path);
 			dummy_true->ir.terminator.type = Terminator::Type::Branch;
 			dummy_true->ir.terminator.direct_block = true_path;
-			//dummy_true->forward_post_visit_order = node->forward_post_visit_order;
-			//dummy_true->backward_post_visit_order = node->backward_post_visit_order;
 
 			node->retarget_branch_pre_traversal(true_path, dummy_true);
 			resolve_direct_path(dummy_true, true_path, *true_level);
-			dummy_true->retarget_branch(true_path, merge_node);
+			dummy_true->retarget_branch_pre_traversal(true_path, merge_node);
 		}
 		else
 		{
@@ -488,12 +486,10 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 			dummy_false->add_branch(false_path);
 			dummy_false->ir.terminator.type = Terminator::Type::Branch;
 			dummy_false->ir.terminator.direct_block = false_path;
-			//dummy_false->forward_post_visit_order = node->forward_post_visit_order;
-			//dummy_false->backward_post_visit_order = node->backward_post_visit_order;
 
 			node->retarget_branch_pre_traversal(false_path, dummy_false);
 			resolve_direct_path(dummy_false, false_path, *false_level);
-			dummy_false->retarget_branch(false_path, merge_node);
+			dummy_false->retarget_branch_pre_traversal(false_path, merge_node);
 		}
 		else
 		{
@@ -530,7 +526,8 @@ bool CFGStructurizer::run_experimental()
 
 	serialize_merge_levels_for_dominated_paths_entry();
 
-	recompute_cfg();
+	reset_traversal();
+	visit(*entry_block);
 
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
 	if (!graphviz_path.empty())
