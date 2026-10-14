@@ -1,4 +1,16 @@
-add_subdirectory(spirv-headers EXCLUDE_FROM_ALL)
+if (DXIL_SPV_FUZZ_CLI)
+    set(GRANITE_RENDERER OFF CACHE BOOL "" FORCE)
+    set(GRANITE_VULKAN_SHADER_MANAGER_RUNTIME_COMPILER OFF CACHE BOOL "" FORCE)
+    set(GRANITE_VULKAN_SYSTEM_HANDLES OFF CACHE BOOL "" FORCE)
+    set(GRANITE_SHADER_COMPILER_OPTIMIZE OFF CACHE BOOL "" FORCE)
+    set(GRANITE_SHIPPING ON CACHE BOOL "" FORCE)
+    set(GRANITE_VULKAN_FOSSILIZE OFF CACHE BOOL "" FORCE)
+    set(GRANITE_PLATFORM "null" CACHE STRING "" FORCE)
+    add_subdirectory(Granite EXCLUDE_FROM_ALL)
+else()
+    add_subdirectory(spirv-headers EXCLUDE_FROM_ALL)
+endif()
+
 set(SPIRV-Headers_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/spirv-headers" CACHE STRING "SPIRV-Headers path" FORCE)
 
 add_library(dxil-spirv-headers INTERFACE)
@@ -145,7 +157,7 @@ if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
 endif()
 target_link_libraries(dxbc-spirv-test PRIVATE dxbc-spirv)
 
-if (DXIL_SPIRV_CLI)
+if (DXIL_SPIRV_CLI AND (NOT DXIL_SPV_FUZZ_CLI))
     set(SPIRV_WERROR OFF CACHE STRING "" FORCE)
     # SPIRV-Tools refuses to configure if this is not set.
     set(CMAKE_CXX_STANDARD 17)
