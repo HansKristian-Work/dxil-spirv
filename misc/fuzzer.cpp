@@ -108,15 +108,18 @@ void ChildProcess::process(int fd)
 {
 	if (fd == pidfd)
 	{
-		int status;
-		if (waitpid(pid, &status, 0) < 0)
+		siginfo_t siginfo = {};
+		if (waitid(P_PIDFD, pidfd, &siginfo, WEXITED) < 0)
+		{
+			LOGI("Errno: %d\n", errno);
 			throw std::runtime_error("waitpid failed");
-		pid = -1;
+		}
 
-		if (!WIFEXITED(status))
-			exit_code = -1;
+		pid = -1;
+		if (siginfo.si_code == CLD_EXITED)
+			exit_code = siginfo.si_status;
 		else
-			exit_code = WEXITSTATUS(status);
+			exit_code = -1;
 
 		drain_stdout();
 		close_and_reset(pidfd);
