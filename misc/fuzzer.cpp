@@ -34,6 +34,14 @@
 #include <fcntl.h>
 #include <random>
 #include <sys/epoll.h>
+#include <spawn.h>
+
+namespace Globals
+{
+static int epoll_fd;
+static char *argv_c_new[6];
+static char *argv_c_old[6];
+}
 
 static void print_help()
 {
@@ -44,6 +52,9 @@ static void close_and_reset(int &fd)
 {
 	if (fd >= 0)
 	{
+		// Safety.
+		epoll_ctl(Globals::epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
+
 		close(fd);
 		fd = -1;
 	}
@@ -110,10 +121,7 @@ void ChildProcess::process(int fd)
 	{
 		siginfo_t siginfo = {};
 		if (waitid(P_PIDFD, pidfd, &siginfo, WEXITED) < 0)
-		{
-			LOGI("Errno: %d\n", errno);
 			throw std::runtime_error("waitpid failed");
-		}
 
 		pid = -1;
 		if (siginfo.si_code == CLD_EXITED)
@@ -152,6 +160,41 @@ ChildProcess::ChildProcess(char **argv, const void *stdin_data, size_t size)
 	if (pipe(stdout_pipefds) < 0)
 		throw std::runtime_error("pipe failed");
 
+#if 1
+	posix_spawn_file_actions_t actions;
+	posix_spawnattr_t attr;
+	posix_spawn_file_actions_init(&actions);
+	posix_spawnattr_init(&attr);
+
+	sigset_t sigset;
+	sigemptyset(&sigset);
+	sigaddset(&sigset, SIGPIPE);
+
+	posix_spawnattr_setsigdefault(&attr, &sigset);
+	posix_spawn_file_actions_addclose(&actions, stdin_pipefds[1]);
+	posix_spawn_file_actions_addclose(&actions, stdout_pipefds[0]);
+	if (stdin_pipefds[0] != STDIN_FILENO)
+		posix_spawn_file_actions_adddup2(&actions, stdin_pipefds[0], STDIN_FILENO);
+	if (stdout_pipefds[1] != STDOUT_FILENO)
+		posix_spawn_file_actions_adddup2(&actions, stdout_pipefds[1], STDOUT_FILENO);
+
+	if (posix_spawn(&pid, argv[0], &actions, &attr, argv, environ) != 0)
+		throw std::runtime_error("posix_spawn failed");
+
+	pidfd = int(syscall(SYS_pidfd_open, pid, 0));
+	if (pidfd < 0)
+		throw std::runtime_error("pidfd_open failed");
+
+	close_and_reset(stdin_pipefds[0]);
+	close_and_reset(stdout_pipefds[1]);
+
+	if (fcntl(stdin_pipefds[1], F_SETFL, O_NONBLOCK) < 0)
+		throw std::runtime_error("fcntl failed");
+	if (fcntl(stdout_pipefds[0], F_SETFL, O_NONBLOCK) < 0)
+		throw std::runtime_error("fcntl failed");
+
+	in_data.insert(in_data.end(), static_cast<const uint8_t *>(stdin_data), static_cast<const uint8_t *>(stdin_data) + size);
+#else
 	pid = fork();
 	if (pid > 0)
 	{
@@ -190,6 +233,7 @@ ChildProcess::ChildProcess(char **argv, const void *stdin_data, size_t size)
 	{
 		throw std::runtime_error("fork failed");
 	}
+#endif
 }
 
 bool ChildProcess::drain()
@@ -419,9 +463,6 @@ static void dump_file(const char *path, const void *data, size_t size)
 	}
 }
 
-static char *argv_c_new[6] = {};
-static char *argv_c_old[6] = {};
-
 static void run_fuzzing_rounds(int epoll_fd, std::mt19937 &rnd, Vulkan::Device &device, uint32_t iterations, uint32_t threads)
 {
 	std::vector<std::unique_ptr<FuzzGroup>> fuzz_groups;
@@ -436,15 +477,18 @@ static void run_fuzzing_rounds(int epoll_fd, std::mt19937 &rnd, Vulkan::Device &
 			std::string dummy = "c entry A B\n";
 			dummy += "b A C\n";
 			dummy += "b B C\n";
-			fuzz_groups.emplace_back(new FuzzGroup(epoll_fd, argv_c_old, argv_c_new, dummy.data(), dummy.size()));
+			fuzz_groups.emplace_back(new FuzzGroup(
+				epoll_fd, Globals::argv_c_old, Globals::argv_c_new,
+				dummy.data(), dummy.size()));
 			iteration++;
 		}
 
 		if (fuzz_groups.empty())
 			break;
 
-		epoll_event events[64];
-		int ret = epoll_wait(epoll_fd, events, 64, -1);
+		// Avoid some issues with FD recycling within the event handler. We may start receiving false events.
+		epoll_event events[1];
+		int ret = epoll_wait(epoll_fd, events, 1, -1);
 		if (ret == -1 && errno == EINTR)
 			continue;
 
@@ -455,6 +499,9 @@ static void run_fuzzing_rounds(int epoll_fd, std::mt19937 &rnd, Vulkan::Device &
 		{
 			auto &e = events[i];
 			int fd = e.data.fd;
+
+			//if ((e.events & (EPOLLIN | EPOLLOUT)) == 0)
+			//	continue;
 
 			auto itr = std::find_if(fuzz_groups.begin(), fuzz_groups.end(),
 				[&](const std::unique_ptr<FuzzGroup> &fuzz_group) { return fuzz_group->find_fd(fd); });
@@ -536,8 +583,8 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
-	if (epoll_fd < 0)
+	Globals::epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+	if (Globals::epoll_fd < 0)
 		throw std::runtime_error("epoll_create1 failed");
 
 	std::vector<std::string> argv_exec_new;
@@ -551,9 +598,9 @@ int main(int argc, char **argv)
 	argv_exec_old.back() = "--unstructured";
 
 	for (int i = 0; i < 5; i++)
-		argv_c_new[i] = const_cast<char *>(argv_exec_new[i].c_str());
+		Globals::argv_c_new[i] = const_cast<char *>(argv_exec_new[i].c_str());
 	for (int i = 0; i < 5; i++)
-		argv_c_old[i] = const_cast<char *>(argv_exec_old[i].c_str());
+		Globals::argv_c_old[i] = const_cast<char *>(argv_exec_old[i].c_str());
 
 	if (!Vulkan::Context::init_loader(nullptr))
 		return EXIT_FAILURE;
@@ -578,7 +625,7 @@ int main(int argc, char **argv)
 		device.set_context(context);
 
 		uint32_t to_run = std::min<uint32_t>(iterations - iteration, 64 * 1024);
-		run_fuzzing_rounds(epoll_fd, rnd, device, to_run, (threads + 1) / 2);
+		run_fuzzing_rounds(Globals::epoll_fd, rnd, device, to_run, (threads + 1) / 2);
 		iteration += to_run;
 	}
 }
