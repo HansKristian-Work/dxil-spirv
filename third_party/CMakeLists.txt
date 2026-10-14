@@ -157,12 +157,14 @@ if (CMAKE_COMPILER_IS_GNUCXX OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
 endif()
 target_link_libraries(dxbc-spirv-test PRIVATE dxbc-spirv)
 
-if (DXIL_SPIRV_CLI AND (NOT DXIL_SPV_FUZZ_CLI))
+if (DXIL_SPIRV_CLI)
     set(SPIRV_WERROR OFF CACHE STRING "" FORCE)
     # SPIRV-Tools refuses to configure if this is not set.
     set(CMAKE_CXX_STANDARD 17)
     add_subdirectory(SPIRV-Tools EXCLUDE_FROM_ALL)
-    add_subdirectory(SPIRV-Cross EXCLUDE_FROM_ALL)
+    if (NOT DXIL_SPV_FUZZ_CLI)
+        add_subdirectory(SPIRV-Cross EXCLUDE_FROM_ALL)
+    endif()
 endif()
 
 add_library(glslang-spirv-builder STATIC

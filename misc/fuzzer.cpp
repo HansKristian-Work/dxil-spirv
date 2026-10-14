@@ -416,83 +416,30 @@ static void dump_file(const char *path, const void *data, size_t size)
 	}
 }
 
-int main(int argc, char **argv)
+static char *argv_c_new[6] = {};
+static char *argv_c_old[6] = {};
+
+static void run_fuzzing_rounds(int epoll_fd, std::mt19937 &rnd, Vulkan::Device &device, uint32_t iterations, uint32_t threads)
 {
-	Util::CLICallbacks cbs;
-	uint32_t complexity = 8;
-	uint32_t iterations = 128;
-	unsigned threads = std::thread::hardware_concurrency();
-	std::string structurizer_path;
-
-	cbs.add("--help", [&](Util::CLIParser &parser) { parser.end(); });
-	cbs.add("--complexity", [&](Util::CLIParser &parser) { complexity = parser.next_uint(); });
-	cbs.add("--iterations", [&](Util::CLIParser &parser) { iterations = parser.next_uint(); });
-	cbs.add("--threads", [&](Util::CLIParser &parser) { threads = parser.next_uint(); });
-	cbs.add("--structurizer", [&](Util::CLIParser &parser) { structurizer_path = parser.next_string(); });
-
-	Util::CLIParser parser(std::move(cbs), argc - 1, argv + 1);
-	if (!parser.parse())
-	{
-		print_help();
-		return EXIT_FAILURE;
-	}
-	else if (parser.is_ended_state())
-	{
-		print_help();
-		return EXIT_SUCCESS;
-	}
-
-	if (structurizer_path.empty())
-	{
-		LOGE("Need structurizer path.\n");
-		return EXIT_FAILURE;
-	}
-
-	int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
-	if (epoll_fd < 0)
-		throw std::runtime_error("epoll_create1 failed");
-
-	std::vector<std::string> argv_exec_new;
-	argv_exec_new.emplace_back(structurizer_path);
-	argv_exec_new.emplace_back("/dev/stdin");
-	argv_exec_new.emplace_back("--output");
-	argv_exec_new.emplace_back("/dev/stdout");
-	argv_exec_new.emplace_back("--new");
-
-	auto argv_exec_old = argv_exec_new;
-	argv_exec_old.back() = "--unstructured";
-
-	char *argv_c_new[6] = {};
-	char *argv_c_old[6] = {};
-
-	for (int i = 0; i < 5; i++)
-		argv_c_new[i] = const_cast<char *>(argv_exec_new[i].c_str());
-	for (int i = 0; i < 5; i++)
-		argv_c_old[i] = const_cast<char *>(argv_exec_old[i].c_str());
-
 	std::vector<std::unique_ptr<FuzzGroup>> fuzz_groups;
+	fuzz_groups.reserve(threads);
+	uint32_t iteration = 0;
+	uint32_t completed = 0;
 
-	if (!Vulkan::Context::init_loader(nullptr))
-		return EXIT_FAILURE;
-	Vulkan::Context context;
-	if (!context.init_instance_and_device(nullptr, 0, nullptr, 0,
-	                                      Vulkan::CONTEXT_CREATION_ENABLE_ROBUSTNESS_2_BIT))
-		return EXIT_FAILURE;
-	Vulkan::Device device;
-	device.set_context(context);
-
-	std::string dummy = "c entry A B\n";
-	dummy += "b A C\n";
-	dummy += "b B C\n";
-
-	signal(SIGPIPE, SIG_IGN);
-
-	fuzz_groups.emplace_back(new FuzzGroup(epoll_fd, argv_c_old, argv_c_new, dummy.data(), dummy.size()));
-
-	std::mt19937 rnd(42);
-
-	while (!fuzz_groups.empty())
+	for (;;)
 	{
+		while (fuzz_groups.size() < threads && iteration < iterations)
+		{
+			std::string dummy = "c entry A B\n";
+			dummy += "b A C\n";
+			dummy += "b B C\n";
+			fuzz_groups.emplace_back(new FuzzGroup(epoll_fd, argv_c_old, argv_c_new, dummy.data(), dummy.size()));
+			iteration++;
+		}
+
+		if (fuzz_groups.empty())
+			break;
+
 		epoll_event events[64];
 		int ret = epoll_wait(epoll_fd, events, 64, -1);
 		if (ret == -1 && errno == EINTR)
@@ -527,6 +474,8 @@ int main(int argc, char **argv)
 				{
 					// We're totally done now.
 					fuzz_groups.erase(itr);
+					LOGI("Completed fuzzing round %u\n", completed);
+					completed++;
 				}
 				else
 				{
@@ -547,5 +496,86 @@ int main(int argc, char **argv)
 				}
 			}
 		}
+	}
+}
+
+int main(int argc, char **argv)
+{
+	Util::CLICallbacks cbs;
+	uint32_t complexity = 8;
+	uint32_t iterations = 128;
+	unsigned threads = std::thread::hardware_concurrency();
+	uint32_t seed = 42;
+	std::string structurizer_path;
+
+	cbs.add("--help", [&](Util::CLIParser &parser) { parser.end(); });
+	cbs.add("--complexity", [&](Util::CLIParser &parser) { complexity = parser.next_uint(); });
+	cbs.add("--iterations", [&](Util::CLIParser &parser) { iterations = parser.next_uint(); });
+	cbs.add("--threads", [&](Util::CLIParser &parser) { threads = parser.next_uint(); });
+	cbs.add("--structurizer", [&](Util::CLIParser &parser) { structurizer_path = parser.next_string(); });
+	cbs.add("--seed", [&](Util::CLIParser &parser) { seed = parser.next_uint(); });
+
+	Util::CLIParser parser(std::move(cbs), argc - 1, argv + 1);
+	if (!parser.parse())
+	{
+		print_help();
+		return EXIT_FAILURE;
+	}
+	else if (parser.is_ended_state())
+	{
+		print_help();
+		return EXIT_SUCCESS;
+	}
+
+	if (structurizer_path.empty())
+	{
+		LOGE("Need structurizer path.\n");
+		return EXIT_FAILURE;
+	}
+
+	int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+	if (epoll_fd < 0)
+		throw std::runtime_error("epoll_create1 failed");
+
+	std::vector<std::string> argv_exec_new;
+	argv_exec_new.emplace_back(structurizer_path);
+	argv_exec_new.emplace_back("/dev/stdin");
+	argv_exec_new.emplace_back("--output");
+	argv_exec_new.emplace_back("/dev/stdout");
+	argv_exec_new.emplace_back("--new");
+
+	auto argv_exec_old = argv_exec_new;
+	argv_exec_old.back() = "--unstructured";
+
+	for (int i = 0; i < 5; i++)
+		argv_c_new[i] = const_cast<char *>(argv_exec_new[i].c_str());
+	for (int i = 0; i < 5; i++)
+		argv_c_old[i] = const_cast<char *>(argv_exec_old[i].c_str());
+
+	if (!Vulkan::Context::init_loader(nullptr))
+		return EXIT_FAILURE;
+	Vulkan::Context context;
+
+	// Use robustness.
+	if (!context.init_instance_and_device(nullptr, 0, nullptr, 0,
+	                                      Vulkan::CONTEXT_CREATION_ENABLE_ROBUSTNESS_2_BIT))
+		return EXIT_FAILURE;
+
+	// Avoid SIGPIPE killing us when writing to a dead process.
+	signal(SIGPIPE, SIG_IGN);
+
+	std::mt19937 rnd(seed);
+
+	// Due to the nature of Granite's hash'n'cache, it has no way to delete obsolete pipelines.
+	// Just recreate the logical device periodically. Context owns the actual device, so it should be fine.
+	// For similar reasons, we should disable caching in Mesa when running this.
+	for (uint32_t iteration = 0; iteration < iterations; )
+	{
+		Vulkan::Device device;
+		device.set_context(context);
+
+		uint32_t to_run = std::min<uint32_t>(iterations - iteration, 64 * 1024);
+		run_fuzzing_rounds(epoll_fd, rnd, device, to_run, (threads + 1) / 2);
+		iteration += to_run;
 	}
 }
