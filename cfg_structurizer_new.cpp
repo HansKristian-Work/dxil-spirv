@@ -122,9 +122,21 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 	// Only consider blocks that the header dominates.
 	// If we're exiting a dominance relationship, those branches will be handled specially.
 	for (auto *child: children)
+	{
+		// Rewriting control flow screws with idom analysis it seems since we don't recompute the CFG properly.
+		// For now, sanity check the results against existing levels.
+		if (find_level_for_block(outer_levels, child))
+			continue;
+
 		for (auto *front: child->dominance_frontier)
-			if (!has_element(frontier_nodes, front) && node->dominates(front))
+		{
+			if (!has_element(frontier_nodes, front) && node->dominates(front) &&
+			    !find_level_for_block(outer_levels, front))
+			{
 				frontier_nodes.push_back(front);
+			}
+		}
+	}
 
 	// Any frontier node becomes a level in this dominance chain.
 	// Every level represents some kind of merge of execution.
@@ -228,6 +240,7 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		}
 
 		uint32_t num_potential_paths = level.paths.size() + level.skippable;
+		auto level_str = std::to_string(&level - levels.data());
 
 		if (num_potential_paths > 2)
 		{
@@ -258,7 +271,12 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 			}
 		}
 
-		auto level_str = std::to_string(&level - levels.data());
+		if (level.path_selector_id)
+		{
+			module.get_builder().addName(level.path_selector_id,
+				(node->name + "_sel_" + level_str.c_str()).c_str());
+		}
+
 		level.input_node = pool.create_node();
 		level.input_node->name = node->name + ".level.input." + level_str.c_str();
 
@@ -267,10 +285,64 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 
 		for (auto *path: level.paths)
 			level.input_node->add_branch(path);
-		if (level.skippable)
+		if (level.skippable || num_potential_paths > 2)
 			level.input_node->add_branch(level.output_node);
 
-		// TODO: Setup branch and merge targets.
+		if (num_potential_paths >= 2)
+		{
+			level.input_node->ir.merge_info.merge_type = MergeType::Selection;
+			level.input_node->ir.merge_info.merge_block = level.output_node;
+
+			if (num_potential_paths > 2)
+			{
+				level.input_node->ir.terminator.type = Terminator::Type::Switch;
+
+				auto *load_op = module.allocate_op(
+					spv::OpLoad, module.allocate_id(), module.get_builder().makeIntType(32));
+				load_op->add_id(level.path_selector_id);
+				level.input_node->ir.operations.push_back(load_op);
+				level.input_node->ir.terminator.conditional_id = load_op->id;
+
+				for (size_t i = 0, n = level.paths.size(); i < n; i++)
+				{
+					Terminator::Case c = {};
+					c.value = i;
+					c.node = level.paths[i];
+					level.input_node->ir.terminator.cases.push_back(c);
+				}
+
+				Terminator::Case c = {};
+				c.is_default = true;
+				c.node = level.output_node;
+				level.input_node->ir.terminator.cases.push_back(c);
+			}
+			else
+			{
+				level.input_node->ir.terminator.type = Terminator::Type::Condition;
+
+				auto *load_op = module.allocate_op(
+					spv::OpLoad, module.allocate_id(), module.get_builder().makeBoolType());
+				load_op->add_id(level.path_selector_id);
+				level.input_node->ir.operations.push_back(load_op);
+				level.input_node->ir.terminator.conditional_id = load_op->id;
+
+				if (level.skippable)
+				{
+					level.input_node->ir.terminator.true_block = level.paths[0];
+					level.input_node->ir.terminator.false_block = level.output_node;
+				}
+				else
+				{
+					level.input_node->ir.terminator.true_block = level.paths[1];
+					level.input_node->ir.terminator.false_block = level.paths[0];
+				}
+			}
+		}
+		else
+		{
+			level.input_node->ir.terminator.type = Terminator::Type::Branch;
+			level.input_node->ir.terminator.direct_block = level.paths[0];
+		}
 	}
 
 	if (node->ir.terminator.type == Terminator::Type::Condition)
@@ -279,13 +351,23 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		break_levels.insert(break_levels.end(), levels.begin(), levels.end());
 
 		CFGNode *merge_node = pool.create_node();
+		CFGNode *current_output_node = merge_node;
+
+		// Reconvene execution at the merge node.
+		node->ir.merge_info.merge_type = MergeType::Selection;
+		node->ir.merge_info.merge_block = merge_node;
+		merge_node->name = node->name + ".merge";
+		merge_node->forward_post_visit_order = node->forward_post_visit_order;
+		merge_node->backward_post_visit_order = node->backward_post_visit_order;
+
 		// Now we can either enter a path we dominate (and therefore we recursively keep structurizing),
 		// or we set path variables and stop.
 		// Execution must reconvene at the top level.
-		enter_succ(node->ir.terminator.true_block,
+		enter_succ(node,
+		           node->ir.terminator.true_block,
 		           node->ir.terminator.false_block,
 		           node->ir.terminator.conditional_id,
-		           levels, merge_node);
+		           break_levels, merge_node);
 
 		// All execution should have been collected at merge_node.
 		// Dispatch execution to those now.
@@ -295,36 +377,82 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 			levels.pop_back();
 			break_levels.pop_back();
 
+			// Link up level stages.
+			current_output_node->add_branch(level.input_node);
+			current_output_node->ir.terminator.type = Terminator::Type::Branch;
+			current_output_node->ir.terminator.direct_block = level.input_node;
+
+			current_output_node = level.output_node;
 			for (auto *path : level.paths)
-				enter_succ(path, break_levels, level.output_node);
+				serialize_merge_levels_for_dominated_paths(path, break_levels, level.output_node);
 		}
 
-		if (!node->dominance_frontier.empty() && outer_merge)
+		if (outer_merge)
 		{
 			// Branch from last level to outer_merge.
 			// If we dominate everything in the path to exit, there is nothing to exit to.
+			current_output_node->add_branch(outer_merge);
+			current_output_node->ir.terminator.type = Terminator::Type::Branch;
+			current_output_node->ir.terminator.direct_block = outer_merge;
+		}
+		else
+		{
+			// Nowhere to branch, this must be a return.
+			current_output_node->ir.terminator.type = Terminator::Type::Return;
 		}
 	}
 	else if (node->ir.terminator.type == Terminator::Type::Branch)
 	{
-		enter_succ(node->ir.terminator.direct_block, outer_levels, outer_merge);
+		enter_succ(node, node->ir.terminator.direct_block, outer_levels, outer_merge);
 	}
 }
 
-void CFGStructurizer::enter_succ(CFGNode *succ, const Vector<SerializationLevel> &levels, CFGNode *merge_node)
+void CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const SerializationLevel &level)
+{
+	for (size_t i = 0, n = level.paths.size(); i < n; i++)
+	{
+		if (level.paths[i] == succ)
+		{
+			uint32_t num_paths = level.paths.size() + level.skippable;
+
+			if (num_paths > 3)
+			{
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->add_id(level.path_selector_id);
+				store_op->add_id(module.get_builder().makeIntConstant(i));
+				from->ir.operations.push_back(store_op);
+			}
+			else if (num_paths == 2)
+			{
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->add_id(level.path_selector_id);
+				store_op->add_id(module.get_builder().makeBoolConstant(bool(i) || level.skippable));
+				from->ir.operations.push_back(store_op);
+			}
+
+			break;
+		}
+	}
+}
+
+void CFGStructurizer::enter_succ(
+		CFGNode *node, CFGNode *succ, const Vector<SerializationLevel> &levels, CFGNode *merge_node)
 {
 	auto *level = find_level_for_block(levels, succ);
 	if (level)
 	{
 		// Write path variables and leave.
+		resolve_direct_path(node, succ, *level);
+		node->retarget_branch(succ, merge_node);
 	}
 	else
 	{
+		assert(node->dominates(succ));
 		serialize_merge_levels_for_dominated_paths(succ, levels, merge_node);
 	}
 }
 
-void CFGStructurizer::enter_succ(CFGNode *true_path, CFGNode *false_path,
+void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *false_path,
                                  spv::Id cond, const Vector<SerializationLevel> &levels,
                                  CFGNode *merge_node)
 {
@@ -338,13 +466,53 @@ void CFGStructurizer::enter_succ(CFGNode *true_path, CFGNode *false_path,
 		serialize_merge_levels_for_dominated_paths(true_path, levels, merge_node);
 		serialize_merge_levels_for_dominated_paths(false_path, levels, merge_node);
 	}
+#if 0
 	else if (true_level == false_level)
 	{
 		// We can be a little smarter and rewrite a selection into a direct branch with adjusted cond value.
 	}
+#endif
 	else
 	{
-		// Both paths are breaks, but they break to different scopes, so resolve those separately in two separate branches.
+		// Divergence. Handle each branch separately.
+
+		if (true_level)
+		{
+			auto *dummy_true = pool.create_node();
+			dummy_true->name = node->name + ".dummy-true";
+			dummy_true->add_branch(true_path);
+			dummy_true->ir.terminator.type = Terminator::Type::Branch;
+			dummy_true->ir.terminator.direct_block = true_path;
+			//dummy_true->forward_post_visit_order = node->forward_post_visit_order;
+			//dummy_true->backward_post_visit_order = node->backward_post_visit_order;
+
+			node->retarget_branch_pre_traversal(true_path, dummy_true);
+			resolve_direct_path(dummy_true, true_path, *true_level);
+			dummy_true->retarget_branch(true_path, merge_node);
+		}
+		else
+		{
+			serialize_merge_levels_for_dominated_paths(true_path, levels, merge_node);
+		}
+
+		if (false_level)
+		{
+			auto *dummy_false = pool.create_node();
+			dummy_false->name = node->name + ".dummy-false";
+			dummy_false->add_branch(false_path);
+			dummy_false->ir.terminator.type = Terminator::Type::Branch;
+			dummy_false->ir.terminator.direct_block = false_path;
+			//dummy_false->forward_post_visit_order = node->forward_post_visit_order;
+			//dummy_false->backward_post_visit_order = node->backward_post_visit_order;
+
+			node->retarget_branch_pre_traversal(false_path, dummy_false);
+			resolve_direct_path(dummy_false, false_path, *false_level);
+			dummy_false->retarget_branch(false_path, merge_node);
+		}
+		else
+		{
+			serialize_merge_levels_for_dominated_paths(false_path, levels, merge_node);
+		}
 	}
 }
 
@@ -356,6 +524,12 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths_entry()
 
 bool CFGStructurizer::run_experimental()
 {
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	String graphviz_path;
+	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
+		graphviz_path = env;
+#endif
+
 	run_common_preamble();
 
 	// We will not rely on re-inserting PHI here, so convert everything back to plain old variables.
@@ -367,6 +541,16 @@ bool CFGStructurizer::run_experimental()
 	rewrite_switch_blocks();
 
 	serialize_merge_levels_for_dominated_paths_entry();
+
+	recompute_cfg();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".final";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+#endif
 
 	return true;
 }

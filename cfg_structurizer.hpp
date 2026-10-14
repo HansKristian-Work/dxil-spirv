@@ -330,9 +330,14 @@ private:
 	void convert_phi_to_variables();
 	void serialize_merge_levels_for_dominated_paths(
 		CFGNode *node, const Vector<SerializationLevel> &levels, CFGNode *merge_node);
-	void enter_succ(CFGNode *succ, const Vector<SerializationLevel> &levels, CFGNode *merge_node);
-	void enter_succ(CFGNode *true_path, CFGNode *false_path,
+
+	void enter_succ(CFGNode *from, CFGNode *succ,
+	                const Vector<SerializationLevel> &levels, CFGNode *merge_node);
+	void enter_succ(CFGNode *from, CFGNode *true_path, CFGNode *false_path,
 	                spv::Id cond, const Vector<SerializationLevel> &levels, CFGNode *merge_node);
+
+	void resolve_direct_path(CFGNode *from, CFGNode *succ, const SerializationLevel &level);
+
 	void serialize_merge_levels_for_dominated_paths_entry();
 	Vector<CFGNode *> get_idom_children(CFGNode *node);
 	static const SerializationLevel *find_level_for_block(const Vector<SerializationLevel> &levels, CFGNode *block);
