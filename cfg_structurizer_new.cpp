@@ -91,7 +91,9 @@ spv::Id CFGStructurizer::build_conditional_for_switch_block(
 				auto *or_op = module.allocate_op(spv::OpLogicalOr, module.allocate_id(), module.get_builder().makeBoolType());
 				or_op->add_id(cond);
 				or_op->add_id(iseq->id);
-				node->ir.operations.push_back(iseq);
+				node->ir.operations.push_back(or_op);
+
+				cond = or_op->id;
 			}
 			else
 			{

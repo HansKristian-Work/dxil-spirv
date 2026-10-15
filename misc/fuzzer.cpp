@@ -94,7 +94,14 @@ static FuzzState queue_fuzz(
 	std::vector<uint32_t> conditions;
 	conditions.reserve(MaxBlocks * MaxFeedback);
 	for (uint32_t i = 0; i < MaxBlocks * MaxFeedback; i++)
-		conditions.push_back(rnd() % 2);
+	{
+		// Want 0 to appear with a decent chance, but keep the possibility of larger values for switch block testing.
+		uint32_t falloff_dist = rnd() % 16;
+		falloff_dist *= falloff_dist;
+		falloff_dist *= falloff_dist;
+		falloff_dist /= 7 * 7 * 7 * 7;
+		conditions.push_back(falloff_dist);
+	}
 
 	BufferCreateInfo bufinfo = {};
 	bufinfo.size = conditions.size() * sizeof(conditions.front());
@@ -197,7 +204,20 @@ static std::vector<std::string> generate_random_forward_cfg(std::mt19937 &rnd, u
 		if (is_used[i + 1] && rnd() % 16 == 0)
 			continue;
 
-		if (rnd() % 2)
+		if (rnd() % 16 == 0)
+		{
+			// Randomly throw in some switch statements.
+			char line[128];
+			snprintf(line, sizeof(line), "switch n%u", i);
+			for (uint32_t j = 0; j < 8; j++)
+			{
+				uint32_t target = j || is_used[i + 1] ? dist(rnd) : i + 1;
+				snprintf(line + strlen(line), sizeof(line) - strlen(line), " n%u", target);
+				is_used[target] = true;
+			}
+			cfg.emplace_back(line);
+		}
+		else if (rnd() % 2)
 		{
 			uint32_t target_a = is_used[i + 1] ? dist(rnd) : i + 1;
 			uint32_t target_b = dist(rnd);
