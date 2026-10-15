@@ -348,7 +348,7 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		break_levels.insert(break_levels.end(), levels.begin(), levels.end());
 
 		CFGNode *merge_node = pool.create_node();
-		CFGNode *current_output_node = merge_node;
+		auto *current_output_node = merge_node;
 
 		// Reconvene execution at the merge node.
 		node->ir.merge_info.merge_type = MergeType::Selection;
@@ -479,7 +479,7 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 			auto false_value = std::find(level.paths.begin(), level.paths.end(), false_path) - level.paths.begin();
 
 			auto *sel = module.allocate_op(spv::OpSelect, module.allocate_id(), builder.makeIntType(32));
-			sel->add_id(node->ir.terminator.conditional_id);
+			sel->add_id(cond);
 			sel->add_id(builder.makeIntConstant(true_value));
 			sel->add_id(builder.makeIntConstant(false_value));
 			node->ir.operations.push_back(sel);
@@ -498,15 +498,15 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 			{
 				// Flip the condition.
 				auto *flip = module.allocate_op(spv::OpLogicalNot, module.allocate_id(), builder.makeBoolType());
-				flip->add_id(node->ir.terminator.conditional_id);
+				flip->add_id(cond);
 				node->ir.operations.push_back(flip);
 
-				node->ir.terminator.conditional_id = flip->id;
+				cond = flip->id;
 			}
 
 			auto *store_op = module.allocate_op(spv::OpStore);
 			store_op->add_id(level.path_selector_id);
-			store_op->add_id(node->ir.terminator.conditional_id);
+			store_op->add_id(cond);
 			node->ir.operations.push_back(store_op);
 		}
 

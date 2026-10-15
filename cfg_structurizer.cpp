@@ -9146,31 +9146,70 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 
 		auto &merge = block->ir.merge_info;
 
-		switch (block->merge)
+		if (experimental_flow)
 		{
-		case MergeType::Selection:
-			merge.merge_block = block->selection_merge_block;
-			if (merge.merge_block)
-				iface.register_block(merge.merge_block);
-			merge.merge_type = block->merge;
-			iface.emit_basic_block(block);
-			break;
+			// We don't use the top-level merge stuff in the new structurizer.
+			switch (block->ir.merge_info.merge_type)
+			{
+			case MergeType::Selection:
+				// Not reachable in the end, force merge to unreachable.
+				if (merge.merge_block && !merge.merge_block->userdata)
+					merge.merge_block = nullptr;
 
-		case MergeType::Loop:
-			merge.merge_block = block->loop_merge_block;
-			merge.merge_type = block->merge;
-			merge.continue_block = block->pred_back_edge;
-			if (merge.merge_block)
-				iface.register_block(merge.merge_block);
-			if (merge.continue_block)
-				iface.register_block(merge.continue_block);
+				if (merge.merge_block)
+					iface.register_block(merge.merge_block);
+				iface.emit_basic_block(block);
+				break;
 
-			iface.emit_basic_block(block);
-			break;
+			case MergeType::Loop:
+				// Not reachable in the end, force merge to unreachable.
+				if (merge.merge_block && !merge.merge_block->userdata)
+					merge.merge_block = nullptr;
 
-		default:
-			iface.emit_basic_block(block);
-			break;
+				// Not reachable in the end, force merge to unreachable.
+				if (merge.continue_block && !merge.continue_block->userdata)
+					merge.continue_block = nullptr;
+
+				if (merge.merge_block)
+					iface.register_block(merge.merge_block);
+				if (merge.continue_block)
+					iface.register_block(merge.continue_block);
+				iface.emit_basic_block(block);
+				break;
+
+			default:
+				iface.emit_basic_block(block);
+				break;
+			}
+		}
+		else
+		{
+			switch (block->merge)
+			{
+			case MergeType::Selection:
+				merge.merge_block = block->selection_merge_block;
+				if (merge.merge_block)
+					iface.register_block(merge.merge_block);
+				merge.merge_type = block->merge;
+				iface.emit_basic_block(block);
+				break;
+
+			case MergeType::Loop:
+				merge.merge_block = block->loop_merge_block;
+				merge.merge_type = block->merge;
+				merge.continue_block = block->pred_back_edge;
+				if (merge.merge_block)
+					iface.register_block(merge.merge_block);
+				if (merge.continue_block)
+					iface.register_block(merge.continue_block);
+
+				iface.emit_basic_block(block);
+				break;
+
+			default:
+				iface.emit_basic_block(block);
+				break;
+			}
 		}
 	}
 }

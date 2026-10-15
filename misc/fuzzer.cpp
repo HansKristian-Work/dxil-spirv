@@ -39,7 +39,7 @@ using namespace dxil_spv;
 
 static void print_help()
 {
-	LOGE("Usage: structurize-fuzzer [--help] [--complexity N] [--iterations N] [--threads THR]\n");
+	LOGE("Usage: structurize-fuzzer [--help] [--complexity N] [--iterations N] [--threads THR] [--dump-reference]\n");
 }
 
 struct FuzzState
@@ -192,6 +192,10 @@ static std::vector<std::string> generate_random_forward_cfg(std::mt19937 &rnd, u
 	{
 		std::uniform_int_distribution<uint32_t> dist(i + 1, complexity - 1);
 
+		// Randomly do early-return.
+		if (is_used[i + 1] && rnd() % 16 == 0)
+			continue;
+
 		if (rnd() % 2)
 		{
 			uint32_t target_a = is_used[i + 1] ? dist(rnd) : i + 1;
@@ -218,17 +222,18 @@ static std::vector<std::string> generate_random_forward_cfg(std::mt19937 &rnd, u
 	return cfg;
 }
 
-static void run_fuzz(Device &device, uint32_t seed, uint32_t complexity)
+static void run_fuzz(Device &device, uint32_t seed, uint32_t complexity, bool dump_reference)
 {
 	std::mt19937 rnd(seed);
 
 	auto lines = generate_random_forward_cfg(rnd, complexity);
 
-#if 0
-	char path[256];
-	snprintf(path, sizeof(path), "/tmp/reference.%u.st", seed);
-	dump_file(path, lines);
-#endif
+	if (dump_reference)
+	{
+		char path[256];
+		snprintf(path, sizeof(path), "/tmp/reference.%u.st", seed);
+		dump_file(path, lines);
+	}
 
 	const auto emit_lines = [&](Emitter &emitter)
 	{
@@ -273,7 +278,8 @@ static void run_fuzz(Device &device, uint32_t seed, uint32_t complexity)
 	task->set_task_class(TaskClass::Background);
 }
 
-static void run_fuzzing_rounds(Device &device, uint32_t iterations, uint32_t threads, uint32_t seed, uint32_t complexity)
+static void run_fuzzing_rounds(Device &device, uint32_t iterations, uint32_t threads, uint32_t seed,
+                               uint32_t complexity, bool dump_reference)
 {
 	auto *tg = device.get_system_handles().thread_group;
 	std::queue<TaskGroupHandle> tasks;
@@ -284,9 +290,9 @@ static void run_fuzzing_rounds(Device &device, uint32_t iterations, uint32_t thr
 	{
 		while (tasks.size() < threads && iteration < iterations)
 		{
-			auto task = tg->create_task([&device, seed = seed + iteration, complexity]()
+			auto task = tg->create_task([&device, seed = seed + iteration, complexity, dump_reference]()
 			{
-				run_fuzz(device, seed, complexity);
+				run_fuzz(device, seed, complexity, dump_reference);
 			});
 			task->flush();
 			tasks.push(std::move(task));
@@ -313,12 +319,14 @@ int main(int argc, char **argv)
 	uint32_t iterations = 128;
 	unsigned threads = std::thread::hardware_concurrency();
 	uint32_t seed = 42;
+	bool dump_reference = false;
 
 	cbs.add("--help", [&](Util::CLIParser &parser) { parser.end(); });
 	cbs.add("--complexity", [&](Util::CLIParser &parser) { complexity = parser.next_uint(); });
 	cbs.add("--iterations", [&](Util::CLIParser &parser) { iterations = parser.next_uint(); });
 	cbs.add("--threads", [&](Util::CLIParser &parser) { threads = parser.next_uint(); });
 	cbs.add("--seed", [&](Util::CLIParser &parser) { seed = parser.next_uint(); });
+	cbs.add("--dump-reference", [&](Util::CLIParser &) { dump_reference = true; });
 
 	Util::CLIParser parser(std::move(cbs), argc - 1, argv + 1);
 	if (!parser.parse())
@@ -359,7 +367,7 @@ int main(int argc, char **argv)
 		device.init_frame_contexts(8);
 
 		uint32_t to_run = std::min<uint32_t>(iterations - iteration, 4096);
-		run_fuzzing_rounds(device, to_run, threads, seed + iteration, complexity);
+		run_fuzzing_rounds(device, to_run, threads, seed + iteration, complexity, dump_reference);
 		iteration += to_run;
 	}
 }
