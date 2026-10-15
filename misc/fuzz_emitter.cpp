@@ -109,6 +109,8 @@ void Emitter::parse_line(char *line_buffer)
 	if (line_buffer[0] == ';' || line_buffer[0] == '#' || line_buffer[0] == '\n')
 		return;
 
+	Vector<CFGNode *> nodes_needing_phi;
+
 	if (tokens.front() == "b")
 	{
 		if (tokens.size() != 3)
@@ -141,37 +143,39 @@ void Emitter::parse_line(char *line_buffer)
 	}
 	else if (tokens.front() == "phi")
 	{
-		if (tokens.size() < 3)
+		if (tokens.size() < 2)
 		{
-			LOGE("phi token needs at least 3 elements.\n");
+			LOGE("phi token needs at least a block.\n");
 			return;
 		}
 
-		Vector<const char *> src_blocks;
-		for (auto itr = tokens.begin() + 2; itr != tokens.end(); ++itr)
-			src_blocks.push_back(itr->c_str());
-		add_phi(tokens[1].c_str(), src_blocks);
+		nodes_needing_phi.push_back(get(tokens[1].c_str()));
 	}
 	else
 	{
 		LOGE("Unknown token %s.\n", tokens.front().c_str());
 	}
+
+	// Once we've sorted out all the predecessors.
+	for (auto *phi : nodes_needing_phi)
+		add_phi(phi);
 }
 
-void Emitter::add_phi(const char *phi, const Vector<const char *> &from_nodes)
+void Emitter::add_phi(CFGNode *p)
 {
-	auto *p = get(phi);
+	if (p->get_pred().empty())
+		return;
+
 	p->ir.phi.emplace_back();
 	auto &phi_node = p->ir.phi.back();
 	phi_node.type_id = module.get_builder().makeUintType(32);
 	phi_node.id = module.allocate_id();
-	module.get_builder().addName(phi_node.id, phi);
 
 	uint32_t count = 1000000;
-	for (auto &from : from_nodes)
+	for (auto *from : p->get_pred())
 	{
 		IncomingValue value = {};
-		value.block = get(from);
+		value.block = from;
 		value.id = module.get_builder().makeUintConstant(++count);
 		phi_node.incoming.push_back(value);
 	}

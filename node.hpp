@@ -48,6 +48,9 @@ public:
 
 	DXIL_SPV_OVERRIDE_NEW_DELETE
 
+	const Vector<CFGNode *> get_pred() const { return pred; }
+	const Vector<CFGNode *> get_succ() const { return succ; }
+
 private:
 	friend class CFGNodePool;
 	friend class CFGStructurizer;

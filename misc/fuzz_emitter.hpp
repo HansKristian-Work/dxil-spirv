@@ -41,7 +41,7 @@ public:
 	void add_selection(const char *from, const char *to0, const char *to1);
 	void add_branch(const char *from, const char *to);
 	void add_switch(const char *from, const String *nodes, size_t num_nodes);
-	void add_phi(const char *phi, const Vector<const char *> &from_nodes);
+	void add_phi(CFGNode *phi);
 
 	void parse_line(char *line);
 

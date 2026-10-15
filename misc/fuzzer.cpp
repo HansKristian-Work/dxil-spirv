@@ -236,6 +236,20 @@ static std::vector<std::string> generate_random_forward_cfg(std::mt19937 &rnd, u
 			cfg.emplace_back(line);
 			is_used[target] = true;
 		}
+
+		// Randomly add one or more phi nodes.
+		char line[64];
+
+		for (uint32_t j = 2; j <= 8; j *= 2)
+		{
+			if (rnd() % j == 0)
+			{
+				snprintf(line, sizeof(line), "phi n%u", i);
+				cfg.emplace_back(line);
+			}
+			else
+				break;
+		}
 	}
 
 	assert(std::find(is_used.begin(), is_used.end(), false) == is_used.end());
