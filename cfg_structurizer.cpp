@@ -1320,6 +1320,7 @@ bool CFGStructurizer::rewrite_impossible_back_edges()
 
 bool CFGStructurizer::run_trivial()
 {
+	experimental_unstructured_flow = false;
 	recompute_cfg();
 	sink_ssa_constructs();
 	propagate_branch_control_hints();
@@ -1332,7 +1333,9 @@ bool CFGStructurizer::run_trivial()
 bool CFGStructurizer::run_experimental_unstructured()
 {
 	experimental_unstructured_flow = true;
-	return run_trivial();
+	reset_traversal();
+	visit(*entry_block);
+	return true;
 }
 
 bool CFGStructurizer::run()

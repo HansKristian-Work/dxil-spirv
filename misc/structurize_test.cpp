@@ -224,7 +224,6 @@ int main(int argc, char **argv)
 	}
 
 	Emitter emitter;
-	emitter.init();
 
 	FILE *file = fopen(argv[1], "r");
 	if (!file)

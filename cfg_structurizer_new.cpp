@@ -507,6 +507,7 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths_entry()
 bool CFGStructurizer::run_experimental()
 {
 	experimental_flow = true;
+	experimental_unstructured_flow = false;
 
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
 	String graphviz_path;

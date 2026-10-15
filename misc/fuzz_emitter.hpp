@@ -36,7 +36,7 @@ namespace dxil_spv
 class Emitter : private BlockEmissionInterface
 {
 public:
-	void init();
+	Emitter();
 	spv::Id build_condition(CFGNode *node);
 	void add_selection(const char *from, const char *to0, const char *to1);
 	void add_branch(const char *from, const char *to);
@@ -55,6 +55,7 @@ public:
 	bool finalize(Style style, Vector<uint32_t> &code, bool validate);
 
 private:
+	void init();
 	void emit_basic_block(CFGNode *node) override;
 	void register_block(CFGNode *node) override
 	{

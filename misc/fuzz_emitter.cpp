@@ -307,6 +307,11 @@ void Emitter::emit_basic_block(CFGNode *node)
 	}
 }
 
+Emitter::Emitter()
+{
+	init();
+}
+
 void Emitter::init()
 {
 	auto &builder = module.get_builder();
