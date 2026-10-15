@@ -70,9 +70,124 @@ void CFGStructurizer::convert_phi_to_variables()
 
 }
 
+spv::Id CFGStructurizer::build_conditional_for_switch_block(
+		CFGNode *node, CFGNode *target, const Vector<Terminator::Case> &cases, spv::Id cond_id)
+{
+	spv::Id cond = 0;
+
+	for (auto &c : cases)
+	{
+		if (c.node == target)
+		{
+			auto *iseq = module.allocate_op(spv::OpIEqual, module.allocate_id(), module.get_builder().makeBoolType());
+			iseq->add_id(cond_id);
+
+			// TODO: Are all switch statements 32-bit?
+			iseq->add_id(module.get_builder().makeUintConstant(c.value));
+			node->ir.operations.push_back(iseq);
+
+			if (cond)
+			{
+				auto *or_op = module.allocate_op(spv::OpLogicalOr, module.allocate_id(), module.get_builder().makeBoolType());
+				or_op->add_id(cond);
+				or_op->add_id(iseq->id);
+				node->ir.operations.push_back(iseq);
+			}
+			else
+			{
+				cond = iseq->id;
+			}
+		}
+	}
+
+	assert(cond);
+	return cond;
+}
+
 void CFGStructurizer::rewrite_switch_blocks()
 {
+	bool rewrote = false;
 
+	// Just like NIR, untangle a switch statement into a series of conditional branches.
+	// It should be possible to preserve the true switch in cases where there is nothing exciting happening w.r.t control flow.
+	// E.g. the case labels share one dominance frontier. We can merge there as a perfect self-contained construct.
+	// For now, always do the pessimized thing.
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->ir.terminator.type == Terminator::Type::Switch)
+		{
+			Terminator::Case default_case = {};
+			Vector<Terminator::Case> cases;
+			std::swap(cases, node->ir.terminator.cases);
+
+			auto itr = std::find_if(cases.begin(), cases.end(), [&](const Terminator::Case &c)
+			{
+				return c.is_default;
+			});
+
+			if (itr != cases.end())
+			{
+				default_case = *itr;
+				cases.erase(itr);
+			}
+
+			// Pretty sure there must be a default case?
+			assert(default_case.node);
+
+			if (cases.empty())
+			{
+				// We only had one degenerate default branch somehow ...
+				node->ir.terminator.type = Terminator::Type::Branch;
+				node->ir.terminator.direct_block = default_case.node;
+				continue;
+			}
+
+			node->clear_branches();
+
+			spv::Id cond_id = node->ir.terminator.conditional_id;
+
+			auto *current_node = node;
+			CFGNode *current_residual = nullptr;
+			current_node->ir.terminator.type = Terminator::Type::Condition;
+
+			while (!cases.empty())
+			{
+				auto *n = cases.front().node;
+				spv::Id conditional = build_conditional_for_switch_block(node, n, cases, cond_id);
+				cases.erase(std::remove_if(cases.begin(), cases.end(), [&](const Terminator::Case &candidate)
+				{
+					return candidate.node == n;
+				}), cases.end());
+
+				current_residual = pool.create_node();
+				current_residual->name = node->name + ".residual";
+
+				current_node->ir.terminator.type = Terminator::Type::Condition;
+				current_node->ir.terminator.true_block = n;
+				current_node->ir.terminator.false_block = current_residual;
+				current_node->ir.terminator.conditional_id = conditional;
+
+				current_node->add_branch(n);
+				current_node->add_branch(current_residual);
+				current_node->add_unique_succ(n);
+				current_node->add_unique_succ(current_residual);
+
+				current_node = current_residual;
+			}
+
+			assert(current_residual);
+
+			current_residual->ir.terminator.type = Terminator::Type::Branch;
+			current_residual->ir.terminator.direct_block = default_case.node;
+			current_residual->add_branch(default_case.node);
+			current_residual->add_unique_succ(default_case.node);
+			rewrote = true;
+		}
+	}
+
+	if (rewrote)
+		recompute_cfg();
 }
 
 const CFGStructurizer::SerializationLevel *CFGStructurizer::find_level_for_block(
@@ -578,6 +693,14 @@ bool CFGStructurizer::run_experimental()
 	// NIR does this too, which this implementation is heavily based on.
 	// Explode any non-trivial switch blocks into a series of conditional branches.
 	rewrite_switch_blocks();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".switch";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+#endif
 
 	serialize_merge_levels_for_dominated_paths_entry();
 

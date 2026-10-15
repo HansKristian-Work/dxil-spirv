@@ -113,6 +113,7 @@ static FuzzState queue_fuzz(
 	auto *reference_program = device.request_program(reference.data(), reference.size() * sizeof(reference.front()));
 	auto *candidate_program = device.request_program(candidate.data(), candidate.size() * sizeof(candidate.front()));
 
+	// Isolate the dispatches so that RADV_DEBUG=hang can narrow things down if need be.
 	for (uint32_t i = 0; i < MaxFeedback; i++)
 	{
 		cmd->set_program(reference_program);
