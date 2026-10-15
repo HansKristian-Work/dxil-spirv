@@ -65,9 +65,94 @@ void CFGStructurizer::run_common_preamble()
 	propagate_branch_control_hints();
 }
 
+bool CFGStructurizer::ensure_valid_phi_rewrites(CFGNode *node)
+{
+	Vector<std::pair<CFGNode *, CFGNode *>> interposing_nodes;
+	bool rewrote = false;
+
+	auto &incomings = node->ir.phi.front().incoming;
+	for (auto &incoming : incomings)
+	{
+		if (incoming.block->ir.terminator.type != Terminator::Type::Branch)
+		{
+			auto *interposing = pool.create_node();
+			interposing->name = node->name + ".interposing";
+			interposing->add_unique_succ(node);
+			interposing->add_branch(node);
+			interposing->ir.terminator.type = Terminator::Type::Branch;
+			interposing->ir.terminator.direct_block = node;
+
+			incoming.block->retarget_branch_pre_traversal(node, interposing);
+			interposing_nodes.emplace_back(incoming.block, interposing);
+			rewrote = true;
+		}
+	}
+
+	if (!rewrote)
+		return false;
+
+	const auto rewrite_incoming = [&](CFGNode *&n)
+	{
+		for (auto &pair : interposing_nodes)
+		{
+			if (pair.first == n)
+			{
+				n = pair.second;
+				return;
+			}
+		}
+	};
+
+	for (auto &phi : node->ir.phi)
+		for (auto &incoming : phi.incoming)
+			rewrite_incoming(incoming.block);
+
+	return true;
+}
+
 void CFGStructurizer::convert_phi_to_variables()
 {
+	// Go out of SSA by writing to alloca variable on a branch.
+	bool rewrote_cfg = false;
 
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->ir.phi.empty())
+			continue;
+
+		// An incoming block must not have more than one successor,
+		// otherwise we cannot meaningfully write to a phi variable.
+		if (ensure_valid_phi_rewrites(node))
+			rewrote_cfg = true;
+
+		for (auto &phi : node->ir.phi)
+		{
+			spv::Id alloca_id = module.create_variable(spv::StorageClassFunction, phi.type_id);
+			if (phi.relaxed)
+				module.get_builder().addDecoration(alloca_id, spv::DecorationRelaxedPrecision);
+
+			for (auto &incoming : phi.incoming)
+			{
+				assert(incoming.block->ir.terminator.type == Terminator::Type::Branch &&
+					incoming.block->ir.terminator.direct_block == node);
+
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->add_id(alloca_id);
+				store_op->add_id(incoming.id);
+				incoming.block->ir.operations.push_back(store_op);
+			}
+
+			// Back to SSA since future opcodes depend on it.
+			auto *load_phi = module.allocate_op(spv::OpLoad, phi.id, phi.type_id);
+			load_phi->add_id(alloca_id);
+			node->ir.operations.insert(node->ir.operations.begin(), load_phi);
+		}
+
+		node->ir.phi.clear();
+	}
+
+	if (rewrote_cfg)
+		recompute_cfg();
 }
 
 spv::Id CFGStructurizer::build_conditional_for_switch_block(
@@ -210,6 +295,14 @@ void CFGStructurizer::fixup_degenerate_conditional_branch(CFGNode *node)
 	}
 }
 
+void CFGStructurizer::fixup_degenerate_conditional_branches()
+{
+	// This doesn't really rewrite anything interesting w.r.t succs/preds,
+	// just cleans up so that future passes don't have to worry.
+	for (auto *node : forward_post_visit_order)
+		fixup_degenerate_conditional_branch(node);
+}
+
 // Organizes a dominated sequence of code as a series of selection constructs.
 // Each sequence can be represented as:
 // if (path_is_not_skipped) {
@@ -233,8 +326,6 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		CFGNode *node, const Vector<SerializationLevel> &outer_levels, CFGNode *outer_merge)
 {
 	Vector<CFGNode *> frontier_nodes;
-
-	fixup_degenerate_conditional_branch(node);
 
 	// Only consider blocks that the header dominates.
 	// If we're exiting a dominance relationship, those branches will be handled specially.
@@ -688,8 +779,19 @@ bool CFGStructurizer::run_experimental()
 
 	run_common_preamble();
 
+	// Shouldn't happen, but it's valid and fuzzer can hit it.
+	fixup_degenerate_conditional_branches();
+
 	// We will not rely on re-inserting PHI here, so convert everything back to plain old variables.
 	convert_phi_to_variables();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".phi";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+#endif
 
 	// Switch blocks complicate too many things.
 	// NIR does this too, which this implementation is heavily based on.

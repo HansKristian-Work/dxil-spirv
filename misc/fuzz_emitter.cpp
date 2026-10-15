@@ -149,7 +149,7 @@ void Emitter::parse_line(char *line_buffer)
 			return;
 		}
 
-		nodes_needing_phi.push_back(get(tokens[1].c_str()));
+		nodes_needing_phi.push_back(get(tokens[1]));
 	}
 	else
 	{
