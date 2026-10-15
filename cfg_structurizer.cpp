@@ -9149,7 +9149,7 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 		if (experimental_flow)
 		{
 			// We don't use the top-level merge stuff in the new structurizer.
-			switch (block->ir.merge_info.merge_type)
+			switch (merge.merge_type)
 			{
 			case MergeType::Selection:
 				// Not reachable in the end, force merge to unreachable.
@@ -9162,11 +9162,8 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 				break;
 
 			case MergeType::Loop:
-				// Not reachable in the end, force merge to unreachable.
 				if (merge.merge_block && !merge.merge_block->userdata)
 					merge.merge_block = nullptr;
-
-				// Not reachable in the end, force merge to unreachable.
 				if (merge.continue_block && !merge.continue_block->userdata)
 					merge.continue_block = nullptr;
 
