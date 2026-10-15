@@ -412,26 +412,14 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 				if (!node->dominates(pred))
 					continue;
 
-				// pred *can* exit the overall construct, so we must effectively skip all the way to the end.
+				// pred *can* exit the overall construct, so we must effectively skip all the way to the end if that happens.
 				// We could potentially model this as a big loop break, but ideally we don't.
+				auto *end_itr = find_latest_level_reaching_block(levels, pred);
+				if (!end_itr)
+					end_itr = levels.data() + levels.size();
 
-				for (auto &level : levels)
-				{
-					if (level.skippable)
-						continue;
-
-					// Conservative. It's always valid to make a block skippable.
-					// We'd just rather avoid it if possible.
-					level.skippable = true;
-					for (auto *path: level.paths)
-					{
-						if (path->dominates(pred))
-						{
-							level.skippable = false;
-							break;
-						}
-					}
-				}
+				for (auto *itr = levels.data(); itr != end_itr; ++itr)
+					itr->skippable = true;
 			}
 		}
 
@@ -449,12 +437,14 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		{
 			for (auto *pred : path->pred)
 			{
-				auto *pred_level = find_latest_level_reaching_block(levels, pred);
-				auto itr = &level + 1;
-				auto *end_itr = pred_level ? pred_level : levels.data() + levels.size();
+				// It's possible that we skipped across some levels to reach here.
+				// Try to deduce which level we came from.
+				auto *end_itr = find_latest_level_reaching_block(levels, pred);
+				if (!end_itr)
+					end_itr = levels.data() + levels.size();
 
 				// Mark everything in the region skippable.
-				for (; itr != end_itr; ++itr)
+				for (auto *itr = &level + 1; itr != end_itr; ++itr)
 					itr->skippable = true;
 			}
 		}
