@@ -116,6 +116,7 @@ private:
 
 	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void retarget_branch_pre_traversal(CFGNode *to_prev, CFGNode *to_next);
+	void collapse_conditional_to_direct(CFGNode *to_next);
 	void retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *to_next);
 	CFGNode *rewrite_branch_through_intermediate_node(CFGNode *to_prev, CFGNode *to_next);
 

@@ -89,11 +89,7 @@ void CFGStructurizer::fixup_degenerate_conditional_branch(CFGNode *node)
 	if (node->ir.terminator.type == Terminator::Type::Condition &&
 	    node->ir.terminator.true_block == node->ir.terminator.false_block)
 	{
-		node->ir.terminator.type = Terminator::Type::Branch;
-		node->ir.terminator.direct_block = node->ir.terminator.true_block;
-		node->ir.terminator.false_block = nullptr;
-		node->ir.terminator.true_block = nullptr;
-		node->ir.terminator.conditional_id = 0;
+		node->collapse_conditional_to_direct(node->ir.terminator.true_block);
 	}
 }
 
@@ -465,12 +461,57 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 		serialize_merge_levels_for_dominated_paths(true_path, levels, merge_node);
 		serialize_merge_levels_for_dominated_paths(false_path, levels, merge_node);
 	}
-#if 0
 	else if (true_level == false_level)
 	{
 		// We can be a little smarter and rewrite a selection into a direct branch with adjusted cond value.
+		auto &level = *true_level;
+		auto &builder = module.get_builder();
+
+		uint32_t num_paths = level.paths.size() + level.skippable;
+
+		// It should never happen that we get here with num_paths == 1.
+		// We already collapsed degenerate branches.
+		assert(num_paths >= 2);
+
+		if (num_paths >= 3)
+		{
+			auto true_value = std::find(level.paths.begin(), level.paths.end(), true_path) - level.paths.begin();
+			auto false_value = std::find(level.paths.begin(), level.paths.end(), false_path) - level.paths.begin();
+
+			auto *sel = module.allocate_op(spv::OpSelect, module.allocate_id(), builder.makeIntType(32));
+			sel->add_id(node->ir.terminator.conditional_id);
+			sel->add_id(builder.makeIntConstant(true_value));
+			sel->add_id(builder.makeIntConstant(false_value));
+			node->ir.operations.push_back(sel);
+
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->add_id(level.path_selector_id);
+			store_op->add_id(sel->id);
+			node->ir.operations.push_back(store_op);
+		}
+		else
+		{
+			auto true_value = std::find(level.paths.begin(), level.paths.end(), true_path) - level.paths.begin() + level.skippable;
+			assert(true_value < 2);
+
+			if (true_value == 0)
+			{
+				// Flip the condition.
+				auto *flip = module.allocate_op(spv::OpLogicalNot, module.allocate_id(), builder.makeBoolType());
+				flip->add_id(node->ir.terminator.conditional_id);
+				node->ir.operations.push_back(flip);
+
+				node->ir.terminator.conditional_id = flip->id;
+			}
+
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->add_id(level.path_selector_id);
+			store_op->add_id(node->ir.terminator.conditional_id);
+			node->ir.operations.push_back(store_op);
+		}
+
+		node->collapse_conditional_to_direct(merge_node);
 	}
-#endif
 	else
 	{
 		// Divergence. Handle each branch separately.
