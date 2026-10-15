@@ -277,12 +277,27 @@ void CFGStructurizer::rewrite_switch_blocks()
 		recompute_cfg();
 }
 
-const CFGStructurizer::SerializationLevel *CFGStructurizer::find_level_for_block(
-		const Vector<SerializationLevel> &levels, CFGNode *block)
+const CFGStructurizer::SerializationLevel *
+CFGStructurizer::find_level_for_block(
+	const Vector<SerializationLevel> &levels, CFGNode *block)
 {
 	for (auto &level : levels)
 		if (has_element(level.paths, block))
 			return &level;
+	return nullptr;
+}
+
+const CFGStructurizer::SerializationLevel *
+CFGStructurizer::find_latest_level_reaching_block(const Vector<SerializationLevel> &levels, CFGNode *block)
+{
+	// From what I understand, a candidate block here is either a frontier in some form, in which case it should already
+	// be part of a level, or it is dominated by a path directly.
+	// Worst case, we have slightly less than optimal codegen.
+	for (auto &level : levels)
+		for (auto *path : level.paths)
+			if (path->dominates(block))
+				return &level;
+
 	return nullptr;
 }
 
@@ -434,7 +449,7 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		{
 			for (auto *pred : path->pred)
 			{
-				auto *pred_level = find_level_for_block(levels, pred);
+				auto *pred_level = find_latest_level_reaching_block(levels, pred);
 				auto itr = &level + 1;
 				auto *end_itr = pred_level ? pred_level : levels.data() + levels.size();
 
