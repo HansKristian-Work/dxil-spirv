@@ -160,15 +160,44 @@ static void dump_file_once(const char *path, const std::vector<std::string> &lin
 	});
 }
 
+static std::vector<std::string> generate_random_forward_cfg(std::mt19937 &rnd, uint32_t complexity)
+{
+	std::vector<std::string> cfg;
+	cfg.emplace_back("b entry n0");
+
+	for (uint32_t i = 0; i < complexity - 1; i++)
+	{
+		std::uniform_int_distribution<uint32_t> dist(i + 1, complexity - 1);
+
+		if (rnd() % 2)
+		{
+			uint32_t target_a = dist(rnd);
+			uint32_t target_b = dist(rnd);
+			char line[64];
+			snprintf(line, sizeof(line), "c n%u n%u n%u", i, target_a, target_b);
+			cfg.emplace_back(line);
+		}
+		else
+		{
+			uint32_t target = dist(rnd);
+			char line[64];
+			snprintf(line, sizeof(line), "b n%u n%u", i, target);
+			cfg.emplace_back(line);
+		}
+	}
+
+	return cfg;
+}
+
 static void run_fuzz(Device &device, uint32_t seed, uint32_t complexity)
 {
 	std::mt19937 rnd(seed);
 
-	std::vector<std::string> lines = {
-		"c entry A B",
-		"b A C",
-		"b B C",
-	};
+	auto lines = generate_random_forward_cfg(rnd, complexity);
+
+	char path[256];
+	snprintf(path, sizeof(path), "/tmp/reference.%u.st", seed);
+	dump_file(path, lines);
 
 	const auto emit_lines = [&](Emitter &emitter)
 	{
@@ -204,10 +233,6 @@ static void run_fuzz(Device &device, uint32_t seed, uint32_t complexity)
 		LOGE("Failed to validate fuzzing result.\n");
 		dump_file_once("/tmp/failure.st", lines);
 	}
-
-	char path[256];
-	snprintf(path, sizeof(path), "/tmp/reference.%u.st", seed);
-	dump_file(path, lines);
 }
 
 static void run_fuzzing_rounds(Device &device, uint32_t iterations, uint32_t threads, uint32_t seed, uint32_t complexity)
