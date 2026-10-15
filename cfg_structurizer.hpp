@@ -341,6 +341,7 @@ private:
 
 	void serialize_merge_levels_for_dominated_paths_entry();
 	static const SerializationLevel *find_level_for_block(const Vector<SerializationLevel> &levels, CFGNode *block);
+	static void fixup_degenerate_conditional_branch(CFGNode *node);
 };
 
 template <typename Container, typename T>

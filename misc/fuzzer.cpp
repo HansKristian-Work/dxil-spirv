@@ -163,7 +163,24 @@ static void dump_file_once(const char *path, const std::vector<std::string> &lin
 static std::vector<std::string> generate_random_forward_cfg(std::mt19937 &rnd, uint32_t complexity)
 {
 	std::vector<std::string> cfg;
-	cfg.emplace_back("b entry n0");
+	std::vector<bool> is_used(complexity);
+
+	if (rnd() % 2)
+	{
+		std::uniform_int_distribution<uint32_t> dist(1, complexity - 1);
+		uint32_t target_b = dist(rnd);
+		char line[64];
+		snprintf(line, sizeof(line), "c entry n0 n%u", target_b);
+		cfg.emplace_back(line);
+
+		is_used[0] = true;
+		is_used[target_b] = true;
+	}
+	else
+	{
+		is_used[0] = true;
+		cfg.emplace_back("b entry n0");
+	}
 
 	for (uint32_t i = 0; i < complexity - 1; i++)
 	{
@@ -171,20 +188,26 @@ static std::vector<std::string> generate_random_forward_cfg(std::mt19937 &rnd, u
 
 		if (rnd() % 2)
 		{
-			uint32_t target_a = dist(rnd);
+			uint32_t target_a = is_used[i + 1] ? dist(rnd) : i + 1;
 			uint32_t target_b = dist(rnd);
 			char line[64];
 			snprintf(line, sizeof(line), "c n%u n%u n%u", i, target_a, target_b);
 			cfg.emplace_back(line);
+
+			is_used[target_a] = true;
+			is_used[target_b] = true;
 		}
 		else
 		{
-			uint32_t target = dist(rnd);
+			uint32_t target = is_used[i + 1] ? dist(rnd) : i + 1;
 			char line[64];
 			snprintf(line, sizeof(line), "b n%u n%u", i, target);
 			cfg.emplace_back(line);
+			is_used[target] = true;
 		}
 	}
+
+	assert(std::find(is_used.begin(), is_used.end(), false) == is_used.end());
 
 	return cfg;
 }
@@ -230,7 +253,7 @@ static void run_fuzz(Device &device, uint32_t seed, uint32_t complexity)
 	FuzzState state = queue_fuzz(rnd, device, unstructured, structured);
 	if (!validate_fuzzing_result(device, state))
 	{
-		LOGE("Failed to validate fuzzing result.\n");
+		LOGE("Failed to validate fuzzing result for seed %u.\n", seed);
 		dump_file_once("/tmp/failure.st", lines);
 	}
 }

@@ -84,6 +84,19 @@ const CFGStructurizer::SerializationLevel *CFGStructurizer::find_level_for_block
 	return nullptr;
 }
 
+void CFGStructurizer::fixup_degenerate_conditional_branch(CFGNode *node)
+{
+	if (node->ir.terminator.type == Terminator::Type::Condition &&
+	    node->ir.terminator.true_block == node->ir.terminator.false_block)
+	{
+		node->ir.terminator.type = Terminator::Type::Branch;
+		node->ir.terminator.direct_block = node->ir.terminator.true_block;
+		node->ir.terminator.false_block = nullptr;
+		node->ir.terminator.true_block = nullptr;
+		node->ir.terminator.conditional_id = 0;
+	}
+}
+
 // Organizes a dominated sequence of code as a series of selection constructs.
 // Each sequence can be represented as:
 // if (path_is_not_skipped) {
@@ -107,6 +120,8 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		CFGNode *node, const Vector<SerializationLevel> &outer_levels, CFGNode *outer_merge)
 {
 	Vector<CFGNode *> frontier_nodes;
+
+	fixup_degenerate_conditional_branch(node);
 
 	// Only consider blocks that the header dominates.
 	// If we're exiting a dominance relationship, those branches will be handled specially.
@@ -343,8 +358,6 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		node->ir.merge_info.merge_type = MergeType::Selection;
 		node->ir.merge_info.merge_block = merge_node;
 		merge_node->name = node->name + ".merge";
-		merge_node->forward_post_visit_order = node->forward_post_visit_order;
-		merge_node->backward_post_visit_order = node->backward_post_visit_order;
 
 		// Now we can either enter a path we dominate (and therefore we recursively keep structurizing),
 		// or we set path variables and stop.
@@ -401,7 +414,7 @@ void CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const Se
 		{
 			uint32_t num_paths = level.paths.size() + level.skippable;
 
-			if (num_paths > 3)
+			if (num_paths >= 3)
 			{
 				auto *store_op = module.allocate_op(spv::OpStore);
 				store_op->add_id(level.path_selector_id);
