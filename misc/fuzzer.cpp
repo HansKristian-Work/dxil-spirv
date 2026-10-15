@@ -50,7 +50,7 @@ struct FuzzState
 	std::vector<std::string> lines;
 };
 
-static constexpr uint32_t MaxBlocks = 256;
+static constexpr uint32_t MaxBlocks = 1024;
 static constexpr uint32_t MaxFeedback = 4096;
 
 static bool validate_fuzzing_result(Device &device, FuzzState &state)
