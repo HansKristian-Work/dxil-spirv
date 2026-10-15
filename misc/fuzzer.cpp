@@ -47,10 +47,11 @@ struct FuzzState
 	Fence fence;
 	BufferHandle unstructured_result;
 	BufferHandle structured_result;
+	std::vector<std::string> lines;
 };
 
 static constexpr uint32_t MaxBlocks = 256;
-static constexpr uint32_t MaxFeedback = 1024;
+static constexpr uint32_t MaxFeedback = 4096;
 
 static bool validate_fuzzing_result(Device &device, FuzzState &state)
 {
@@ -83,6 +84,8 @@ static bool validate_fuzzing_result(Device &device, FuzzState &state)
 
 	return true;
 }
+
+static std::atomic_uint fuzz_count;
 
 static FuzzState queue_fuzz(
 	std::mt19937 &rnd, Device &device,
@@ -130,7 +133,10 @@ static FuzzState queue_fuzz(
 	device.submit(cmd, &result.fence);
 	result.structured_result = std::move(feedback_buffer_structured);
 	result.unstructured_result = std::move(feedback_buffer_unstructured);
-	device.next_frame_context();
+
+	if (fuzz_count.fetch_add(1, std::memory_order_relaxed) % 16 == 0)
+		device.next_frame_context();
+
 	return result;
 }
 
@@ -218,9 +224,11 @@ static void run_fuzz(Device &device, uint32_t seed, uint32_t complexity)
 
 	auto lines = generate_random_forward_cfg(rnd, complexity);
 
+#if 0
 	char path[256];
 	snprintf(path, sizeof(path), "/tmp/reference.%u.st", seed);
 	dump_file(path, lines);
+#endif
 
 	const auto emit_lines = [&](Emitter &emitter)
 	{
@@ -251,11 +259,18 @@ static void run_fuzz(Device &device, uint32_t seed, uint32_t complexity)
 	}
 
 	FuzzState state = queue_fuzz(rnd, device, unstructured, structured);
-	if (!validate_fuzzing_result(device, state))
-	{
-		LOGE("Failed to validate fuzzing result for seed %u.\n", seed);
-		dump_file_once("/tmp/failure.st", lines);
-	}
+	state.lines = std::move(lines);
+
+	auto task = device.get_system_handles().thread_group->create_task(
+		[&device, seed, state = std::make_unique<FuzzState>(std::move(state))]() mutable
+		{
+			if (!validate_fuzzing_result(device, *state))
+			{
+				LOGE("Failed to validate fuzzing result for seed %u.\n", seed);
+				dump_file_once("/tmp/failure.st", state->lines);
+			}
+		});
+	task->set_task_class(TaskClass::Background);
 }
 
 static void run_fuzzing_rounds(Device &device, uint32_t iterations, uint32_t threads, uint32_t seed, uint32_t complexity)
@@ -305,9 +320,6 @@ int main(int argc, char **argv)
 	cbs.add("--threads", [&](Util::CLIParser &parser) { threads = parser.next_uint(); });
 	cbs.add("--seed", [&](Util::CLIParser &parser) { seed = parser.next_uint(); });
 
-	ThreadGroup group;
-	group.start(threads, 0, {});
-
 	Util::CLIParser parser(std::move(cbs), argc - 1, argv + 1);
 	if (!parser.parse())
 	{
@@ -322,6 +334,9 @@ int main(int argc, char **argv)
 
 	if (!Context::init_loader(nullptr))
 		return EXIT_FAILURE;
+
+	ThreadGroup group;
+	group.start(threads, threads, {});
 
 	Context::SystemHandles handles = {};
 	handles.thread_group = &group;
@@ -341,8 +356,9 @@ int main(int argc, char **argv)
 	{
 		Device device;
 		device.set_context(context);
+		device.init_frame_contexts(8);
 
-		uint32_t to_run = std::min<uint32_t>(iterations - iteration, 64 * 1024);
+		uint32_t to_run = std::min<uint32_t>(iterations - iteration, 4096);
 		run_fuzzing_rounds(device, to_run, threads, seed + iteration, complexity);
 		iteration += to_run;
 	}
