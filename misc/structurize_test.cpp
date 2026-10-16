@@ -244,8 +244,8 @@ int main(int argc, char **argv)
 
 	if (output_path.empty())
 	{
-		print_glsl(code);
 		print_spirv_assembly(code);
+		print_glsl(code);
 	}
 	else
 	{

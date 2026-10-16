@@ -77,7 +77,6 @@ bool CFGStructurizer::ensure_valid_phi_rewrites(CFGNode *node)
 		{
 			auto *interposing = pool.create_node();
 			interposing->name = node->name + ".interposing";
-			interposing->add_unique_succ(node);
 			interposing->add_branch(node);
 			interposing->ir.terminator.type = Terminator::Type::Branch;
 			interposing->ir.terminator.direct_block = node;
@@ -257,8 +256,6 @@ void CFGStructurizer::rewrite_switch_blocks()
 
 				current_node->add_branch(n);
 				current_node->add_branch(current_residual);
-				current_node->add_unique_succ(n);
-				current_node->add_unique_succ(current_residual);
 
 				current_node = current_residual;
 			}
@@ -268,7 +265,6 @@ void CFGStructurizer::rewrite_switch_blocks()
 			current_residual->ir.terminator.type = Terminator::Type::Branch;
 			current_residual->ir.terminator.direct_block = default_case.node;
 			current_residual->add_branch(default_case.node);
-			current_residual->add_unique_succ(default_case.node);
 			rewrote = true;
 		}
 	}
@@ -340,7 +336,7 @@ void CFGStructurizer::fixup_degenerate_conditional_branches()
 
 // Basically a port of inside_outside in Mesa goto_if pass.
 void CFGStructurizer::split_loop_inner_outer(
-		CFGNode *node, Vector<CFGNode *> &back_edge_candidates,
+		CFGNode *node, CFGNode *back_edge, Vector<CFGNode *> &back_edge_candidates,
 		Vector<CFGNode *> &outer_dominated, Vector<CFGNode *> &loop_exits)
 {
 	Vector<CFGNode *> remaining;
@@ -348,6 +344,10 @@ void CFGStructurizer::split_loop_inner_outer(
 	// TODO: Only add nodes if we're the innermost loop that dominates.
 	// For nested loops it's possible that the outer loop is the loop that actually "owns" the exit.
 	remaining = node->idom_children;
+
+	for (auto *remain : remaining)
+		if (remain->dominates(back_edge))
+			push_back_unique(back_edge_candidates, remain);
 
 	bool progress = true;
 	while (!remaining.empty() && progress)
@@ -357,14 +357,17 @@ void CFGStructurizer::split_loop_inner_outer(
 		for (auto itr = remaining.begin(); itr != remaining.end(); )
 		{
 			auto *remain = *itr;
-			bool can_jump_back = false;
+			bool can_jump_back = remain->dominates(back_edge);
 
-			for (auto *front : remain->dominance_frontier)
+			if (!can_jump_back)
 			{
-				if (has_element(remaining, front) || has_element(back_edge_candidates, front))
+				for (auto *front : remain->dominance_frontier)
 				{
-					can_jump_back = true;
-					break;
+					if (has_element(remaining, front) || has_element(back_edge_candidates, front) || front->dominates(back_edge))
+					{
+						can_jump_back = true;
+						break;
+					}
 				}
 			}
 
@@ -386,7 +389,7 @@ void CFGStructurizer::split_loop_inner_outer(
 
 	// Recurse through the CFG.
 	for (auto *remain: remaining)
-		split_loop_inner_outer(remain, back_edge_candidates, outer_dominated, loop_exits);
+		split_loop_inner_outer(remain, back_edge, back_edge_candidates, outer_dominated, loop_exits);
 
 	for (auto *succ : node->succ)
 		if (!has_element(back_edge_candidates, succ))
@@ -554,7 +557,9 @@ void CFGStructurizer::analyze_levels_skippability(CFGNode *node, Vector<Serializ
 
 void CFGStructurizer::organize_levels(CFGNode *node, const Vector<CFGNode *> &children,
                                       const Vector<SerializationLevel> &outer_levels,
-                                      Vector<SerializationLevel> &levels)
+                                      Vector<SerializationLevel> &levels,
+                                      const Vector<CFGNode *> *block_exits,
+                                      bool promote_children_to_frontier)
 {
 	Vector<CFGNode *> frontier_nodes;
 
@@ -562,10 +567,19 @@ void CFGStructurizer::organize_levels(CFGNode *node, const Vector<CFGNode *> &ch
 	// If we're exiting a dominance relationship, those branches will be handled specially when we branch to them.
 	// Exiting means writing some path variables and potentially doing special breaks and continues
 	// if the situation calls for it.
+
+	// Used for loop exits. Make sure they are all represented by a level.
+	if (promote_children_to_frontier)
+		for (auto *child : children)
+			push_back_unique(frontier_nodes, child);
+
 	for (auto *child : children)
 	{
 		for (auto *front: child->dominance_frontier)
 		{
+			if (block_exits && has_element(*block_exits, front))
+				continue;
+
 			// Only consider new frontiers if we're the first scope to identify it.
 			// A block must only belong to one scope.
 			if (node->dominates(front) && !find_level_for_block(outer_levels, front))
@@ -617,20 +631,79 @@ void CFGStructurizer::organize_levels(CFGNode *node, const Vector<CFGNode *> &ch
 		levels.push_back({ std::move(level_blocks) });
 }
 
+void CFGStructurizer::traverse_routes(
+		Vector<SerializationLevel> &&levels,
+		size_t num_traverse_levels,
+		CFGNode *start_node, CFGNode *outer_merge)
+{
+	// All execution should have been collected at merge_node.
+	// Dispatch execution to those now.
+	for (size_t i = 0; i < num_traverse_levels; i++)
+	{
+		auto level = std::move(levels.back());
+		levels.pop_back();
+
+		// Link up level stages.
+		start_node->add_branch(level.input_node);
+		start_node->ir.terminator.type = Terminator::Type::Branch;
+		start_node->ir.terminator.direct_block = level.input_node;
+
+		start_node = level.output_node;
+		for (auto *path : level.paths)
+			serialize_merge_levels_for_dominated_paths(path, levels, level.output_node);
+	}
+
+	if (outer_merge)
+	{
+		// Branch from last level to outer_merge.
+		// If we dominate everything in the path to exit, there is nothing to exit to.
+		start_node->add_branch(outer_merge);
+		start_node->ir.terminator.type = Terminator::Type::Branch;
+		start_node->ir.terminator.direct_block = outer_merge;
+	}
+	else
+	{
+		// Nowhere to branch, this must be a return.
+		start_node->ir.terminator.type = Terminator::Type::Return;
+	}
+}
+
 void CFGStructurizer::route_branches(CFGNode *node,
                                      const Vector<SerializationLevel> &outer_levels,
-                                     Vector<SerializationLevel> &&levels,
+                                     const Vector<SerializationLevel> &levels,
                                      CFGNode *outer_merge)
 {
+	if (node->succ_back_edge)
+	{
+		if (node->ir.terminator.type == Terminator::Type::Condition)
+		{
+			// The path back to header will terminate traversal.
+			// The other path must be a loop exit, and will also terminate traversal,
+			// so there is no need to create a new merge scope.
+			enter_succ(node,
+					   node->ir.terminator.true_block,
+					   node->ir.terminator.false_block,
+					   node->ir.terminator.conditional_id,
+					   outer_levels, outer_merge);
+		}
+
+		// Direct branches need not do anything since it can only branch backwards to header anyway.
+		return;
+	}
+
 	if (node->ir.terminator.type == Terminator::Type::Condition)
 	{
 		auto break_levels = outer_levels;
 		break_levels.insert(break_levels.end(), levels.begin(), levels.end());
 
 		CFGNode *merge_node = pool.create_node();
-		auto *current_output_node = merge_node;
+
+		// Cannot declare both selection merge and loop merge in same block.
+		if (node->ir.merge_info.merge_type == MergeType::Loop)
+			node = create_helper_succ_block(node);
 
 		// Reconvene execution at the merge node.
+		assert(node->ir.merge_info.merge_type == MergeType::None);
 		node->ir.merge_info.merge_type = MergeType::Selection;
 		node->ir.merge_info.merge_block = merge_node;
 		merge_node->name = node->name + ".merge";
@@ -644,37 +717,7 @@ void CFGStructurizer::route_branches(CFGNode *node,
 		           node->ir.terminator.conditional_id,
 		           break_levels, merge_node);
 
-		// All execution should have been collected at merge_node.
-		// Dispatch execution to those now.
-		while (!levels.empty())
-		{
-			auto level = std::move(levels.back());
-			levels.pop_back();
-			break_levels.pop_back();
-
-			// Link up level stages.
-			current_output_node->add_branch(level.input_node);
-			current_output_node->ir.terminator.type = Terminator::Type::Branch;
-			current_output_node->ir.terminator.direct_block = level.input_node;
-
-			current_output_node = level.output_node;
-			for (auto *path : level.paths)
-				serialize_merge_levels_for_dominated_paths(path, break_levels, level.output_node);
-		}
-
-		if (outer_merge)
-		{
-			// Branch from last level to outer_merge.
-			// If we dominate everything in the path to exit, there is nothing to exit to.
-			current_output_node->add_branch(outer_merge);
-			current_output_node->ir.terminator.type = Terminator::Type::Branch;
-			current_output_node->ir.terminator.direct_block = outer_merge;
-		}
-		else
-		{
-			// Nowhere to branch, this must be a return.
-			current_output_node->ir.terminator.type = Terminator::Type::Return;
-		}
+		traverse_routes(std::move(break_levels), levels.size(), merge_node, outer_merge);
 	}
 	else if (node->ir.terminator.type == Terminator::Type::Branch)
 	{
@@ -688,19 +731,56 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 	if (node->pred_back_edge)
 	{
 		// This is a loop header. As expected, this gets extremely painful in unstructured control flow.
+		// Split the blocks into two sets. One set that is inside the loop, and one set that is outside the loop, but we still dominate.
+		// We can exit from a loop in a way that we don't (structurally) dominate ourselves.
+		// This could mean a multi-level break or continue that needs to be resolved by punching through multiple ladders.
+		// The only saving grace is that DXIL does not allow irreducible control flow, so we don't have to ponder that hellscape fortunately.
 		Vector<CFGNode *> back_edge_candidates { node->pred_back_edge };
+		push_back_unique(back_edge_candidates, node);
+
 		Vector<CFGNode *> outer_idom;
 		Vector<CFGNode *> exits;
-		split_loop_inner_outer(node, back_edge_candidates, outer_idom, exits);
+		split_loop_inner_outer(node, node->pred_back_edge, back_edge_candidates, outer_idom, exits);
 
-		LOGI("nyaa\n");
+		// back_edge_candidates contains all nodes inside the construct.
+		// outer_idom contains all nodes outside the construct that we still dominate.
+		// exits contains all exits from the loop, but which we don't necessary dominate.
+		// All branches to exit must reroute to the loop's merge node.
+		// From there we dispatch control flow further.
+		Vector<SerializationLevel> in_loop_levels, out_loop_levels;
+		organize_levels(node, back_edge_candidates, outer_levels, in_loop_levels, &exits, false);
+		analyze_levels_skippability(node, in_loop_levels);
+
+		organize_levels(node, outer_idom, outer_levels, out_loop_levels, nullptr, true);
+		analyze_levels_skippability(node, out_loop_levels);
+
+		auto *merge_node = pool.create_node();
+		merge_node->name = node->name + ".loop-merge";
+		node->ir.merge_info.merge_type = MergeType::Loop;
+		node->ir.merge_info.continue_block = node->pred_back_edge;
+		node->ir.merge_info.merge_block = merge_node;
+
+		auto merge_levels = outer_levels;
+		merge_levels.insert(merge_levels.end(), out_loop_levels.begin(), out_loop_levels.end());
+
+		// Route the inner scope.
+		route_branches(node, merge_levels, in_loop_levels, merge_node);
+
+		// Maybe this can happen for a true infinite loop?
+		// Early return will manifest as a loop exit in this model.
+		assert(!out_loop_levels.empty());
+
+		// Resolve the outer branches. Do not use route_branches here since we've already dealt with branches.
+		// We're effectively starting routing from the merge node now.
+		traverse_routes(std::move(merge_levels), out_loop_levels.size(), merge_node, outer_merge);
 	}
-
-	Vector<SerializationLevel> levels;
-	organize_levels(node, node->idom_children, outer_levels, levels);
-	analyze_levels_skippability(node, levels);
-
-	route_branches(node, outer_levels, std::move(levels), outer_merge);
+	else
+	{
+		Vector<SerializationLevel> levels;
+		organize_levels(node, node->idom_children, outer_levels, levels, nullptr, false);
+		analyze_levels_skippability(node, levels);
+		route_branches(node, outer_levels, levels, outer_merge);
+	}
 }
 
 void CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const SerializationLevel &level)
@@ -752,6 +832,9 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
                                  spv::Id cond, const Vector<SerializationLevel> &levels,
                                  CFGNode *merge_node)
 {
+	// Be careful with back-edges.
+	// They will not see a level, but only a header.
+	// We never need to select control-flow when branching backwards, just terminate the recursion.
 	auto *true_level = find_level_for_block(levels, true_path);
 	auto *false_level = find_level_for_block(levels, false_path);
 
@@ -759,8 +842,10 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 	{
 		// It's possible that we dominate both paths, and therefore there are no associated break levels.
 		// Just walk the graph in both directions as normal.
-		serialize_merge_levels_for_dominated_paths(true_path, levels, merge_node);
-		serialize_merge_levels_for_dominated_paths(false_path, levels, merge_node);
+		if (true_path != node->succ_back_edge)
+			serialize_merge_levels_for_dominated_paths(true_path, levels, merge_node);
+		if (false_path != node->succ_back_edge)
+			serialize_merge_levels_for_dominated_paths(false_path, levels, merge_node);
 	}
 	else if (true_level == false_level)
 	{
@@ -829,7 +914,7 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 			resolve_direct_path(dummy_true, true_path, *true_level);
 			dummy_true->retarget_branch_pre_traversal(true_path, merge_node);
 		}
-		else
+		else if (true_path != node->succ_back_edge)
 		{
 			serialize_merge_levels_for_dominated_paths(true_path, levels, merge_node);
 		}
@@ -846,7 +931,7 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 			resolve_direct_path(dummy_false, false_path, *false_level);
 			dummy_false->retarget_branch_pre_traversal(false_path, merge_node);
 		}
-		else
+		else if (false_path != node->succ_back_edge)
 		{
 			serialize_merge_levels_for_dominated_paths(false_path, levels, merge_node);
 		}

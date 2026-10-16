@@ -349,16 +349,26 @@ private:
 	bool ensure_valid_phi_rewrites(CFGNode *node);
 
 	void split_loop_inner_outer(
-		CFGNode *node, Vector<CFGNode *> &back_edge_candidates,
+		CFGNode *node, CFGNode *back_edge, Vector<CFGNode *> &back_edge_candidates,
 		Vector<CFGNode *> &outer_dominated, Vector<CFGNode *> &loop_exits);
 
-	void organize_levels(CFGNode *node, const Vector<CFGNode *> &children, const Vector<SerializationLevel> &outer_levels,
-	                     Vector<SerializationLevel> &levels);
+	void organize_levels(CFGNode *node, const Vector<CFGNode *> &children,
+	                     const Vector<SerializationLevel> &outer_levels,
+	                     Vector<SerializationLevel> &levels,
+	                     const Vector<CFGNode *> *block_exits,
+	                     bool promote_children_to_frontier);
+
 	void analyze_levels_skippability(CFGNode *node, Vector<SerializationLevel> &levels);
 
 	void route_branches(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
-	                    Vector<SerializationLevel> &&levels,
+	                    const Vector<SerializationLevel> &levels,
 	                    CFGNode *outer_merge);
+
+	void traverse_routes(
+		Vector<SerializationLevel> &&levels,
+		size_t num_traverse_levels,
+		CFGNode *start_node,
+		CFGNode *outer_merge);
 };
 
 template <typename Container, typename T>
