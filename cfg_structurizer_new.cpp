@@ -653,18 +653,21 @@ void CFGStructurizer::traverse_routes(
 			serialize_merge_levels_for_dominated_paths(path, levels, level.output_node);
 	}
 
-	if (outer_merge)
+	if (start_node != outer_merge)
 	{
-		// Branch from last level to outer_merge.
-		// If we dominate everything in the path to exit, there is nothing to exit to.
-		start_node->add_branch(outer_merge);
-		start_node->ir.terminator.type = Terminator::Type::Branch;
-		start_node->ir.terminator.direct_block = outer_merge;
-	}
-	else
-	{
-		// Nowhere to branch, this must be a return.
-		start_node->ir.terminator.type = Terminator::Type::Return;
+		if (outer_merge)
+		{
+			// Branch from last level to outer_merge.
+			// If we dominate everything in the path to exit, there is nothing to exit to.
+			start_node->add_branch(outer_merge);
+			start_node->ir.terminator.type = Terminator::Type::Branch;
+			start_node->ir.terminator.direct_block = outer_merge;
+		}
+		else
+		{
+			// Nowhere to branch, this must be a return.
+			start_node->ir.terminator.type = Terminator::Type::Return;
+		}
 	}
 }
 
@@ -741,19 +744,24 @@ void CFGStructurizer::route_branches(CFGNode *node,
 			node->ir.merge_info.merge_block = merge_node;
 			merge_node->name = node->name + ".merge";
 		}
-		else if (true_non_trivial)
+		else if (true_non_trivial && node->dominates(node->ir.terminator.true_block))
 		{
 			// Technically we don't need to merge, but it makes the codegen a little neater since we can collapse scopes.
+			// Only do so if it's possible. We might not dominate the succ here.
 			assert(node->ir.merge_info.merge_type == MergeType::None);
 			node->ir.merge_info.merge_type = MergeType::Selection;
 			node->ir.merge_info.merge_block = node->ir.terminator.true_block;
 		}
-		else if (false_non_trivial)
+		else if (false_non_trivial && node->dominates(node->ir.terminator.false_block))
 		{
+			// Only do so if it's possible. We might not dominate the succ here.
 			assert(node->ir.merge_info.merge_type == MergeType::None);
 			node->ir.merge_info.merge_type = MergeType::Selection;
 			node->ir.merge_info.merge_block = node->ir.terminator.false_block;
 		}
+
+		if (!merge_node)
+			merge_node = outer_merge;
 
 		// Now we can either enter a path we dominate (and therefore we recursively keep structurizing),
 		// or we set path variables and stop.
@@ -961,7 +969,7 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 		if (true_level)
 		{
 			auto *dummy_true = pool.create_node();
-			dummy_true->name = node->name + ".dummy-true";
+			dummy_true->name = node->name + ".sel-true";
 			dummy_true->add_branch(true_path);
 			dummy_true->ir.terminator.type = Terminator::Type::Branch;
 			dummy_true->ir.terminator.direct_block = true_path;
@@ -981,7 +989,7 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 		if (false_level)
 		{
 			auto *dummy_false = pool.create_node();
-			dummy_false->name = node->name + ".dummy-false";
+			dummy_false->name = node->name + ".sel-false";
 			dummy_false->add_branch(false_path);
 			dummy_false->ir.terminator.type = Terminator::Type::Branch;
 			dummy_false->ir.terminator.direct_block = false_path;
