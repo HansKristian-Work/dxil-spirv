@@ -713,7 +713,8 @@ void CFGStructurizer::route_branches(CFGNode *node,
 		const auto level_has_non_breaking_non_continue_path = [](CFGNode *succ, const SerializationLevel *level)
 		{
 			// This is a continue block we're traversing from inside a loop. This is a proper continue.
-			if (succ->succ_back_edge && succ->succ_back_edge != succ)
+			// If the continue block is reached through a frontier, we treat it as a normal case.
+			if (!level && succ->succ_back_edge && succ->succ_back_edge != succ)
 				return false;
 
 			// A loop break of some kind.
