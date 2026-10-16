@@ -324,6 +324,9 @@ private:
 
 		CFGNode *input_node = nullptr;
 		CFGNode *output_node = nullptr;
+
+		// If set, redirect any branch here instead of the normal merge target.
+		CFGNode *breaking_branch = nullptr;
 	};
 
 	void run_common_preamble();
@@ -334,8 +337,10 @@ private:
 
 	void enter_succ(CFGNode *from, CFGNode *succ,
 	                const Vector<SerializationLevel> &levels, CFGNode *merge_node);
-	void enter_succ(CFGNode *from, CFGNode *true_path, CFGNode *false_path,
-	                spv::Id cond, const Vector<SerializationLevel> &levels, CFGNode *merge_node);
+
+	void enter_succ(CFGNode *from, CFGNode *true_path, CFGNode *false_path, spv::Id cond,
+	                const SerializationLevel *true_level, const SerializationLevel *false_level,
+	                const Vector<SerializationLevel> &levels, CFGNode *merge_node);
 
 	void resolve_direct_path(CFGNode *from, CFGNode *succ, const SerializationLevel &level);
 

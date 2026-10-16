@@ -677,6 +677,9 @@ void CFGStructurizer::route_branches(CFGNode *node,
 	{
 		if (node->ir.terminator.type == Terminator::Type::Condition)
 		{
+			auto *true_level = find_level_for_block(levels, node->ir.terminator.true_block);
+			auto *false_level = find_level_for_block(levels, node->ir.terminator.false_block);
+
 			// The path back to header will terminate traversal.
 			// The other path must be a loop exit, and will also terminate traversal,
 			// so there is no need to create a new merge scope.
@@ -684,6 +687,7 @@ void CFGStructurizer::route_branches(CFGNode *node,
 					   node->ir.terminator.true_block,
 					   node->ir.terminator.false_block,
 					   node->ir.terminator.conditional_id,
+					   true_level, false_level,
 					   outer_levels, outer_merge);
 		}
 
@@ -696,28 +700,75 @@ void CFGStructurizer::route_branches(CFGNode *node,
 		auto break_levels = outer_levels;
 		break_levels.insert(break_levels.end(), levels.begin(), levels.end());
 
-		CFGNode *merge_node = pool.create_node();
+		// Be careful with back-edges.
+		// They will not see a level, but only a header.
+		// We never need to select control-flow when branching backwards, just terminate the recursion.
+		// If we're directly breaking or continuing in at least one path, we do not need selection merges.
+		auto *true_level = find_level_for_block(break_levels, node->ir.terminator.true_block);
+		auto *false_level = find_level_for_block(break_levels, node->ir.terminator.false_block);
+
+		const auto level_has_non_breaking_non_continue_path = [](CFGNode *succ, const SerializationLevel *level)
+		{
+			// This is a continue block we're traversing from inside a loop. This is a proper continue.
+			if (succ->succ_back_edge && succ->succ_back_edge != succ)
+				return false;
+
+			// A loop break of some kind.
+			// If we're overwriting a branch targeting a level that is not in a different loop scope,
+			// we still need to merge control flow (and skip over code).
+			if (level && level->breaking_branch)
+				return false;
+
+			return true;
+		};
+
+		auto true_non_trivial = level_has_non_breaking_non_continue_path(node->ir.terminator.true_block, true_level);
+		auto false_non_trivial = level_has_non_breaking_non_continue_path(node->ir.terminator.false_block, false_level);
+
+		CFGNode *merge_node = nullptr;
+		if (true_non_trivial && false_non_trivial)
+			merge_node = pool.create_node();
 
 		// Cannot declare both selection merge and loop merge in same block.
-		if (node->ir.merge_info.merge_type == MergeType::Loop)
+		if ((true_non_trivial || false_non_trivial) && node->ir.merge_info.merge_type == MergeType::Loop)
 			node = create_helper_succ_block(node);
 
-		// Reconvene execution at the merge node.
-		assert(node->ir.merge_info.merge_type == MergeType::None);
-		node->ir.merge_info.merge_type = MergeType::Selection;
-		node->ir.merge_info.merge_block = merge_node;
-		merge_node->name = node->name + ".merge";
+		if (merge_node)
+		{
+			// Reconvene execution at the merge node.
+			assert(node->ir.merge_info.merge_type == MergeType::None);
+			node->ir.merge_info.merge_type = MergeType::Selection;
+			node->ir.merge_info.merge_block = merge_node;
+			merge_node->name = node->name + ".merge";
+		}
+		else if (true_non_trivial)
+		{
+			// Technically we don't need to merge, but it makes the codegen a little neater since we can collapse scopes.
+			assert(node->ir.merge_info.merge_type == MergeType::None);
+			node->ir.merge_info.merge_type = MergeType::Selection;
+			node->ir.merge_info.merge_block = node->ir.terminator.true_block;
+		}
+		else if (false_non_trivial)
+		{
+			assert(node->ir.merge_info.merge_type == MergeType::None);
+			node->ir.merge_info.merge_type = MergeType::Selection;
+			node->ir.merge_info.merge_block = node->ir.terminator.false_block;
+		}
 
 		// Now we can either enter a path we dominate (and therefore we recursively keep structurizing),
 		// or we set path variables and stop.
 		// Execution must reconvene at the top level.
 		enter_succ(node,
-		           node->ir.terminator.true_block,
-		           node->ir.terminator.false_block,
+		           node->ir.terminator.true_block, node->ir.terminator.false_block,
 		           node->ir.terminator.conditional_id,
+		           true_level, false_level,
 		           break_levels, merge_node);
 
-		traverse_routes(std::move(break_levels), levels.size(), merge_node, outer_merge);
+		assert(merge_node || levels.empty());
+
+		// If this branch is a conditional continue or break, we don't need resolve any scopes.
+		if (merge_node)
+			traverse_routes(std::move(break_levels), levels.size(), merge_node, outer_merge);
 	}
 	else if (node->ir.terminator.type == Terminator::Type::Branch)
 	{
@@ -760,11 +811,19 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		node->ir.merge_info.continue_block = node->pred_back_edge;
 		node->ir.merge_info.merge_block = merge_node;
 
+		// Anything that exits the loop must do so through the merge node instead of inner merge.
+		for (auto &outer_level : out_loop_levels)
+			outer_level.breaking_branch = merge_node;
+
 		auto merge_levels = outer_levels;
 		merge_levels.insert(merge_levels.end(), out_loop_levels.begin(), out_loop_levels.end());
 
 		// Route the inner scope.
 		route_branches(node, merge_levels, in_loop_levels, merge_node);
+
+		// We're outside the loop now, so it's not a break anymore.
+		for (size_t i = merge_levels.size() - out_loop_levels.size(); i < merge_levels.size(); i++)
+			merge_levels[i].breaking_branch = nullptr;
 
 		// Maybe this can happen for a true infinite loop?
 		// Early return will manifest as a loop exit in this model.
@@ -828,16 +887,11 @@ void CFGStructurizer::enter_succ(
 	}
 }
 
-void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *false_path,
-                                 spv::Id cond, const Vector<SerializationLevel> &levels,
+void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *false_path, spv::Id cond,
+                                 const SerializationLevel *true_level, const SerializationLevel *false_level,
+                                 const Vector<SerializationLevel> &levels,
                                  CFGNode *merge_node)
 {
-	// Be careful with back-edges.
-	// They will not see a level, but only a header.
-	// We never need to select control-flow when branching backwards, just terminate the recursion.
-	auto *true_level = find_level_for_block(levels, true_path);
-	auto *false_level = find_level_for_block(levels, false_path);
-
 	if (!true_level && !false_level)
 	{
 		// It's possible that we dominate both paths, and therefore there are no associated break levels.
@@ -896,7 +950,9 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 			node->ir.operations.push_back(store_op);
 		}
 
-		node->collapse_conditional_to_direct(merge_node);
+		auto *rewrite_target = level.breaking_branch ? level.breaking_branch : merge_node;
+		if (rewrite_target)
+			node->collapse_conditional_to_direct(rewrite_target);
 	}
 	else
 	{
@@ -912,7 +968,10 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 
 			node->retarget_branch_pre_traversal(true_path, dummy_true);
 			resolve_direct_path(dummy_true, true_path, *true_level);
-			dummy_true->retarget_branch_pre_traversal(true_path, merge_node);
+
+			auto *rewrite_target = true_level->breaking_branch ? true_level->breaking_branch : merge_node;
+			if (rewrite_target)
+				dummy_true->retarget_branch_pre_traversal(true_path, rewrite_target);
 		}
 		else if (true_path != node->succ_back_edge)
 		{
@@ -929,7 +988,10 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 
 			node->retarget_branch_pre_traversal(false_path, dummy_false);
 			resolve_direct_path(dummy_false, false_path, *false_level);
-			dummy_false->retarget_branch_pre_traversal(false_path, merge_node);
+
+			auto *rewrite_target = false_level->breaking_branch ? false_level->breaking_branch : merge_node;
+			if (rewrite_target)
+				dummy_false->retarget_branch_pre_traversal(false_path, rewrite_target);
 		}
 		else if (false_path != node->succ_back_edge)
 		{

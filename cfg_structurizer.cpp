@@ -80,9 +80,9 @@ void CFGStructurizer::log_cfg_graphviz(const char *path) const
 		if (itr == node_to_id.end())
 		{
 			const char *shape = nullptr;
-			if (node->merge == MergeType::Loop)
+			if (node->merge == MergeType::Loop || node->ir.merge_info.merge_type == MergeType::Loop)
 				shape = "circle";
-			else if (node->merge == MergeType::Selection)
+			else if (node->merge == MergeType::Selection || node->ir.merge_info.merge_type == MergeType::Selection)
 				shape = "triangle";
 			else
 				shape = "box";
@@ -119,17 +119,21 @@ void CFGStructurizer::log_cfg_graphviz(const char *path) const
 			break;
 		}
 
-		if (node->merge == MergeType::Loop)
+		if (node->merge == MergeType::Loop || node->ir.merge_info.merge_type == MergeType::Loop)
 		{
 			if (node->pred_back_edge)
 				fprintf(file, "%u -> %u [style=\"dotted\"];\n", get_node_id(node), get_node_id(node->pred_back_edge));
 			if (node->loop_merge_block)
 				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->loop_merge_block));
+			else if (node->ir.merge_info.merge_block)
+				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->ir.merge_info.merge_block));
 		}
-		else if (node->merge == MergeType::Selection)
+		else if (node->merge == MergeType::Selection || node->ir.merge_info.merge_type == MergeType::Selection)
 		{
 			if (node->selection_merge_block)
 				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->selection_merge_block));
+			else if (node->ir.merge_info.merge_block)
+				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->ir.merge_info.merge_block));
 		}
 	}
 
