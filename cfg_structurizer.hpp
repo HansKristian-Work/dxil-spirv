@@ -369,11 +369,11 @@ private:
 	                    const Vector<SerializationLevel> &levels,
 	                    CFGNode *outer_merge);
 
-	void traverse_routes(
-		Vector<SerializationLevel> &&levels,
-		size_t num_traverse_levels,
-		CFGNode *start_node,
-		CFGNode *outer_merge);
+	void traverse_routes(Vector<SerializationLevel> &&levels, size_t num_traverse_levels,
+	                     CFGNode *start_node, CFGNode *outer_merge);
+
+	bool select_path(CFGNode *node, const SerializationLevel *level, CFGNode *path, const char *tag,
+	                 const Vector<SerializationLevel> &levels, CFGNode *merge_node);
 };
 
 template <typename Container, typename T>

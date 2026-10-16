@@ -680,8 +680,8 @@ void CFGStructurizer::route_branches(CFGNode *node,
 	{
 		if (node->ir.terminator.type == Terminator::Type::Condition)
 		{
-			auto *true_level = find_level_for_block(levels, node->ir.terminator.true_block);
-			auto *false_level = find_level_for_block(levels, node->ir.terminator.false_block);
+			auto *true_level = find_level_for_block(outer_levels, node->ir.terminator.true_block);
+			auto *false_level = find_level_for_block(outer_levels, node->ir.terminator.false_block);
 
 			// The path back to header will terminate traversal.
 			// The other path must be a loop exit, and will also terminate traversal,
@@ -965,47 +965,65 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 	else
 	{
 		// Divergence. Handle each branch separately.
+		bool true_block = select_path(node, true_level, true_path, ".sel-true", levels, merge_node);
+		bool false_block = select_path(node, false_level, false_path, ".sel-false", levels, merge_node);
 
-		if (true_level)
+		// It's possible that we started off with assumption of not needing to merge selection control flow.
+		// When interposing blocks are introduced however, we are forced to merge *somewhere*.
+		if (node->ir.merge_info.merge_type == MergeType::None && (true_block || false_block))
 		{
-			auto *dummy_true = pool.create_node();
-			dummy_true->name = node->name + ".sel-true";
-			dummy_true->add_branch(true_path);
-			dummy_true->ir.terminator.type = Terminator::Type::Branch;
-			dummy_true->ir.terminator.direct_block = true_path;
+			// We could opt for merge to Unreachable if both paths were actually breaking paths.
+			node->ir.merge_info.merge_type = MergeType::Selection;
 
-			node->retarget_branch_pre_traversal(true_path, dummy_true);
-			resolve_direct_path(dummy_true, true_path, *true_level);
+			bool true_is_break = true_level && true_level->breaking_branch;
+			bool false_is_break = false_level && false_level->breaking_branch;
 
-			auto *rewrite_target = true_level->breaking_branch ? true_level->breaking_branch : merge_node;
-			if (rewrite_target)
-				dummy_true->retarget_branch_pre_traversal(true_path, rewrite_target);
-		}
-		else if (true_path != node->succ_back_edge)
-		{
-			serialize_merge_levels_for_dominated_paths(true_path, levels, merge_node);
-		}
-
-		if (false_level)
-		{
-			auto *dummy_false = pool.create_node();
-			dummy_false->name = node->name + ".sel-false";
-			dummy_false->add_branch(false_path);
-			dummy_false->ir.terminator.type = Terminator::Type::Branch;
-			dummy_false->ir.terminator.direct_block = false_path;
-
-			node->retarget_branch_pre_traversal(false_path, dummy_false);
-			resolve_direct_path(dummy_false, false_path, *false_level);
-
-			auto *rewrite_target = false_level->breaking_branch ? false_level->breaking_branch : merge_node;
-			if (rewrite_target)
-				dummy_false->retarget_branch_pre_traversal(false_path, rewrite_target);
-		}
-		else if (false_path != node->succ_back_edge)
-		{
-			serialize_merge_levels_for_dominated_paths(false_path, levels, merge_node);
+			if (true_block && !true_is_break && false_is_break)
+				node->ir.merge_info.merge_block = node->ir.terminator.true_block;
+			else if (false_block && !false_is_break && true_is_break)
+				node->ir.merge_info.merge_block = node->ir.terminator.false_block;
 		}
 	}
+}
+
+bool CFGStructurizer::select_path(CFGNode *node, const SerializationLevel *level, CFGNode *path, const char *tag,
+                                  const Vector<SerializationLevel> &levels, CFGNode *merge_node)
+{
+	if (level)
+	{
+		if (node->succ_back_edge)
+		{
+			// Due to SPIR-V structurization rules we cannot create an interposing block between back-edge and merge.
+			// The back-edge must branch directly to merge target or loop header in the end.
+			// This means we're redundantly writing selections, but that's okay for our purposes.
+			resolve_direct_path(node, path, *level);
+			assert(level->breaking_branch);
+			node->retarget_branch_pre_traversal(path, level->breaking_branch);
+		}
+		else
+		{
+			auto *dummy_true = pool.create_node();
+			dummy_true->name = node->name + tag;
+			dummy_true->add_branch(path);
+			dummy_true->ir.terminator.type = Terminator::Type::Branch;
+			dummy_true->ir.terminator.direct_block = path;
+
+			node->retarget_branch_pre_traversal(path, dummy_true);
+			resolve_direct_path(dummy_true, path, *level);
+
+			auto *rewrite_target = level->breaking_branch ? level->breaking_branch : merge_node;
+			if (rewrite_target)
+				dummy_true->retarget_branch_pre_traversal(path, rewrite_target);
+
+			return true;
+		}
+	}
+	else if (path != node->succ_back_edge)
+	{
+		serialize_merge_levels_for_dominated_paths(path, levels, merge_node);
+	}
+
+	return false;
 }
 
 void CFGStructurizer::serialize_merge_levels_for_dominated_paths_entry()
