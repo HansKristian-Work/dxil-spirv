@@ -337,75 +337,71 @@ void CFGStructurizer::fixup_degenerate_conditional_branches()
 // }
 //
 // outer_levels represents branch targets which break.
-void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
-		CFGNode *node, const Vector<SerializationLevel> &outer_levels, CFGNode *outer_merge)
+
+// Basically a port of inside_outside in Mesa goto_if pass.
+void CFGStructurizer::split_loop_inner_outer(
+		CFGNode *node, Vector<CFGNode *> &back_edge_candidates,
+		Vector<CFGNode *> &outer_dominated, Vector<CFGNode *> &loop_exits)
 {
-	Vector<CFGNode *> frontier_nodes;
+	Vector<CFGNode *> remaining;
 
-	// Only consider blocks that the header dominates.
-	// If we're exiting a dominance relationship, those branches will be handled specially.
-	for (auto *child : node->idom_children)
+	// TODO: Only add nodes if we're the innermost loop that dominates.
+	// For nested loops it's possible that the outer loop is the loop that actually "owns" the exit.
+	remaining = node->idom_children;
+
+	bool progress = true;
+	while (!remaining.empty() && progress)
 	{
-		for (auto *front: child->dominance_frontier)
+		progress = false;
+
+		for (auto itr = remaining.begin(); itr != remaining.end(); )
 		{
-			// Only consider new frontiers if we're the first scope to identify it.
-			// A block must only belong to one scope.
-			if (!has_element(frontier_nodes, front) && node->dominates(front) &&
-			    !find_level_for_block(outer_levels, front))
+			auto *remain = *itr;
+			bool can_jump_back = false;
+
+			for (auto *front : remain->dominance_frontier)
 			{
-				frontier_nodes.push_back(front);
+				if (has_element(remaining, front) || has_element(back_edge_candidates, front))
+				{
+					can_jump_back = true;
+					break;
+				}
+			}
+
+			if (!can_jump_back)
+			{
+				push_back_unique(outer_dominated, remain);
+				itr = remaining.erase(itr);
+				progress = true;
+			}
+			else
+			{
+				++itr;
 			}
 		}
 	}
 
-	// Any frontier node becomes a level in this dominance chain.
-	// Every level represents some kind of merge of execution.
-	std::sort(frontier_nodes.begin(), frontier_nodes.end(), [](const CFGNode *a, const CFGNode *b)
-	{
-		return a->forward_post_visit_order > b->forward_post_visit_order;
-	});
+	for (auto *remain : remaining)
+		push_back_unique(back_edge_candidates, remain);
 
-	// A stack of serialization levels.
-	Vector<SerializationLevel> levels;
+	// Recurse through the CFG.
+	for (auto *remain: remaining)
+		split_loop_inner_outer(remain, back_edge_candidates, outer_dominated, loop_exits);
 
-	// Multiple nodes can be on the same level. This happens when there is no dominance frontier relationship
-	// and we're merging execution in multiple directions at once. Shouldn't happen often.
-	Vector<CFGNode *> level_blocks;
+	for (auto *succ : node->succ)
+		if (!has_element(back_edge_candidates, succ))
+			push_back_unique(loop_exits, succ);
+}
 
-	while (!frontier_nodes.empty())
-	{
-		auto *candidate = frontier_nodes.back();
-		frontier_nodes.pop_back();
-
-		bool ends_level = false;
-
-		for (auto *current_level_block : level_blocks)
-		{
-			if (has_element(candidate->dominance_frontier, current_level_block))
-			{
-				ends_level = true;
-				break;
-			}
-		}
-
-		if (ends_level)
-		{
-			levels.push_back({ std::move(level_blocks) });
-			level_blocks = { candidate };
-		}
-		else
-		{
-			level_blocks.push_back(candidate);
-		}
-	}
-
-	if (!level_blocks.empty())
-		levels.push_back({ std::move(level_blocks) });
-
+void CFGStructurizer::analyze_levels_skippability(CFGNode *node, Vector<SerializationLevel> &levels)
+{
 	if (!levels.empty())
 	{
 		for (auto *df : node->dominance_frontier)
 		{
+			// TODO: If df represents a direct continue or break in this scope, we do not have to keep executing all the levels.
+			// if (branch_is_break_or_continue(df)) continue;
+
 			for (auto *pred : df->pred)
 			{
 				// Only look for critical nodes inside this construct.
@@ -554,7 +550,78 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 			level.input_node->ir.terminator.direct_block = level.paths[0];
 		}
 	}
+}
 
+void CFGStructurizer::organize_levels(CFGNode *node, const Vector<CFGNode *> &children,
+                                      const Vector<SerializationLevel> &outer_levels,
+                                      Vector<SerializationLevel> &levels)
+{
+	Vector<CFGNode *> frontier_nodes;
+
+	// Only consider blocks that the header dominates and isn't already assigned to some other scope.
+	// If we're exiting a dominance relationship, those branches will be handled specially when we branch to them.
+	// Exiting means writing some path variables and potentially doing special breaks and continues
+	// if the situation calls for it.
+	for (auto *child : children)
+	{
+		for (auto *front: child->dominance_frontier)
+		{
+			// Only consider new frontiers if we're the first scope to identify it.
+			// A block must only belong to one scope.
+			if (node->dominates(front) && !find_level_for_block(outer_levels, front))
+				push_back_unique(frontier_nodes, front);
+		}
+	}
+
+	// Any frontier node becomes a level in this dominance chain.
+	// Every level represents some kind of merge of execution.
+	std::sort(frontier_nodes.begin(), frontier_nodes.end(), [](const CFGNode *a, const CFGNode *b)
+	{
+		return a->forward_post_visit_order > b->forward_post_visit_order;
+	});
+
+	// Multiple nodes can be on the same level. This happens when there is no dominance frontier relationship
+	// and we're merging execution in multiple directions at once. Shouldn't happen often.
+	Vector<CFGNode *> level_blocks;
+
+	while (!frontier_nodes.empty())
+	{
+		auto *candidate = frontier_nodes.back();
+		frontier_nodes.pop_back();
+
+		bool ends_level = false;
+
+		for (auto *current_level_block : level_blocks)
+		{
+			// If a candidate is reachable, it must be as a frontier node.
+			// If it's not a frontier, it would be dominated and would not show up here.
+			if (has_element(candidate->dominance_frontier, current_level_block))
+			{
+				ends_level = true;
+				break;
+			}
+		}
+
+		if (ends_level)
+		{
+			levels.push_back({ std::move(level_blocks) });
+			level_blocks = { candidate };
+		}
+		else
+		{
+			level_blocks.push_back(candidate);
+		}
+	}
+
+	if (!level_blocks.empty())
+		levels.push_back({ std::move(level_blocks) });
+}
+
+void CFGStructurizer::route_branches(CFGNode *node,
+                                     const Vector<SerializationLevel> &outer_levels,
+                                     Vector<SerializationLevel> &&levels,
+                                     CFGNode *outer_merge)
+{
 	if (node->ir.terminator.type == Terminator::Type::Condition)
 	{
 		auto break_levels = outer_levels;
@@ -613,6 +680,27 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 	{
 		enter_succ(node, node->ir.terminator.direct_block, outer_levels, outer_merge);
 	}
+}
+
+void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
+		CFGNode *node, const Vector<SerializationLevel> &outer_levels, CFGNode *outer_merge)
+{
+	if (node->pred_back_edge)
+	{
+		// This is a loop header. As expected, this gets extremely painful in unstructured control flow.
+		Vector<CFGNode *> back_edge_candidates { node->pred_back_edge };
+		Vector<CFGNode *> outer_idom;
+		Vector<CFGNode *> exits;
+		split_loop_inner_outer(node, back_edge_candidates, outer_idom, exits);
+
+		LOGI("nyaa\n");
+	}
+
+	Vector<SerializationLevel> levels;
+	organize_levels(node, node->idom_children, outer_levels, levels);
+	analyze_levels_skippability(node, levels);
+
+	route_branches(node, outer_levels, std::move(levels), outer_merge);
 }
 
 void CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const SerializationLevel &level)

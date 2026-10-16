@@ -347,6 +347,18 @@ private:
 
 	spv::Id build_conditional_for_switch_block(CFGNode *block, CFGNode *target, const Vector<Terminator::Case> &cases, spv::Id cond_id);
 	bool ensure_valid_phi_rewrites(CFGNode *node);
+
+	void split_loop_inner_outer(
+		CFGNode *node, Vector<CFGNode *> &back_edge_candidates,
+		Vector<CFGNode *> &outer_dominated, Vector<CFGNode *> &loop_exits);
+
+	void organize_levels(CFGNode *node, const Vector<CFGNode *> &children, const Vector<SerializationLevel> &outer_levels,
+	                     Vector<SerializationLevel> &levels);
+	void analyze_levels_skippability(CFGNode *node, Vector<SerializationLevel> &levels);
+
+	void route_branches(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
+	                    Vector<SerializationLevel> &&levels,
+	                    CFGNode *outer_merge);
 };
 
 template <typename Container, typename T>
@@ -354,5 +366,12 @@ static inline bool has_element(const Container &c, const T &value)
 {
 	auto itr = std::find(c.begin(), c.end(), value);
 	return itr != c.end();
+}
+
+template <typename Container, typename T>
+static inline void push_back_unique(Container &c, const T &value)
+{
+	if (!has_element(c, value))
+		c.push_back(value);
 }
 } // namespace dxil_spv
