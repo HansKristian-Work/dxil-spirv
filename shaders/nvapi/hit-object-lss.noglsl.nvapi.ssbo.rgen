@@ -8,6 +8,7 @@ struct Payload
 };
 
 RaytracingAccelerationStructure AS : register(t0);
+RWStructuredBuffer<float> RWFloat : register(u1);
 RWStructuredBuffer<uint> RWUint : register(u2);
 
 [shader("raygeneration")]
@@ -27,4 +28,13 @@ void main()
 
 	RWUint[0] = spherical ? 1 : 0;
 	RWUint[1] = lss ? 1 : 0;
+
+	if (spherical)
+	{
+		float4 sphere = hitobject.GetSphereObjectPositionAndRadius();
+		RWFloat[0] = sphere.x;
+		RWFloat[1] = sphere.y;
+		RWFloat[2] = sphere.z;
+		RWFloat[3] = sphere.w;
+	}
 }

@@ -1185,6 +1185,27 @@ static void emit_nvapi_sphere_position_and_radius(Converter::Impl &impl, spv::Id
 	impl.nvapi.fake_doorbell_outputs[3] = cast_op->id;
 }
 
+static bool emit_nvapi_extn_op_hit_object_get_sphere_position_and_radius(Converter::Impl &impl)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+
+	builder.addExtension("SPV_NV_linear_swept_spheres");
+	builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+
+	auto *position = impl.allocate(spv::OpHitObjectGetSpherePositionNV, builder.makeVectorType(float32, 3));
+	position->add_id(hit_object);
+	impl.add(position);
+
+	auto *radius = impl.allocate(spv::OpHitObjectGetSphereRadiusNV, float32);
+	radius->add_id(hit_object);
+	impl.add(radius);
+
+	emit_nvapi_sphere_position_and_radius(impl, position->id, radius->id);
+	return true;
+}
+
 static bool emit_nvapi_extn_op_rt_sphere_position_and_radius(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
@@ -1562,6 +1583,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_HIT_OBJECT_GET_ATTRIBUTES:
 		case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
 		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
+		case NV_EXTN_OP_HIT_OBJECT_GET_SPHERE_OBJECT_POSITION_AND_RADIUS:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		case NV_EXTN_OP_HIT_OBJECT_LOAD_LOCAL_ROOT_TABLE_CONSTANT:
@@ -1697,6 +1719,12 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_get_uint(impl, opcode))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_GET_SPHERE_OBJECT_POSITION_AND_RADIUS:
+			impl.nvapi.num_expected_clock_outputs = 4;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_get_sphere_position_and_radius(impl))
 				return false;
 			break;
 
