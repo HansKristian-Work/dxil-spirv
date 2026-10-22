@@ -1493,6 +1493,7 @@ bool NVAPIState::can_commit_opcode()
 			return true;
 
 		case NV_EXTN_OP_RT_CANDIDATE_SPHERE_OBJECT_POSITION_AND_RADIUS:
+		case NV_EXTN_OP_RT_COMMITTED_SPHERE_OBJECT_POSITION_AND_RADIUS:
 		case NV_EXTN_OP_RT_CANDIDATE_LSS_OBJECT_POSITIONS_AND_RADII:
 		case NV_EXTN_OP_RT_COMMITTED_LSS_OBJECT_POSITIONS_AND_RADII:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
@@ -1655,6 +1656,15 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			if (!analysis &&
 			    !emit_nvapi_extn_op_rt_intersection_sphere_position_and_radius(impl,
 			                                                                   spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_COMMITTED_SPHERE_OBJECT_POSITION_AND_RADIUS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 4;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_sphere_position_and_radius(impl,
+			                                                                   spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
 				return false;
 			break;
 

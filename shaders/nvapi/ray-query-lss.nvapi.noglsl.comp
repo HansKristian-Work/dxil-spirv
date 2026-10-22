@@ -41,6 +41,12 @@ void main(uint thr : SV_GroupIndex)
 
 	if (q.CommittedStatus())
 	{
+		float4 sphere = NvRtCommittedSphereObjectPositionAndRadius(q);
+		RWFloat[8] = sphere.x;
+		RWFloat[9] = sphere.y;
+		RWFloat[10] = sphere.z;
+		RWFloat[11] = sphere.w;
+
 		RWBool[2 * thr + 1] = NvRtCommittedIsLss(q);
 		float2x4 position_and_radii = NvRtCommittedLssObjectPositionsAndRadii(q);
 		RWFloat[0] = position_and_radii[0][0];
