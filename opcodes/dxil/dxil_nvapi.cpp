@@ -1256,11 +1256,71 @@ static bool emit_nvapi_extn_op_rt_intersection_sphere_position_and_radius(Conver
 	return true;
 }
 
-static bool emit_nvapi_extn_op_hit_object_get_position_and_radii(Converter::Impl &impl)
+static void emit_nvapi_lss_positions_and_radii(Converter::Impl &impl, spv::Id positions, spv::Id radii)
+{
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+	auto uint32 = builder.makeUintType(32);
+
+	auto o = 0U;
+	for (auto i = 0U; i < 2; i++)
+	{
+		for (auto j = 0U; j < 3; j++)
+		{
+			auto *pos_extract_op = impl.allocate(spv::OpCompositeExtract, float32);
+			pos_extract_op->add_id(positions);
+			pos_extract_op->add_literal(i);
+			pos_extract_op->add_literal(j);
+			impl.add(pos_extract_op);
+
+			auto *pos_bitcast_op = impl.allocate(spv::OpBitcast, uint32);
+			pos_bitcast_op->add_id(pos_extract_op->id);
+			impl.add(pos_bitcast_op);
+
+			impl.nvapi.fake_doorbell_outputs[o++] = pos_bitcast_op->id;
+		}
+
+		auto *rad_extract_op = impl.allocate(spv::OpCompositeExtract, float32);
+		rad_extract_op->add_id(radii);
+		rad_extract_op->add_literal(i);
+		impl.add(rad_extract_op);
+
+		auto *rad_bitcast_op = impl.allocate(spv::OpBitcast, uint32);
+		rad_bitcast_op->add_id(rad_extract_op->id);
+		impl.add(rad_bitcast_op);
+
+		impl.nvapi.fake_doorbell_outputs[o++] = rad_bitcast_op->id;
+	}
+}
+
+static bool emit_nvapi_extn_op_hit_object_get_lss_positions_and_radii(Converter::Impl &impl)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+	auto vec3float32 = builder.makeVectorType(float32, 3);
+	auto array2vec3float32 = builder.makeArrayType(vec3float32, builder.makeUintConstant(2), 0);
+	auto array2float32 = builder.makeArrayType(float32, builder.makeUintConstant(2), 0);
+
+	builder.addExtension("SPV_NV_linear_swept_spheres");
+	builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+
+	auto *positions = impl.allocate(spv::OpHitObjectGetLSSPositionsNV, array2vec3float32);
+	positions->add_id(hit_object);
+	impl.add(positions);
+
+	auto *radii = impl.allocate(spv::OpHitObjectGetLSSRadiiNV, array2float32);
+	radii->add_id(hit_object);
+	impl.add(radii);
+
+	emit_nvapi_lss_positions_and_radii(impl, positions->id, radii->id);
+	return true;
+}
+
+static bool emit_nvapi_extn_op_rt_lss_positions_and_radii(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
 
-	auto uint32 = builder.makeUintType(32);
 	auto float32 = builder.makeFloatType(32);
 	auto vec3float32 = builder.makeVectorType(float32, 3);
 	auto array2vec3float32 = builder.makeArrayType(vec3float32, builder.makeUintConstant(2), 0);
@@ -1279,35 +1339,7 @@ static bool emit_nvapi_extn_op_hit_object_get_position_and_radii(Converter::Impl
 	load_radii->add_id(radii);
 	impl.add(load_radii);
 
-	auto o = 0U;
-	for (auto i = 0U; i < 2; i++)
-	{
-		for (auto j = 0U; j < 3; j++)
-		{
-			auto *pos_extract_op = impl.allocate(spv::OpCompositeExtract, float32);
-			pos_extract_op->add_id(load_positions->id);
-			pos_extract_op->add_literal(i);
-			pos_extract_op->add_literal(j);
-			impl.add(pos_extract_op);
-
-			auto *pos_bitcast_op = impl.allocate(spv::OpBitcast, uint32);
-			pos_bitcast_op->add_id(pos_extract_op->id);
-			impl.add(pos_bitcast_op);
-
-			impl.nvapi.fake_doorbell_outputs[o++] = pos_bitcast_op->id;
-		}
-
-		auto *rad_extract_op = impl.allocate(spv::OpCompositeExtract, float32);
-		rad_extract_op->add_id(load_radii->id);
-		rad_extract_op->add_literal(i);
-		impl.add(rad_extract_op);
-
-		auto *rad_bitcast_op = impl.allocate(spv::OpBitcast, uint32);
-		rad_bitcast_op->add_id(rad_extract_op->id);
-		impl.add(rad_bitcast_op);
-
-		impl.nvapi.fake_doorbell_outputs[o++] = rad_bitcast_op->id;
-	}
+	emit_nvapi_lss_positions_and_radii(impl, load_positions->id, load_radii->id);
 
 	return true;
 }
@@ -1316,7 +1348,6 @@ static bool emit_nvapi_extn_op_rt_get_position_and_radii(Converter::Impl &impl, 
 {
 	auto &builder = impl.builder();
 
-	auto uint32 = builder.makeUintType(32);
 	auto float32 = builder.makeFloatType(32);
 	auto vec3float32 = builder.makeVectorType(float32, 3);
 	auto array2vec3float32 = builder.makeArrayType(vec3float32, builder.makeUintConstant(2), 0);
@@ -1342,35 +1373,7 @@ static bool emit_nvapi_extn_op_rt_get_position_and_radii(Converter::Impl &impl, 
 		radii_op->add_id(builder.makeUintConstant(intersection));
 		impl.add(radii_op);
 
-		auto o = 0U;
-		for (auto i = 0U; i < 2; i++)
-		{
-			for (auto j = 0U; j < 3; j++)
-			{
-				auto *pos_extract_op = impl.allocate(spv::OpCompositeExtract, float32);
-				pos_extract_op->add_id(positions_op->id);
-				pos_extract_op->add_literal(i);
-				pos_extract_op->add_literal(j);
-				impl.add(pos_extract_op);
-
-				auto *pos_bitcast_op = impl.allocate(spv::OpBitcast, uint32);
-				pos_bitcast_op->add_id(pos_extract_op->id);
-				impl.add(pos_bitcast_op);
-
-				impl.nvapi.fake_doorbell_outputs[o++] = pos_bitcast_op->id;
-			}
-
-			auto *rad_extract_op = impl.allocate(spv::OpCompositeExtract, float32);
-			rad_extract_op->add_id(radii_op->id);
-			rad_extract_op->add_literal(i);
-			impl.add(rad_extract_op);
-
-			auto *rad_bitcast_op = impl.allocate(spv::OpBitcast, uint32);
-			rad_bitcast_op->add_id(rad_extract_op->id);
-			impl.add(rad_bitcast_op);
-
-			impl.nvapi.fake_doorbell_outputs[o++] = rad_bitcast_op->id;
-		}
+		emit_nvapi_lss_positions_and_radii(impl, positions_op->id, radii_op->id);
 	}
 
 	return true;
@@ -1584,6 +1587,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
 		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
 		case NV_EXTN_OP_HIT_OBJECT_GET_SPHERE_OBJECT_POSITION_AND_RADIUS:
+		case NV_EXTN_OP_HIT_OBJECT_GET_LSS_OBJECT_POSITIONS_AND_RADII:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		case NV_EXTN_OP_HIT_OBJECT_LOAD_LOCAL_ROOT_TABLE_CONSTANT:
@@ -1728,6 +1732,12 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 				return false;
 			break;
 
+		case NV_EXTN_OP_HIT_OBJECT_GET_LSS_OBJECT_POSITIONS_AND_RADII:
+			impl.nvapi.num_expected_clock_outputs = 8;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_get_lss_positions_and_radii(impl))
+				return false;
+			break;
+
 		case NV_EXTN_OP_HIT_OBJECT_GET_RAY_DESC:
 			impl.nvapi.num_expected_clock_outputs = 8;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_get_ray_desc(impl))
@@ -1796,7 +1806,7 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_RT_LSS_OBJECT_POSITIONS_AND_RADII:
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 8;
-			if (!analysis && !emit_nvapi_extn_op_hit_object_get_position_and_radii(impl))
+			if (!analysis && !emit_nvapi_extn_op_rt_lss_positions_and_radii(impl))
 				return false;
 			break;
 

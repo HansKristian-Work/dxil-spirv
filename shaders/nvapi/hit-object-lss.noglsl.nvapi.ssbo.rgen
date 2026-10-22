@@ -37,4 +37,17 @@ void main()
 		RWFloat[2] = sphere.z;
 		RWFloat[3] = sphere.w;
 	}
+
+	if (lss)
+	{
+		float2x4 spheres = hitobject.GetLssObjectPositionsAndRadii();
+		RWFloat[4] = spheres[0].x;
+		RWFloat[5] = spheres[0].y;
+		RWFloat[6] = spheres[0].z;
+		RWFloat[7] = spheres[0].w;
+		RWFloat[8] = spheres[1].x;
+		RWFloat[9] = spheres[1].y;
+		RWFloat[10] = spheres[1].z;
+		RWFloat[11] = spheres[1].w;
+	}
 }
