@@ -95,7 +95,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 136
+; Bound: 135
 ; Schema: 0
 OpCapability Shader
 OpCapability VulkanMemoryModel
@@ -278,13 +278,13 @@ OpBranch %124
 %98 = OpULessThan %55 %58 %97
 OpSelectionMerge %134 None
 OpBranchConditional %98 %125 %126
-%126 = OpLabel
-OpBranch %127
 %134 = OpLabel
 OpUnreachable
 %125 = OpLabel
 OpStore %116 %58
 OpBranch %119
+%126 = OpLabel
+OpBranch %127
 %127 = OpLabel
 OpBranch %128
 %128 = OpLabel

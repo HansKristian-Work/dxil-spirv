@@ -77,7 +77,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 86
+; Bound: 85
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -134,56 +134,42 @@ OpBranch %58
 OpStore %52 %53
 OpSelectionMerge %79 None
 OpBranchConditional %24 %75 %59
-%75 = OpLabel
-%39 = OpIEqual %23 %22 %40
-OpSelectionMerge %78 None
-OpBranchConditional %39 %77 %76
-%77 = OpLabel
-%43 = OpIMul %5 %19 %25
-OpStore %48 %43
-OpBranch %78
-%76 = OpLabel
-OpStore %49 %27
-OpStore %52 %55
-OpBranch %78
-%78 = OpLabel
-OpBranch %79
 %59 = OpLabel
 %26 = OpIEqual %23 %19 %27
 OpSelectionMerge %74 None
 OpBranchConditional %26 %61 %60
+%60 = OpLabel
+OpStore %49 %15
+OpStore %52 %55
+OpBranch %74
 %61 = OpLabel
 %28 = OpIEqual %23 %22 %29
 OpSelectionMerge %73 None
 OpBranchConditional %28 %72 %62
-%72 = OpLabel
-%37 = OpIMul %5 %16 %38
-OpStore %48 %37
-OpBranch %73
 %62 = OpLabel
 %30 = OpIAdd %5 %16 %25
 %31 = OpIEqual %23 %16 %15
 OpStore %56 %53
 OpSelectionMerge %68 None
 OpBranchConditional %31 %64 %63
+%63 = OpLabel
+OpStore %50 %15
+OpStore %56 %55
+OpBranch %68
 %64 = OpLabel
 %32 = OpIEqual %23 %22 %33
 OpSelectionMerge %67 None
 OpBranchConditional %32 %66 %65
+%65 = OpLabel
+OpStore %50 %30
+OpStore %56 %55
+OpBranch %67
 %66 = OpLabel
 %36 = OpIMul %5 %30 %33
 OpStore %49 %36
 OpStore %52 %55
 OpBranch %67
-%65 = OpLabel
-OpStore %50 %30
-OpStore %56 %55
-OpBranch %67
 %67 = OpLabel
-OpBranch %68
-%63 = OpLabel
-OpStore %50 %15
-OpStore %56 %55
 OpBranch %68
 %68 = OpLabel
 OpBranch %69
@@ -199,13 +185,27 @@ OpStore %52 %55
 OpBranch %71
 %71 = OpLabel
 OpBranch %73
+%72 = OpLabel
+%37 = OpIMul %5 %16 %38
+OpStore %48 %37
+OpBranch %73
 %73 = OpLabel
 OpBranch %74
-%60 = OpLabel
-OpStore %49 %15
-OpStore %52 %55
-OpBranch %74
 %74 = OpLabel
+OpBranch %79
+%75 = OpLabel
+%39 = OpIEqual %23 %22 %40
+OpSelectionMerge %78 None
+OpBranchConditional %39 %77 %76
+%76 = OpLabel
+OpStore %49 %27
+OpStore %52 %55
+OpBranch %78
+%77 = OpLabel
+%43 = OpIMul %5 %19 %25
+OpStore %48 %43
+OpBranch %78
+%78 = OpLabel
 OpBranch %79
 %79 = OpLabel
 OpBranch %80

@@ -42,9 +42,9 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     uint _36 = (uint(gl_FragCoord.y) * 1000u) + uint(gl_FragCoord.x);
-    uint _47 = ByteAddressMask(_36, 16u);
+    uint _46 = ByteAddressMask(_36, 16u);
     SPIRV_Cross_beginInvocationInterlock();
-    _14[registers._m4]._m0[ByteAddressMask(_36, 16u)] = uvec4(_14[registers._m4]._m0[_47].x + 1u, _14[registers._m4]._m0[_47].y + 2u, _14[registers._m4]._m0[_47].z + 3u, _14[registers._m4]._m0[_47].w + 4u);
+    _14[registers._m4]._m0[ByteAddressMask(_36, 16u)] = uvec4(_14[registers._m4]._m0[_46].x + 1u, _14[registers._m4]._m0[_46].y + 2u, _14[registers._m4]._m0[_46].z + 3u, _14[registers._m4]._m0[_46].w + 4u);
     SPIRV_Cross_endInvocationInterlock();
 }
 
@@ -54,7 +54,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 67
+; Bound: 65
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
@@ -117,14 +117,14 @@ OpDecorate %18 BuiltIn FragCoord
 %35 = OpConstant %5 1000
 %38 = OpTypeFunction %5 %5 %5
 %44 = OpConstant %5 4294967295
-%48 = OpConstant %5 16
-%49 = OpTypePointer StorageBuffer %9
-%58 = OpConstant %5 2
-%60 = OpConstant %5 3
+%47 = OpConstant %5 16
+%48 = OpTypePointer StorageBuffer %9
+%57 = OpConstant %5 2
+%59 = OpConstant %5 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %65
-%65 = OpLabel
+OpBranch %64
+%64 = OpLabel
 %22 = OpAccessChain %21 %8 %23
 %24 = OpLoad %5 %22
 %20 = OpAccessChain %19 %14 %24
@@ -137,22 +137,22 @@ OpBranch %65
 %34 = OpIMul %5 %33 %35
 %36 = OpIAdd %5 %34 %32
 %37 = OpShiftLeftLogical %5 %36 %23
-%47 = OpFunctionCall %5 %41 %36 %48
-%50 = OpAccessChain %49 %20 %27 %47
+%46 = OpFunctionCall %5 %41 %36 %47
+%49 = OpAccessChain %48 %20 %27 %46
 OpBeginInvocationInterlockEXT
-%51 = OpLoad %9 %50
-%52 = OpCompositeExtract %5 %51 0
-%53 = OpCompositeExtract %5 %51 1
-%54 = OpCompositeExtract %5 %51 2
-%55 = OpCompositeExtract %5 %51 3
-%56 = OpIAdd %5 %52 %30
-%57 = OpIAdd %5 %53 %58
-%59 = OpIAdd %5 %54 %60
-%61 = OpIAdd %5 %55 %23
-%62 = OpFunctionCall %5 %41 %36 %48
-%63 = OpCompositeConstruct %9 %56 %57 %59 %61
-%64 = OpAccessChain %49 %20 %27 %62
-OpStore %64 %63
+%50 = OpLoad %9 %49
+%51 = OpCompositeExtract %5 %50 0
+%52 = OpCompositeExtract %5 %50 1
+%53 = OpCompositeExtract %5 %50 2
+%54 = OpCompositeExtract %5 %50 3
+%55 = OpIAdd %5 %51 %30
+%56 = OpIAdd %5 %52 %57
+%58 = OpIAdd %5 %53 %59
+%60 = OpIAdd %5 %54 %23
+%61 = OpFunctionCall %5 %41 %36 %47
+%62 = OpCompositeConstruct %9 %55 %56 %58 %60
+%63 = OpAccessChain %48 %20 %27 %61
+OpStore %63 %62
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

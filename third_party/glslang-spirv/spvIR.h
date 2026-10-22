@@ -250,11 +250,6 @@ protected:
     bool unreachable;
 };
 
-// Traverses the control-flow graph rooted at root in an order suited for
-// readable code generation.  Invokes callback at every node in the traversal
-// order.
-void inReadableOrder(Block* root, std::function<void(Block*)> callback);
-
 //
 // SPIR-V IR Function.
 //
@@ -273,13 +268,29 @@ public:
     Id getId() const { return functionInstruction.getResultId(); }
     Id getParamId(int p) { return parameterInstructions[p]->getResultId(); }
 
-    void addBlock(Block* block) { blocks.push_back(block); }
     void removeBlock(Block* block)
     {
         auto found = find(blocks.begin(), blocks.end(), block);
         assert(found != blocks.end());
         blocks.erase(found);
         delete block;
+    }
+
+    Block *newBlock(spv::Id id)
+    {
+        auto *bb = new Block(id, *this);
+        addBlockInternal(bb);
+        return bb;
+    }
+
+    Block *newBlockAfter(spv::Id id, Block* block)
+    {
+        auto *bb = new Block(id, *this);
+        auto itr = find(blocks.begin(), blocks.end(), block);
+        if (itr != blocks.end())
+            ++itr;
+        blocks.insert(itr, bb);
+        return bb;
     }
 
     Module& getParent() const { return parent; }
@@ -303,8 +314,11 @@ public:
         for (int p = 0; p < (int)parameterInstructions.size(); ++p)
             parameterInstructions[p]->dump(out);
 
-        // Blocks
-        inReadableOrder(blocks[0], [&out](const Block* b) { b->dump(out); });
+        // dxil-spirv already emits in correct order,
+        // so don't try to reorder.
+        for (auto *block : blocks)
+            block->dump(out);
+
         Instruction end(0, 0, OpFunctionEnd);
         end.dump(out);
     }
@@ -320,6 +334,10 @@ protected:
     dxil_spv::Vector<Instruction*> parameterInstructions;
     dxil_spv::Vector<Block*> blocks;
     bool implicitThis;  // true if this is a member function expecting to be passed a 'this' as the first argument
+
+private:
+    // Should normally not be called directly. Use newBlock in most cases.
+    void addBlockInternal(Block* block) { blocks.push_back(block); }
 };
 
 //

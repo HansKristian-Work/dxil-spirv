@@ -53,7 +53,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 71
+; Bound: 70
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformArithmetic
@@ -103,9 +103,6 @@ OpBranch %57
 %21 = OpFOrdGreaterThan %20 %16 %22
 OpSelectionMerge %62 None
 OpBranchConditional %21 %61 %58
-%61 = OpLabel
-OpDemoteToHelperInvocation
-OpBranch %62
 %58 = OpLabel
 %23 = OpFOrdGreaterThan %20 %19 %24
 OpSelectionMerge %60 None
@@ -115,6 +112,9 @@ OpDemoteToHelperInvocation
 OpBranch %60
 %60 = OpLabel
 OpBranch %62
+%61 = OpLabel
+OpDemoteToHelperInvocation
+OpBranch %62
 %62 = OpLabel
 OpBranch %63
 %63 = OpLabel
@@ -123,12 +123,6 @@ OpBranch %64
 %25 = OpIsHelperInvocationEXT %20
 OpSelectionMerge %67 None
 OpBranchConditional %25 %66 %65
-%66 = OpLabel
-OpStore %53 %31
-OpStore %54 %31
-OpStore %55 %31
-OpStore %56 %31
-OpBranch %67
 %65 = OpLabel
 %26 = OpFMul %5 %16 %16
 %27 = OpFMul %5 %19 %19
@@ -148,6 +142,12 @@ OpStore %53 %28
 OpStore %54 %33
 OpStore %55 %36
 OpStore %56 %39
+OpBranch %67
+%66 = OpLabel
+OpStore %53 %31
+OpStore %54 %31
+OpStore %55 %31
+OpStore %56 %31
 OpBranch %67
 %67 = OpLabel
 OpBranch %68

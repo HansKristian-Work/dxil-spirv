@@ -26,17 +26,17 @@ layout(location = 0) out vec4 SV_Target;
 void main()
 {
     vec2 _41 = vec2(TEXCOORD.x, TEXCOORD.y);
-    uint _105;
-    vec4 _106;
-    _105 = sparseTextureGatherOffsetARB(sampler2DShadow(_8, _14), _41, TEXCOORD.z, ivec2(-3, -4), _106);
-    SparseTexel _46 = SparseTexel(_105, _106);
+    uint _104;
+    vec4 _105;
+    _104 = sparseTextureGatherOffsetARB(sampler2DShadow(_8, _14), _41, TEXCOORD.z, ivec2(-3, -4), _105);
+    SparseTexel _46 = SparseTexel(_104, _105);
     vec4 _50 = _46._m1;
     _55 _56 = _55(_50.x, _50.y, _50.z, _50.w, _46._m0);
     vec3 _71 = vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z);
-    uint _107;
-    vec4 _108;
-    _107 = sparseTextureGatherOffsetARB(sampler2DArrayShadow(_11, _14), _71, TEXCOORD.w, ivec2(-4, -5), _108);
-    SparseTexel _73 = SparseTexel(_107, _108);
+    uint _106;
+    vec4 _107;
+    _106 = sparseTextureGatherOffsetARB(sampler2DArrayShadow(_11, _14), _71, TEXCOORD.w, ivec2(-4, -5), _107);
+    SparseTexel _73 = SparseTexel(_106, _107);
     vec4 _76 = _73._m1;
     _55 _81 = _55(_76.x, _76.y, _76.z, _76.w, _73._m0);
     float _89 = float(sparseTexelsResidentARB(int(_81._m4))) + float(sparseTexelsResidentARB(int(_56._m4)));
@@ -52,7 +52,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 105
+; Bound: 104
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency

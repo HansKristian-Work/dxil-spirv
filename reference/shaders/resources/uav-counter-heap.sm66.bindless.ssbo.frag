@@ -53,12 +53,12 @@ uint RobustPhysicalAtomicCounter(uvec2 _34, uint _35, uint _36)
 void main()
 {
     uvec2 _32 = _13.counters[14u];
-    uint _53 = RobustPhysicalAtomicCounter(_32, 1u, 0u);
-    vec4 _57 = uintBitsToFloat(_19[14u]._m0[_53]);
-    SV_Target.x = _57.x;
-    SV_Target.y = _57.y;
-    SV_Target.z = _57.z;
-    SV_Target.w = _57.w;
+    uint _52 = RobustPhysicalAtomicCounter(_32, 1u, 0u);
+    vec4 _56 = uintBitsToFloat(_19[14u]._m0[_52]);
+    SV_Target.x = _56.x;
+    SV_Target.y = _56.y;
+    SV_Target.z = _56.z;
+    SV_Target.w = _56.w;
 }
 
 
@@ -67,7 +67,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 71
+; Bound: 69
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
@@ -143,33 +143,33 @@ OpDecorate %25 Location 0
 %43 = OpConstantNull %9
 %46 = OpTypePointer PhysicalStorageBuffer %5
 %49 = OpConstant %5 1
-%54 = OpTypePointer StorageBuffer %14
-%62 = OpTypePointer Output %22
-%66 = OpConstant %5 2
-%68 = OpConstant %5 3
+%53 = OpTypePointer StorageBuffer %14
+%61 = OpTypePointer Output %22
+%65 = OpConstant %5 2
+%67 = OpConstant %5 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %69
-%69 = OpLabel
+OpBranch %68
+%68 = OpLabel
 %27 = OpAccessChain %26 %19 %28
 %30 = OpAccessChain %29 %13 %31 %28
 %32 = OpLoad %9 %30
-%53 = OpFunctionCall %5 %37 %32 %49 %31
-%55 = OpAccessChain %54 %27 %31 %53
-%56 = OpLoad %14 %55
-%57 = OpBitcast %23 %56
-%58 = OpCompositeExtract %22 %57 0
-%59 = OpCompositeExtract %22 %57 1
-%60 = OpCompositeExtract %22 %57 2
-%61 = OpCompositeExtract %22 %57 3
-%63 = OpAccessChain %62 %25 %31
+%52 = OpFunctionCall %5 %37 %32 %49 %31
+%54 = OpAccessChain %53 %27 %31 %52
+%55 = OpLoad %14 %54
+%56 = OpBitcast %23 %55
+%57 = OpCompositeExtract %22 %56 0
+%58 = OpCompositeExtract %22 %56 1
+%59 = OpCompositeExtract %22 %56 2
+%60 = OpCompositeExtract %22 %56 3
+%62 = OpAccessChain %61 %25 %31
+OpStore %62 %57
+%63 = OpAccessChain %61 %25 %49
 OpStore %63 %58
-%64 = OpAccessChain %62 %25 %49
+%64 = OpAccessChain %61 %25 %65
 OpStore %64 %59
-%65 = OpAccessChain %62 %25 %66
-OpStore %65 %60
-%67 = OpAccessChain %62 %25 %68
-OpStore %67 %61
+%66 = OpAccessChain %61 %25 %67
+OpStore %66 %60
 OpReturn
 OpFunctionEnd
 %37 = OpFunction %5 None %33

@@ -46,7 +46,6 @@ bool emit_discard_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	if (has_condition)
 		op->add_id(impl.get_id_for_value(cond));
 	impl.add(op);
-	impl.spirv_module.enable_shader_discard(impl.options.shader_demote);
 	return true;
 }
 

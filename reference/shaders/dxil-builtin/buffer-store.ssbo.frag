@@ -30,9 +30,9 @@ void main()
     imageStore(_8, int(INDEX), vec4(DATA.x, DATA.y, DATA.x, DATA.x));
     _14._m0[ByteAddressMask(INDEX, 8u)] = uvec2(floatBitsToUint(DATA.x), floatBitsToUint(DATA.y));
     _18._m0[INDEX] = uvec2(floatBitsToUint(DATA.x), floatBitsToUint(DATA.y));
-    uint _63 = (INDEX * 5u) + 3u;
-    _22._m0[_63] = floatBitsToUint(DATA.x);
-    _22._m0[_63 + 1u] = floatBitsToUint(DATA.y);
+    uint _62 = (INDEX * 5u) + 3u;
+    _22._m0[_62] = floatBitsToUint(DATA.x);
+    _22._m0[_62 + 1u] = floatBitsToUint(DATA.y);
 }
 
 
@@ -41,7 +41,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 72
+; Bound: 70
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -116,14 +116,14 @@ OpDecorate %27 Component 1
 %42 = OpConstant %9 3
 %43 = OpTypeFunction %9 %9 %9
 %49 = OpConstant %9 4294967295
-%53 = OpConstant %9 8
-%55 = OpTypePointer StorageBuffer %10
-%62 = OpConstant %9 5
-%66 = OpTypePointer StorageBuffer %9
+%52 = OpConstant %9 8
+%54 = OpTypePointer StorageBuffer %10
+%61 = OpConstant %9 5
+%65 = OpTypePointer StorageBuffer %9
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %70
-%70 = OpLabel
+OpBranch %69
+%69 = OpLabel
 %28 = OpLoad %6 %8
 %30 = OpAccessChain %29 %27 %31
 %32 = OpLoad %5 %30
@@ -135,24 +135,24 @@ OpImageWrite %28 %36 %38
 %39 = OpBitcast %9 %32
 %40 = OpBitcast %9 %35
 %41 = OpShiftLeftLogical %9 %36 %42
-%52 = OpFunctionCall %9 %46 %36 %53
-%54 = OpCompositeConstruct %10 %39 %40
-%56 = OpAccessChain %55 %14 %31 %52
-OpStore %56 %54
-%57 = OpBitcast %9 %32
-%58 = OpBitcast %9 %35
-%59 = OpCompositeConstruct %10 %57 %58
-%60 = OpAccessChain %55 %18 %31 %36
-OpStore %60 %59
-%61 = OpIMul %9 %36 %62
-%63 = OpIAdd %9 %61 %42
-%64 = OpBitcast %9 %32
-%65 = OpBitcast %9 %35
-%67 = OpAccessChain %66 %22 %31 %63
+%51 = OpFunctionCall %9 %46 %36 %52
+%53 = OpCompositeConstruct %10 %39 %40
+%55 = OpAccessChain %54 %14 %31 %51
+OpStore %55 %53
+%56 = OpBitcast %9 %32
+%57 = OpBitcast %9 %35
+%58 = OpCompositeConstruct %10 %56 %57
+%59 = OpAccessChain %54 %18 %31 %36
+OpStore %59 %58
+%60 = OpIMul %9 %36 %61
+%62 = OpIAdd %9 %60 %42
+%63 = OpBitcast %9 %32
+%64 = OpBitcast %9 %35
+%66 = OpAccessChain %65 %22 %31 %62
+OpStore %66 %63
+%68 = OpIAdd %9 %62 %34
+%67 = OpAccessChain %65 %22 %31 %68
 OpStore %67 %64
-%69 = OpIAdd %9 %63 %34
-%68 = OpAccessChain %66 %22 %31 %69
-OpStore %68 %65
 OpReturn
 OpFunctionEnd
 %46 = OpFunction %9 None %43

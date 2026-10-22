@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 88
+; Bound: 86
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -38,10 +38,10 @@ OpDecorate %13 Binding 0
 OpDecorate %13 NonReadable
 OpDecorate %16 BuiltIn GlobalInvocationId
 OpDecorate %26 NonWritable
-OpDecorate %45 NonWritable
-OpDecorate %54 NonWritable
-OpDecorate %67 NonWritable
-OpDecorate %76 NonWritable
+OpDecorate %44 NonWritable
+OpDecorate %53 NonWritable
+OpDecorate %66 NonWritable
+OpDecorate %75 NonWritable
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -64,69 +64,69 @@ OpDecorate %76 NonWritable
 %25 = OpTypePointer StorageBuffer %24
 %27 = OpTypeFunction %5 %5 %5
 %33 = OpConstant %5 4294967295
-%37 = OpConstant %5 4
-%40 = OpConstant %5 6
-%42 = OpConstant %5 256
-%43 = OpTypeVector %23 3
-%44 = OpTypePointer StorageBuffer %43
-%48 = OpConstant %5 3
-%50 = OpConstant %5 640
-%51 = OpTypeFloat 16
-%52 = OpTypeVector %51 4
-%53 = OpTypePointer StorageBuffer %52
-%56 = OpConstant %5 80
-%58 = OpConstant %5 8
-%61 = OpConstant %5 24
-%63 = OpConstant %5 1152
-%64 = OpTypeInt 64 0
-%65 = OpTypeVector %64 2
-%66 = OpTypePointer StorageBuffer %65
-%70 = OpConstant %5 5
-%72 = OpConstant %5 2688
-%73 = OpTypeFloat 64
-%74 = OpTypeVector %73 4
-%75 = OpTypePointer StorageBuffer %74
+%36 = OpConstant %5 4
+%39 = OpConstant %5 6
+%41 = OpConstant %5 256
+%42 = OpTypeVector %23 3
+%43 = OpTypePointer StorageBuffer %42
+%47 = OpConstant %5 3
+%49 = OpConstant %5 640
+%50 = OpTypeFloat 16
+%51 = OpTypeVector %50 4
+%52 = OpTypePointer StorageBuffer %51
+%55 = OpConstant %5 80
+%57 = OpConstant %5 8
+%60 = OpConstant %5 24
+%62 = OpConstant %5 1152
+%63 = OpTypeInt 64 0
+%64 = OpTypeVector %63 2
+%65 = OpTypePointer StorageBuffer %64
+%69 = OpConstant %5 5
+%71 = OpConstant %5 2688
+%72 = OpTypeFloat 64
+%73 = OpTypeVector %72 4
+%74 = OpTypePointer StorageBuffer %73
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %86
-%86 = OpLabel
+OpBranch %85
+%85 = OpLabel
 %18 = OpAccessChain %17 %16 %19
 %20 = OpLoad %5 %18
 %21 = OpShiftLeftLogical %5 %20 %22
-%36 = OpFunctionCall %5 %30 %20 %37
-%26 = OpRawAccessChainNV %25 %9 %37 %36 %19 RobustnessPerElementNV
-%38 = OpLoad %24 %26 Aligned 4
-%39 = OpIMul %5 %20 %40
-%41 = OpIAdd %5 %39 %42
-%45 = OpRawAccessChainNV %44 %9 %19 %19 %41 RobustnessPerComponentNV
-%46 = OpLoad %43 %45 Aligned 2
-%47 = OpShiftLeftLogical %5 %20 %48
-%49 = OpIAdd %5 %47 %50
-%55 = OpIAdd %5 %20 %56
-%57 = OpFunctionCall %5 %30 %55 %58
-%54 = OpRawAccessChainNV %53 %9 %58 %57 %19 RobustnessPerElementNV
-%59 = OpLoad %52 %54 Aligned 8
-%60 = OpIMul %5 %20 %61
-%62 = OpIAdd %5 %60 %63
-%67 = OpRawAccessChainNV %66 %9 %19 %19 %62 RobustnessPerComponentNV
-%68 = OpLoad %65 %67 Aligned 8
-%69 = OpShiftLeftLogical %5 %20 %70
-%71 = OpIAdd %5 %69 %72
-%76 = OpRawAccessChainNV %75 %9 %19 %19 %71 RobustnessPerComponentNV
-%77 = OpLoad %74 %76 Aligned 32
-%79 = OpFunctionCall %5 %30 %20 %37
-%78 = OpRawAccessChainNV %25 %13 %37 %79 %19 RobustnessPerElementNV
-OpStore %78 %38 Aligned 4
-%80 = OpRawAccessChainNV %44 %13 %19 %19 %41 RobustnessPerComponentNV
-OpStore %80 %46 Aligned 2
-%82 = OpIAdd %5 %20 %56
-%83 = OpFunctionCall %5 %30 %82 %58
-%81 = OpRawAccessChainNV %53 %13 %58 %83 %19 RobustnessPerElementNV
-OpStore %81 %59 Aligned 8
-%84 = OpRawAccessChainNV %66 %13 %19 %19 %62 RobustnessPerComponentNV
-OpStore %84 %68 Aligned 8
-%85 = OpRawAccessChainNV %75 %13 %19 %19 %71 RobustnessPerComponentNV
-OpStore %85 %77 Aligned 32
+%35 = OpFunctionCall %5 %30 %20 %36
+%26 = OpRawAccessChainNV %25 %9 %36 %35 %19 RobustnessPerElementNV
+%37 = OpLoad %24 %26 Aligned 4
+%38 = OpIMul %5 %20 %39
+%40 = OpIAdd %5 %38 %41
+%44 = OpRawAccessChainNV %43 %9 %19 %19 %40 RobustnessPerComponentNV
+%45 = OpLoad %42 %44 Aligned 2
+%46 = OpShiftLeftLogical %5 %20 %47
+%48 = OpIAdd %5 %46 %49
+%54 = OpIAdd %5 %20 %55
+%56 = OpFunctionCall %5 %30 %54 %57
+%53 = OpRawAccessChainNV %52 %9 %57 %56 %19 RobustnessPerElementNV
+%58 = OpLoad %51 %53 Aligned 8
+%59 = OpIMul %5 %20 %60
+%61 = OpIAdd %5 %59 %62
+%66 = OpRawAccessChainNV %65 %9 %19 %19 %61 RobustnessPerComponentNV
+%67 = OpLoad %64 %66 Aligned 8
+%68 = OpShiftLeftLogical %5 %20 %69
+%70 = OpIAdd %5 %68 %71
+%75 = OpRawAccessChainNV %74 %9 %19 %19 %70 RobustnessPerComponentNV
+%76 = OpLoad %73 %75 Aligned 32
+%78 = OpFunctionCall %5 %30 %20 %36
+%77 = OpRawAccessChainNV %25 %13 %36 %78 %19 RobustnessPerElementNV
+OpStore %77 %37 Aligned 4
+%79 = OpRawAccessChainNV %43 %13 %19 %19 %40 RobustnessPerComponentNV
+OpStore %79 %45 Aligned 2
+%81 = OpIAdd %5 %20 %55
+%82 = OpFunctionCall %5 %30 %81 %57
+%80 = OpRawAccessChainNV %52 %13 %57 %82 %19 RobustnessPerElementNV
+OpStore %80 %58 Aligned 8
+%83 = OpRawAccessChainNV %65 %13 %19 %19 %61 RobustnessPerComponentNV
+OpStore %83 %67 Aligned 8
+%84 = OpRawAccessChainNV %74 %13 %19 %19 %70 RobustnessPerComponentNV
+OpStore %84 %76 Aligned 32
 OpReturn
 OpFunctionEnd
 %30 = OpFunction %5 None %27

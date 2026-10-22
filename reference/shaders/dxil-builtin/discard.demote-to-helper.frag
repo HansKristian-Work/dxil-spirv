@@ -24,7 +24,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 31
+; Bound: 30
 ; Schema: 0
 OpCapability Shader
 OpCapability DemoteToHelperInvocation
@@ -57,9 +57,6 @@ OpBranch %22
 %15 = OpFOrdGreaterThan %14 %13 %16
 OpSelectionMerge %27 None
 OpBranchConditional %15 %26 %23
-%26 = OpLabel
-OpDemoteToHelperInvocation
-OpBranch %27
 %23 = OpLabel
 %17 = OpAccessChain %9 %8 %18
 %19 = OpLoad %5 %17
@@ -70,6 +67,9 @@ OpBranchConditional %20 %24 %25
 OpDemoteToHelperInvocation
 OpBranch %25
 %25 = OpLabel
+OpBranch %27
+%26 = OpLabel
+OpDemoteToHelperInvocation
 OpBranch %27
 %27 = OpLabel
 OpBranch %28

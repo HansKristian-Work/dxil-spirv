@@ -34,7 +34,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 46
+; Bound: 45
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat

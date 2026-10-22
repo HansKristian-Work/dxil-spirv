@@ -1,16 +1,18 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 265
+; Bound: 262
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability GroupNonUniformBallot
 OpCapability GroupNonUniformPartitionedEXT
+OpCapability DemoteToHelperInvocation
+OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpExtension "SPV_NV_shader_subgroup_partitioned"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %8 %9 %12 %14 %263
+OpEntryPoint Fragment %3 "main" %8 %9 %12 %14
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %14 "THR"
@@ -23,7 +25,6 @@ OpDecorate %12 Binding 0
 OpDecorate %12 NonReadable
 OpDecorate %14 Flat
 OpDecorate %14 Location 0
-OpDecorate %263 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -47,8 +48,6 @@ OpDecorate %263 BuiltIn HelperInvocation
 %77 = OpTypeFloat 32
 %222 = OpConstant %5 5
 %257 = OpConstant %5 6
-%262 = OpTypePointer Input %46
-%263 = OpVariable %262 Input
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %261
@@ -77,7 +76,7 @@ OpBranch %261
 %41 = OpImageFetch %21 %17 %18
 %42 = OpCompositeExtract %5 %41 0
 %44 = OpCompositeConstruct %21 %37 %38 %39 %40
-%47 = OpLoad %46 %263
+%47 = OpIsHelperInvocationEXT %46
 %48 = OpGroupNonUniformBallot %21 %34 %47
 %49 = OpLogicalNot %46 %47
 %45 = OpGroupNonUniformBallot %21 %34 %49
@@ -110,7 +109,7 @@ OpImageWrite %15 %56 %57
 %76 = OpCompositeExtract %5 %75 0
 %78 = OpBitcast %77 %76
 %80 = OpCompositeConstruct %21 %71 %72 %73 %74
-%82 = OpLoad %46 %263
+%82 = OpIsHelperInvocationEXT %46
 %83 = OpGroupNonUniformBallot %21 %34 %82
 %84 = OpLogicalNot %46 %82
 %81 = OpGroupNonUniformBallot %21 %34 %84
@@ -144,7 +143,7 @@ OpImageWrite %15 %91 %92
 %110 = OpImageFetch %21 %17 %18
 %111 = OpCompositeExtract %5 %110 0
 %113 = OpCompositeConstruct %21 %106 %107 %108 %109
-%115 = OpLoad %46 %263
+%115 = OpIsHelperInvocationEXT %46
 %116 = OpGroupNonUniformBallot %21 %34 %115
 %117 = OpLogicalNot %46 %115
 %114 = OpGroupNonUniformBallot %21 %34 %117
@@ -178,7 +177,7 @@ OpImageWrite %15 %123 %124
 %143 = OpCompositeExtract %5 %142 0
 %144 = OpBitcast %77 %143
 %146 = OpCompositeConstruct %21 %138 %139 %140 %141
-%148 = OpLoad %46 %263
+%148 = OpIsHelperInvocationEXT %46
 %149 = OpGroupNonUniformBallot %21 %34 %148
 %150 = OpLogicalNot %46 %148
 %147 = OpGroupNonUniformBallot %21 %34 %150
@@ -212,7 +211,7 @@ OpImageWrite %15 %157 %158
 %176 = OpImageFetch %21 %17 %18
 %177 = OpCompositeExtract %5 %176 0
 %179 = OpCompositeConstruct %21 %172 %173 %174 %175
-%181 = OpLoad %46 %263
+%181 = OpIsHelperInvocationEXT %46
 %182 = OpGroupNonUniformBallot %21 %34 %181
 %183 = OpLogicalNot %46 %181
 %180 = OpGroupNonUniformBallot %21 %34 %183
@@ -247,7 +246,7 @@ OpImageWrite %15 %189 %190
 %210 = OpBitcast %77 %209
 %211 = OpConvertFToS %5 %210
 %213 = OpCompositeConstruct %21 %204 %205 %206 %207
-%215 = OpLoad %46 %263
+%215 = OpIsHelperInvocationEXT %46
 %216 = OpGroupNonUniformBallot %21 %34 %215
 %217 = OpLogicalNot %46 %215
 %214 = OpGroupNonUniformBallot %21 %34 %217
@@ -282,7 +281,7 @@ OpImageWrite %15 %224 %225
 %245 = OpBitcast %77 %244
 %246 = OpConvertFToS %5 %245
 %248 = OpCompositeConstruct %21 %239 %240 %241 %242
-%250 = OpLoad %46 %263
+%250 = OpIsHelperInvocationEXT %46
 %251 = OpGroupNonUniformBallot %21 %34 %250
 %252 = OpLogicalNot %46 %250
 %249 = OpGroupNonUniformBallot %21 %34 %252

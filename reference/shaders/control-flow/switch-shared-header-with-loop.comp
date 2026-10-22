@@ -58,7 +58,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 75
+; Bound: 74
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -112,32 +112,14 @@ OpBranch %51
 %51 = OpLabel
 OpSelectionMerge %61 None
 OpBranchConditional %44 %60 %52
-%60 = OpLabel
-%33 = OpImageRead %25 %9 %15
-%34 = OpCompositeExtract %5 %33 0
-%35 = OpCompositeConstruct %25 %34 %34 %34 %34
-OpImageWrite %9 %15 %35
-OpBranch %61
 %52 = OpLabel
 %45 = OpIEqual %20 %16 %18
 OpSelectionMerge %59 None
 OpBranchConditional %45 %58 %53
-%58 = OpLabel
-%30 = OpImageRead %25 %9 %29
-%31 = OpCompositeExtract %5 %30 0
-%32 = OpCompositeConstruct %25 %31 %31 %31 %31
-OpImageWrite %9 %29 %32
-OpBranch %59
 %53 = OpLabel
 %46 = OpIEqual %20 %16 %47
 OpSelectionMerge %57 None
 OpBranchConditional %46 %56 %54
-%56 = OpLabel
-%26 = OpImageRead %25 %9 %24
-%27 = OpCompositeExtract %5 %26 0
-%28 = OpCompositeConstruct %25 %27 %27 %27 %27
-OpImageWrite %9 %24 %28
-OpBranch %57
 %54 = OpLabel
 OpBranch %55
 %55 = OpLabel
@@ -146,9 +128,27 @@ OpBranch %55
 %39 = OpCompositeConstruct %25 %38 %38 %38 %38
 OpImageWrite %9 %36 %39
 OpBranch %57
+%56 = OpLabel
+%26 = OpImageRead %25 %9 %24
+%27 = OpCompositeExtract %5 %26 0
+%28 = OpCompositeConstruct %25 %27 %27 %27 %27
+OpImageWrite %9 %24 %28
+OpBranch %57
 %57 = OpLabel
 OpBranch %59
+%58 = OpLabel
+%30 = OpImageRead %25 %9 %29
+%31 = OpCompositeExtract %5 %30 0
+%32 = OpCompositeConstruct %25 %31 %31 %31 %31
+OpImageWrite %9 %29 %32
+OpBranch %59
 %59 = OpLabel
+OpBranch %61
+%60 = OpLabel
+%33 = OpImageRead %25 %9 %15
+%34 = OpCompositeExtract %5 %33 0
+%35 = OpCompositeConstruct %25 %34 %34 %34 %34
+OpImageWrite %9 %15 %35
 OpBranch %61
 %61 = OpLabel
 OpBranch %62
@@ -159,13 +159,13 @@ OpBranch %63
 %40 = OpIEqual %20 %23 %19
 OpSelectionMerge %73 None
 OpBranchConditional %40 %65 %64
-%65 = OpLabel
-OpBranch %66
 %73 = OpLabel
 OpUnreachable
 %64 = OpLabel
 OpStore %43 %23
 OpBranch %50
+%65 = OpLabel
+OpBranch %66
 %66 = OpLabel
 OpBranch %67
 %67 = OpLabel

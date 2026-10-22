@@ -27,8 +27,8 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     SPIRV_Cross_beginInvocationInterlock();
+    uint _86;
     uint _87;
-    uint _88;
     if (gl_FragCoord.x > 1000.0)
     {
         uvec4 _24 = imageLoad(_8, int(0u));
@@ -36,28 +36,28 @@ void main()
         uvec4 _26 = imageLoad(_8, int(_27));
         uvec2 _31 = uvec2(_24.x, _26.x);
         imageStore(_8, int(0u), uvec4(50u));
-        _87 = _31.x;
-        _88 = _31.y;
+        _86 = _31.x;
+        _87 = _31.y;
     }
     else
     {
+        _86 = _37;
         _87 = _37;
-        _88 = _37;
     }
     if (gl_FragCoord.x > 1100.0)
     {
-        uint _41 = (_88 * 1000u) + _87;
-        uint _54 = ByteAddressMask(_41 * 4u, 4u);
-        uvec4 _55 = imageLoad(_8, int(_54));
-        uvec4 _57 = imageLoad(_8, int(_54 + 1u));
-        uvec4 _60 = imageLoad(_8, int(_54 + 2u));
-        uvec4 _64 = imageLoad(_8, int(_54 + 3u));
-        uvec4 _68 = uvec4(_55.x, _57.x, _60.x, _64.x);
-        uint _78 = ByteAddressMask(_41 * 4u, 4u);
-        imageStore(_8, int(_78), uvec4(_68.x + 1u));
-        imageStore(_8, int(_78 + 1u), uvec4(_68.y + 2u));
-        imageStore(_8, int(_78 + 2u), uvec4(_68.z + 3u));
-        imageStore(_8, int(_78 + 3u), uvec4(_68.w + 4u));
+        uint _41 = (_87 * 1000u) + _86;
+        uint _53 = ByteAddressMask(_41 * 4u, 4u);
+        uvec4 _54 = imageLoad(_8, int(_53));
+        uvec4 _56 = imageLoad(_8, int(_53 + 1u));
+        uvec4 _59 = imageLoad(_8, int(_53 + 2u));
+        uvec4 _63 = imageLoad(_8, int(_53 + 3u));
+        uvec4 _67 = uvec4(_54.x, _56.x, _59.x, _63.x);
+        uint _77 = ByteAddressMask(_41 * 4u, 4u);
+        imageStore(_8, int(_77), uvec4(_67.x + 1u));
+        imageStore(_8, int(_77 + 1u), uvec4(_67.y + 2u));
+        imageStore(_8, int(_77 + 2u), uvec4(_67.z + 3u));
+        imageStore(_8, int(_77 + 3u), uvec4(_67.w + 4u));
     }
     SPIRV_Cross_endInvocationInterlock();
 }
@@ -68,7 +68,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 100
+; Bound: 98
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -111,25 +111,29 @@ OpDecorate %12 BuiltIn FragCoord
 %43 = OpConstant %5 4
 %45 = OpTypeFunction %5 %5 %5
 %51 = OpConstant %5 4294967295
-%62 = OpConstant %5 2
-%66 = OpConstant %5 3
-%86 = OpTypePointer Function %5
+%61 = OpConstant %5 2
+%65 = OpConstant %5 3
+%85 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%87 = OpVariable %86 Function
-%88 = OpVariable %86 Function
+%86 = OpVariable %85 Function
+%87 = OpVariable %85 Function
 %37 = OpUndef %5
-OpBranch %89
-%89 = OpLabel
+OpBranch %88
+%88 = OpLabel
 %13 = OpLoad %6 %8
 %15 = OpAccessChain %14 %12 %16
 %17 = OpLoad %9 %15
 %19 = OpFOrdGreaterThan %18 %17 %20
 %21 = OpFOrdGreaterThan %18 %17 %22
 OpBeginInvocationInterlockEXT
-OpSelectionMerge %92 None
-OpBranchConditional %19 %91 %90
-%91 = OpLabel
+OpSelectionMerge %91 None
+OpBranchConditional %19 %90 %89
+%89 = OpLabel
+OpStore %86 %37
+OpStore %87 %37
+OpBranch %91
+%90 = OpLabel
 %24 = OpImageRead %23 %13 %16
 %25 = OpCompositeExtract %5 %24 0
 %27 = OpIAdd %5 %16 %28
@@ -140,67 +144,63 @@ OpBranchConditional %19 %91 %90
 %33 = OpCompositeExtract %5 %31 1
 %35 = OpCompositeConstruct %23 %34 %34 %34 %34
 OpImageWrite %13 %16 %35
-OpStore %87 %32
-OpStore %88 %33
-OpBranch %92
-%90 = OpLabel
-OpStore %87 %37
-OpStore %88 %37
+OpStore %86 %32
+OpStore %87 %33
+OpBranch %91
+%91 = OpLabel
 OpBranch %92
 %92 = OpLabel
 OpBranch %93
 %93 = OpLabel
-OpBranch %94
+%38 = OpLoad %5 %87
+%36 = OpLoad %5 %86
+OpSelectionMerge %95 None
+OpBranchConditional %21 %94 %95
 %94 = OpLabel
-%38 = OpLoad %5 %88
-%36 = OpLoad %5 %87
-OpSelectionMerge %96 None
-OpBranchConditional %21 %95 %96
-%95 = OpLabel
 %39 = OpIMul %5 %38 %40
 %41 = OpIAdd %5 %39 %36
 %42 = OpShiftLeftLogical %5 %41 %43
 %44 = OpIMul %5 %41 %43
-%54 = OpFunctionCall %5 %48 %44 %43
-%55 = OpImageRead %23 %13 %54
-%56 = OpCompositeExtract %5 %55 0
-%58 = OpIAdd %5 %54 %28
-%57 = OpImageRead %23 %13 %58
-%59 = OpCompositeExtract %5 %57 0
-%61 = OpIAdd %5 %54 %62
-%60 = OpImageRead %23 %13 %61
-%63 = OpCompositeExtract %5 %60 0
-%65 = OpIAdd %5 %54 %66
-%64 = OpImageRead %23 %13 %65
-%67 = OpCompositeExtract %5 %64 0
-%68 = OpCompositeConstruct %23 %56 %59 %63 %67
-%69 = OpCompositeExtract %5 %68 0
-%70 = OpCompositeExtract %5 %68 1
-%71 = OpCompositeExtract %5 %68 2
-%72 = OpCompositeExtract %5 %68 3
-%73 = OpIAdd %5 %69 %28
-%74 = OpIAdd %5 %70 %62
-%75 = OpIAdd %5 %71 %66
-%76 = OpIAdd %5 %72 %43
-%77 = OpIMul %5 %41 %43
-%78 = OpFunctionCall %5 %48 %77 %43
+%53 = OpFunctionCall %5 %48 %44 %43
+%54 = OpImageRead %23 %13 %53
+%55 = OpCompositeExtract %5 %54 0
+%57 = OpIAdd %5 %53 %28
+%56 = OpImageRead %23 %13 %57
+%58 = OpCompositeExtract %5 %56 0
+%60 = OpIAdd %5 %53 %61
+%59 = OpImageRead %23 %13 %60
+%62 = OpCompositeExtract %5 %59 0
+%64 = OpIAdd %5 %53 %65
+%63 = OpImageRead %23 %13 %64
+%66 = OpCompositeExtract %5 %63 0
+%67 = OpCompositeConstruct %23 %55 %58 %62 %66
+%68 = OpCompositeExtract %5 %67 0
+%69 = OpCompositeExtract %5 %67 1
+%70 = OpCompositeExtract %5 %67 2
+%71 = OpCompositeExtract %5 %67 3
+%72 = OpIAdd %5 %68 %28
+%73 = OpIAdd %5 %69 %61
+%74 = OpIAdd %5 %70 %65
+%75 = OpIAdd %5 %71 %43
+%76 = OpIMul %5 %41 %43
+%77 = OpFunctionCall %5 %48 %76 %43
+%78 = OpCompositeConstruct %23 %72 %72 %72 %72
+OpImageWrite %13 %77 %78
 %79 = OpCompositeConstruct %23 %73 %73 %73 %73
-OpImageWrite %13 %78 %79
-%80 = OpCompositeConstruct %23 %74 %74 %74 %74
-%81 = OpIAdd %5 %78 %28
-OpImageWrite %13 %81 %80
-%82 = OpCompositeConstruct %23 %75 %75 %75 %75
-%83 = OpIAdd %5 %78 %62
-OpImageWrite %13 %83 %82
-%84 = OpCompositeConstruct %23 %76 %76 %76 %76
-%85 = OpIAdd %5 %78 %66
-OpImageWrite %13 %85 %84
+%80 = OpIAdd %5 %77 %28
+OpImageWrite %13 %80 %79
+%81 = OpCompositeConstruct %23 %74 %74 %74 %74
+%82 = OpIAdd %5 %77 %61
+OpImageWrite %13 %82 %81
+%83 = OpCompositeConstruct %23 %75 %75 %75 %75
+%84 = OpIAdd %5 %77 %65
+OpImageWrite %13 %84 %83
+OpBranch %95
+%95 = OpLabel
 OpBranch %96
 %96 = OpLabel
 OpBranch %97
 %97 = OpLabel
-OpBranch %98
-%98 = OpLabel
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

@@ -38,7 +38,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 61
+; Bound: 60
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -94,6 +94,9 @@ OpBranch %49
 %27 = OpULessThan %26 %24 %28
 OpSelectionMerge %52 None
 OpBranchConditional %27 %51 %50
+%50 = OpLabel
+OpStore %48 %39
+OpBranch %52
 %51 = OpLabel
 %29 = OpBitFieldUExtract %9 %24 %17 %28
 %32 = OpBitFieldUExtract %9 %31 %17 %28
@@ -105,9 +108,6 @@ OpBranchConditional %27 %51 %50
 %35 = OpINotEqual %26 %36 %37
 OpStore %48 %35
 OpBranch %52
-%50 = OpLabel
-OpStore %48 %39
-OpBranch %52
 %52 = OpLabel
 OpBranch %53
 %53 = OpLabel
@@ -116,15 +116,15 @@ OpBranch %54
 %38 = OpLoad %26 %48
 OpSelectionMerge %57 None
 OpBranchConditional %38 %56 %55
-%56 = OpLabel
-%45 = OpCompositeConstruct %41 %10 %10 %10
-%46 = OpCompositeConstruct %11 %44 %44 %44 %44
-OpImageWrite %16 %45 %46
-OpBranch %57
 %55 = OpLabel
 %42 = OpCompositeConstruct %41 %10 %10 %10
 %43 = OpCompositeConstruct %11 %40 %40 %40 %40
 OpImageWrite %16 %42 %43
+OpBranch %57
+%56 = OpLabel
+%45 = OpCompositeConstruct %41 %10 %10 %10
+%46 = OpCompositeConstruct %11 %44 %44 %44 %44
+OpImageWrite %16 %45 %46
 OpBranch %57
 %57 = OpLabel
 OpBranch %58

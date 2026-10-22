@@ -109,7 +109,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 144
+; Bound: 143
 ; Schema: 0
 OpCapability Shader
 OpCapability DrawParameters
@@ -228,9 +228,6 @@ OpBranch %120
 %71 = OpIEqual %65 %46 %36
 OpSelectionMerge %114 None
 OpBranchConditional %71 %113 %104
-%113 = OpLabel
-OpStore %100 %63
-OpBranch %114
 %104 = OpLabel
 OpStore %102 %36
 OpBranch %105
@@ -278,13 +275,13 @@ OpBranch %106
 %106 = OpLabel
 OpSelectionMerge %134 None
 OpBranchConditional %85 %108 %107
-%108 = OpLabel
-OpBranch %109
 %134 = OpLabel
 OpUnreachable
 %107 = OpLabel
 OpStore %102 %73
 OpBranch %105
+%108 = OpLabel
+OpBranch %109
 %109 = OpLabel
 OpBranch %110
 %110 = OpLabel
@@ -300,6 +297,9 @@ OpBranch %136
 OpStore %100 %86
 OpBranch %112
 %112 = OpLabel
+OpBranch %114
+%113 = OpLabel
+OpStore %100 %63
 OpBranch %114
 %114 = OpLabel
 OpBranch %115

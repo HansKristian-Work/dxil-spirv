@@ -57,7 +57,7 @@ void main()
         }
     }
     uvec2 _69 = _17.counters[registers._m4];
-    uint _88 = RobustPhysicalAtomicCounter(_69, 1u, 0u);
+    uint _87 = RobustPhysicalAtomicCounter(_69, 1u, 0u);
 }
 
 
@@ -66,7 +66,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 97
+; Bound: 95
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageArrayDynamicIndexing
@@ -154,14 +154,14 @@ OpDecorate %25 BuiltIn GlobalInvocationId
 %82 = OpTypePointer PhysicalStorageBuffer %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %89
-%89 = OpLabel
+OpBranch %88
+%88 = OpLabel
 %27 = OpAccessChain %26 %25 %28
 %29 = OpLoad %5 %27
 %31 = OpUGreaterThan %30 %29 %32
-OpSelectionMerge %93 None
-OpBranchConditional %31 %90 %93
-%90 = OpLabel
+OpSelectionMerge %92 None
+OpBranchConditional %31 %89 %92
+%89 = OpLabel
 %36 = OpAccessChain %35 %8 %37
 %38 = OpLoad %5 %36
 %39 = OpIAdd %5 %38 %40
@@ -171,9 +171,9 @@ OpBranchConditional %31 %90 %93
 %45 = OpCompositeConstruct %44 %42 %42 %42 %42
 OpImageWrite %41 %43 %45
 %46 = OpUGreaterThan %30 %29 %47
-OpSelectionMerge %92 None
-OpBranchConditional %46 %91 %92
-%91 = OpLabel
+OpSelectionMerge %91 None
+OpBranchConditional %46 %90 %91
+%90 = OpLabel
 %48 = OpBitwiseAnd %5 %29 %49
 %50 = OpIAdd %5 %48 %51
 %53 = OpAccessChain %35 %8 %37
@@ -184,14 +184,14 @@ OpBranchConditional %46 %91 %92
 %57 = OpCompositeConstruct %13 %28 %29
 %58 = OpCompositeConstruct %44 %42 %42 %42 %42
 OpImageWrite %56 %57 %58
+OpBranch %91
+%91 = OpLabel
 OpBranch %92
 %92 = OpLabel
 OpBranch %93
 %93 = OpLabel
 OpBranch %94
 %94 = OpLabel
-OpBranch %95
-%95 = OpLabel
 %61 = OpAccessChain %35 %8 %62
 %63 = OpLoad %5 %61
 %60 = OpAccessChain %59 %12 %63
@@ -200,7 +200,7 @@ OpBranch %95
 %68 = OpLoad %5 %67
 %66 = OpAccessChain %65 %17 %28 %68
 %69 = OpLoad %13 %66
-%88 = OpFunctionCall %5 %74 %69 %49 %28
+%87 = OpFunctionCall %5 %74 %69 %49 %28
 OpReturn
 OpFunctionEnd
 %74 = OpFunction %5 None %70

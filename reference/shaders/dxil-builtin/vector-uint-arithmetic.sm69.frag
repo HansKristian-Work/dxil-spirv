@@ -14,7 +14,7 @@
 
 uvec4 _70;
 uvec4 _18;
-vec4 _120;
+vec4 _119;
 
 layout(location = 0) flat in uvec4 A;
 layout(location = 1) flat in uvec4 B;
@@ -88,19 +88,19 @@ void main()
     _45.y = A.y;
     _45.z = A.z;
     _45.w = A.w;
-    vec4 _110 = vec4((_45 * _33) + _17);
-    float _111 = _110.x;
-    float _118 = inversesqrt(dot(vec4(_111, _110.yzw), vec4(_111, _110.yzw)));
-    vec4 _119;
-    _119.x = _118;
-    _119.y = _118;
-    _119.z = _118;
-    _119.w = _118;
-    uvec4 _127 = min(uvec4(sqrt(vec4(_45 + UDiv(_33, _17)))), uvec4(cos(_119 * _110)));
-    SV_Target.x = _127.x;
-    SV_Target.y = _127.y;
-    SV_Target.z = _127.z;
-    SV_Target.w = _127.w;
+    vec4 _109 = vec4((_45 * _33) + _17);
+    float _110 = _109.x;
+    float _117 = inversesqrt(dot(vec4(_110, _109.yzw), vec4(_110, _109.yzw)));
+    vec4 _118;
+    _118.x = _117;
+    _118.y = _117;
+    _118.z = _117;
+    _118.w = _117;
+    uvec4 _126 = min(uvec4(sqrt(vec4(_45 + UDiv(_33, _17)))), uvec4(cos(_118 * _109)));
+    SV_Target.x = _126.x;
+    SV_Target.y = _126.y;
+    SV_Target.z = _126.z;
+    SV_Target.w = _126.w;
 }
 
 
@@ -109,10 +109,10 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 139
+; Bound: 137
 ; Schema: 0
 OpCapability Shader
-%107 = OpExtInstImport "GLSL.std.450"
+%106 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %3 "main" %8 %9 %10 %12
 OpExecutionMode %3 OriginUpperLeft
@@ -154,15 +154,15 @@ OpDecorate %12 Location 0
 %77 = OpConstantNull %5
 %86 = OpConstantNull %5
 %95 = OpConstantNull %5
-%104 = OpTypeFloat 32
-%105 = OpTypeVector %104 4
-%129 = OpTypePointer Output %5
+%103 = OpTypeFloat 32
+%104 = OpTypeVector %103 4
+%128 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %18 = OpUndef %6
-%120 = OpUndef %105
-OpBranch %137
-%137 = OpLabel
+%119 = OpUndef %104
+OpBranch %136
+%136 = OpLabel
 %14 = OpAccessChain %13 %10 %15
 %16 = OpLoad %5 %14
 %17 = OpCompositeInsert %6 %16 %18 0
@@ -199,42 +199,42 @@ OpBranch %137
 %52 = OpAccessChain %13 %8 %28
 %53 = OpLoad %5 %52
 %54 = OpCompositeInsert %6 %53 %51 3
-%100 = OpFunctionCall %6 %58 %42 %30
-%101 = OpIAdd %6 %54 %100
-%102 = OpIMul %6 %54 %42
-%103 = OpIAdd %6 %102 %30
-%106 = OpConvertUToF %105 %101
-%108 = OpExtInst %105 %107 Sqrt %106
-%109 = OpConvertFToU %6 %108
-%110 = OpConvertUToF %105 %103
-%111 = OpCompositeExtract %104 %110 0
-%112 = OpCompositeExtract %104 %110 1
-%113 = OpCompositeExtract %104 %110 2
-%114 = OpCompositeExtract %104 %110 3
-%116 = OpCompositeConstruct %105 %111 %112 %113 %114
-%117 = OpCompositeConstruct %105 %111 %112 %113 %114
-%115 = OpDot %104 %116 %117
-%118 = OpExtInst %104 %107 InverseSqrt %115
-%119 = OpCompositeInsert %105 %118 %120 0
-%121 = OpCompositeInsert %105 %118 %119 1
-%122 = OpCompositeInsert %105 %118 %121 2
-%123 = OpCompositeInsert %105 %118 %122 3
-%124 = OpFMul %105 %123 %110
-%125 = OpExtInst %105 %107 Cos %124
-%126 = OpConvertFToU %6 %125
-%127 = OpExtInst %6 %107 UMin %109 %126
-%128 = OpCompositeExtract %5 %127 0
-%130 = OpAccessChain %129 %12 %15
-OpStore %130 %128
-%131 = OpCompositeExtract %5 %127 1
-%132 = OpAccessChain %129 %12 %20
-OpStore %132 %131
-%133 = OpCompositeExtract %5 %127 2
-%134 = OpAccessChain %129 %12 %24
-OpStore %134 %133
-%135 = OpCompositeExtract %5 %127 3
-%136 = OpAccessChain %129 %12 %28
-OpStore %136 %135
+%99 = OpFunctionCall %6 %58 %42 %30
+%100 = OpIAdd %6 %54 %99
+%101 = OpIMul %6 %54 %42
+%102 = OpIAdd %6 %101 %30
+%105 = OpConvertUToF %104 %100
+%107 = OpExtInst %104 %106 Sqrt %105
+%108 = OpConvertFToU %6 %107
+%109 = OpConvertUToF %104 %102
+%110 = OpCompositeExtract %103 %109 0
+%111 = OpCompositeExtract %103 %109 1
+%112 = OpCompositeExtract %103 %109 2
+%113 = OpCompositeExtract %103 %109 3
+%115 = OpCompositeConstruct %104 %110 %111 %112 %113
+%116 = OpCompositeConstruct %104 %110 %111 %112 %113
+%114 = OpDot %103 %115 %116
+%117 = OpExtInst %103 %106 InverseSqrt %114
+%118 = OpCompositeInsert %104 %117 %119 0
+%120 = OpCompositeInsert %104 %117 %118 1
+%121 = OpCompositeInsert %104 %117 %120 2
+%122 = OpCompositeInsert %104 %117 %121 3
+%123 = OpFMul %104 %122 %109
+%124 = OpExtInst %104 %106 Cos %123
+%125 = OpConvertFToU %6 %124
+%126 = OpExtInst %6 %106 UMin %108 %125
+%127 = OpCompositeExtract %5 %126 0
+%129 = OpAccessChain %128 %12 %15
+OpStore %129 %127
+%130 = OpCompositeExtract %5 %126 1
+%131 = OpAccessChain %128 %12 %20
+OpStore %131 %130
+%132 = OpCompositeExtract %5 %126 2
+%133 = OpAccessChain %128 %12 %24
+OpStore %133 %132
+%134 = OpCompositeExtract %5 %126 3
+%135 = OpAccessChain %128 %12 %28
+OpStore %135 %134
 OpReturn
 OpFunctionEnd
 %58 = OpFunction %6 None %55

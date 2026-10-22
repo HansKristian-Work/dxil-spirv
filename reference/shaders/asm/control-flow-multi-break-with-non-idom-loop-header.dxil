@@ -90,7 +90,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 108
+; Bound: 105
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -170,9 +170,6 @@ OpStore %32 %38
 %44 = OpIEqual %43 %42 %45
 OpSelectionMerge %86 None
 OpBranchConditional %44 %95 %86
-%95 = OpLabel
-OpStore %79 %81
-OpBranch %96
 %86 = OpLabel
 OpStore %32 %46
 %47 = OpLoad %5 %32
@@ -191,9 +188,6 @@ OpStore %32 %53
 %58 = OpIEqual %43 %57 %59
 OpSelectionMerge %88 None
 OpBranchConditional %58 %91 %88
-%91 = OpLabel
-OpStore %79 %82
-OpBranch %96
 %88 = OpLabel
 OpStore %32 %60
 %61 = OpLoad %5 %32
@@ -203,11 +197,14 @@ OpStore %32 %60
 %65 = OpIEqual %43 %64 %59
 OpSelectionMerge %89 None
 OpBranchConditional %65 %90 %89
+%89 = OpLabel
+OpBranch %92
 %90 = OpLabel
 OpStore %79 %82
 OpBranch %96
-%89 = OpLabel
-OpBranch %92
+%91 = OpLabel
+OpStore %79 %82
+OpBranch %96
 %92 = OpLabel
 OpBranch %93
 %93 = OpLabel
@@ -220,6 +217,9 @@ OpStore %32 %52
 %71 = OpSLessThan %43 %70 %72
 OpStore %79 %81
 OpBranchConditional %71 %84 %96
+%95 = OpLabel
+OpStore %79 %81
+OpBranch %96
 %96 = OpLabel
 OpBranch %97
 %97 = OpLabel
@@ -249,8 +249,8 @@ OpFunctionEnd
 %16 = OpFunction %1 None %14
 %15 = OpFunctionParameter %5
 %17 = OpLabel
-OpBranch %104
-%104 = OpLabel
+OpBranch %103
+%103 = OpLabel
 %20 = OpAccessChain %19 %9 %18 %18
 %21 = OpAtomicIAdd %5 %20 %22 %18 %22
 %23 = OpAccessChain %19 %9 %18 %21
@@ -260,8 +260,8 @@ OpFunctionEnd
 %26 = OpFunction %5 None %24
 %25 = OpFunctionParameter %5
 %27 = OpLabel
-OpBranch %106
-%106 = OpLabel
+OpBranch %104
+%104 = OpLabel
 %28 = OpAccessChain %19 %13 %18 %25
 %29 = OpLoad %5 %28
 OpReturnValue %29

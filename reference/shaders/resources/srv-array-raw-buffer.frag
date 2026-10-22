@@ -15,12 +15,12 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     uint _19 = INDEX + 0u;
-    uint _34 = ByteAddressMask(INDEX * 4u, 4u);
-    uvec4 _50 = uvec4(texelFetch(_9[_19], int(_34)).x, texelFetch(_9[_19], int(_34 + 1u)).x, texelFetch(_9[_19], int(_34 + 2u)).x, texelFetch(_9[_19], int(_34 + 3u)).x);
-    SV_Target.x = uintBitsToFloat(_50.x);
-    SV_Target.y = uintBitsToFloat(_50.y);
-    SV_Target.z = uintBitsToFloat(_50.z);
-    SV_Target.w = uintBitsToFloat(_50.w);
+    uint _33 = ByteAddressMask(INDEX * 4u, 4u);
+    uvec4 _49 = uvec4(texelFetch(_9[_19], int(_33)).x, texelFetch(_9[_19], int(_33 + 1u)).x, texelFetch(_9[_19], int(_33 + 2u)).x, texelFetch(_9[_19], int(_33 + 3u)).x);
+    SV_Target.x = uintBitsToFloat(_49.x);
+    SV_Target.y = uintBitsToFloat(_49.y);
+    SV_Target.z = uintBitsToFloat(_49.z);
+    SV_Target.w = uintBitsToFloat(_49.w);
 }
 
 
@@ -29,7 +29,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 66
+; Bound: 64
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
@@ -68,50 +68,50 @@ OpDecorate %15 Location 0
 %21 = OpTypePointer UniformConstant %6
 %25 = OpTypeFunction %5 %5 %5
 %31 = OpConstant %5 4294967295
-%35 = OpTypeVector %5 4
-%40 = OpConstant %5 1
-%44 = OpConstant %5 2
-%48 = OpConstant %5 3
-%59 = OpTypePointer Output %12
+%34 = OpTypeVector %5 4
+%39 = OpConstant %5 1
+%43 = OpConstant %5 2
+%47 = OpConstant %5 3
+%58 = OpTypePointer Output %12
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %64
-%64 = OpLabel
+OpBranch %63
+%63 = OpLabel
 %16 = OpLoad %5 %11
 %17 = OpShiftLeftLogical %5 %16 %18
 %19 = OpIAdd %5 %16 %20
 %22 = OpAccessChain %21 %9 %19
 %23 = OpLoad %6 %22
 %24 = OpIMul %5 %16 %18
-%34 = OpFunctionCall %5 %28 %24 %18
-%36 = OpImageFetch %35 %23 %34
-%37 = OpCompositeExtract %5 %36 0
-%39 = OpIAdd %5 %34 %40
-%38 = OpImageFetch %35 %23 %39
-%41 = OpCompositeExtract %5 %38 0
-%43 = OpIAdd %5 %34 %44
-%42 = OpImageFetch %35 %23 %43
-%45 = OpCompositeExtract %5 %42 0
-%47 = OpIAdd %5 %34 %48
-%46 = OpImageFetch %35 %23 %47
-%49 = OpCompositeExtract %5 %46 0
-%50 = OpCompositeConstruct %35 %37 %41 %45 %49
-%51 = OpCompositeExtract %5 %50 0
-%52 = OpCompositeExtract %5 %50 1
-%53 = OpCompositeExtract %5 %50 2
-%54 = OpCompositeExtract %5 %50 3
+%33 = OpFunctionCall %5 %28 %24 %18
+%35 = OpImageFetch %34 %23 %33
+%36 = OpCompositeExtract %5 %35 0
+%38 = OpIAdd %5 %33 %39
+%37 = OpImageFetch %34 %23 %38
+%40 = OpCompositeExtract %5 %37 0
+%42 = OpIAdd %5 %33 %43
+%41 = OpImageFetch %34 %23 %42
+%44 = OpCompositeExtract %5 %41 0
+%46 = OpIAdd %5 %33 %47
+%45 = OpImageFetch %34 %23 %46
+%48 = OpCompositeExtract %5 %45 0
+%49 = OpCompositeConstruct %34 %36 %40 %44 %48
+%50 = OpCompositeExtract %5 %49 0
+%51 = OpCompositeExtract %5 %49 1
+%52 = OpCompositeExtract %5 %49 2
+%53 = OpCompositeExtract %5 %49 3
+%54 = OpBitcast %12 %50
 %55 = OpBitcast %12 %51
 %56 = OpBitcast %12 %52
 %57 = OpBitcast %12 %53
-%58 = OpBitcast %12 %54
-%60 = OpAccessChain %59 %15 %20
+%59 = OpAccessChain %58 %15 %20
+OpStore %59 %54
+%60 = OpAccessChain %58 %15 %39
 OpStore %60 %55
-%61 = OpAccessChain %59 %15 %40
+%61 = OpAccessChain %58 %15 %43
 OpStore %61 %56
-%62 = OpAccessChain %59 %15 %44
+%62 = OpAccessChain %58 %15 %47
 OpStore %62 %57
-%63 = OpAccessChain %59 %15 %48
-OpStore %63 %58
 OpReturn
 OpFunctionEnd
 %28 = OpFunction %5 None %25

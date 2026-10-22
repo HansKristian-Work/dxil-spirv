@@ -64,23 +64,23 @@ layout(set = 0, binding = 0) uniform sampler _28;
 
 void main()
 {
-    uint _139;
-    uvec4 _140;
-    _139 = sparseTextureGatherARB(usampler2D(_8, _28), vec2(0.5), _140);
-    SparseTexel _39 = SparseTexel(_139, _140);
+    uint _138;
+    uvec4 _139;
+    _138 = sparseTextureGatherARB(usampler2D(_8, _28), vec2(0.5), _139);
+    SparseTexel _39 = SparseTexel(_138, _139);
     u16vec4 _44 = u16vec4(_39._m1);
     _49 _50 = _49(_44.x, _44.y, _44.z, _44.w, _39._m0);
-    uint _141;
-    uvec4 _142;
-    _141 = sparseTextureGatherARB(usampler2D(_9, _28), vec2(0.5), _142);
-    SparseTexel _63 = SparseTexel(_141, _142);
+    uint _140;
+    uvec4 _141;
+    _140 = sparseTextureGatherARB(usampler2D(_9, _28), vec2(0.5), _141);
+    SparseTexel _63 = SparseTexel(_140, _141);
     uvec4 _65 = _63._m1;
     _70 _71 = _70(_65.x, _65.y, _65.z, _65.w, _63._m0);
     vec2 _81 = vec2(0.5);
-    uint _143;
-    uvec4 _144;
-    _143 = sparseTextureGatherARB(usampler2D(_10, _28), _81, _144);
-    SparseTexel _82 = SparseTexel(_143, _144);
+    uint _142;
+    uvec4 _143;
+    _142 = sparseTextureGatherARB(usampler2D(_10, _28), _81, _143);
+    SparseTexel _82 = SparseTexel(_142, _143);
     uvec4 _83 = textureGather(usampler2D(_10, _28), _81, int(1u));
     uvec4 _84 = _82._m1;
     u64vec4 _102 = u64vec4(packUint2x32(uvec2(_84.x, _83.x)), packUint2x32(uvec2(_84.y, _83.y)), packUint2x32(uvec2(_84.z, _83.z)), packUint2x32(uvec2(_84.w, _83.w)));
@@ -101,7 +101,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 139
+; Bound: 138
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64

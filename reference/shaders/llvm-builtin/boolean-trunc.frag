@@ -24,7 +24,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 38
+; Bound: 37
 ; Schema: 0
 OpCapability Shader
 OpCapability DerivativeControl
@@ -69,11 +69,11 @@ OpStore %11 %21
 %24 = OpINotEqual %19 %23 %9
 OpSelectionMerge %34 None
 OpBranchConditional %24 %33 %32
-%33 = OpLabel
-OpStore %30 %26
-OpBranch %34
 %32 = OpLabel
 OpStore %30 %27
+OpBranch %34
+%33 = OpLabel
+OpStore %30 %26
 OpBranch %34
 %34 = OpLabel
 OpBranch %35

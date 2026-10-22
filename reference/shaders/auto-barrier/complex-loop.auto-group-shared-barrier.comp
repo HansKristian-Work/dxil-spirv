@@ -68,7 +68,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 67
+; Bound: 66
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -147,13 +147,13 @@ OpBranch %51
 %51 = OpLabel
 OpSelectionMerge %64 None
 OpBranchConditional %42 %53 %52
-%53 = OpLabel
-OpBranch %54
 %64 = OpLabel
 OpUnreachable
 %52 = OpLabel
 OpStore %46 %35
 OpBranch %50
+%53 = OpLabel
+OpBranch %54
 %54 = OpLabel
 OpBranch %55
 %55 = OpLabel
@@ -163,13 +163,13 @@ OpBranch %56
 %44 = OpIEqual %41 %19 %43
 OpSelectionMerge %65 None
 OpBranchConditional %44 %58 %57
-%58 = OpLabel
-OpBranch %59
 %65 = OpLabel
 OpUnreachable
 %57 = OpLabel
 OpStore %47 %19
 OpBranch %49
+%58 = OpLabel
+OpBranch %59
 %59 = OpLabel
 OpBranch %60
 %60 = OpLabel

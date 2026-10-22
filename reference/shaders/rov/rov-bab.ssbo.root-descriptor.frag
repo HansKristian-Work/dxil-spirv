@@ -41,8 +41,8 @@ void main()
 {
     uint _29 = (uint(gl_FragCoord.y) * 1000u) + uint(gl_FragCoord.x);
     SPIRV_Cross_beginInvocationInterlock();
-    uvec4 _50 = PhysicalPointerUint4CoherentArray(registers._m2).value[ByteAddressMask(_29, 16u)];
-    PhysicalPointerUint4CoherentArray(registers._m2).value[ByteAddressMask(_29, 16u)] = uvec4(_50.x + 1u, _50.y + 2u, _50.z + 3u, _50.w + 4u);
+    uvec4 _49 = PhysicalPointerUint4CoherentArray(registers._m2).value[ByteAddressMask(_29, 16u)];
+    PhysicalPointerUint4CoherentArray(registers._m2).value[ByteAddressMask(_29, 16u)] = uvec4(_49.x + 1u, _49.y + 2u, _49.z + 3u, _49.w + 4u);
     SPIRV_Cross_endInvocationInterlock();
 }
 
@@ -52,7 +52,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 66
+; Bound: 64
 ; Schema: 0
 OpCapability Shader
 OpCapability PhysicalStorageBufferAddresses
@@ -71,18 +71,18 @@ OpName %13 "SV_Position"
 OpName %35 "ByteAddressMask"
 OpName %33 "index"
 OpName %34 "stride"
-OpName %45 "PhysicalPointerUint4CoherentArray"
-OpMemberName %45 0 "value"
+OpName %44 "PhysicalPointerUint4CoherentArray"
+OpMemberName %44 0 "value"
 OpDecorate %7 Block
 OpMemberDecorate %7 0 Offset 0
 OpMemberDecorate %7 1 Offset 8
 OpMemberDecorate %7 2 Offset 16
 OpMemberDecorate %7 3 Offset 24
 OpDecorate %13 BuiltIn FragCoord
-OpDecorate %44 ArrayStride 16
-OpMemberDecorate %45 0 Offset 0
-OpDecorate %45 Block
-OpMemberDecorate %45 0 Coherent
+OpDecorate %43 ArrayStride 16
+OpMemberDecorate %44 0 Offset 0
+OpDecorate %44 Block
+OpMemberDecorate %44 0 Coherent
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -103,17 +103,17 @@ OpMemberDecorate %45 0 Coherent
 %31 = OpConstant %5 4
 %32 = OpTypeFunction %5 %5 %5
 %38 = OpConstant %5 4294967295
-%42 = OpConstant %5 16
-%43 = OpTypeVector %5 4
-%44 = OpTypeRuntimeArray %43
-%45 = OpTypeStruct %44
-%46 = OpTypePointer PhysicalStorageBuffer %45
-%48 = OpTypePointer PhysicalStorageBuffer %43
-%58 = OpConstant %5 3
+%41 = OpConstant %5 16
+%42 = OpTypeVector %5 4
+%43 = OpTypeRuntimeArray %42
+%44 = OpTypeStruct %43
+%45 = OpTypePointer PhysicalStorageBuffer %44
+%47 = OpTypePointer PhysicalStorageBuffer %42
+%57 = OpConstant %5 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %64
-%64 = OpLabel
+OpBranch %63
+%63 = OpLabel
 %15 = OpAccessChain %14 %9 %16
 %17 = OpLoad %6 %15
 %19 = OpAccessChain %18 %13 %20
@@ -125,10 +125,11 @@ OpBranch %64
 %27 = OpIMul %5 %26 %28
 %29 = OpIAdd %5 %27 %25
 %30 = OpShiftLeftLogical %5 %29 %31
-%41 = OpFunctionCall %5 %35 %29 %42
-%47 = OpBitcast %46 %17
-%49 = OpInBoundsAccessChain %48 %47 %20 %41
+%40 = OpFunctionCall %5 %35 %29 %41
+%46 = OpBitcast %45 %17
+%48 = OpInBoundsAccessChain %47 %46 %20 %40
 OpBeginInvocationInterlockEXT
+<<<<<<< HEAD
 %50 = OpLoad %43 %49 Aligned 4
 %51 = OpCompositeExtract %5 %50 0
 %52 = OpCompositeExtract %5 %50 1
@@ -143,6 +144,22 @@ OpBeginInvocationInterlockEXT
 %62 = OpInBoundsAccessChain %48 %61 %20 %60
 %63 = OpCompositeConstruct %43 %55 %56 %57 %59
 OpStore %62 %63 Aligned 4
+=======
+%49 = OpLoad %42 %48 Aligned 16
+%50 = OpCompositeExtract %5 %49 0
+%51 = OpCompositeExtract %5 %49 1
+%52 = OpCompositeExtract %5 %49 2
+%53 = OpCompositeExtract %5 %49 3
+%54 = OpIAdd %5 %50 %23
+%55 = OpIAdd %5 %51 %16
+%56 = OpIAdd %5 %52 %57
+%58 = OpIAdd %5 %53 %31
+%59 = OpFunctionCall %5 %35 %29 %41
+%60 = OpBitcast %45 %17
+%61 = OpInBoundsAccessChain %47 %60 %20 %59
+%62 = OpCompositeConstruct %42 %54 %55 %56 %58
+OpStore %61 %62 Aligned 16
+>>>>>>> 68a7fed (Rewrite the block traversal for glslang emitter.)
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

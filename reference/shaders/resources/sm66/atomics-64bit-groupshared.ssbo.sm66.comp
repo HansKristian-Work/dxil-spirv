@@ -61,7 +61,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 79
+; Bound: 77
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -110,26 +110,26 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %48 = OpConstant %5 20
 %56 = OpTypeFunction %10 %10 %10
 %62 = OpConstant %10 4294967295
-%66 = OpConstant %10 8
-%67 = OpTypePointer StorageBuffer %5
+%65 = OpConstant %10 8
+%66 = OpTypePointer StorageBuffer %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %69
-%69 = OpLabel
+OpBranch %68
+%68 = OpLabel
 %19 = OpAccessChain %18 %17 %20
 %21 = OpLoad %10 %19
 %23 = OpULessThan %22 %21 %11
-OpSelectionMerge %71 None
-OpBranchConditional %23 %70 %71
-%70 = OpLabel
+OpSelectionMerge %70 None
+OpBranchConditional %23 %69 %70
+%69 = OpLabel
 %25 = OpAccessChain %24 %14 %21
 OpStore %25 %26
+OpBranch %70
+%70 = OpLabel
 OpBranch %71
 %71 = OpLabel
 OpBranch %72
 %72 = OpLabel
-OpBranch %73
-%73 = OpLabel
 OpControlBarrier %27 %27 %28
 %29 = OpBitwiseAnd %10 %21 %30
 %31 = OpUConvert %5 %21
@@ -152,21 +152,21 @@ OpControlBarrier %27 %27 %28
 %51 = OpAtomicIAdd %5 %32 %27 %20 %31
 %52 = OpAtomicIAdd %5 %32 %27 %20 %31
 OpControlBarrier %27 %27 %28
-OpSelectionMerge %75 None
-OpBranchConditional %23 %74 %75
-%74 = OpLabel
+OpSelectionMerge %74 None
+OpBranchConditional %23 %73 %74
+%73 = OpLabel
 %53 = OpAccessChain %24 %14 %21
 %54 = OpLoad %5 %53
 %55 = OpShiftLeftLogical %10 %21 %30
-%65 = OpFunctionCall %10 %59 %21 %66
-%68 = OpAccessChain %67 %9 %20 %65
-OpStore %68 %54
+%64 = OpFunctionCall %10 %59 %21 %65
+%67 = OpAccessChain %66 %9 %20 %64
+OpStore %67 %54
+OpBranch %74
+%74 = OpLabel
 OpBranch %75
 %75 = OpLabel
 OpBranch %76
 %76 = OpLabel
-OpBranch %77
-%77 = OpLabel
 OpReturn
 OpFunctionEnd
 %59 = OpFunction %10 None %56

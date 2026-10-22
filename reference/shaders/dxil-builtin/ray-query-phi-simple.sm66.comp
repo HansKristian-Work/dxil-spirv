@@ -35,7 +35,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 66
+; Bound: 65
 ; Schema: 0
 OpCapability Shader
 OpCapability RayQueryKHR
@@ -113,10 +113,10 @@ OpBranch %59
 %41 = OpIEqual %40 %39 %25
 OpSelectionMerge %62 None
 OpBranchConditional %41 %61 %60
-%61 = OpLabel
+%60 = OpLabel
 OpStore %58 %25
 OpBranch %62
-%60 = OpLabel
+%61 = OpLabel
 OpStore %58 %25
 OpBranch %62
 %62 = OpLabel

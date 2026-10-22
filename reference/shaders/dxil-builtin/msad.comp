@@ -43,7 +43,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 171
+; Bound: 170
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
