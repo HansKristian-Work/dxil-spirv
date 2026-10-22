@@ -55,7 +55,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 69
+; Bound: 68
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -105,11 +105,11 @@ OpBranch %48
 %23 = OpFOrdGreaterThan %22 %15 %24
 OpSelectionMerge %51 None
 OpBranchConditional %23 %50 %49
-%50 = OpLabel
-OpStore %47 %26
-OpBranch %51
 %49 = OpLabel
 OpStore %47 %27
+OpBranch %51
+%50 = OpLabel
+OpStore %47 %26
 OpBranch %51
 %51 = OpLabel
 OpBranch %52
@@ -120,15 +120,19 @@ OpBranch %53
 %28 = OpFOrdGreaterThan %22 %18 %24
 OpSelectionMerge %65 None
 OpBranchConditional %28 %55 %54
+%54 = OpLabel
+OpStore %44 %24
+OpStore %45 %27
+OpBranch %65
 %55 = OpLabel
 %29 = OpFOrdGreaterThan %22 %15 %30
 OpSelectionMerge %58 None
 OpBranchConditional %29 %57 %56
-%57 = OpLabel
-OpStore %46 %27
-OpBranch %58
 %56 = OpLabel
 OpStore %46 %26
+OpBranch %58
+%57 = OpLabel
+OpStore %46 %27
 OpBranch %58
 %58 = OpLabel
 OpBranch %59
@@ -139,21 +143,17 @@ OpBranch %60
 %32 = OpFOrdGreaterThan %22 %21 %24
 OpSelectionMerge %63 None
 OpBranchConditional %32 %62 %61
-%62 = OpLabel
-OpStore %44 %31
-OpStore %45 %35
-OpBranch %63
 %61 = OpLabel
 OpStore %44 %31
 OpStore %45 %27
 OpBranch %63
+%62 = OpLabel
+OpStore %44 %31
+OpStore %45 %35
+OpBranch %63
 %63 = OpLabel
 OpBranch %64
 %64 = OpLabel
-OpBranch %65
-%54 = OpLabel
-OpStore %44 %24
-OpStore %45 %27
 OpBranch %65
 %65 = OpLabel
 OpBranch %66

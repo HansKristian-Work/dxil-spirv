@@ -66,7 +66,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 79
+; Bound: 78
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16

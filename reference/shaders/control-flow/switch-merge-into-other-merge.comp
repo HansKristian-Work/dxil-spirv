@@ -58,7 +58,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 91
+; Bound: 90
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -108,15 +108,15 @@ OpBranch %68
 %21 = OpIEqual %20 %19 %15
 OpSelectionMerge %87 None
 OpBranchConditional %21 %86 %69
-%86 = OpLabel
-OpStore %62 %15
-OpBranch %87
 %69 = OpLabel
 %24 = OpImageRead %23 %9 %22
 %25 = OpCompositeExtract %5 %24 0
 %26 = OpUGreaterThan %20 %25 %27
 OpSelectionMerge %72 None
 OpBranchConditional %26 %71 %70
+%70 = OpLabel
+OpStore %63 %15
+OpBranch %72
 %71 = OpLabel
 %29 = OpImageRead %23 %9 %28
 %30 = OpCompositeExtract %5 %29 0
@@ -124,9 +124,6 @@ OpBranchConditional %26 %71 %70
 %33 = OpCompositeConstruct %23 %31 %31 %31 %31
 OpImageWrite %9 %28 %33
 OpStore %63 %35
-OpBranch %72
-%70 = OpLabel
-OpStore %63 %15
 OpBranch %72
 %72 = OpLabel
 OpBranch %73
@@ -137,40 +134,14 @@ OpBranch %74
 %64 = OpIEqual %20 %16 %15
 OpSelectionMerge %84 None
 OpBranchConditional %64 %83 %75
-%83 = OpLabel
-%49 = OpImageRead %23 %9 %15
-%50 = OpCompositeExtract %5 %49 0
-%51 = OpIAdd %5 %50 %34
-%52 = OpCompositeConstruct %23 %51 %51 %51 %51
-OpImageWrite %9 %15 %52
-OpStore %62 %34
-OpBranch %84
 %75 = OpLabel
 %65 = OpIEqual %20 %16 %18
 OpSelectionMerge %82 None
 OpBranchConditional %65 %81 %76
-%81 = OpLabel
-%43 = OpShiftLeftLogical %5 %34 %18
-%45 = OpImageRead %23 %9 %44
-%46 = OpCompositeExtract %5 %45 0
-%47 = OpIAdd %5 %46 %43
-%48 = OpCompositeConstruct %23 %47 %47 %47 %47
-OpImageWrite %9 %44 %48
-OpStore %62 %34
-OpBranch %82
 %76 = OpLabel
 %66 = OpIEqual %20 %16 %67
 OpSelectionMerge %80 None
 OpBranchConditional %66 %79 %77
-%79 = OpLabel
-%36 = OpIMul %5 %34 %37
-%39 = OpImageRead %23 %9 %38
-%40 = OpCompositeExtract %5 %39 0
-%41 = OpIAdd %5 %40 %36
-%42 = OpCompositeConstruct %23 %41 %41 %41 %41
-OpImageWrite %9 %38 %42
-OpStore %62 %34
-OpBranch %80
 %77 = OpLabel
 OpBranch %78
 %78 = OpLabel
@@ -182,13 +153,42 @@ OpBranch %78
 OpImageWrite %9 %22 %58
 OpStore %62 %34
 OpBranch %80
+%79 = OpLabel
+%36 = OpIMul %5 %34 %37
+%39 = OpImageRead %23 %9 %38
+%40 = OpCompositeExtract %5 %39 0
+%41 = OpIAdd %5 %40 %36
+%42 = OpCompositeConstruct %23 %41 %41 %41 %41
+OpImageWrite %9 %38 %42
+OpStore %62 %34
+OpBranch %80
 %80 = OpLabel
 OpBranch %82
+%81 = OpLabel
+%43 = OpShiftLeftLogical %5 %34 %18
+%45 = OpImageRead %23 %9 %44
+%46 = OpCompositeExtract %5 %45 0
+%47 = OpIAdd %5 %46 %43
+%48 = OpCompositeConstruct %23 %47 %47 %47 %47
+OpImageWrite %9 %44 %48
+OpStore %62 %34
+OpBranch %82
 %82 = OpLabel
+OpBranch %84
+%83 = OpLabel
+%49 = OpImageRead %23 %9 %15
+%50 = OpCompositeExtract %5 %49 0
+%51 = OpIAdd %5 %50 %34
+%52 = OpCompositeConstruct %23 %51 %51 %51 %51
+OpImageWrite %9 %15 %52
+OpStore %62 %34
 OpBranch %84
 %84 = OpLabel
 OpBranch %85
 %85 = OpLabel
+OpBranch %87
+%86 = OpLabel
+OpStore %62 %15
 OpBranch %87
 %87 = OpLabel
 OpBranch %88

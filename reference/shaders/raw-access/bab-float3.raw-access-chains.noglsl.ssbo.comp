@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 90
+; Bound: 88
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageBufferArrayDynamicIndexing
@@ -46,11 +46,11 @@ OpDecorate %14 BuiltIn GlobalInvocationId
 %52 = OpConstant %5 12
 %67 = OpTypeFunction %5 %5 %5
 %73 = OpConstant %5 4294967295
-%77 = OpConstant %5 16
+%76 = OpConstant %5 16
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %88
-%88 = OpLabel
+OpBranch %87
+%87 = OpLabel
 %16 = OpAccessChain %15 %14 %17
 %18 = OpLoad %5 %16
 %19 = OpShiftLeftLogical %5 %18 %20
@@ -94,19 +94,19 @@ OpStore %49 %50 Aligned 8
 OpStore %62 %63 Aligned 4
 %64 = OpShiftLeftLogical %5 %18 %8
 %65 = OpAccessChain %21 %11 %38
-%76 = OpFunctionCall %5 %70 %18 %77
-%66 = OpRawAccessChainNV %25 %65 %77 %76 %17 RobustnessPerElementNV
-%78 = OpLoad %24 %66 Aligned 16
-%79 = OpCompositeExtract %23 %78 0
-%80 = OpCompositeExtract %23 %78 1
-%81 = OpCompositeExtract %23 %78 2
+%75 = OpFunctionCall %5 %70 %18 %76
+%66 = OpRawAccessChainNV %25 %65 %76 %75 %17 RobustnessPerElementNV
+%77 = OpLoad %24 %66 Aligned 16
+%78 = OpCompositeExtract %23 %77 0
+%79 = OpCompositeExtract %23 %77 1
+%80 = OpCompositeExtract %23 %77 2
+%81 = OpFAdd %23 %78 %32
 %82 = OpFAdd %23 %79 %32
 %83 = OpFAdd %23 %80 %32
-%84 = OpFAdd %23 %81 %32
-%86 = OpFunctionCall %5 %70 %18 %77
-%85 = OpRawAccessChainNV %25 %65 %77 %86 %17 RobustnessPerElementNV
-%87 = OpCompositeConstruct %24 %82 %83 %84
-OpStore %85 %87 Aligned 16
+%85 = OpFunctionCall %5 %70 %18 %76
+%84 = OpRawAccessChainNV %25 %65 %76 %85 %17 RobustnessPerElementNV
+%86 = OpCompositeConstruct %24 %81 %82 %83
+OpStore %84 %86 Aligned 16
 OpReturn
 OpFunctionEnd
 %70 = OpFunction %5 None %67

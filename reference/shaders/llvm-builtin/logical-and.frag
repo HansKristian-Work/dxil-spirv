@@ -35,7 +35,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 49
+; Bound: 48
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -79,6 +79,9 @@ OpBranch %36
 OpStore %32 %33
 OpSelectionMerge %42 None
 OpBranchConditional %20 %38 %37
+%37 = OpLabel
+OpStore %32 %35
+OpBranch %42
 %38 = OpLabel
 %21 = OpAccessChain %11 %8 %22
 %23 = OpLoad %5 %21
@@ -87,16 +90,13 @@ OpBranchConditional %20 %38 %37
 %27 = OpIsNan %19 %26
 OpSelectionMerge %41 None
 OpBranchConditional %27 %40 %39
-%40 = OpLabel
-OpStore %30 %23
-OpBranch %41
 %39 = OpLabel
 OpStore %32 %35
 OpBranch %41
+%40 = OpLabel
+OpStore %30 %23
+OpBranch %41
 %41 = OpLabel
-OpBranch %42
-%37 = OpLabel
-OpStore %32 %35
 OpBranch %42
 %42 = OpLabel
 OpBranch %43

@@ -69,7 +69,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 173
+; Bound: 172
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450

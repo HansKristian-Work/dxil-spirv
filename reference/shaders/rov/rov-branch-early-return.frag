@@ -58,7 +58,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 107
+; Bound: 106
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -138,6 +138,22 @@ OpBeginInvocationInterlockEXT
 OpStore %91 %92
 OpSelectionMerge %100 None
 OpBranchConditional %45 %97 %96
+%96 = OpLabel
+%48 = OpCompositeConstruct %28 %25 %26
+%47 = OpImageRead %11 %15 %48 None
+%49 = OpCompositeExtract %5 %47 0
+%50 = OpCompositeExtract %5 %47 1
+%51 = OpCompositeExtract %5 %47 2
+%52 = OpCompositeExtract %5 %47 3
+%53 = OpFAdd %5 %49 %35
+%54 = OpFAdd %5 %50 %37
+%55 = OpFAdd %5 %51 %39
+%56 = OpFAdd %5 %52 %41
+%57 = OpCompositeConstruct %28 %25 %26
+%58 = OpCompositeConstruct %11 %53 %54 %55 %56
+OpImageWrite %15 %57 %58
+OpStore %91 %94
+OpBranch %100
 %97 = OpLabel
 %60 = OpCompositeConstruct %28 %25 %26
 %59 = OpImageRead %11 %16 %60 None
@@ -162,22 +178,6 @@ OpBranchConditional %74 %99 %98
 OpStore %91 %94
 OpBranch %99
 %99 = OpLabel
-OpBranch %100
-%96 = OpLabel
-%48 = OpCompositeConstruct %28 %25 %26
-%47 = OpImageRead %11 %15 %48 None
-%49 = OpCompositeExtract %5 %47 0
-%50 = OpCompositeExtract %5 %47 1
-%51 = OpCompositeExtract %5 %47 2
-%52 = OpCompositeExtract %5 %47 3
-%53 = OpFAdd %5 %49 %35
-%54 = OpFAdd %5 %50 %37
-%55 = OpFAdd %5 %51 %39
-%56 = OpFAdd %5 %52 %41
-%57 = OpCompositeConstruct %28 %25 %26
-%58 = OpCompositeConstruct %11 %53 %54 %55 %56
-OpImageWrite %15 %57 %58
-OpStore %91 %94
 OpBranch %100
 %100 = OpLabel
 OpBranch %101

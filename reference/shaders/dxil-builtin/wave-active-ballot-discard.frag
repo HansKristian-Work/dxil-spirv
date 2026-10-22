@@ -1,31 +1,22 @@
 #version 460
+#extension GL_EXT_demote_to_helper_invocation : require
 #extension GL_KHR_shader_subgroup_ballot : require
 
 layout(location = 0) flat in uint INDEX;
 layout(location = 0) out uvec4 SV_Target;
-bool discard_state;
-
-void discard_exit()
-{
-    if (discard_state)
-    {
-        discard;
-    }
-}
 
 void main()
 {
-    discard_state = false;
     if (INDEX == 40u)
     {
-        discard_state = true;
+        demote;
     }
-    uvec4 _23 = subgroupBallot((INDEX < 100u) && (!(gl_HelperInvocation || discard_state)));
-    SV_Target.x = _23.x;
-    SV_Target.y = _23.y;
-    SV_Target.z = _23.z;
-    SV_Target.w = _23.w;
-    discard_exit();
+    bool _17 = helperInvocationEXT();
+    uvec4 _20 = subgroupBallot((INDEX < 100u) && (!_17));
+    SV_Target.x = _20.x;
+    SV_Target.y = _20.y;
+    SV_Target.z = _20.z;
+    SV_Target.w = _20.w;
 }
 
 
@@ -34,22 +25,21 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 55
+; Bound: 39
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformBallot
+OpCapability DemoteToHelperInvocation
+OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %7 %10 %16 %44
+OpEntryPoint Fragment %3 "main" %7 %10
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %7 "INDEX"
 OpName %10 "SV_Target"
-OpName %16 "discard_state"
-OpName %47 "discard_exit"
 OpDecorate %7 Flat
 OpDecorate %7 Location 0
 OpDecorate %10 Location 0
-OpDecorate %44 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -60,65 +50,45 @@ OpDecorate %44 BuiltIn HelperInvocation
 %10 = OpVariable %9 Output
 %12 = OpTypeBool
 %14 = OpConstant %5 40
-%15 = OpTypePointer Private %12
-%16 = OpVariable %15 Private
-%17 = OpConstantFalse %12
-%19 = OpConstant %5 100
-%24 = OpConstant %5 3
-%29 = OpTypePointer Output %5
-%31 = OpConstant %5 0
-%33 = OpConstant %5 1
-%35 = OpConstant %5 2
-%42 = OpConstantTrue %12
-%43 = OpTypePointer Input %12
-%44 = OpVariable %43 Input
+%16 = OpConstant %5 100
+%21 = OpConstant %5 3
+%26 = OpTypePointer Output %5
+%28 = OpConstant %5 0
+%30 = OpConstant %5 1
+%32 = OpConstant %5 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpStore %16 %17
-OpBranch %37
-%37 = OpLabel
+OpBranch %34
+%34 = OpLabel
 %11 = OpLoad %5 %7
 %13 = OpIEqual %12 %11 %14
-OpSelectionMerge %39 None
-OpBranchConditional %13 %38 %39
+OpSelectionMerge %36 None
+OpBranchConditional %13 %35 %36
+%35 = OpLabel
+OpDemoteToHelperInvocation
+OpBranch %36
+%36 = OpLabel
+OpBranch %37
+%37 = OpLabel
+OpBranch %38
 %38 = OpLabel
-OpStore %16 %42
-OpBranch %39
-%39 = OpLabel
-OpBranch %40
-%40 = OpLabel
-OpBranch %41
-%41 = OpLabel
-%18 = OpULessThan %12 %11 %19
-%45 = OpLoad %12 %44
-%46 = OpLoad %12 %16
-%20 = OpLogicalOr %12 %45 %46
-%21 = OpLogicalNot %12 %20
-%22 = OpLogicalAnd %12 %18 %21
-%23 = OpGroupNonUniformBallot %8 %24 %22
-%25 = OpCompositeExtract %5 %23 0
-%26 = OpCompositeExtract %5 %23 1
-%27 = OpCompositeExtract %5 %23 2
-%28 = OpCompositeExtract %5 %23 3
-%30 = OpAccessChain %29 %10 %31
-OpStore %30 %25
-%32 = OpAccessChain %29 %10 %33
-OpStore %32 %26
-%34 = OpAccessChain %29 %10 %35
-OpStore %34 %27
-%36 = OpAccessChain %29 %10 %24
-OpStore %36 %28
-%53 = OpFunctionCall %1 %47
-OpReturn
-OpFunctionEnd
-%47 = OpFunction %1 None %2
-%48 = OpLabel
-%51 = OpLoad %12 %16
-OpSelectionMerge %50 None
-OpBranchConditional %51 %49 %50
-%49 = OpLabel
-OpKill
-%50 = OpLabel
+%15 = OpULessThan %12 %11 %16
+%17 = OpIsHelperInvocationEXT %12
+%18 = OpLogicalNot %12 %17
+%19 = OpLogicalAnd %12 %15 %18
+%20 = OpGroupNonUniformBallot %8 %21 %19
+%22 = OpCompositeExtract %5 %20 0
+%23 = OpCompositeExtract %5 %20 1
+%24 = OpCompositeExtract %5 %20 2
+%25 = OpCompositeExtract %5 %20 3
+%27 = OpAccessChain %26 %10 %28
+OpStore %27 %22
+%29 = OpAccessChain %26 %10 %30
+OpStore %29 %23
+%31 = OpAccessChain %26 %10 %32
+OpStore %31 %24
+%33 = OpAccessChain %26 %10 %21
+OpStore %33 %25
 OpReturn
 OpFunctionEnd
 #endif

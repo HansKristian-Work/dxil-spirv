@@ -45,7 +45,7 @@
 #ifndef SpvBuilder_H
 #define SpvBuilder_H
 
-#include "Logger.h"
+//#include "Logger.h"
 #include "spirv.hpp"
 #include "spvIR.h"
 
@@ -60,7 +60,7 @@ namespace spv {
 
 class Builder {
 public:
-    Builder(unsigned int userNumber, SpvBuildLogger* logger);
+    explicit Builder(unsigned int userNumber);
     virtual ~Builder();
 
     static const int maxMatrixSize = 4;
@@ -296,13 +296,11 @@ public:
 
     // Create a return. An 'implicit' return is one not appearing in the source
     // code.  In the case of an implicit return, no post-return block is inserted.
-    void makeReturn(bool implicit, Id retVal = 0);
+    void makeReturn();
+    void makeReturnValue(Id retVal);
 
     // Generate all the code needed to finish up a function.
     void leaveFunction();
-
-    // Create a discard.
-    void makeDiscard();
 
     // Create a global or function local or IO variable.
     Id createVariable(StorageClass, Id type, const char* name = 0);
@@ -430,29 +428,6 @@ public:
     // matrix constructor
     Id createMatrixConstructor(Decoration precision, const dxil_spv::Vector<Id>& sources, Id constructee);
 
-    // Helper to use for building nested control flow with if-then-else.
-    class If {
-    public:
-        If(Id condition, unsigned int ctrl, Builder& builder);
-        ~If() {}
-
-        void makeBeginElse();
-        void makeEndIf();
-
-    private:
-        If(const If&);
-        If& operator=(If&);
-
-        Builder& builder;
-        Id condition;
-        unsigned int control;
-        Function* function;
-        Block* headerBlock;
-        Block* thenBlock;
-        Block* elseBlock;
-        Block* mergeBlock;
-    };
-
     // Make a switch statement.  A switch has 'numSegments' of pieces of code, not containing
     // any case/default labels, all separated by one or more case/default labels.  Each possible
     // case value v is a jump to the caseValues[v] segment.  The defaultSegment is also in this
@@ -468,43 +443,7 @@ public:
     void makeSwitch(Id condition, unsigned int control, int numSegments, const dxil_spv::Vector<int>& caseValues,
                     const dxil_spv::Vector<int>& valueToSegment, int defaultSegment, dxil_spv::Vector<Block*>& segmentBB); // return argument
 
-    // Add a branch to the innermost switch's merge block.
-    void addSwitchBreak();
-
-    // Move to the next code segment, passing in the return argument in makeSwitch()
-    void nextSwitchSegment(dxil_spv::Vector<Block*>& segmentBB, int segment);
-
-    // Finish off the innermost switch.
     void endSwitch(dxil_spv::Vector<Block*>& segmentBB);
-
-    struct LoopBlocks {
-        LoopBlocks(Block& head, Block& body, Block& merge, Block& continue_target) :
-            head(head), body(body), merge(merge), continue_target(continue_target) { }
-        Block &head, &body, &merge, &continue_target;
-        LoopBlocks& operator=(const LoopBlocks&) = delete;
-        LoopBlocks(const LoopBlocks&) = default;
-    private:
-        LoopBlocks();
-    };
-
-    // Start a new loop and prepare the builder to generate code for it.  Until
-    // closeLoop() is called for this loop, createLoopContinue() and
-    // createLoopExit() will target its corresponding blocks.
-    LoopBlocks& makeNewLoop();
-
-    // Create a new block in the function containing the build point.  Memory is
-    // owned by the function object.
-    Block& makeNewBlock();
-
-    // Add a branch to the continue_target of the current (innermost) loop.
-    void createLoopContinue();
-
-    // Add an exit (e.g. "break") from the innermost loop that we're currently
-    // in.
-    void createLoopExit();
-
-    // Close the innermost loop that you're in
-    void closeLoop();
 
     //
     // Access chain design for an R-Value vs. L-Value:
@@ -602,9 +541,6 @@ public:
     // based on the type of the base and the chain of dereferences.
     Id accessChainGetInferredType();
 
-    // Remove OpDecorate instructions whose operands are defined in unreachable
-    // blocks.
-    void eliminateDeadDecorations();
     void dump(dxil_spv::Vector<unsigned int>&) const;
 
     void createBranch(Block* block);
@@ -651,7 +587,7 @@ protected:
     Id collapseAccessChain();
     void transferAccessChainSwizzle(bool dynamic);
     void simplifyAccessChainSwizzle();
-    void createAndSetNoPredecessorBlock(const char*);
+    //void createAndSetNoPredecessorBlock(const char*);
     void dumpSourceInstructions(dxil_spv::Vector<unsigned int>&) const;
     void dumpInstructions(dxil_spv::Vector<unsigned int>&, const dxil_spv::Vector<std::unique_ptr<Instruction> >&) const;
     void dumpModuleProcesses(dxil_spv::Vector<unsigned int>&) const;
@@ -711,10 +647,7 @@ protected:
     std::stack<Block*> switchMerges;
 
     // Our loop stack.
-    std::stack<LoopBlocks> loops;
-
-    // The stream for outputting warnings and errors.
-    SpvBuildLogger* logger;
+    //std::stack<LoopBlocks> loops;
 
     dxil_spv::Vector<std::pair<dxil_spv::String, spv::Id>> importIDCache;
 };  // end Builder class

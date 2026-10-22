@@ -74,7 +74,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 132
+; Bound: 131
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
@@ -243,13 +243,13 @@ OpBranch %120
 %97 = OpULessThan %56 %59 %96
 OpSelectionMerge %130 None
 OpBranchConditional %97 %121 %122
-%122 = OpLabel
-OpBranch %123
 %130 = OpLabel
 OpUnreachable
 %121 = OpLabel
 OpStore %112 %59
 OpBranch %115
+%122 = OpLabel
+OpBranch %123
 %123 = OpLabel
 OpBranch %124
 %124 = OpLabel

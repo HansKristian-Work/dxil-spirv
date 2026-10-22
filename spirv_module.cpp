@@ -38,13 +38,11 @@ constexpr uint32_t GENERATOR = 1967215134;
 struct SPIRVModule::Impl : BlockEmissionInterface
 {
 	explicit Impl(SPIRVModule &module)
-	    : self(module), builder(GENERATOR, &build_logger)
+	    : self(module), builder(GENERATOR)
 	{
 	}
 
 	SPIRVModule &self;
-
-	spv::SpvBuildLogger build_logger;
 	spv::Builder builder;
 	spv::Function *entry_function = nullptr;
 	spv::Function *active_function = nullptr;
@@ -60,11 +58,7 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	void emit_leaf_function_body(spv::Function *func, CFGStructurizer &structurizer);
 	static spv::Block *get_spv_block(CFGNode *node);
 
-	void enable_shader_discard(bool supports_demote);
-	void build_discard_call_early();
-	void build_discard_call_early_cond(spv::Id cond);
 	void build_demote_call_cond(spv::Id cond);
-	void build_discard_call_exit();
 	spv::Id build_descriptor_qa_check(SPIRVModule &module);
 	spv::Id build_wave_match(SPIRVModule &module, spv::Id type_id);
 	spv::Id build_wave_is_first_lane_masked(SPIRVModule &module);
@@ -96,21 +90,13 @@ struct SPIRVModule::Impl : BlockEmissionInterface
 	spv::Id build_legacy_denorm_f16_conv(SPIRVModule &module, spv::Id type_id, GLSLstd450 op);
 	spv::Id build_pack_half_precise(SPIRVModule &module);
 	spv::Id build_unpack_half_precise(SPIRVModule &module, bool native_fp16);
-	spv::Function *discard_function = nullptr;
-	spv::Function *discard_function_cond = nullptr;
 	spv::Function *demote_function_cond = nullptr;
-	spv::Id discard_state_var_id = 0;
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
 
 	spv::Id create_variable(spv::StorageClass storage, spv::Id type, const char *name);
 	spv::Id create_variable_with_initializer(spv::StorageClass storage, spv::Id type,
 	                                         spv::Id initializer, const char *name);
 	void register_active_variable(spv::StorageClass storage, spv::Id id);
-
-	struct
-	{
-		bool supports_demote = false;
-	} caps;
 
 	bool min16float_min_spec_simulation = false;
 
@@ -424,25 +410,6 @@ void SPIRVModule::Impl::emit_entry_point(spv::ExecutionModel model,
 		builder.addExecutionMode(entry_function, spv::ExecutionModeOriginUpperLeft);
 }
 
-void SPIRVModule::Impl::enable_shader_discard(bool supports_demote)
-{
-	caps.supports_demote = supports_demote;
-	if (!discard_state_var_id && !caps.supports_demote)
-	{
-		auto *current_build_point = builder.getBuildPoint();
-		discard_state_var_id =
-		    create_variable(spv::StorageClassPrivate, builder.makeBoolType(), "discard_state");
-		builder.setBuildPoint(entry_function->getEntryBlock());
-		builder.createStore(builder.makeBoolConstant(false), discard_state_var_id);
-		builder.setBuildPoint(current_build_point);
-	}
-}
-
-void SPIRVModule::Impl::build_discard_call_early()
-{
-	builder.createStore(builder.makeBoolConstant(true), discard_state_var_id);
-}
-
 void SPIRVModule::Impl::build_demote_call_cond(spv::Id cond)
 {
 	auto *current_build_point = builder.getBuildPoint();
@@ -454,8 +421,8 @@ void SPIRVModule::Impl::build_demote_call_cond(spv::Id cond)
 			builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "demote_cond",
 		                              { builder.makeBoolType() }, {}, &entry);
 
-		auto *true_block = new spv::Block(builder.getUniqueId(), *demote_function_cond);
-		auto *false_block = new spv::Block(builder.getUniqueId(), *demote_function_cond);
+		auto *true_block = demote_function_cond->newBlock(builder.getUniqueId());
+		auto *false_block = demote_function_cond->newBlock(builder.getUniqueId());
 		builder.setBuildPoint(entry);
 		builder.createSelectionMerge(false_block, 0);
 		builder.createConditionalBranch(demote_function_cond->getParamId(0), true_block, false_block);
@@ -463,64 +430,11 @@ void SPIRVModule::Impl::build_demote_call_cond(spv::Id cond)
 		builder.setBuildPoint(true_block);
 		builder.createBranch(false_block);
 		builder.setBuildPoint(false_block);
-		builder.makeReturn(false);
+		builder.makeReturn();
 	}
 
 	builder.setBuildPoint(current_build_point);
 	builder.createFunctionCall(demote_function_cond, { cond });
-}
-
-void SPIRVModule::Impl::build_discard_call_early_cond(spv::Id cond)
-{
-	auto *current_build_point = builder.getBuildPoint();
-
-	if (!discard_function_cond)
-	{
-		spv::Block *entry = nullptr;
-		discard_function_cond =
-			builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "discard_cond",
-			                          { builder.makeBoolType() }, {}, &entry);
-
-		auto *true_block = new spv::Block(builder.getUniqueId(), *discard_function_cond);
-		auto *false_block = new spv::Block(builder.getUniqueId(), *discard_function_cond);
-		builder.setBuildPoint(entry);
-		builder.createSelectionMerge(false_block, 0);
-		builder.createConditionalBranch(discard_function_cond->getParamId(0), true_block, false_block);
-		builder.setBuildPoint(true_block);
-		builder.createStore(builder.makeBoolConstant(true), discard_state_var_id);
-		builder.createBranch(false_block);
-		builder.setBuildPoint(false_block);
-		builder.makeReturn(false);
-	}
-
-	builder.setBuildPoint(current_build_point);
-	builder.createFunctionCall(discard_function_cond, { cond });
-}
-
-void SPIRVModule::Impl::build_discard_call_exit()
-{
-	auto *current_build_point = builder.getBuildPoint();
-
-	if (!discard_function)
-	{
-		spv::Block *entry = nullptr;
-		discard_function =
-		    builder.makeFunctionEntry(spv::NoPrecision, builder.makeVoidType(), "discard_exit", {}, {}, &entry);
-
-		auto *true_block = new spv::Block(builder.getUniqueId(), *discard_function);
-		auto *false_block = new spv::Block(builder.getUniqueId(), *discard_function);
-
-		builder.setBuildPoint(entry);
-		spv::Id loaded_state = builder.createLoad(discard_state_var_id);
-		builder.createSelectionMerge(false_block, 0);
-		builder.createConditionalBranch(loaded_state, true_block, false_block);
-		add_instruction(true_block, std::make_unique<spv::Instruction>(spv::OpKill));
-		builder.setBuildPoint(false_block);
-		builder.makeReturn(false);
-	}
-
-	builder.setBuildPoint(current_build_point);
-	builder.createFunctionCall(discard_function, {});
 }
 
 spv::Id SPIRVModule::Impl::build_descriptor_qa_check(SPIRVModule &module)
@@ -605,18 +519,18 @@ spv::Id SPIRVModule::Impl::build_wave_multi_prefix_op(SPIRVModule &module, spv::
 
 	spv::Block *outer_entry = nullptr;
 	spv::Block *return_block = nullptr;
-	auto *header_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *prefix_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *continue_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *header_block = func->newBlock(builder.getUniqueId());
+	auto *body_block = func->newBlock(builder.getUniqueId());
+	auto *prefix_block = func->newBlock(builder.getUniqueId());
+	auto *continue_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 
 	builder.setBuildPoint(entry);
 
 	if (!helper_lanes_participate_in_wave_ops)
 	{
-		return_block = new spv::Block(builder.getUniqueId(), *func);
-		auto *inner_entry_block = new spv::Block(builder.getUniqueId(), *func);
+		auto *inner_entry_block = func->newBlockAfter(builder.getUniqueId(), entry);
+		return_block = func->newBlock(builder.getUniqueId());
 
 		builder.createSelectionMerge(return_block, 0);
 		builder.createConditionalBranch(func->getParamId(2), return_block, inner_entry_block);
@@ -706,7 +620,7 @@ spv::Id SPIRVModule::Impl::build_wave_multi_prefix_op(SPIRVModule &module, spv::
 		add_instruction(return_block, std::move(phi));
 	}
 
-	builder.makeReturn(false, result_id);
+	builder.makeReturnValue(result_id);
 
 	builder.setBuildPoint(current_build_point);
 	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
@@ -735,9 +649,9 @@ spv::Id SPIRVModule::Impl::build_wave_multi_prefix_count_bits(SPIRVModule &modul
 	                                       types, {}, &entry);
 	spv::Id value_id = func->getParamId(0);
 	spv::Id mask_id = func->getParamId(1);
-	auto *header_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *header_block = func->newBlock(builder.getUniqueId());
+	auto *body_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 	spv::Block *outer_entry = nullptr;
 	spv::Block *return_block = nullptr;
 	spv::Id undef_id = 0;
@@ -746,8 +660,8 @@ spv::Id SPIRVModule::Impl::build_wave_multi_prefix_count_bits(SPIRVModule &modul
 
 	if (!helper_lanes_participate_in_wave_ops)
 	{
-		return_block = new spv::Block(builder.getUniqueId(), *func);
-		auto *inner_entry_block = new spv::Block(builder.getUniqueId(), *func);
+		auto *inner_entry_block = func->newBlockAfter(builder.getUniqueId(), entry);
+		return_block = func->newBlock(builder.getUniqueId());
 		undef_id = builder.createUndefined(uint_type);
 		builder.createSelectionMerge(return_block, 0);
 		builder.createConditionalBranch(func->getParamId(2), return_block, inner_entry_block);
@@ -831,7 +745,7 @@ spv::Id SPIRVModule::Impl::build_wave_multi_prefix_count_bits(SPIRVModule &modul
 		add_instruction(return_block, std::move(phi));
 	}
 
-	builder.makeReturn(false, result_id);
+	builder.makeReturnValue(result_id);
 	builder.setBuildPoint(current_build_point);
 
 	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
@@ -858,9 +772,9 @@ spv::Id SPIRVModule::Impl::build_wave_active_all_equal_masked(SPIRVModule &modul
 	                                       "WaveActiveAllEqual",
 	                                       { type_id, bool_type }, {}, &entry);
 
-	auto *is_helper_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *is_active_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *is_helper_block = func->newBlock(builder.getUniqueId());
+	auto *is_active_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 	spv::Id equal_id, undef_id;
 
 	builder.setBuildPoint(entry);
@@ -894,7 +808,7 @@ spv::Id SPIRVModule::Impl::build_wave_active_all_equal_masked(SPIRVModule &modul
 	equal_id = phi->getResultId();
 	add_instruction(merge_block, std::move(phi));
 
-	builder.makeReturn(false, equal_id);
+	builder.makeReturnValue(equal_id);
 	builder.setBuildPoint(current_build_point);
 	wave_active_all_equal_masked_ids.emplace_back(type_id, func->getId());
 	return func->getId();
@@ -968,7 +882,7 @@ spv::Id SPIRVModule::Impl::build_wave_read_first_lane_masked(SPIRVModule &module
 	add_instruction(entry, std::move(ballot_real_lane_count));
 	add_instruction(entry, std::move(ballot_has_real_lane));
 	add_instruction(entry, std::move(select_op));
-	builder.makeReturn(false, ret_id);
+	builder.makeReturnValue(ret_id);
 
 	builder.setBuildPoint(current_build_point);
 	wave_read_first_lane_masked_ids.emplace_back(type_id, func->getId());
@@ -990,9 +904,9 @@ spv::Id SPIRVModule::Impl::build_wave_is_first_lane_masked(SPIRVModule &module)
 	                                       "WaveIsFirstLane",
 	                                       { bool_type }, {}, &entry);
 
-	auto *is_helper_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *is_active_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *is_helper_block = func->newBlock(builder.getUniqueId());
+	auto *is_active_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 	spv::Id elect_id;
 
 	builder.setBuildPoint(entry);
@@ -1023,7 +937,7 @@ spv::Id SPIRVModule::Impl::build_wave_is_first_lane_masked(SPIRVModule &module)
 	elect_id = phi->getResultId();
 	add_instruction(merge_block, std::move(phi));
 
-	builder.makeReturn(false, elect_id);
+	builder.makeReturnValue(elect_id);
 	builder.setBuildPoint(current_build_point);
 	wave_is_first_lane_masked_id = func->getId();
 	return wave_is_first_lane_masked_id;
@@ -1051,9 +965,9 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 	                                       types, {}, &entry);
 	spv::Id value_id = func->getParamId(0);
 
-	auto *header_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *header_block = func->newBlock(builder.getUniqueId());
+	auto *body_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 	spv::Block *outer_header = nullptr;
 	spv::Block *return_block = nullptr;
 	spv::Id undef_id = 0;
@@ -1064,8 +978,8 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 
 	if (!helper_lanes_participate_in_wave_ops)
 	{
-		return_block = new spv::Block(builder.getUniqueId(), *func);
-		auto *inner_header_block = new spv::Block(builder.getUniqueId(), *func);
+		auto *inner_header_block = func->newBlockAfter(builder.getUniqueId(), header_block);
+		return_block = func->newBlock(builder.getUniqueId());
 		undef_id = builder.createUndefined(uvec4_type);
 		builder.createSelectionMerge(return_block, 0);
 		builder.createConditionalBranch(func->getParamId(1), return_block, inner_header_block);
@@ -1137,7 +1051,7 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 		add_instruction(return_block, std::move(phi));
 	}
 
-	builder.makeReturn(false, ballot_id);
+	builder.makeReturnValue(ballot_id);
 	builder.setBuildPoint(current_build_point);
 
 	wave_match_call_ids.emplace_back(type_id, func->getId());
@@ -1179,7 +1093,7 @@ spv::Id SPIRVModule::Impl::build_quad_vote(SPIRVModule &module, HelperCall call)
 	}
 
 	builder.addCapability(spv::CapabilityGroupNonUniformQuad);
-	builder.makeReturn(false, ret_id);
+	builder.makeReturnValue(ret_id);
 	builder.setBuildPoint(current_build_point);
 	return func->getId();
 }
@@ -1264,15 +1178,15 @@ spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
 	builder.addName(value, "value");
 	builder.addName(active, "active_lane");
 
-	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *loop_merge_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *loop_body_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *loop_continue_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *write_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *write_merge_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *elect_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *elect_merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_block = func->newBlock(builder.getUniqueId());
+	auto *loop_body_block = func->newBlock(builder.getUniqueId());
+	auto *write_block = func->newBlock(builder.getUniqueId());
+	auto *elect_block = func->newBlock(builder.getUniqueId());
+	auto *elect_merge_block = func->newBlock(builder.getUniqueId());
+	auto *write_merge_block = func->newBlock(builder.getUniqueId());
+	auto *loop_continue_block = func->newBlock(builder.getUniqueId());
+	auto *loop_merge_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 
 	builder.setBuildPoint(entry);
 	builder.createSelectionMerge(merge_block, 0);
@@ -1365,7 +1279,7 @@ spv::Id SPIRVModule::Impl::build_image_atomic_r64_compact(
 	}
 
 	builder.setBuildPoint(merge_block);
-	builder.makeReturn(false);
+	builder.makeReturn();
 
 	builder.addCapability(spv::CapabilityInt64Atomics);
 
@@ -1395,9 +1309,9 @@ spv::Id SPIRVModule::Impl::build_node_coalesce_payload_offset(
 	builder.addName(func->getParamId(0), "offset");
 	builder.addName(func->getParamId(1), "offsets_bda");
 
-	auto *is_entry_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *is_node_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge = new spv::Block(builder.getUniqueId(), *func);
+	auto *is_entry_block = func->newBlock(builder.getUniqueId());
+	auto *is_node_block = func->newBlock(builder.getUniqueId());
+	auto *merge = func->newBlock(builder.getUniqueId());
 
 	spv::Id is_entry_id = ids[0];
 	spv::Id private_stride_var_id = ids[1];
@@ -1459,7 +1373,7 @@ spv::Id SPIRVModule::Impl::build_node_coalesce_payload_offset(
 	phi->addIdOperand(is_node_block->getId());
 	spv::Id return_value = phi->getResultId();
 	add_instruction(merge, std::move(phi));
-	builder.makeReturn(false, return_value);
+	builder.makeReturnValue(return_value);
 	node_coalesce_payload_offset_call_id = func->getId();
 	builder.setBuildPoint(current_build_point);
 	return func->getId();
@@ -1488,12 +1402,12 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records_waterfall(SPIRVModule &mo
 	builder.addName(func->getParamId(3), "Stride");
 	builder.addName(func->getParamId(4), "AllocationOffset");
 
-	auto *loop_header = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *body_header = new spv::Block(builder.getUniqueId(), *func);
-	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *continue_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *body_merge = new spv::Block(builder.getUniqueId(), *func);
+	auto *loop_header = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
+	auto *body_header = func->newBlock(builder.getUniqueId());
+	auto *body_block = func->newBlock(builder.getUniqueId());
+	auto *continue_block = func->newBlock(builder.getUniqueId());
+	auto *body_merge = func->newBlock(builder.getUniqueId());
 
 	builder.setBuildPoint(entry);
 	builder.createBranch(loop_header);
@@ -1540,7 +1454,7 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records_waterfall(SPIRVModule &mo
 	builder.createBranch(loop_header);
 
 	builder.setBuildPoint(merge_block);
-	builder.makeReturn(false, return_value);
+	builder.makeReturnValue(return_value);
 	builder.setBuildPoint(current_build_point);
 	allocate_thread_node_records_waterfall_call_id = func->getId();
 	return func->getId();
@@ -1572,8 +1486,8 @@ spv::Id SPIRVModule::Impl::build_increment_node_count(SPIRVModule &, bool per_th
 
 	if (!per_thread)
 	{
-		body_block = new spv::Block(builder.getUniqueId(), *func);
-		merge_block = new spv::Block(builder.getUniqueId(), *func);
+		body_block = func->newBlock(builder.getUniqueId());
+		merge_block = func->newBlock(builder.getUniqueId());
 	}
 
 	spv::Id uint_array_type = builder.makeRuntimeArray(uint_type);
@@ -1632,12 +1546,12 @@ spv::Id SPIRVModule::Impl::build_increment_node_count(SPIRVModule &, bool per_th
 		builder.setBuildPoint(body_block);
 		builder.createBranch(merge_block);
 		builder.setBuildPoint(merge_block);
-		builder.makeReturn(false);
+		builder.makeReturn();
 	}
 	else
 	{
 		builder.setBuildPoint(entry);
-		builder.makeReturn(false);
+		builder.makeReturn();
 	}
 
 	builder.setBuildPoint(current_build_point);
@@ -1693,22 +1607,22 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 		total_count_id = func->getParamId(2);
 	}
 
-	auto *return_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *return_block = func->newBlock(builder.getUniqueId());
 	auto check_empty = std::make_unique<spv::Instruction>(builder.getUniqueId(), bool_type, spv::OpIEqual);
 	check_empty->addIdOperand(total_count_id);
 	check_empty->addIdOperand(builder.makeUintConstant(0));
 	spv::Id return_early_cond_id = check_empty->getResultId();
 	add_instruction(entry, std::move(check_empty));
 
-	auto *reconverge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *reconverge_block = func->newBlock(builder.getUniqueId());
 	builder.setBuildPoint(entry);
 	builder.createSelectionMerge(reconverge_block, 0);
 	builder.createConditionalBranch(return_early_cond_id, return_block, reconverge_block);
 	builder.setBuildPoint(return_block);
-	builder.makeReturn(false, builder.makeUintConstant(0));
+	builder.makeReturnValue(builder.makeUintConstant(0));
 
-	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 
 	spv::Id shared_id = 0;
 	if (!per_thread)
@@ -1970,7 +1884,7 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 		add_instruction(merge_block, std::move(barrier_op));
 	}
 
-	builder.makeReturn(false, return_value);
+	builder.makeReturnValue(return_value);
 	builder.setBuildPoint(current_build_point);
 	call_id = func->getId();
 	return func->getId();
@@ -1992,8 +1906,8 @@ spv::Id SPIRVModule::Impl::build_finish_cross_group_sharing(SPIRVModule &module)
 
 	builder.addName(func->getParamId(0), "CounterBDA");
 
-	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 
 	spv::Id local_invocation_index = get_builtin_shader_input(spv::BuiltInLocalInvocationIndex);
 	spv::Id shared_id = create_variable(spv::StorageClassWorkgroup, bool_type, "FinishCrossGroupSharingBroadcast");
@@ -2059,7 +1973,7 @@ spv::Id SPIRVModule::Impl::build_finish_cross_group_sharing(SPIRVModule &module)
 	add_instruction(merge_block, std::move(barrier_op));
 	add_instruction(merge_block, std::move(load_op));
 
-	builder.makeReturn(false, return_value);
+	builder.makeReturnValue(return_value);
 	builder.setBuildPoint(current_build_point);
 	finish_cross_group_sharing_call_id = func->getId();
 	return func->getId();
@@ -2079,8 +1993,8 @@ spv::Id SPIRVModule::Impl::build_robust_atomic_counter_op(SPIRVModule &module)
 	                                       "RobustPhysicalAtomicCounter",
 	                                       { bda_type, uint_type, uint_type }, {}, &entry);
 
-	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 
 	spv::Id bool_type = builder.makeBoolType();
 	spv::Id bvec2_type = builder.makeVectorType(bool_type, 2);
@@ -2128,7 +2042,7 @@ spv::Id SPIRVModule::Impl::build_robust_atomic_counter_op(SPIRVModule &module)
 	phi_op->addIdOperand(body_block->getId());
 	spv::Id return_value = phi_op->getResultId();
 	add_instruction(merge_block, std::move(phi_op));
-	builder.makeReturn(false, return_value);
+	builder.makeReturnValue(return_value);
 
 	builder.setBuildPoint(current_build_point);
 	robust_atomic_counter_call_id = func->getId();
@@ -2154,8 +2068,8 @@ spv::Id SPIRVModule::Impl::build_robust_physical_cbv_load(SPIRVModule &module, s
 	spv::Id bda_value_id = func->getParamId(0);
 	spv::Id index_id = func->getParamId(1);
 
-	auto *body_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *body_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 
 	builder.setBuildPoint(entry);
 	auto compare = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpULessThan);
@@ -2200,7 +2114,7 @@ spv::Id SPIRVModule::Impl::build_robust_physical_cbv_load(SPIRVModule &module, s
 	phi_op->addIdOperand(body_block->getId());
 	spv::Id return_value = phi_op->getResultId();
 	add_instruction(merge_block, std::move(phi_op));
-	builder.makeReturn(false, return_value);
+	builder.makeReturnValue(return_value);
 
 	builder.setBuildPoint(current_build_point);
 	physical_cbv_call_ids.push_back({ type_id, ptr_type_id, alignment, func->getId() });
@@ -2231,7 +2145,7 @@ spv::Id SPIRVModule::Impl::build_byte_address_mask_id(SPIRVModule &module)
 	mask->addIdOperand(func->getParamId(0));
 	mask->addIdOperand(div->getResultId());
 
-	builder.makeReturn(false, mask->getResultId());
+	builder.makeReturnValue(mask->getResultId());
 	builder.setBuildPoint(current_build_point);
 
 	byte_address_mask_call_id = func->getId();
@@ -2277,7 +2191,7 @@ spv::Id SPIRVModule::Impl::build_unpack_half_precise(SPIRVModule &module, bool n
 		auto *ext = builder.addInstruction(float_type, spv::OpFConvert);
 		ext->addIdOperand(sel->getResultId());
 
-		builder.makeReturn(false, ext->getResultId());
+		builder.makeReturnValue(ext->getResultId());
 	}
 	else
 	{
@@ -2307,7 +2221,7 @@ spv::Id SPIRVModule::Impl::build_unpack_half_precise(SPIRVModule &module, bool n
 		ext->addIdOperand(unpack->getResultId());
 		ext->addImmediateOperand(0);
 
-		builder.makeReturn(false, ext->getResultId());
+		builder.makeReturnValue(ext->getResultId());
 	}
 
 	builder.setBuildPoint(current_build_point);
@@ -2410,7 +2324,7 @@ spv::Id SPIRVModule::Impl::build_pack_half_precise(SPIRVModule &module)
 	pack->addImmediateOperand(GLSLstd450PackHalf2x16);
 	pack->addIdOperand(vec->getResultId());
 
-	builder.makeReturn(false, pack->getResultId());
+	builder.makeReturnValue(pack->getResultId());
 
 	builder.setBuildPoint(current_build_point);
 	call_id = func->getId();
@@ -2566,7 +2480,7 @@ spv::Id SPIRVModule::Impl::build_legacy_denorm_f16_conv(SPIRVModule &module, spv
 		}
 	}
 
-	builder.makeReturn(false, result_id);
+	builder.makeReturnValue(result_id);
 	builder.setBuildPoint(current_build_point);
 
 	denorm_conv_calls.push_back({ type_id, op, func->getId() });
@@ -2631,8 +2545,8 @@ spv::Id SPIRVModule::Impl::build_udiv_umod(SPIRVModule &module, spv::Id type_id,
 	// Could in theory emit a loop in code with vector extract/insert dynamic, but that's overcomplicating it.
 	for (unsigned c = 0; c < vecsize; c++)
 	{
-		auto *nonzero_block = new spv::Block(builder.getUniqueId(), *func);
-		auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
+		auto *nonzero_block = func->newBlock(builder.getUniqueId());
+		auto *merge_block = func->newBlock(builder.getUniqueId());
 
 		builder.setBuildPoint(current);
 
@@ -2699,7 +2613,7 @@ spv::Id SPIRVModule::Impl::build_udiv_umod(SPIRVModule &module, spv::Id type_id,
 		current = merge_block;
 	}
 
-	builder.makeReturn(false, result_id);
+	builder.makeReturnValue(result_id);
 	builder.setBuildPoint(current_build_point);
 
 	udiv_umod_calls.push_back({ type_id, op, func->getId() });
@@ -2765,7 +2679,7 @@ spv::Id SPIRVModule::Impl::build_is_quad_uniform_control_flow(SPIRVModule &modul
 	entry->addInstruction(std::move(and_invocation_id));
 	entry->addInstruction(std::move(extract_op));
 
-	builder.makeReturn(false, result_id);
+	builder.makeReturnValue(result_id);
 	builder.setBuildPoint(current_build_point);
 	builder.addCapability(spv::CapabilityGroupNonUniformBallot);
 	builder.addCapability(spv::CapabilityGroupNonUniform);
@@ -2797,8 +2711,8 @@ spv::Id SPIRVModule::Impl::build_coop_mat_saturation_fixup(SPIRVModule &module, 
 	auto *len = builder.addInstruction(uint_type, spv::OpCooperativeMatrixLengthKHR);
 	len->addIdOperand(type_id);
 
-	auto *header = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge = new spv::Block(builder.getUniqueId(), *func);
+	auto *header = func->newBlock(builder.getUniqueId());
+	auto *merge = func->newBlock(builder.getUniqueId());
 	builder.createBranch(header);
 	builder.setBuildPoint(header);
 
@@ -2852,7 +2766,7 @@ spv::Id SPIRVModule::Impl::build_coop_mat_saturation_fixup(SPIRVModule &module, 
 	builder.setBuildPoint(merge);
 	auto *loaded_result = builder.addInstruction(type_id, spv::OpLoad);
 	loaded_result->addIdOperand(output_id);
-	builder.makeReturn(false, loaded_result->getResultId());
+	builder.makeReturnValue(loaded_result->getResultId());
 	builder.setBuildPoint(current_build_point);
 	coop_mat_conv_ids.push_back({ type_id, type_id, func->getId(), HelperCall::CoopMatSaturationFixup });
 	return func->getId();
@@ -2886,8 +2800,8 @@ spv::Id SPIRVModule::Impl::build_coop_mat_transfer(SPIRVModule &module, const sp
 	auto *len = builder.addInstruction(uint_type, spv::OpCooperativeMatrixLengthKHR);
 	len->addIdOperand(output_type);
 
-	auto *header = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge = new spv::Block(builder.getUniqueId(), *func);
+	auto *header = func->newBlock(builder.getUniqueId());
+	auto *merge = func->newBlock(builder.getUniqueId());
 	builder.createBranch(header);
 	builder.setBuildPoint(header);
 	{
@@ -2927,7 +2841,7 @@ spv::Id SPIRVModule::Impl::build_coop_mat_transfer(SPIRVModule &module, const sp
 	builder.setBuildPoint(merge);
 	auto *loaded_result = builder.addInstruction(output_type, spv::OpLoad);
 	loaded_result->addIdOperand(output_id);
-	builder.makeReturn(false, loaded_result->getResultId());
+	builder.makeReturnValue(loaded_result->getResultId());
 	builder.setBuildPoint(current_build_point);
 	coop_mat_conv_ids.push_back({ input_type, output_type, func->getId(), HelperCall::CoopMatTransfer });
 	return func->getId();
@@ -2956,8 +2870,8 @@ spv::Id SPIRVModule::Impl::build_coop_mat_saturate_fp8(SPIRVModule &module, spv:
 	auto *len = builder.addInstruction(uint_type, spv::OpCooperativeMatrixLengthKHR);
 	len->addIdOperand(type_id);
 
-	auto *header = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge = new spv::Block(builder.getUniqueId(), *func);
+	auto *header = func->newBlock(builder.getUniqueId());
+	auto *merge = func->newBlock(builder.getUniqueId());
 	builder.createBranch(header);
 	builder.setBuildPoint(header);
 	{
@@ -3005,7 +2919,7 @@ spv::Id SPIRVModule::Impl::build_coop_mat_saturate_fp8(SPIRVModule &module, spv:
 	builder.setBuildPoint(merge);
 	auto *loaded_result = builder.addInstruction(type_id, spv::OpLoad);
 	loaded_result->addIdOperand(output_id);
-	builder.makeReturn(false, loaded_result->getResultId());
+	builder.makeReturnValue(loaded_result->getResultId());
 	builder.setBuildPoint(current_build_point);
 	coop_mat_conv_ids.push_back({ type_id, type_id, func->getId(), HelperCall::CoopMatSaturateFP8 });
 	return func->getId();
@@ -3141,8 +3055,8 @@ spv::Id SPIRVModule::Impl::build_fp16_to_fp8(SPIRVModule &module, const spv::Id 
 		auto *len = builder.addInstruction(uint_type, spv::OpCooperativeMatrixLengthKHR);
 		len->addIdOperand(u8_output_type);
 
-		auto *header = new spv::Block(builder.getUniqueId(), *func);
-		auto *merge = new spv::Block(builder.getUniqueId(), *func);
+		auto *header = func->newBlock(builder.getUniqueId());
+		auto *merge = func->newBlock(builder.getUniqueId());
 		builder.createBranch(header);
 		builder.setBuildPoint(header);
 		{
@@ -3220,7 +3134,7 @@ spv::Id SPIRVModule::Impl::build_fp16_to_fp8(SPIRVModule &module, const spv::Id 
 		result_id = convert_fp16_to_fp8(func->getParamId(0));
 	}
 
-	builder.makeReturn(false, result_id);
+	builder.makeReturnValue(result_id);
 	builder.setBuildPoint(current_build_point);
 	coop_mat_conv_ids.push_back({ fp16_input_type, u8_output_type, func->getId(), helper_call });
 	return func->getId();
@@ -3284,8 +3198,8 @@ spv::Id SPIRVModule::Impl::build_fp8_to_fp16(SPIRVModule &module, const spv::Id 
 		auto *len = builder.addInstruction(uint_type, spv::OpCooperativeMatrixLengthKHR);
 		len->addIdOperand(u8_type);
 
-		auto *header = new spv::Block(builder.getUniqueId(), *func);
-		auto *merge = new spv::Block(builder.getUniqueId(), *func);
+		auto *header = func->newBlock(builder.getUniqueId());
+		auto *merge = func->newBlock(builder.getUniqueId());
 		builder.createBranch(header);
 		builder.setBuildPoint(header);
 		{
@@ -3339,7 +3253,7 @@ spv::Id SPIRVModule::Impl::build_fp8_to_fp16(SPIRVModule &module, const spv::Id 
 	scale->addIdOperand(result_id);
 	scale->addIdOperand(builder.makeFloat16Constant(0x5c00 /* 256.0 */));
 
-	builder.makeReturn(false, scale->getResultId());
+	builder.makeReturnValue(scale->getResultId());
 
 	builder.setBuildPoint(current_build_point);
 	coop_mat_conv_ids.push_back({ u8_type, f16_type, func->getId(), helper_call });
@@ -3536,12 +3450,11 @@ void SPIRVModule::Impl::register_block(CFGNode *node)
 {
 	if (!node->userdata || node->id == 0)
 	{
-		auto *bb = new spv::Block(builder.getUniqueId(), *active_function);
+		auto *bb = active_function->newBlock(builder.getUniqueId());
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
 		if (getenv("DXIL_SPIRV_GRAPHVIZ_PATH") && !node->name.empty())
 			builder.addName(bb->getId(), node->name.c_str());
 #endif
-		active_function->addBlock(bb);
 		node->id = bb->getId();
 		node->userdata = bb;
 	}
@@ -3705,7 +3618,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 	    (int(node->ir.merge_info.merge_block != nullptr) +
 	     int(node->ir.merge_info.continue_block != nullptr) == 1))
 	{
-		fake_loop_block = new spv::Block(builder.getUniqueId(), *active_function);
+		fake_loop_block = active_function->newBlockAfter(builder.getUniqueId(), bb);
 	}
 
 	// Emit phi nodes.
@@ -3753,7 +3666,6 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		else if (ir.merge_info.merge_block)
 		{
 			continue_bb = fake_loop_block;
-			active_function->addBlock(continue_bb);
 			builder.setBuildPoint(continue_bb);
 			builder.createBranch(get_spv_block(node));
 			builder.setBuildPoint(bb);
@@ -3762,7 +3674,6 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		else if (ir.merge_info.continue_block)
 		{
 			auto *merge_bb = fake_loop_block;
-			active_function->addBlock(merge_bb);
 			builder.setBuildPoint(merge_bb);
 			builder.createUnreachable();
 			builder.setBuildPoint(bb);
@@ -3784,45 +3695,10 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			pre->addIdOperand(builder.getWorkgroupBarrierSemanticsId());
 		}
 
-		if (op->op == spv::OpIsHelperInvocationEXT && !caps.supports_demote)
-		{
-			spv::Id helper_var_id = get_builtin_shader_input(spv::BuiltInHelperInvocation);
-
-			if (discard_state_var_id)
-			{
-				auto is_helper = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpLoad);
-				is_helper->addIdOperand(helper_var_id);
-				spv::Id is_helper_id = is_helper->getResultId();
-				add_instruction(bb, std::move(is_helper));
-
-				auto loaded_var = std::make_unique<spv::Instruction>(builder.getUniqueId(), builder.makeBoolType(), spv::OpLoad);
-				loaded_var->addIdOperand(discard_state_var_id);
-				spv::Id is_discard_id = loaded_var->getResultId();
-				add_instruction(bb, std::move(loaded_var));
-
-				auto or_inst = std::make_unique<spv::Instruction>(op->id, op->type_id, spv::OpLogicalOr);
-				or_inst->addIdOperand(is_helper_id);
-				or_inst->addIdOperand(is_discard_id);
-				add_instruction(bb, std::move(or_inst));
-			}
-			else
-			{
-				auto is_helper = std::make_unique<spv::Instruction>(op->id, op->type_id, spv::OpLoad);
-				is_helper->addIdOperand(helper_var_id);
-				add_instruction(bb, std::move(is_helper));
-			}
-		}
-		else if (op->op == spv::OpDemoteToHelperInvocationEXT && !caps.supports_demote)
-		{
-			if (op->num_arguments())
-				build_discard_call_early_cond(op->argument(0));
-			else
-				build_discard_call_early();
-		}
-		else if (op->op == spv::OpDemoteToHelperInvocationEXT && op->num_arguments())
+		if (op->op == spv::OpDemoteToHelperInvocation && op->num_arguments())
 		{
 			builder.addExtension("SPV_EXT_demote_to_helper_invocation");
-			builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
+			builder.addCapability(spv::CapabilityDemoteToHelperInvocation);
 			build_demote_call_cond(op->argument(0));
 		}
 		else if (op->op == spv::PseudoOpInstrumentExternallyVisibleStore || op->op == spv::OpAssumeTrueKHR)
@@ -3837,7 +3713,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 			// Have to ensure we emit loop header before we replace block.
 			if (ir.merge_info.merge_type == MergeType::Loop && rewrite_phi_incoming_to == 0)
 			{
-				auto *direct_bb = new spv::Block(builder.getUniqueId(), *active_function);
+				auto *direct_bb = active_function->newBlockAfter(builder.getUniqueId(), bb);
 
 				// Handle post-domination rule.
 				if (ir.merge_info.continue_block && get_spv_block(ir.merge_info.continue_block) == bb)
@@ -3845,17 +3721,14 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 				else
 					emit_loop_header(nullptr);
 
-				active_function->addBlock(direct_bb);
 				builder.createBranch(direct_bb);
 				bb = direct_bb;
 				builder.setBuildPoint(bb);
 			}
 
 			// Pseudo-op. Conditional return.
-			auto *inner_bb = new spv::Block(builder.getUniqueId(), *active_function);
-			auto *merge_bb = new spv::Block(builder.getUniqueId(), *active_function);
-			active_function->addBlock(inner_bb);
-			active_function->addBlock(merge_bb);
+			auto *inner_bb = active_function->newBlockAfter(builder.getUniqueId(), bb);
+			auto *merge_bb = active_function->newBlockAfter(builder.getUniqueId(), inner_bb);
 			builder.createSelectionMerge(merge_bb, 0);
 			builder.createConditionalBranch(op->argument(op->num_arguments() - 1), inner_bb, merge_bb);
 			builder.setBuildPoint(inner_bb);
@@ -3864,7 +3737,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 
 			if (op->op == spv::PseudoOpReturnCond)
 			{
-				builder.makeReturn(false);
+				builder.makeReturn();
 			}
 			else
 			{
@@ -3916,10 +3789,10 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 		else if (op->op != spv::OpNop)
 		{
-			if (op->op == spv::OpDemoteToHelperInvocationEXT || op->op == spv::OpIsHelperInvocationEXT)
+			if (op->op == spv::OpDemoteToHelperInvocation || op->op == spv::OpIsHelperInvocationEXT)
 			{
 				builder.addExtension("SPV_EXT_demote_to_helper_invocation");
-				builder.addCapability(spv::CapabilityDemoteToHelperInvocationEXT);
+				builder.addCapability(spv::CapabilityDemoteToHelperInvocation);
 			}
 			else if (op->op == spv::OpTerminateRayKHR || op->op == spv::OpIgnoreIntersectionKHR ||
 			         op->op == spv::OpEmitMeshTasksEXT)
@@ -4013,8 +3886,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 		else
 		{
-			auto *unreachable_bb = new spv::Block(builder.getUniqueId(), *active_function);
-			active_function->addBlock(unreachable_bb);
+			auto *unreachable_bb = active_function->newBlockAfter(builder.getUniqueId(), bb);
 			builder.setBuildPoint(unreachable_bb);
 			builder.createUnreachable();
 			builder.setBuildPoint(bb);
@@ -4070,10 +3942,8 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		{
 			if (rewrite_phi_incoming_to == 0)
 			{
-				auto *fake_selection_bb = new spv::Block(builder.getUniqueId(), *active_function);
-				auto *unreachable_bb = new spv::Block(builder.getUniqueId(), *active_function);
-				active_function->addBlock(fake_selection_bb);
-				active_function->addBlock(unreachable_bb);
+				auto *fake_selection_bb = active_function->newBlockAfter(builder.getUniqueId(), bb);
+				auto *unreachable_bb = active_function->newBlockAfter(builder.getUniqueId(), bb);
 				builder.createBranch(fake_selection_bb);
 				builder.setBuildPoint(fake_selection_bb);
 				builder.createSelectionMerge(unreachable_bb, 0);
@@ -4095,8 +3965,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 				// construction instead of a loop, and we have to add a merge target to make this valid.
 				// If we are directly branching to continue or merge target, we can omit a merge,
 				// since that case does not need a merge.
-				auto *unreachable_bb = new spv::Block(builder.getUniqueId(), *active_function);
-				active_function->addBlock(unreachable_bb);
+				auto *unreachable_bb = active_function->newBlockAfter(builder.getUniqueId(), bb);
 				builder.setBuildPoint(unreachable_bb);
 				builder.createUnreachable();
 				builder.setBuildPoint(bb);
@@ -4158,9 +4027,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 
 	case Terminator::Type::Return:
 	{
-		if (discard_state_var_id)
-			build_discard_call_exit();
-		builder.makeReturn(false, ir.terminator.return_value);
+		builder.makeReturnValue(ir.terminator.return_value);
 		break;
 	}
 
@@ -4259,11 +4126,6 @@ uint32_t SPIRVModule::allocate_id()
 uint32_t SPIRVModule::allocate_ids(uint32_t count)
 {
 	return impl->builder.getUniqueIds(count);
-}
-
-void SPIRVModule::enable_shader_discard(bool supports_demote)
-{
-	impl->enable_shader_discard(supports_demote);
 }
 
 void SPIRVModule::enable_min16float_min_spec_simulation(bool enable_simulation)

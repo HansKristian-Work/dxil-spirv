@@ -1,16 +1,18 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 85
+; Bound: 82
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability GroupNonUniformBallot
 OpCapability GroupNonUniformPartitionedEXT
+OpCapability DemoteToHelperInvocation
+OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpExtension "SPV_NV_shader_subgroup_partitioned"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %8 %11 %13 %83
+OpEntryPoint Fragment %3 "main" %8 %11 %13
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %13 "THR"
@@ -21,7 +23,6 @@ OpDecorate %11 Binding 0
 OpDecorate %11 NonReadable
 OpDecorate %13 Flat
 OpDecorate %13 Location 0
-OpDecorate %83 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -43,8 +44,6 @@ OpDecorate %83 BuiltIn HelperInvocation
 %71 = OpConstant %5 4
 %75 = OpConstant %5 1
 %78 = OpConstant %5 2
-%82 = OpTypePointer Input %21
-%83 = OpVariable %82 Input
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %81
@@ -55,7 +54,7 @@ OpBranch %81
 %18 = OpImageFetch %17 %15 %16
 %19 = OpCompositeExtract %5 %18 0
 %20 = OpGroupNonUniformPartitionEXT %17 %19
-%22 = OpLoad %21 %83
+%22 = OpIsHelperInvocationEXT %21
 %23 = OpLogicalNot %21 %22
 %24 = OpGroupNonUniformBallot %17 %25 %23
 %26 = OpBitwiseAnd %17 %20 %24
@@ -68,7 +67,7 @@ OpBranch %81
 %34 = OpBitcast %33 %32
 %35 = OpBitcast %5 %34
 %36 = OpGroupNonUniformPartitionEXT %17 %35
-%37 = OpLoad %21 %83
+%37 = OpIsHelperInvocationEXT %21
 %38 = OpLogicalNot %21 %37
 %39 = OpGroupNonUniformBallot %17 %25 %38
 %40 = OpBitwiseAnd %17 %36 %39
@@ -86,7 +85,7 @@ OpBranch %81
 %55 = OpSelect %33 %51 %54 %53
 %56 = OpBitcast %5 %55
 %57 = OpGroupNonUniformPartitionEXT %17 %56
-%58 = OpLoad %21 %83
+%58 = OpIsHelperInvocationEXT %21
 %59 = OpLogicalNot %21 %58
 %60 = OpGroupNonUniformBallot %17 %25 %59
 %61 = OpBitwiseAnd %17 %57 %60

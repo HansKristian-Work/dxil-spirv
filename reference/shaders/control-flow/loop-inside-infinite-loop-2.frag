@@ -145,7 +145,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 158
+; Bound: 157
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -216,91 +216,6 @@ OpBranch %105
 %31 = OpULessThan %30 %20 %32
 OpSelectionMerge %149 None
 OpBranchConditional %31 %129 %106
-%129 = OpLabel
-OpStore %94 %20
-OpBranch %130
-%130 = OpLabel
-%57 = OpLoad %5 %94
-%59 = OpImageTexelPointer %38 %8 %19 %19
-%60 = OpAtomicIAdd %5 %59 %22 %19 %57
-%61 = OpIEqual %30 %23 %19
-OpLoopMerge %145 %154 None
-OpBranch %131
-%131 = OpLabel
-OpSelectionMerge %152 None
-OpBranchConditional %61 %152 %132
-%132 = OpLabel
-%62 = OpBitwiseAnd %5 %57 %28
-OpStore %92 %62
-OpStore %93 %19
-OpBranch %133
-%133 = OpLabel
-%64 = OpLoad %5 %93
-%63 = OpLoad %5 %92
-%66 = OpIEqual %30 %63 %19
-OpStore %100 %101
-OpLoopMerge %140 %138 None
-OpBranch %134
-%134 = OpLabel
-OpSelectionMerge %136 None
-OpBranchConditional %66 %136 %135
-%135 = OpLabel
-OpStore %100 %98
-OpBranch %140
-%136 = OpLabel
-%80 = OpBitwiseAnd %5 %57 %50
-%81 = OpIEqual %30 %80 %19
-OpSelectionMerge %137 None
-OpBranchConditional %81 %137 %140
-%137 = OpLabel
-%82 = OpImageTexelPointer %38 %8 %19 %19
-%83 = OpAtomicIAdd %5 %82 %22 %19 %57
-%65 = OpIAdd %5 %64 %22
-%84 = OpULessThan %30 %65 %23
-OpSelectionMerge %156 None
-OpBranchConditional %84 %138 %139
-%139 = OpLabel
-OpBranch %140
-%156 = OpLabel
-OpUnreachable
-%138 = OpLabel
-OpStore %92 %19
-OpStore %93 %65
-OpBranch %133
-%140 = OpLabel
-%102 = OpLoad %30 %100
-OpSelectionMerge %141 None
-OpBranchConditional %102 %145 %141
-%141 = OpLabel
-OpBranch %142
-%142 = OpLabel
-OpBranch %143
-%143 = OpLabel
-OpBranch %144
-%144 = OpLabel
-OpBranch %152
-%152 = OpLabel
-OpBranch %153
-%153 = OpLabel
-OpBranch %154
-%154 = OpLabel
-%85 = OpImageTexelPointer %38 %8 %19 %19
-%86 = OpAtomicIAdd %5 %85 %22 %19 %57
-%58 = OpIAdd %5 %57 %22
-OpStore %94 %58
-OpBranch %130
-%145 = OpLabel
-OpBranch %146
-%146 = OpLabel
-OpBranch %147
-%147 = OpLabel
-OpStore %88 %57
-OpStore %89 %23
-OpStore %90 %26
-OpStore %91 %29
-OpBranch %148
-%148 = OpLabel
-OpBranch %149
 %106 = OpLabel
 %33 = OpNot %5 %20
 %34 = OpNot %5 %23
@@ -347,14 +262,14 @@ OpBranchConditional %51 %114 %117
 %54 = OpULessThan %30 %46 %34
 OpSelectionMerge %155 None
 OpBranchConditional %54 %115 %116
-%116 = OpLabel
-OpBranch %117
 %155 = OpLabel
 OpUnreachable
 %115 = OpLabel
 OpStore %95 %19
 OpStore %96 %46
 OpBranch %110
+%116 = OpLabel
+OpBranch %117
 %117 = OpLabel
 %104 = OpLoad %30 %103
 OpSelectionMerge %118 None
@@ -367,16 +282,6 @@ OpBranch %120
 OpBranch %121
 %121 = OpLabel
 OpBranch %126
-%126 = OpLabel
-OpBranch %127
-%127 = OpLabel
-OpBranch %128
-%128 = OpLabel
-%55 = OpImageTexelPointer %38 %8 %19 %19
-%56 = OpAtomicIAdd %5 %55 %22 %19 %36
-%37 = OpIAdd %5 %36 %22
-OpStore %97 %37
-OpBranch %107
 %122 = OpLabel
 OpBranch %123
 %123 = OpLabel
@@ -389,6 +294,91 @@ OpStore %90 %35
 OpStore %91 %48
 OpBranch %125
 %125 = OpLabel
+OpBranch %149
+%126 = OpLabel
+OpBranch %127
+%127 = OpLabel
+OpBranch %128
+%128 = OpLabel
+%55 = OpImageTexelPointer %38 %8 %19 %19
+%56 = OpAtomicIAdd %5 %55 %22 %19 %36
+%37 = OpIAdd %5 %36 %22
+OpStore %97 %37
+OpBranch %107
+%129 = OpLabel
+OpStore %94 %20
+OpBranch %130
+%130 = OpLabel
+%57 = OpLoad %5 %94
+%59 = OpImageTexelPointer %38 %8 %19 %19
+%60 = OpAtomicIAdd %5 %59 %22 %19 %57
+%61 = OpIEqual %30 %23 %19
+OpLoopMerge %145 %154 None
+OpBranch %131
+%131 = OpLabel
+OpSelectionMerge %152 None
+OpBranchConditional %61 %152 %132
+%132 = OpLabel
+%62 = OpBitwiseAnd %5 %57 %28
+OpStore %92 %62
+OpStore %93 %19
+OpBranch %133
+%133 = OpLabel
+%64 = OpLoad %5 %93
+%63 = OpLoad %5 %92
+%66 = OpIEqual %30 %63 %19
+OpStore %100 %101
+OpLoopMerge %140 %138 None
+OpBranch %134
+%134 = OpLabel
+OpSelectionMerge %136 None
+OpBranchConditional %66 %136 %135
+%135 = OpLabel
+OpStore %100 %98
+OpBranch %140
+%136 = OpLabel
+%80 = OpBitwiseAnd %5 %57 %50
+%81 = OpIEqual %30 %80 %19
+OpSelectionMerge %137 None
+OpBranchConditional %81 %137 %140
+%137 = OpLabel
+%82 = OpImageTexelPointer %38 %8 %19 %19
+%83 = OpAtomicIAdd %5 %82 %22 %19 %57
+%65 = OpIAdd %5 %64 %22
+%84 = OpULessThan %30 %65 %23
+OpSelectionMerge %156 None
+OpBranchConditional %84 %138 %139
+%156 = OpLabel
+OpUnreachable
+%138 = OpLabel
+OpStore %92 %19
+OpStore %93 %65
+OpBranch %133
+%139 = OpLabel
+OpBranch %140
+%140 = OpLabel
+%102 = OpLoad %30 %100
+OpSelectionMerge %141 None
+OpBranchConditional %102 %145 %141
+%141 = OpLabel
+OpBranch %142
+%142 = OpLabel
+OpBranch %143
+%143 = OpLabel
+OpBranch %144
+%144 = OpLabel
+OpBranch %152
+%145 = OpLabel
+OpBranch %146
+%146 = OpLabel
+OpBranch %147
+%147 = OpLabel
+OpStore %88 %57
+OpStore %89 %23
+OpStore %90 %26
+OpStore %91 %29
+OpBranch %148
+%148 = OpLabel
 OpBranch %149
 %149 = OpLabel
 OpBranch %150
@@ -412,5 +402,15 @@ OpStore %78 %73
 %79 = OpAccessChain %75 %15 %28
 OpStore %79 %74
 OpReturn
+%152 = OpLabel
+OpBranch %153
+%153 = OpLabel
+OpBranch %154
+%154 = OpLabel
+%85 = OpImageTexelPointer %38 %8 %19 %19
+%86 = OpAtomicIAdd %5 %85 %22 %19 %57
+%58 = OpIAdd %5 %57 %22
+OpStore %94 %58
+OpBranch %130
 OpFunctionEnd
 #endif

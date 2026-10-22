@@ -303,8 +303,8 @@ static void build_descriptor_qa_fault_report(SPIRVModule &module, spv::Id &func_
 	check->addIdOperand(builder.makeUintConstant(0));
 	spv::Id check_id = check->getResultId();
 
-	auto *true_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *false_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *true_block = func->newBlock(builder.getUniqueId());
+	auto *false_block = func->newBlock(builder.getUniqueId());
 
 	builder.setBuildPoint(entry);
 	entry->addInstruction(std::move(chain));
@@ -346,7 +346,7 @@ static void build_descriptor_qa_fault_report(SPIRVModule &module, spv::Id &func_
 		builder.createBranch(false_block);
 	}
 	builder.setBuildPoint(false_block);
-	builder.makeReturn(false);
+	builder.makeReturn();
 	builder.setBuildPoint(current_build_point);
 }
 
@@ -464,8 +464,8 @@ spv::Id build_descriptor_qa_check_function(SPIRVModule &module)
 	spv::Id fault_type_id = merge_check2->getResultId();
 	spv::Id fault_cond_id = fault_cond->getResultId();
 
-	auto *fault_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *correct_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *fault_block = func->newBlock(builder.getUniqueId());
+	auto *correct_block = func->newBlock(builder.getUniqueId());
 	builder.createSelectionMerge(correct_block, 0);
 	builder.createConditionalBranch(fault_cond_id, fault_block, correct_block);
 	{
@@ -479,10 +479,10 @@ spv::Id build_descriptor_qa_check_function(SPIRVModule &module)
 		call->addIdOperand(descriptor_type_id);
 		call->addIdOperand(descriptor_info_id);
 		call->addIdOperand(instruction_id);
-		builder.makeReturn(false, fallback_offset_id);
+		builder.makeReturnValue(fallback_offset_id);
 	}
 	builder.setBuildPoint(correct_block);
-	builder.makeReturn(false, offset_id);
+	builder.makeReturnValue(offset_id);
 
 	builder.setBuildPoint(current_build_point);
 	return func->getId();

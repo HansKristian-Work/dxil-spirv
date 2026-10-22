@@ -57,7 +57,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 95
+; Bound: 94
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -131,34 +131,10 @@ OpBranch %85
 %33 = OpULessThan %32 %25 %34
 OpSelectionMerge %91 None
 OpBranchConditional %33 %90 %86
-%90 = OpLabel
-%52 = OpCompositeConstruct %39 %25 %28
-%51 = OpImageFetch %37 %18 %52 Lod %31
-%53 = OpCompositeExtract %5 %51 0
-%54 = OpCompositeExtract %5 %51 1
-%55 = OpCompositeExtract %5 %51 2
-%56 = OpCompositeExtract %5 %51 3
-OpStore %81 %53
-OpStore %82 %54
-OpStore %83 %55
-OpStore %84 %56
-OpBranch %91
 %86 = OpLabel
 %35 = OpULessThan %32 %28 %36
 OpSelectionMerge %89 None
 OpBranchConditional %35 %88 %87
-%88 = OpLabel
-%46 = OpCompositeConstruct %39 %25 %28
-%45 = OpImageFetch %37 %17 %46 Lod %31
-%47 = OpCompositeExtract %5 %45 0
-%48 = OpCompositeExtract %5 %45 1
-%49 = OpCompositeExtract %5 %45 2
-%50 = OpCompositeExtract %5 %45 3
-OpStore %81 %47
-OpStore %82 %48
-OpStore %83 %49
-OpStore %84 %50
-OpBranch %89
 %87 = OpLabel
 %40 = OpCompositeConstruct %39 %25 %28
 %38 = OpImageFetch %37 %16 %40 Lod %31
@@ -171,7 +147,31 @@ OpStore %82 %42
 OpStore %83 %43
 OpStore %84 %44
 OpBranch %89
+%88 = OpLabel
+%46 = OpCompositeConstruct %39 %25 %28
+%45 = OpImageFetch %37 %17 %46 Lod %31
+%47 = OpCompositeExtract %5 %45 0
+%48 = OpCompositeExtract %5 %45 1
+%49 = OpCompositeExtract %5 %45 2
+%50 = OpCompositeExtract %5 %45 3
+OpStore %81 %47
+OpStore %82 %48
+OpStore %83 %49
+OpStore %84 %50
+OpBranch %89
 %89 = OpLabel
+OpBranch %91
+%90 = OpLabel
+%52 = OpCompositeConstruct %39 %25 %28
+%51 = OpImageFetch %37 %18 %52 Lod %31
+%53 = OpCompositeExtract %5 %51 0
+%54 = OpCompositeExtract %5 %51 1
+%55 = OpCompositeExtract %5 %51 2
+%56 = OpCompositeExtract %5 %51 3
+OpStore %81 %53
+OpStore %82 %54
+OpStore %83 %55
+OpStore %84 %56
 OpBranch %91
 %91 = OpLabel
 OpBranch %92

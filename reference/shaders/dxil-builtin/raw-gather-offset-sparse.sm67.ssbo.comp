@@ -64,25 +64,25 @@ layout(set = 0, binding = 0) uniform sampler _28;
 
 void main()
 {
-    uint _147;
-    uvec4 _148;
-    _147 = sparseTextureGatherOffsetARB(usampler2D(_8, _28), vec2(0.5), ivec2(-3, -2), _148);
-    SparseTexel _42 = SparseTexel(_147, _148);
+    uint _146;
+    uvec4 _147;
+    _146 = sparseTextureGatherOffsetARB(usampler2D(_8, _28), vec2(0.5), ivec2(-3, -2), _147);
+    SparseTexel _42 = SparseTexel(_146, _147);
     u16vec4 _49 = u16vec4(_42._m1);
     _54 _55 = _54(_49.x, _49.y, _49.z, _49.w, _42._m0);
     uint _65 = uint(_55._m0);
     uint _66 = uint(_55._m1);
-    uint _149;
-    uvec4 _150;
-    _149 = sparseTextureGatherOffsetARB(usampler2D(_9, _28), vec2(0.5), ivec2(int(_65), int(_66)), _150);
-    SparseTexel _72 = SparseTexel(_149, _150);
+    uint _148;
+    uvec4 _149;
+    _148 = sparseTextureGatherOffsetARB(usampler2D(_9, _28), vec2(0.5), ivec2(int(_65), int(_66)), _149);
+    SparseTexel _72 = SparseTexel(_148, _149);
     uvec4 _75 = _72._m1;
     _80 _81 = _80(_75.x, _75.y, _75.z, _75.w, _72._m0);
     vec2 _91 = vec2(0.5);
-    uint _151;
-    uvec4 _152;
-    _151 = sparseTextureGatherOffsetARB(usampler2D(_10, _28), _91, ivec2(-3, -2), _152);
-    SparseTexel _92 = SparseTexel(_151, _152);
+    uint _150;
+    uvec4 _151;
+    _150 = sparseTextureGatherOffsetARB(usampler2D(_10, _28), _91, ivec2(-3, -2), _151);
+    SparseTexel _92 = SparseTexel(_150, _151);
     uvec4 _93 = textureGatherOffset(usampler2D(_10, _28), _91, ivec2(-3, -2), int(1u));
     uvec4 _94 = _92._m1;
     u64vec4 _112 = u64vec4(packUint2x32(uvec2(_94.x, _93.x)), packUint2x32(uvec2(_94.y, _93.y)), packUint2x32(uvec2(_94.z, _93.z)), packUint2x32(uvec2(_94.w, _93.w)));
@@ -103,7 +103,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 147
+; Bound: 146
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64

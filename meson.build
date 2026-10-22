@@ -36,8 +36,6 @@ dxil_spirv_src = [
   'third_party/bc-decoder/llvm_decoder.cpp',
 
   # glslang-spirv-builder
-  'third_party/glslang-spirv/Logger.cpp',
-  'third_party/glslang-spirv/InReadableOrder.cpp',
   'third_party/glslang-spirv/SpvBuilder.cpp',
 
   # llvm-bc

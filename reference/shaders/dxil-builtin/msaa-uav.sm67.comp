@@ -94,7 +94,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 166
+; Bound: 165
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageMultisample
@@ -181,24 +181,6 @@ OpBranch %145
 %51 = OpConvertUToF %5 %50
 OpSelectionMerge %148 None
 OpBranchConditional %38 %147 %146
-%147 = OpLabel
-%65 = OpLoad %6 %8
-%67 = OpCompositeConstruct %66 %33 %34
-%68 = OpCompositeConstruct %54 %45 %45 %45 %45
-OpImageWrite %65 %67 %68 Sample %21
-%69 = OpLoad %6 %8
-%70 = OpCompositeConstruct %66 %33 %34
-%71 = OpCompositeConstruct %54 %47 %47 %47 %47
-OpImageWrite %69 %70 %71 Sample %24
-%72 = OpLoad %6 %8
-%73 = OpCompositeConstruct %66 %33 %34
-%74 = OpCompositeConstruct %54 %49 %49 %49 %49
-OpImageWrite %72 %73 %74 Sample %27
-%75 = OpLoad %6 %8
-%76 = OpCompositeConstruct %66 %33 %34
-%77 = OpCompositeConstruct %54 %51 %51 %51 %51
-OpImageWrite %75 %76 %77 Sample %36
-OpBranch %148
 %146 = OpLabel
 %52 = OpLoad %9 %11
 %53 = OpCompositeConstruct %16 %33 %34 %35
@@ -217,6 +199,24 @@ OpImageWrite %59 %60 %61 Sample %27
 %64 = OpCompositeConstruct %54 %51 %51 %51 %51
 OpImageWrite %62 %63 %64 Sample %36
 OpBranch %148
+%147 = OpLabel
+%65 = OpLoad %6 %8
+%67 = OpCompositeConstruct %66 %33 %34
+%68 = OpCompositeConstruct %54 %45 %45 %45 %45
+OpImageWrite %65 %67 %68 Sample %21
+%69 = OpLoad %6 %8
+%70 = OpCompositeConstruct %66 %33 %34
+%71 = OpCompositeConstruct %54 %47 %47 %47 %47
+OpImageWrite %69 %70 %71 Sample %24
+%72 = OpLoad %6 %8
+%73 = OpCompositeConstruct %66 %33 %34
+%74 = OpCompositeConstruct %54 %49 %49 %49 %49
+OpImageWrite %72 %73 %74 Sample %27
+%75 = OpLoad %6 %8
+%76 = OpCompositeConstruct %66 %33 %34
+%77 = OpCompositeConstruct %54 %51 %51 %51 %51
+OpImageWrite %75 %76 %77 Sample %36
+OpBranch %148
 %148 = OpLabel
 OpBranch %149
 %149 = OpLabel
@@ -227,6 +227,55 @@ OpControlBarrier %27 %27 %78
 %81 = OpAccessChain %80 %32 %21
 OpSelectionMerge %161 None
 OpBranchConditional %79 %160 %151
+%151 = OpLabel
+%82 = OpLoad %9 %11
+%84 = OpCompositeConstruct %16 %22 %25 %28
+%83 = OpImageRead %54 %82 %84 Sample %21
+%85 = OpCompositeExtract %5 %83 0
+OpStore %81 %85
+OpStore %144 %24
+OpBranch %152
+%152 = OpLabel
+%86 = OpLoad %12 %144
+%88 = OpLoad %9 %11
+%90 = OpCompositeConstruct %16 %22 %25 %28
+%89 = OpImageRead %54 %88 %90 Sample %86
+%91 = OpCompositeExtract %5 %89 0
+%92 = OpAccessChain %80 %32 %86
+OpStore %92 %91
+%87 = OpIAdd %12 %86 %24
+%93 = OpIEqual %37 %87 %29
+OpLoopMerge %156 %154 None
+OpBranch %153
+%153 = OpLabel
+OpSelectionMerge %164 None
+OpBranchConditional %93 %155 %154
+%164 = OpLabel
+OpUnreachable
+%154 = OpLabel
+OpStore %144 %87
+OpBranch %152
+%155 = OpLabel
+OpBranch %156
+%156 = OpLabel
+OpBranch %157
+%157 = OpLabel
+OpBranch %158
+%158 = OpLabel
+%94 = OpLoad %5 %81
+%95 = OpInBoundsAccessChain %80 %32 %24
+%96 = OpLoad %5 %95
+%97 = OpInBoundsAccessChain %80 %32 %27
+%98 = OpLoad %5 %97
+%99 = OpInBoundsAccessChain %80 %32 %36
+%100 = OpLoad %5 %99
+OpStore %139 %100
+OpStore %140 %98
+OpStore %141 %96
+OpStore %142 %94
+OpBranch %159
+%159 = OpLabel
+OpBranch %161
 %160 = OpLabel
 %101 = OpLoad %6 %8
 %103 = OpCompositeConstruct %66 %22 %25
@@ -252,55 +301,6 @@ OpStore %139 %115
 OpStore %140 %111
 OpStore %141 %107
 OpStore %142 %104
-OpBranch %161
-%151 = OpLabel
-%82 = OpLoad %9 %11
-%84 = OpCompositeConstruct %16 %22 %25 %28
-%83 = OpImageRead %54 %82 %84 Sample %21
-%85 = OpCompositeExtract %5 %83 0
-OpStore %81 %85
-OpStore %144 %24
-OpBranch %152
-%152 = OpLabel
-%86 = OpLoad %12 %144
-%88 = OpLoad %9 %11
-%90 = OpCompositeConstruct %16 %22 %25 %28
-%89 = OpImageRead %54 %88 %90 Sample %86
-%91 = OpCompositeExtract %5 %89 0
-%92 = OpAccessChain %80 %32 %86
-OpStore %92 %91
-%87 = OpIAdd %12 %86 %24
-%93 = OpIEqual %37 %87 %29
-OpLoopMerge %156 %154 None
-OpBranch %153
-%153 = OpLabel
-OpSelectionMerge %164 None
-OpBranchConditional %93 %155 %154
-%155 = OpLabel
-OpBranch %156
-%164 = OpLabel
-OpUnreachable
-%154 = OpLabel
-OpStore %144 %87
-OpBranch %152
-%156 = OpLabel
-OpBranch %157
-%157 = OpLabel
-OpBranch %158
-%158 = OpLabel
-%94 = OpLoad %5 %81
-%95 = OpInBoundsAccessChain %80 %32 %24
-%96 = OpLoad %5 %95
-%97 = OpInBoundsAccessChain %80 %32 %27
-%98 = OpLoad %5 %97
-%99 = OpInBoundsAccessChain %80 %32 %36
-%100 = OpLoad %5 %99
-OpStore %139 %100
-OpStore %140 %98
-OpStore %141 %96
-OpStore %142 %94
-OpBranch %159
-%159 = OpLabel
 OpBranch %161
 %161 = OpLabel
 OpBranch %162

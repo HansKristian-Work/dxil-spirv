@@ -53,7 +53,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 67
+; Bound: 66
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -107,43 +107,43 @@ OpBranch %48
 OpStore %44 %45
 OpSelectionMerge %60 None
 OpBranchConditional %24 %56 %49
-%56 = OpLabel
-%32 = OpIEqual %23 %22 %33
-OpSelectionMerge %59 None
-OpBranchConditional %32 %58 %57
-%58 = OpLabel
-%36 = OpIMul %5 %19 %25
-OpStore %41 %36
-OpBranch %59
-%57 = OpLabel
-OpStore %42 %19
-OpStore %44 %47
-OpBranch %59
-%59 = OpLabel
-OpBranch %60
 %49 = OpLabel
 %26 = OpIEqual %23 %19 %27
 OpSelectionMerge %55 None
 OpBranchConditional %26 %51 %50
-%51 = OpLabel
-%28 = OpIEqual %23 %22 %29
-OpSelectionMerge %54 None
-OpBranchConditional %28 %53 %52
-%53 = OpLabel
-%30 = OpIMul %5 %16 %31
-OpStore %41 %30
-OpBranch %54
-%52 = OpLabel
-OpStore %42 %22
-OpStore %44 %47
-OpBranch %54
-%54 = OpLabel
-OpBranch %55
 %50 = OpLabel
 OpStore %42 %15
 OpStore %44 %47
 OpBranch %55
+%51 = OpLabel
+%28 = OpIEqual %23 %22 %29
+OpSelectionMerge %54 None
+OpBranchConditional %28 %53 %52
+%52 = OpLabel
+OpStore %42 %22
+OpStore %44 %47
+OpBranch %54
+%53 = OpLabel
+%30 = OpIMul %5 %16 %31
+OpStore %41 %30
+OpBranch %54
+%54 = OpLabel
+OpBranch %55
 %55 = OpLabel
+OpBranch %60
+%56 = OpLabel
+%32 = OpIEqual %23 %22 %33
+OpSelectionMerge %59 None
+OpBranchConditional %32 %58 %57
+%57 = OpLabel
+OpStore %42 %19
+OpStore %44 %47
+OpBranch %59
+%58 = OpLabel
+%36 = OpIMul %5 %19 %25
+OpStore %41 %36
+OpBranch %59
+%59 = OpLabel
 OpBranch %60
 %60 = OpLabel
 OpBranch %61

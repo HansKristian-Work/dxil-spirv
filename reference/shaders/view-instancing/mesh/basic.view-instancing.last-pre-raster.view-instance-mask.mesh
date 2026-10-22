@@ -52,7 +52,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 93
+; Bound: 90
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
@@ -158,11 +158,11 @@ OpSetMeshOutputsEXT %8 %15
 %48 = OpIEqual %36 %46 %28
 %49 = OpLogicalOr %36 %47 %48
 %50 = OpLogicalAnd %36 %43 %49
-OpSelectionMerge %88 None
-OpBranchConditional %50 %87 %88
-%87 = OpLabel
+OpSelectionMerge %87 None
+OpBranchConditional %50 %86 %87
+%86 = OpLabel
 OpReturn
-%88 = OpLabel
+%87 = OpLabel
 %51 = OpAccessChain %26 %25 %28
 %52 = OpLoad %7 %51
 %53 = OpBitFieldUExtract %7 %52 %31 %31
@@ -170,12 +170,12 @@ OpReturn
 %58 = OpIAdd %7 %57 %28
 %59 = OpULessThan %36 %58 %15
 %61 = OpAccessChain %60 %56 %58
-OpSelectionMerge %91 None
-OpBranchConditional %59 %90 %91
-%90 = OpLabel
+OpSelectionMerge %89 None
+OpBranchConditional %59 %88 %89
+%88 = OpLabel
 OpStore %61 %53
-OpBranch %91
-%91 = OpLabel
+OpBranch %89
+%89 = OpLabel
 %62 = OpConvertUToF %5 %40
 %64 = OpAccessChain %63 %11 %40 %28
 OpStore %64 %62

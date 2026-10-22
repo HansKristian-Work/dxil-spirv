@@ -125,7 +125,6 @@ public:
 	spv::Instruction *get_entry_point();
 	spv::Function *get_entry_function();
 
-	void enable_shader_discard(bool support_demote);
 	void enable_min16float_min_spec_simulation(bool enable_simulation);
 	spv::Id get_builtin_shader_input(spv::BuiltIn builtin);
 	spv::Id get_builtin_shader_output(spv::BuiltIn builtin);

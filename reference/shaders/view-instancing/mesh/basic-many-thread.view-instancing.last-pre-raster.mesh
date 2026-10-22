@@ -43,7 +43,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 80
+; Bound: 78
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
@@ -139,12 +139,12 @@ OpReturn
 %48 = OpIAdd %7 %47 %32
 %49 = OpULessThan %25 %48 %15
 %51 = OpAccessChain %50 %46 %48
-OpSelectionMerge %78 None
-OpBranchConditional %49 %77 %78
-%77 = OpLabel
+OpSelectionMerge %77 None
+OpBranchConditional %49 %76 %77
+%76 = OpLabel
 OpStore %51 %42
-OpBranch %78
-%78 = OpLabel
+OpBranch %77
+%77 = OpLabel
 %52 = OpConvertUToF %5 %22
 %54 = OpAccessChain %53 %11 %22 %32
 OpStore %54 %52

@@ -26,9 +26,9 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     uint _21 = gl_GlobalInvocationID.x << 4u;
-    uint _40 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x * 4u, 4u)], 1u);
-    uint _48 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[ByteAddressMask((gl_GlobalInvocationID.x * 4u) + 1u, 4u)], 2u);
-    uint _53 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[(_21 | 2u) >> 2u], 3u);
+    uint _39 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x * 4u, 4u)], 1u);
+    uint _47 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[ByteAddressMask((gl_GlobalInvocationID.x * 4u) + 1u, 4u)], 2u);
+    uint _52 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[(_21 | 2u) >> 2u], 3u);
 }
 
 
@@ -37,7 +37,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 57
+; Bound: 55
 ; Schema: 0
 OpCapability Shader
 OpCapability PhysicalStorageBufferAddresses
@@ -51,17 +51,17 @@ OpName %9 "registers"
 OpName %27 "ByteAddressMask"
 OpName %25 "index"
 OpName %26 "stride"
-OpName %35 "PhysicalPointerUintArray"
-OpMemberName %35 0 "value"
+OpName %34 "PhysicalPointerUintArray"
+OpMemberName %34 0 "value"
 OpDecorate %7 Block
 OpMemberDecorate %7 0 Offset 0
 OpMemberDecorate %7 1 Offset 8
 OpMemberDecorate %7 2 Offset 16
 OpMemberDecorate %7 3 Offset 24
 OpDecorate %16 BuiltIn GlobalInvocationId
-OpDecorate %34 ArrayStride 4
-OpMemberDecorate %35 0 Offset 0
-OpDecorate %35 Block
+OpDecorate %33 ArrayStride 4
+OpMemberDecorate %34 0 Offset 0
+OpDecorate %34 Block
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -79,38 +79,38 @@ OpDecorate %35 Block
 %22 = OpConstant %5 4
 %24 = OpTypeFunction %5 %5 %5
 %30 = OpConstant %5 4294967295
-%34 = OpTypeRuntimeArray %5
-%35 = OpTypeStruct %34
-%36 = OpTypePointer PhysicalStorageBuffer %35
-%38 = OpTypePointer PhysicalStorageBuffer %5
-%41 = OpConstant %5 1
-%54 = OpConstant %5 3
+%33 = OpTypeRuntimeArray %5
+%34 = OpTypeStruct %33
+%35 = OpTypePointer PhysicalStorageBuffer %34
+%37 = OpTypePointer PhysicalStorageBuffer %5
+%40 = OpConstant %5 1
+%53 = OpConstant %5 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %55
-%55 = OpLabel
+OpBranch %54
+%54 = OpLabel
 %11 = OpAccessChain %10 %9 %12
 %13 = OpLoad %6 %11
 %18 = OpAccessChain %17 %16 %19
 %20 = OpLoad %5 %18
 %21 = OpShiftLeftLogical %5 %20 %22
 %23 = OpIMul %5 %20 %22
-%33 = OpFunctionCall %5 %27 %23 %22
-%37 = OpBitcast %36 %13
-%39 = OpAccessChain %38 %37 %19 %33
-%40 = OpAtomicIAdd %5 %39 %41 %19 %41
-%42 = OpBitwiseOr %5 %21 %22
-%43 = OpIMul %5 %20 %22
-%44 = OpIAdd %5 %43 %41
-%45 = OpFunctionCall %5 %27 %44 %22
-%46 = OpBitcast %36 %13
-%47 = OpAccessChain %38 %46 %19 %45
-%48 = OpAtomicIAdd %5 %47 %41 %19 %12
-%49 = OpBitwiseOr %5 %21 %12
-%50 = OpShiftRightLogical %5 %49 %12
-%51 = OpBitcast %36 %13
-%52 = OpAccessChain %38 %51 %19 %50
-%53 = OpAtomicIAdd %5 %52 %41 %19 %54
+%32 = OpFunctionCall %5 %27 %23 %22
+%36 = OpBitcast %35 %13
+%38 = OpAccessChain %37 %36 %19 %32
+%39 = OpAtomicIAdd %5 %38 %40 %19 %40
+%41 = OpBitwiseOr %5 %21 %22
+%42 = OpIMul %5 %20 %22
+%43 = OpIAdd %5 %42 %40
+%44 = OpFunctionCall %5 %27 %43 %22
+%45 = OpBitcast %35 %13
+%46 = OpAccessChain %37 %45 %19 %44
+%47 = OpAtomicIAdd %5 %46 %40 %19 %12
+%48 = OpBitwiseOr %5 %21 %12
+%49 = OpShiftRightLogical %5 %48 %12
+%50 = OpBitcast %35 %13
+%51 = OpAccessChain %37 %50 %19 %49
+%52 = OpAtomicIAdd %5 %51 %40 %19 %53
 OpReturn
 OpFunctionEnd
 %27 = OpFunction %5 None %24

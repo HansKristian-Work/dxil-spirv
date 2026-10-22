@@ -40,7 +40,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 74
+; Bound: 72
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -96,12 +96,12 @@ OpDecorate %23 BuiltIn WorkgroupId
 %51 = OpTypeBool
 %54 = OpTypeFunction %2 %2 %2
 %60 = OpConstant %2 4294967295
-%64 = OpConstant %2 8
-%66 = OpTypePointer StorageBuffer %13
+%63 = OpConstant %2 8
+%65 = OpTypePointer StorageBuffer %13
 %11 = OpFunction %9 None %10
 %12 = OpLabel
-OpBranch %68
-%68 = OpLabel
+OpBranch %67
+%67 = OpLabel
 %20 = OpLoad %2 %19
 %24 = OpAccessChain %18 %23 %3
 %25 = OpLoad %2 %24
@@ -127,20 +127,20 @@ OpBranch %68
 %49 = OpCompositeConstruct %42 %45 %46 %47 %48
 %50 = OpBitcast %2 %49
 %52 = OpIEqual %51 %20 %3
-OpSelectionMerge %70 None
-OpBranchConditional %52 %69 %70
-%69 = OpLabel
+OpSelectionMerge %69 None
+OpBranchConditional %52 %68 %69
+%68 = OpLabel
 %53 = OpShiftLeftLogical %2 %25 %6
-%63 = OpFunctionCall %2 %57 %25 %64
-%65 = OpCompositeConstruct %13 %44 %50
-%67 = OpAccessChain %66 %17 %3 %63
-OpStore %67 %65 NonPrivatePointer
+%62 = OpFunctionCall %2 %57 %25 %63
+%64 = OpCompositeConstruct %13 %44 %50
+%66 = OpAccessChain %65 %17 %3 %62
+OpStore %66 %64 NonPrivatePointer
+OpBranch %69
+%69 = OpLabel
 OpBranch %70
 %70 = OpLabel
 OpBranch %71
 %71 = OpLabel
-OpBranch %72
-%72 = OpLabel
 OpReturn
 OpFunctionEnd
 %57 = OpFunction %2 None %54

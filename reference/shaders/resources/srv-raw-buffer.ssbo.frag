@@ -32,13 +32,13 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     uint _40 = uint(int(gl_FragCoord.x));
-    uint _52 = ByteAddressMask(_40, 8u);
-    uvec4 _63 = floatBitsToUint(_28._m0[0u]);
-    uint _64 = _63.x;
-    uint _69 = ByteAddressMask(_40, 8u);
-    uint _80 = ByteAddressMask(_40, 8u);
-    SV_Target.x = (_16[_64]._m0[_69].x + _10._m0[_52].x) + _21[nonuniformEXT(INDEX)]._m0[_80].x;
-    SV_Target.y = (_16[_64]._m0[_69].y + _10._m0[_52].y) + _21[nonuniformEXT(INDEX)]._m0[_80].y;
+    uint _51 = ByteAddressMask(_40, 8u);
+    uvec4 _62 = floatBitsToUint(_28._m0[0u]);
+    uint _63 = _62.x;
+    uint _68 = ByteAddressMask(_40, 8u);
+    uint _79 = ByteAddressMask(_40, 8u);
+    SV_Target.x = (_16[_63]._m0[_68].x + _10._m0[_51].x) + _21[nonuniformEXT(INDEX)]._m0[_79].x;
+    SV_Target.y = (_16[_63]._m0[_68].y + _10._m0[_51].y) + _21[nonuniformEXT(INDEX)]._m0[_79].y;
 }
 
 
@@ -47,7 +47,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 92
+; Bound: 90
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageBufferArrayDynamicIndexing
@@ -99,8 +99,8 @@ OpDecorate %32 Flat
 OpDecorate %32 Location 1
 OpDecorate %34 Location 0
 OpDecorate %35 NonUniform
-OpDecorate %79 NonUniform
-OpDecorate %81 NonUniform
+OpDecorate %78 NonUniform
+OpDecorate %80 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -138,55 +138,55 @@ OpDecorate %81 NonUniform
 %42 = OpConstant %5 3
 %43 = OpTypeFunction %5 %5 %5
 %49 = OpConstant %5 4294967295
-%53 = OpConstant %5 8
-%54 = OpTypePointer StorageBuffer %6
-%59 = OpTypePointer Uniform %24
-%62 = OpTypeVector %5 4
-%66 = OpConstant %5 4
-%67 = OpTypePointer StorageBuffer %12
-%77 = OpConstant %5 100
-%78 = OpTypePointer StorageBuffer %18
-%87 = OpTypePointer Output %5
+%52 = OpConstant %5 8
+%53 = OpTypePointer StorageBuffer %6
+%58 = OpTypePointer Uniform %24
+%61 = OpTypeVector %5 4
+%65 = OpConstant %5 4
+%66 = OpTypePointer StorageBuffer %12
+%76 = OpConstant %5 100
+%77 = OpTypePointer StorageBuffer %18
+%86 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %90
-%90 = OpLabel
+OpBranch %89
+%89 = OpLabel
 %35 = OpLoad %5 %32
 %37 = OpAccessChain %36 %30 %38
 %39 = OpLoad %23 %37
 %40 = OpConvertFToS %5 %39
 %41 = OpShiftLeftLogical %5 %40 %42
-%52 = OpFunctionCall %5 %46 %40 %53
-%55 = OpAccessChain %54 %10 %38 %52
-%56 = OpLoad %6 %55
-%57 = OpCompositeExtract %5 %56 0
-%58 = OpCompositeExtract %5 %56 1
-%60 = OpAccessChain %59 %28 %38 %38
-%61 = OpLoad %24 %60
-%63 = OpBitcast %62 %61
-%64 = OpCompositeExtract %5 %63 0
-%65 = OpIAdd %5 %64 %66
-%68 = OpAccessChain %67 %16 %64
-%69 = OpFunctionCall %5 %46 %40 %53
-%70 = OpAccessChain %54 %68 %38 %69
-%71 = OpLoad %6 %70
-%72 = OpCompositeExtract %5 %71 0
-%73 = OpCompositeExtract %5 %71 1
+%51 = OpFunctionCall %5 %46 %40 %52
+%54 = OpAccessChain %53 %10 %38 %51
+%55 = OpLoad %6 %54
+%56 = OpCompositeExtract %5 %55 0
+%57 = OpCompositeExtract %5 %55 1
+%59 = OpAccessChain %58 %28 %38 %38
+%60 = OpLoad %24 %59
+%62 = OpBitcast %61 %60
+%63 = OpCompositeExtract %5 %62 0
+%64 = OpIAdd %5 %63 %65
+%67 = OpAccessChain %66 %16 %63
+%68 = OpFunctionCall %5 %46 %40 %52
+%69 = OpAccessChain %53 %67 %38 %68
+%70 = OpLoad %6 %69
+%71 = OpCompositeExtract %5 %70 0
+%72 = OpCompositeExtract %5 %70 1
+%73 = OpIAdd %5 %71 %56
 %74 = OpIAdd %5 %72 %57
-%75 = OpIAdd %5 %73 %58
-%76 = OpIAdd %5 %35 %77
-%79 = OpAccessChain %78 %21 %35
-%80 = OpFunctionCall %5 %46 %40 %53
-%81 = OpAccessChain %54 %79 %38 %80
-%82 = OpLoad %6 %81
-%83 = OpCompositeExtract %5 %82 0
-%84 = OpCompositeExtract %5 %82 1
+%75 = OpIAdd %5 %35 %76
+%78 = OpAccessChain %77 %21 %35
+%79 = OpFunctionCall %5 %46 %40 %52
+%80 = OpAccessChain %53 %78 %38 %79
+%81 = OpLoad %6 %80
+%82 = OpCompositeExtract %5 %81 0
+%83 = OpCompositeExtract %5 %81 1
+%84 = OpIAdd %5 %73 %82
 %85 = OpIAdd %5 %74 %83
-%86 = OpIAdd %5 %75 %84
-%88 = OpAccessChain %87 %34 %38
+%87 = OpAccessChain %86 %34 %38
+OpStore %87 %84
+%88 = OpAccessChain %86 %34 %22
 OpStore %88 %85
-%89 = OpAccessChain %87 %34 %22
-OpStore %89 %86
 OpReturn
 OpFunctionEnd
 %46 = OpFunction %5 None %43

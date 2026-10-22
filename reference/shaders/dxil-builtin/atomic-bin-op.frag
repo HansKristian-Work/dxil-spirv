@@ -31,8 +31,8 @@ void main()
     int _91 = imageAtomicMin(_27, int(TEXCOORD.x), int(8u));
     int _98 = imageAtomicMax(_30, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(9u));
     uint _106 = imageAtomicAdd(_31, int((TEXCOORD.x * 4u) + 2u), 10u);
-    uint _121 = imageAtomicMax(_32, int(ByteAddressMask(TEXCOORD.x, 4u)), 12u);
-    SV_Target = (((((((((_64 + _60) + _68) + _73) + _78) + _82) + _86) + uint(_91)) + uint(_98)) + _106) + _121;
+    uint _120 = imageAtomicMax(_32, int(ByteAddressMask(TEXCOORD.x, 4u)), 12u);
+    SV_Target = (((((((((_64 + _60) + _68) + _73) + _78) + _82) + _86) + uint(_91)) + uint(_98)) + _106) + _120;
 }
 
 
@@ -41,7 +41,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 126
+; Bound: 124
 ; Schema: 0
 OpCapability Shader
 OpCapability Image1D
@@ -130,11 +130,11 @@ OpDecorate %37 Location 0
 %107 = OpConstant %5 10
 %110 = OpTypeFunction %5 %5 %5
 %116 = OpConstant %5 4294967295
-%122 = OpConstant %5 12
+%121 = OpConstant %5 12
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %124
-%124 = OpLabel
+OpBranch %123
+%123 = OpLabel
 %38 = OpLoad %21 %32
 %39 = OpLoad %21 %31
 %40 = OpLoad %28 %30
@@ -192,11 +192,11 @@ OpBranch %124
 %106 = OpAtomicIAdd %5 %105 %53 %50 %107
 %108 = OpIAdd %5 %102 %106
 %109 = OpShiftLeftLogical %5 %51 %56
-%119 = OpFunctionCall %5 %113 %51 %74
-%120 = OpImageTexelPointer %58 %32 %119 %50
-%121 = OpAtomicUMax %5 %120 %53 %50 %122
-%123 = OpIAdd %5 %108 %121
-OpStore %37 %123
+%118 = OpFunctionCall %5 %113 %51 %74
+%119 = OpImageTexelPointer %58 %32 %118 %50
+%120 = OpAtomicUMax %5 %119 %53 %50 %121
+%122 = OpIAdd %5 %108 %120
+OpStore %37 %122
 OpReturn
 OpFunctionEnd
 %113 = OpFunction %5 None %110

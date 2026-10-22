@@ -8256,9 +8256,10 @@ void Converter::Impl::build_function_bb_visit_order(
 Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_and_register(
 		llvm::Function *func, CFGNodePool &pool)
 {
+	unsigned visit_index = 0;
 	auto bbs = build_function_bb_visit_order(func);
 	for (auto *bb : bbs)
-		build_function_bb_visit_register(bb, pool, "");
+		build_function_bb_visit_register(bb, pool, to_string(visit_index++));
 
 	for (auto *bb : bbs)
 	{

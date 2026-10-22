@@ -1,41 +1,33 @@
 #version 460
 #extension GL_KHR_shader_subgroup_basic : require
+#extension GL_EXT_demote_to_helper_invocation : require
 
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
 layout(location = 0) flat in uint THR;
-bool discard_state;
 
-bool WaveIsFirstLane(bool _21)
+bool WaveIsFirstLane(bool _18)
 {
-    bool _29;
-    if (_21)
+    bool _26;
+    if (_18)
     {
-        _29 = false;
+        _26 = false;
     }
     else
     {
-        _29 = subgroupElect();
+        _26 = subgroupElect();
     }
-    return _29;
-}
-
-void discard_exit()
-{
-    if (discard_state)
-    {
-        discard;
-    }
+    return _26;
 }
 
 void main()
 {
-    discard_state = false;
     if (THR == 40u)
     {
-        discard_state = true;
+        demote;
     }
-    if (WaveIsFirstLane(gl_HelperInvocation || discard_state))
+    bool _16 = helperInvocationEXT();
+    if (WaveIsFirstLane(_16))
     {
         imageStore(_8, int(0u), uvec4(1u));
     }
@@ -43,7 +35,6 @@ void main()
     {
         imageStore(_8, int(0u), uvec4(0u));
     }
-    discard_exit();
 }
 
 
@@ -52,25 +43,24 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 60
+; Bound: 44
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniform
+OpCapability DemoteToHelperInvocation
+OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %8 %10 %17 %49
+OpEntryPoint Fragment %3 "main" %8 %10
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %10 "THR"
-OpName %17 "discard_state"
-OpName %22 "WaveIsFirstLane"
-OpName %52 "discard_exit"
+OpName %19 "WaveIsFirstLane"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
 OpDecorate %10 Flat
 OpDecorate %10 Location 0
-OpDecorate %49 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -81,79 +71,60 @@ OpDecorate %49 BuiltIn HelperInvocation
 %10 = OpVariable %9 Input
 %13 = OpTypeBool
 %15 = OpConstant %5 40
-%16 = OpTypePointer Private %13
-%17 = OpVariable %16 Private
-%18 = OpConstantFalse %13
-%20 = OpTypeFunction %13 %13
-%28 = OpConstant %5 3
-%32 = OpConstant %5 0
-%33 = OpTypeVector %5 4
-%35 = OpConstant %5 1
-%47 = OpConstantTrue %13
-%48 = OpTypePointer Input %13
-%49 = OpVariable %48 Input
+%17 = OpTypeFunction %13 %13
+%25 = OpConstant %5 3
+%27 = OpConstantFalse %13
+%29 = OpConstant %5 0
+%30 = OpTypeVector %5 4
+%32 = OpConstant %5 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpStore %17 %18
-OpBranch %37
-%37 = OpLabel
+OpBranch %34
+%34 = OpLabel
 %11 = OpLoad %6 %8
 %12 = OpLoad %5 %10
 %14 = OpIEqual %13 %12 %15
-OpSelectionMerge %39 None
-OpBranchConditional %14 %38 %39
+OpSelectionMerge %36 None
+OpBranchConditional %14 %35 %36
+%35 = OpLabel
+OpDemoteToHelperInvocation
+OpBranch %36
+%36 = OpLabel
+OpBranch %37
+%37 = OpLabel
+OpBranch %38
 %38 = OpLabel
-OpStore %17 %47
-OpBranch %39
+%16 = OpIsHelperInvocationEXT %13
+%28 = OpFunctionCall %13 %19 %16
+OpSelectionMerge %41 None
+OpBranchConditional %28 %40 %39
 %39 = OpLabel
-OpBranch %40
+%31 = OpCompositeConstruct %30 %29 %29 %29 %29
+OpImageWrite %11 %29 %31
+OpBranch %41
 %40 = OpLabel
+%33 = OpCompositeConstruct %30 %32 %32 %32 %32
+OpImageWrite %11 %29 %33
 OpBranch %41
 %41 = OpLabel
-%50 = OpLoad %13 %49
-%51 = OpLoad %13 %17
-%19 = OpLogicalOr %13 %50 %51
-%31 = OpFunctionCall %13 %22 %19
-OpSelectionMerge %44 None
-OpBranchConditional %31 %43 %42
-%43 = OpLabel
-%36 = OpCompositeConstruct %33 %35 %35 %35 %35
-OpImageWrite %11 %32 %36
-OpBranch %44
+OpBranch %42
 %42 = OpLabel
-%34 = OpCompositeConstruct %33 %32 %32 %32 %32
-OpImageWrite %11 %32 %34
-OpBranch %44
-%44 = OpLabel
-OpBranch %45
-%45 = OpLabel
-OpBranch %46
-%46 = OpLabel
-%58 = OpFunctionCall %1 %52
+OpBranch %43
+%43 = OpLabel
 OpReturn
 OpFunctionEnd
-%22 = OpFunction %13 None %20
-%21 = OpFunctionParameter %13
+%19 = OpFunction %13 None %17
+%18 = OpFunctionParameter %13
+%20 = OpLabel
+OpSelectionMerge %23 None
+OpBranchConditional %18 %21 %22
+%21 = OpLabel
+OpBranch %23
+%22 = OpLabel
+%24 = OpGroupNonUniformElect %13 %25
+OpBranch %23
 %23 = OpLabel
-OpSelectionMerge %26 None
-OpBranchConditional %21 %24 %25
-%24 = OpLabel
-OpBranch %26
-%25 = OpLabel
-%27 = OpGroupNonUniformElect %13 %28
-OpBranch %26
-%26 = OpLabel
-%29 = OpPhi %13 %27 %25 %18 %24
-OpReturnValue %29
-OpFunctionEnd
-%52 = OpFunction %1 None %2
-%53 = OpLabel
-%56 = OpLoad %13 %17
-OpSelectionMerge %55 None
-OpBranchConditional %56 %54 %55
-%54 = OpLabel
-OpKill
-%55 = OpLabel
-OpReturn
+%26 = OpPhi %13 %24 %22 %27 %21
+OpReturnValue %26
 OpFunctionEnd
 #endif

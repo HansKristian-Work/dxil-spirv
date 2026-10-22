@@ -1,36 +1,27 @@
 #version 460
+#extension GL_EXT_demote_to_helper_invocation : require
 #extension GL_KHR_shader_subgroup_vote : require
 
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
 layout(location = 0) flat in uint INDEX;
-bool discard_state;
 
 uint ByteAddressMask(uint index, uint stride)
 {
     return index & (4294967295u / stride);
 }
 
-void discard_exit()
-{
-    if (discard_state)
-    {
-        discard;
-    }
-}
-
 void main()
 {
-    discard_state = false;
     if (INDEX == 40u)
     {
-        discard_state = true;
+        demote;
     }
-    if (subgroupAny((INDEX < 100u) && (!(gl_HelperInvocation || discard_state))))
+    bool _20 = helperInvocationEXT();
+    if (subgroupAny((INDEX < 100u) && (!_20)))
     {
         imageStore(_8, int(ByteAddressMask(INDEX, 4u)), uvec4(1u));
     }
-    discard_exit();
 }
 
 
@@ -39,27 +30,26 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 64
+; Bound: 47
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformVote
+OpCapability DemoteToHelperInvocation
+OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %8 %10 %17 %53
+OpEntryPoint Fragment %3 "main" %8 %10
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %10 "INDEX"
-OpName %17 "discard_state"
-OpName %31 "ByteAddressMask"
-OpName %29 "index"
-OpName %30 "stride"
-OpName %56 "discard_exit"
+OpName %28 "ByteAddressMask"
+OpName %26 "index"
+OpName %27 "stride"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
 OpDecorate %10 Flat
 OpDecorate %10 Location 0
-OpDecorate %53 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -70,77 +60,57 @@ OpDecorate %53 BuiltIn HelperInvocation
 %10 = OpVariable %9 Input
 %13 = OpTypeBool
 %15 = OpConstant %5 40
-%16 = OpTypePointer Private %13
-%17 = OpVariable %16 Private
-%18 = OpConstantFalse %13
-%20 = OpConstant %5 100
-%22 = OpConstant %5 3
-%27 = OpConstant %5 2
-%28 = OpTypeFunction %5 %5 %5
-%34 = OpConstant %5 4294967295
-%38 = OpConstant %5 4
-%39 = OpConstant %5 1
-%40 = OpTypeVector %5 4
-%51 = OpConstantTrue %13
-%52 = OpTypePointer Input %13
-%53 = OpVariable %52 Input
+%17 = OpConstant %5 100
+%19 = OpConstant %5 3
+%24 = OpConstant %5 2
+%25 = OpTypeFunction %5 %5 %5
+%31 = OpConstant %5 4294967295
+%34 = OpConstant %5 4
+%35 = OpConstant %5 1
+%36 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpStore %17 %18
-OpBranch %42
-%42 = OpLabel
+OpBranch %38
+%38 = OpLabel
 %11 = OpLoad %6 %8
 %12 = OpLoad %5 %10
 %14 = OpIEqual %13 %12 %15
+OpSelectionMerge %40 None
+OpBranchConditional %14 %39 %40
+%39 = OpLabel
+OpDemoteToHelperInvocation
+OpBranch %40
+%40 = OpLabel
+OpBranch %41
+%41 = OpLabel
+OpBranch %42
+%42 = OpLabel
+%16 = OpULessThan %13 %12 %17
+%20 = OpIsHelperInvocationEXT %13
+%21 = OpLogicalNot %13 %20
+%22 = OpLogicalAnd %13 %16 %21
+%18 = OpGroupNonUniformAny %13 %19 %22
 OpSelectionMerge %44 None
-OpBranchConditional %14 %43 %44
+OpBranchConditional %18 %43 %44
 %43 = OpLabel
-OpStore %17 %51
+%23 = OpShiftLeftLogical %5 %12 %24
+%33 = OpFunctionCall %5 %28 %12 %34
+%37 = OpCompositeConstruct %36 %35 %35 %35 %35
+OpImageWrite %11 %33 %37
 OpBranch %44
 %44 = OpLabel
 OpBranch %45
 %45 = OpLabel
 OpBranch %46
 %46 = OpLabel
-%19 = OpULessThan %13 %12 %20
-%54 = OpLoad %13 %53
-%55 = OpLoad %13 %17
-%23 = OpLogicalOr %13 %54 %55
-%24 = OpLogicalNot %13 %23
-%25 = OpLogicalAnd %13 %19 %24
-%21 = OpGroupNonUniformAny %13 %22 %25
-OpSelectionMerge %48 None
-OpBranchConditional %21 %47 %48
-%47 = OpLabel
-%26 = OpShiftLeftLogical %5 %12 %27
-%37 = OpFunctionCall %5 %31 %12 %38
-%41 = OpCompositeConstruct %40 %39 %39 %39 %39
-OpImageWrite %11 %37 %41
-OpBranch %48
-%48 = OpLabel
-OpBranch %49
-%49 = OpLabel
-OpBranch %50
-%50 = OpLabel
-%62 = OpFunctionCall %1 %56
 OpReturn
 OpFunctionEnd
-%31 = OpFunction %5 None %28
-%29 = OpFunctionParameter %5
-%30 = OpFunctionParameter %5
-%32 = OpLabel
-%33 = OpUDiv %5 %34 %30
-%35 = OpBitwiseAnd %5 %29 %33
-OpReturnValue %35
-OpFunctionEnd
-%56 = OpFunction %1 None %2
-%57 = OpLabel
-%60 = OpLoad %13 %17
-OpSelectionMerge %59 None
-OpBranchConditional %60 %58 %59
-%58 = OpLabel
-OpKill
-%59 = OpLabel
-OpReturn
+%28 = OpFunction %5 None %25
+%26 = OpFunctionParameter %5
+%27 = OpFunctionParameter %5
+%29 = OpLabel
+%30 = OpUDiv %5 %31 %27
+%32 = OpBitwiseAnd %5 %26 %30
+OpReturnValue %32
 OpFunctionEnd
 #endif

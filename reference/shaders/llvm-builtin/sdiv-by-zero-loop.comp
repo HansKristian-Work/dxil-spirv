@@ -37,42 +37,42 @@ uint SDiv(uint num, uint den)
 
 uint SRem(uint num, uint den)
 {
-    uint _55;
+    uint _54;
     SPIRV_CROSS_FLATTEN
     if (den == 0u)
     {
-        _55 = 4294967295u;
+        _54 = 4294967295u;
     }
     else
     {
-        _55 = uint(int(num) - int(den) * (int(num) / int(den)));
+        _54 = uint(int(num) - int(den) * (int(num) / int(den)));
     }
-    return _55;
+    return _54;
 }
 
 void main()
 {
     uvec4 _28 = floatBitsToUint(_15._m0[0u]);
     uint _29 = _28.x;
-    uint _44 = SDiv(65536u, _29);
-    uint _57 = SRem(65536u, _29);
+    uint _43 = SDiv(65536u, _29);
+    uint _55 = SRem(65536u, _29);
     if (!(_29 == 0u))
     {
-        uint _70 = 0u;
-        uint _60;
-        bool _68;
+        uint _68 = 0u;
+        uint _58;
+        bool _66;
         for (;;)
         {
-            imageStore(_8, int(_70 + gl_GlobalInvocationID.x), uvec4(_57 + _44));
-            _60 = _70 + 1u;
-            _68 = _60 == floatBitsToUint(_15._m0[0u]).x;
-            if (_68)
+            imageStore(_8, int(_68 + gl_GlobalInvocationID.x), uvec4(_55 + _43));
+            _58 = _68 + 1u;
+            _66 = _58 == floatBitsToUint(_15._m0[0u]).x;
+            if (_66)
             {
                 break;
             }
             else
             {
-                _70 = _60;
+                _68 = _58;
                 continue;
             }
         }
@@ -85,7 +85,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 86
+; Bound: 83
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -97,9 +97,9 @@ OpName %13 ""
 OpName %33 "SDiv"
 OpName %31 "num"
 OpName %32 "den"
-OpName %48 "SRem"
-OpName %46 "num"
-OpName %47 "den"
+OpName %47 "SRem"
+OpName %45 "num"
+OpName %46 "den"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
@@ -133,14 +133,14 @@ OpDecorate %19 BuiltIn GlobalInvocationId
 %35 = OpConstant %5 4294967295
 %38 = OpTypeBool
 %40 = OpConstantNull %5
-%45 = OpConstant %5 65536
-%53 = OpConstantNull %5
-%69 = OpTypePointer Function %5
+%44 = OpConstant %5 65536
+%52 = OpConstantNull %5
+%67 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%70 = OpVariable %69 Function
-OpBranch %71
-%71 = OpLabel
+%68 = OpVariable %67 Function
+OpBranch %69
+%69 = OpLabel
 %16 = OpLoad %6 %8
 %21 = OpAccessChain %20 %19 %22
 %23 = OpLoad %5 %21
@@ -148,38 +148,42 @@ OpBranch %71
 %26 = OpLoad %11 %25
 %28 = OpBitcast %27 %26
 %29 = OpCompositeExtract %5 %28 0
-%44 = OpFunctionCall %5 %33 %45 %29
-%57 = OpFunctionCall %5 %48 %45 %29
-%58 = OpIEqual %38 %29 %22
-OpSelectionMerge %81 None
-OpBranchConditional %58 %81 %72
+%43 = OpFunctionCall %5 %33 %44 %29
+%55 = OpFunctionCall %5 %47 %44 %29
+%56 = OpIEqual %38 %29 %22
+OpSelectionMerge %79 None
+OpBranchConditional %56 %79 %70
+%70 = OpLabel
+OpStore %68 %22
+OpBranch %71
+%71 = OpLabel
+%57 = OpLoad %5 %68
+%59 = OpIAdd %5 %55 %43
+%60 = OpIAdd %5 %57 %23
+%61 = OpCompositeConstruct %27 %59 %59 %59 %59
+OpImageWrite %16 %60 %61
+%58 = OpIAdd %5 %57 %9
+%62 = OpAccessChain %24 %15 %22 %22
+%63 = OpLoad %11 %62
+%64 = OpBitcast %27 %63
+%65 = OpCompositeExtract %5 %64 0
+%66 = OpIEqual %38 %58 %65
+OpLoopMerge %75 %73 None
+OpBranch %72
 %72 = OpLabel
-OpStore %70 %22
-OpBranch %73
+OpSelectionMerge %82 None
+OpBranchConditional %66 %74 %73
+%82 = OpLabel
+OpUnreachable
 %73 = OpLabel
-%59 = OpLoad %5 %70
-%61 = OpIAdd %5 %57 %44
-%62 = OpIAdd %5 %59 %23
-%63 = OpCompositeConstruct %27 %61 %61 %61 %61
-OpImageWrite %16 %62 %63
-%60 = OpIAdd %5 %59 %9
-%64 = OpAccessChain %24 %15 %22 %22
-%65 = OpLoad %11 %64
-%66 = OpBitcast %27 %65
-%67 = OpCompositeExtract %5 %66 0
-%68 = OpIEqual %38 %60 %67
-OpLoopMerge %77 %75 None
-OpBranch %74
+OpStore %68 %58
+OpBranch %71
 %74 = OpLabel
-OpSelectionMerge %84 None
-OpBranchConditional %68 %76 %75
+OpBranch %75
+%75 = OpLabel
+OpBranch %76
 %76 = OpLabel
 OpBranch %77
-%84 = OpLabel
-OpUnreachable
-%75 = OpLabel
-OpStore %70 %60
-OpBranch %73
 %77 = OpLabel
 OpBranch %78
 %78 = OpLabel
@@ -189,10 +193,6 @@ OpBranch %80
 %80 = OpLabel
 OpBranch %81
 %81 = OpLabel
-OpBranch %82
-%82 = OpLabel
-OpBranch %83
-%83 = OpLabel
 OpReturn
 OpFunctionEnd
 %33 = OpFunction %5 None %30
@@ -209,18 +209,18 @@ OpBranch %37
 %42 = OpPhi %5 %35 %34 %41 %36
 OpReturnValue %42
 OpFunctionEnd
-%48 = OpFunction %5 None %30
+%47 = OpFunction %5 None %30
+%45 = OpFunctionParameter %5
 %46 = OpFunctionParameter %5
-%47 = OpFunctionParameter %5
+%48 = OpLabel
+%51 = OpIEqual %38 %46 %52
+OpSelectionMerge %50 Flatten
+OpBranchConditional %51 %50 %49
 %49 = OpLabel
-%52 = OpIEqual %38 %47 %53
-OpSelectionMerge %51 Flatten
-OpBranchConditional %52 %51 %50
+%53 = OpSRem %5 %45 %46
+OpBranch %50
 %50 = OpLabel
-%54 = OpSRem %5 %46 %47
-OpBranch %51
-%51 = OpLabel
-%55 = OpPhi %5 %35 %49 %54 %50
-OpReturnValue %55
+%54 = OpPhi %5 %35 %48 %53 %49
+OpReturnValue %54
 OpFunctionEnd
 #endif

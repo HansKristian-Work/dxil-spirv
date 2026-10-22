@@ -90,7 +90,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 110
+; Bound: 109
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -158,6 +158,12 @@ OpBranch %80
 %31 = OpULessThan %30 %20 %32
 OpSelectionMerge %102 None
 OpBranchConditional %31 %82 %81
+%81 = OpLabel
+OpStore %67 %49
+OpStore %68 %49
+OpStore %69 %49
+OpStore %70 %49
+OpBranch %102
 %82 = OpLabel
 OpStore %74 %20
 OpBranch %83
@@ -201,14 +207,14 @@ OpBranchConditional %60 %90 %93
 %63 = OpULessThan %30 %42 %23
 OpSelectionMerge %108 None
 OpBranchConditional %63 %91 %92
-%92 = OpLabel
-OpBranch %93
 %108 = OpLabel
 OpUnreachable
 %91 = OpLabel
 OpStore %72 %19
 OpStore %73 %42
 OpBranch %86
+%92 = OpLabel
+OpBranch %93
 %93 = OpLabel
 %79 = OpLoad %30 %77
 OpSelectionMerge %94 None
@@ -221,16 +227,6 @@ OpBranch %96
 OpBranch %97
 %97 = OpLabel
 OpBranch %105
-%105 = OpLabel
-OpBranch %106
-%106 = OpLabel
-OpBranch %107
-%107 = OpLabel
-%64 = OpImageTexelPointer %35 %8 %19 %19
-%65 = OpAtomicIAdd %5 %64 %22 %19 %33
-%34 = OpIAdd %5 %33 %22
-OpStore %74 %34
-OpBranch %83
 %98 = OpLabel
 OpBranch %99
 %99 = OpLabel
@@ -246,12 +242,6 @@ OpStore %69 %46
 OpStore %70 %47
 OpBranch %101
 %101 = OpLabel
-OpBranch %102
-%81 = OpLabel
-OpStore %67 %49
-OpStore %68 %49
-OpStore %69 %49
-OpStore %70 %49
 OpBranch %102
 %102 = OpLabel
 OpBranch %103
@@ -271,5 +261,15 @@ OpStore %56 %51
 %57 = OpAccessChain %53 %15 %28
 OpStore %57 %52
 OpReturn
+%105 = OpLabel
+OpBranch %106
+%106 = OpLabel
+OpBranch %107
+%107 = OpLabel
+%64 = OpImageTexelPointer %35 %8 %19 %19
+%65 = OpAtomicIAdd %5 %64 %22 %19 %33
+%34 = OpIAdd %5 %33 %22
+OpStore %74 %34
+OpBranch %83
 OpFunctionEnd
 #endif

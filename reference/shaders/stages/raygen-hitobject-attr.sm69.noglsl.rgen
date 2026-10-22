@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 180
+; Bound: 179
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -83,6 +83,11 @@ OpHitObjectTraceRayEXT %34 %21 %23 %23 %23 %23 %23 %30 %24 %31 %28 %16
 %36 = OpHitObjectIsHitEXT %35 %34
 OpSelectionMerge %174 None
 OpBranchConditional %36 %173 %172
+%172 = OpLabel
+%37 = OpHitObjectIsMissEXT %35 %34
+%38 = OpSelect %13 %37 %39 %40
+OpStore %170 %38
+OpBranch %174
 %173 = OpLabel
 %42 = OpInBoundsAccessChain %41 %16 %23
 %43 = OpLoad %13 %42
@@ -205,11 +210,6 @@ OpBranch %178
 %158 = OpCompositeInsert %13 %24 %157 3
 %159 = OpFAdd %13 %158 %149
 OpStore %170 %159
-OpBranch %174
-%172 = OpLabel
-%37 = OpHitObjectIsMissEXT %35 %34
-%38 = OpSelect %13 %37 %39 %40
-OpStore %170 %38
 OpBranch %174
 %174 = OpLabel
 OpBranch %175
