@@ -37,6 +37,8 @@ void main(uint thr : SV_GroupIndex)
 		RWFloat[10] = sphere.z;
 		RWFloat[11] = sphere.w;
 
+		RWFloat[12] = NvRtCandidateLssHitParameter(q);
+
 		q.Abort();
 	}
 

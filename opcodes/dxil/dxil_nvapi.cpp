@@ -1421,6 +1421,36 @@ static bool emit_nvapi_extn_op_rt_is_primitive(Converter::Impl &impl, spv::Op op
 	return false;
 }
 
+static bool emit_nvapi_extn_op_rt_intersection_float(Converter::Impl &impl, spv::Op opcode,
+                                                     spv::RayQueryIntersection intersection)
+{
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (!ray_flags)
+		return false;
+
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+		return false;
+
+	auto &builder = impl.builder();
+	if (opcode == spv::OpRayQueryGetIntersectionLSSHitValueNV)
+	{
+		builder.addExtension("SPV_NV_linear_swept_spheres");
+		builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+	}
+
+	auto *op = impl.allocate(opcode, builder.makeFloatType(32));
+	op->add_id(ray_object_id);
+	op->add_id(builder.makeUintConstant(intersection));
+	impl.add(op);
+
+	auto *cast_op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+	cast_op->add_id(op->id);
+	impl.add(cast_op);
+	impl.nvapi.fake_doorbell_outputs[0] = cast_op->id;
+	return true;
+}
+
 bool NVAPIState::can_commit_opcode()
 {
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
@@ -1531,6 +1561,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_RT_COMMITTED_IS_SPHERE:
 		case NV_EXTN_OP_RT_CANDIDATE_IS_NONOPAQUE_LSS:
 		case NV_EXTN_OP_RT_COMMITTED_IS_LSS:
+		case NV_EXTN_OP_RT_CANDIDATE_LSS_HIT_PARAMETER:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		default:
@@ -1764,6 +1795,15 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			if (!analysis &&
 			    !emit_nvapi_extn_op_rt_is_primitive(impl, spv::OpRayQueryIsLSSHitNV,
 			                                        spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_CANDIDATE_LSS_HIT_PARAMETER:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_float(impl, spv::OpRayQueryGetIntersectionLSSHitValueNV,
+			                                              spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
 				return false;
 			break;
 
