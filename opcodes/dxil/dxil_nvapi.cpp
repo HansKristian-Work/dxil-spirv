@@ -1451,6 +1451,25 @@ static bool emit_nvapi_extn_op_rt_intersection_float(Converter::Impl &impl, spv:
 	return true;
 }
 
+static bool emit_nvapi_extn_op_rt_commit_builtin_primitive(Converter::Impl &impl)
+{
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (!ray_flags)
+		return false;
+
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+		return false;
+
+	auto *op = impl.allocate(spv::OpRayQueryConfirmIntersectionKHR);
+	op->add_id(ray_object_id);
+	impl.add(op);
+
+	// The NVAPI wrapper clocks out an unused value even though the intrinsic returns void.
+	impl.nvapi.fake_doorbell_outputs[0] = impl.builder().makeUintConstant(0);
+	return true;
+}
+
 bool NVAPIState::can_commit_opcode()
 {
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
@@ -1564,6 +1583,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_RT_CANDIDATE_LSS_HIT_PARAMETER:
 		case NV_EXTN_OP_RT_COMMITTED_LSS_HIT_PARAMETER:
 		case NV_EXTN_OP_RT_CANDIDATE_BUILTIN_PRIMITIVE_RAY_T:
+		case NV_EXTN_OP_RT_COMMIT_NONOPAQUE_BUILTIN_PRIMITIVE_HIT:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		default:
@@ -1823,6 +1843,12 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			if (!analysis &&
 			    !emit_nvapi_extn_op_rt_intersection_float(impl, spv::OpRayQueryGetIntersectionTKHR,
 			                                              spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_COMMIT_NONOPAQUE_BUILTIN_PRIMITIVE_HIT:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_commit_builtin_primitive(impl))
 				return false;
 			break;
 

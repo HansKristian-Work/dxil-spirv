@@ -9,7 +9,7 @@ RWStructuredBuffer<float> RWFloat : register(u2);
 [numthreads(64, 1, 1)]
 void main(uint thr : SV_GroupIndex)
 {
-	RayQuery<RAY_FLAG_CULL_NON_OPAQUE> q;
+	RayQuery<RAY_FLAG_NONE> q;
 	RayDesc ray;
 	ray.Origin = float3(1, 2, 3);
 	ray.TMin = 4;
@@ -19,8 +19,14 @@ void main(uint thr : SV_GroupIndex)
 
 	while (q.Proceed())
 	{
-		RWBool[4 * thr + 0] = NvRtCandidateIsNonOpaqueLss(q);
-		RWBool[4 * thr + 2] = NvRtCandidateIsNonOpaqueSphere(q);
+		bool lss = NvRtCandidateIsNonOpaqueLss(q);
+		bool spherical = NvRtCandidateIsNonOpaqueSphere(q);
+		RWBool[4 * thr + 0] = lss;
+		RWBool[4 * thr + 2] = spherical;
+
+		if (lss || spherical)
+			NvRtCommitNonOpaqueBuiltinPrimitiveHit(q);
+
 		float2x4 position_and_radii = NvRtCandidateLssObjectPositionsAndRadii(q);
 		RWFloat[0] = position_and_radii[0][0];
 		RWFloat[1] = position_and_radii[0][1];
