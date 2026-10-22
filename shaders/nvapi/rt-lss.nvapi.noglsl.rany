@@ -7,6 +7,7 @@ struct Payload
 	bool lss;
 	float4 sphere0;
 	float4 sphere1;
+	float4 sphere;
 };
 
 [shader("anyhit")]
@@ -17,4 +18,5 @@ void RayHit(inout Payload payload, BuiltInTriangleIntersectionAttributes attr)
 	float2x4 spheres = NvRtLssObjectPositionsAndRadii();
 	payload.sphere0 = spheres[0];
 	payload.sphere1 = spheres[1];
+	payload.sphere = NvRtSphereObjectPositionAndRadius();
 }

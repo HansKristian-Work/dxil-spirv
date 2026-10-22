@@ -1148,6 +1148,51 @@ static bool emit_nvapi_extn_op_rt_get_intersection_cluster_id(Converter::Impl &i
 	return false;
 }
 
+static void emit_nvapi_sphere_position_and_radius(Converter::Impl &impl, spv::Id position, spv::Id radius)
+{
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+	auto uint32 = builder.makeUintType(32);
+
+	for (uint32_t i = 0; i < 3; i++)
+	{
+		auto *extract_op = impl.allocate(spv::OpCompositeExtract, float32);
+		extract_op->add_id(position);
+		extract_op->add_literal(i);
+		impl.add(extract_op);
+
+		auto *cast_op = impl.allocate(spv::OpBitcast, uint32);
+		cast_op->add_id(extract_op->id);
+		impl.add(cast_op);
+		impl.nvapi.fake_doorbell_outputs[i] = cast_op->id;
+	}
+
+	auto *cast_op = impl.allocate(spv::OpBitcast, uint32);
+	cast_op->add_id(radius);
+	impl.add(cast_op);
+	impl.nvapi.fake_doorbell_outputs[3] = cast_op->id;
+}
+
+static bool emit_nvapi_extn_op_rt_sphere_position_and_radius(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+
+	builder.addExtension("SPV_NV_linear_swept_spheres");
+	builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+
+	auto *position = impl.allocate(spv::OpLoad, builder.makeVectorType(float32, 3));
+	position->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInHitSpherePositionNV));
+	impl.add(position);
+
+	auto *radius = impl.allocate(spv::OpLoad, float32);
+	radius->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInHitSphereRadiusNV));
+	impl.add(radius);
+
+	emit_nvapi_sphere_position_and_radius(impl, position->id, radius->id);
+	return true;
+}
+
 static bool emit_nvapi_extn_op_hit_object_get_position_and_radii(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
@@ -1413,6 +1458,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_RT_GET_COMMITTED_CLUSTER_ID:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
+		case NV_EXTN_OP_RT_SPHERE_OBJECT_POSITION_AND_RADIUS:
 		case NV_EXTN_OP_RT_LSS_OBJECT_POSITIONS_AND_RADII:
 			return true;
 
@@ -1562,6 +1608,13 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_rt_get_intersection_cluster_id(impl, spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_SPHERE_OBJECT_POSITION_AND_RADIUS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 4;
+			if (!analysis && !emit_nvapi_extn_op_rt_sphere_position_and_radius(impl))
 				return false;
 			break;
 
