@@ -285,6 +285,7 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 		return builder.makeArrayType(builder.makeFloatType(32), builder.makeUintConstant(2), 0);
 
 	case spv::BuiltInHitIsLSSNV:
+	case spv::BuiltInHitIsSphereNV:
 		return builder.makeBoolType();
 
 	default:

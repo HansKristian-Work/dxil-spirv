@@ -1343,16 +1343,28 @@ static bool emit_nvapi_extn_op_rt_get_position_and_radii(Converter::Impl &impl, 
 	return true;
 }
 
-static bool emit_nvapi_extn_op_rt_is_lss_hit(Converter::Impl &impl)
+static bool emit_nvapi_extn_op_rt_is_primitive_hit(Converter::Impl &impl, spv::BuiltIn builtin)
 {
 	auto &builder = impl.builder();
 
 	builder.addExtension("SPV_NV_linear_swept_spheres");
-	builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+	switch (builtin)
+	{
+	case spv::BuiltInHitIsLSSNV:
+		builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+		break;
 
-	spv::Id hit_is_lss = impl.spirv_module.get_builtin_shader_input(spv::BuiltInHitIsLSSNV);
+	case spv::BuiltInHitIsSphereNV:
+		builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+		break;
+
+	default:
+		return false;
+	}
+
+	spv::Id hit = impl.spirv_module.get_builtin_shader_input(builtin);
 	auto *load_op = impl.allocate(spv::OpLoad, builder.makeBoolType());
-	load_op->add_id(hit_is_lss);
+	load_op->add_id(hit);
 	impl.add(load_op);
 
 	auto *select_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
@@ -1498,6 +1510,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_RT_COMMITTED_LSS_OBJECT_POSITIONS_AND_RADII:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
+		case NV_EXTN_OP_RT_IS_SPHERE_HIT:
 		case NV_EXTN_OP_RT_IS_LSS_HIT:
 			return true;
 
@@ -1689,10 +1702,17 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 				return false;
 			break;
 
+		case NV_EXTN_OP_RT_IS_SPHERE_HIT:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_is_primitive_hit(impl, spv::BuiltInHitIsSphereNV))
+				return false;
+			break;
+
 		case NV_EXTN_OP_RT_IS_LSS_HIT:
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 1;
-			if (!analysis && !emit_nvapi_extn_op_rt_is_lss_hit(impl))
+			if (!analysis && !emit_nvapi_extn_op_rt_is_primitive_hit(impl, spv::BuiltInHitIsLSSNV))
 				return false;
 			break;
 

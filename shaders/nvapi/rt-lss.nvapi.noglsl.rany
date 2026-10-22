@@ -5,6 +5,7 @@
 struct Payload
 {
 	bool lss;
+	bool spherical;
 	float4 sphere0;
 	float4 sphere1;
 	float4 sphere;
@@ -14,6 +15,7 @@ struct Payload
 void RayHit(inout Payload payload, BuiltInTriangleIntersectionAttributes attr)
 {
 	payload.lss = NvRtIsLssHit();
+	payload.spherical = NvRtIsSphereHit();
 
 	float2x4 spheres = NvRtLssObjectPositionsAndRadii();
 	payload.sphere0 = spheres[0];
