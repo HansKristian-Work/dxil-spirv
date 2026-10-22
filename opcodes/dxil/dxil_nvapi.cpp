@@ -1377,7 +1377,8 @@ static bool emit_nvapi_extn_op_rt_is_primitive_hit(Converter::Impl &impl, spv::B
 	return true;
 }
 
-static bool emit_nvapi_extn_op_rt_is_lss(Converter::Impl &impl, spv::RayQueryIntersection intersection)
+static bool emit_nvapi_extn_op_rt_is_primitive(Converter::Impl &impl, spv::Op opcode,
+                                               spv::RayQueryIntersection intersection)
 {
 	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
 	if (ray_flags != nullptr)
@@ -1388,9 +1389,21 @@ static bool emit_nvapi_extn_op_rt_is_lss(Converter::Impl &impl, spv::RayQueryInt
 			return false;
 
 		builder.addExtension("SPV_NV_linear_swept_spheres");
-		builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+		switch (opcode)
+		{
+		case spv::OpRayQueryIsLSSHitNV:
+			builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+			break;
 
-		auto *op = impl.allocate(spv::OpRayQueryIsLSSHitNV, builder.makeBoolType());
+		case spv::OpRayQueryIsSphereHitNV:
+			builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+			break;
+
+		default:
+			return false;
+		}
+
+		auto *op = impl.allocate(opcode, builder.makeBoolType());
 		op->add_id(ray_object_id);
 		op->add_id(builder.makeUintConstant(intersection));
 		impl.add(op);
@@ -1514,6 +1527,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_RT_IS_LSS_HIT:
 			return true;
 
+		case NV_EXTN_OP_RT_CANDIDATE_IS_NONOPAQUE_SPHERE:
 		case NV_EXTN_OP_RT_CANDIDATE_IS_NONOPAQUE_LSS:
 		case NV_EXTN_OP_RT_COMMITTED_IS_LSS:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
@@ -1716,17 +1730,30 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 				return false;
 			break;
 
+		case NV_EXTN_OP_RT_CANDIDATE_IS_NONOPAQUE_SPHERE:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_is_primitive(impl, spv::OpRayQueryIsSphereHitNV,
+			                                        spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
 		case NV_EXTN_OP_RT_CANDIDATE_IS_NONOPAQUE_LSS:
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 1;
-			if (!analysis && !emit_nvapi_extn_op_rt_is_lss(impl, spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_is_primitive(impl, spv::OpRayQueryIsLSSHitNV,
+			                                        spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
 				return false;
 			break;
 
 		case NV_EXTN_OP_RT_COMMITTED_IS_LSS:
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 1;
-			if (!analysis && !emit_nvapi_extn_op_rt_is_lss(impl, spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_is_primitive(impl, spv::OpRayQueryIsLSSHitNV,
+			                                        spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
 				return false;
 			break;
 
