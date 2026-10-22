@@ -127,11 +127,11 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %21 = OpConstant %5 2
 %30 = OpTypeBool
 %32 = OpConstant %5 10
-%34 = OpConstant %5 70
-%35 = OpConstant %5 50
-%38 = OpConstant %5 80
-%39 = OpTypeVector %5 4
-%42 = OpConstant %5 20
+%35 = OpConstant %5 20
+%38 = OpConstant %5 70
+%39 = OpConstant %5 50
+%41 = OpConstant %5 80
+%42 = OpTypeVector %5 4
 %44 = OpTypePointer Function %5
 %51 = OpTypePointer Function %30
 %54 = OpConstantTrue %30
@@ -177,26 +177,26 @@ OpBranch %63
 OpSelectionMerge %83 None
 OpBranchConditional %31 %69 %64
 %69 = OpLabel
-OpStore %46 %35
+OpStore %46 %39
 OpStore %55 %54
 OpStore %52 %56
 OpBranch %70
 %64 = OpLabel
-%36 = OpULessThan %30 %22 %32
+%33 = OpULessThan %30 %22 %32
 OpSelectionMerge %84 None
-OpBranchConditional %36 %68 %65
+OpBranchConditional %33 %68 %65
 %68 = OpLabel
-OpStore %46 %34
+OpStore %46 %38
 OpStore %55 %54
 OpStore %52 %56
 OpBranch %70
 %65 = OpLabel
 %26 = OpIAdd %5 %29 %18
 %28 = OpIAdd %5 %27 %18
-%41 = OpSLessThan %30 %28 %42
+%34 = OpSLessThan %30 %28 %35
 OpStore %58 %26
 OpSelectionMerge %85 None
-OpBranchConditional %41 %66 %67
+OpBranchConditional %34 %66 %67
 %67 = OpLabel
 OpBranch %70
 %85 = OpLabel
@@ -219,9 +219,9 @@ OpBranch %72
 OpBranch %73
 %73 = OpLabel
 %24 = OpIAdd %5 %23 %18
-%43 = OpSLessThan %30 %24 %32
+%36 = OpSLessThan %30 %24 %32
 OpSelectionMerge %86 None
-OpBranchConditional %43 %74 %75
+OpBranchConditional %36 %74 %75
 %75 = OpLabel
 OpStore %52 %54
 OpBranch %76
@@ -239,20 +239,20 @@ OpBranch %77
 OpSelectionMerge %80 None
 OpBranchConditional %53 %78 %79
 %78 = OpLabel
-OpStore %45 %38
+OpStore %45 %41
 OpBranch %80
 %79 = OpLabel
-%33 = OpLoad %5 %46
-OpStore %45 %33
+%37 = OpLoad %5 %46
+OpStore %45 %37
 OpBranch %80
 %80 = OpLabel
 OpBranch %81
 %81 = OpLabel
 OpBranch %82
 %82 = OpLabel
-%37 = OpLoad %5 %45
-%40 = OpCompositeConstruct %39 %37 %37 %37 %37
-OpImageWrite %9 %16 %40
+%40 = OpLoad %5 %45
+%43 = OpCompositeConstruct %42 %40 %40 %40 %40
+OpImageWrite %9 %16 %43
 OpReturn
 OpFunctionEnd
 #endif

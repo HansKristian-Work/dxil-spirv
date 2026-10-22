@@ -82,14 +82,14 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %18 = OpConstant %5 1
 %19 = OpTypeBool
 %22 = OpConstant %5 2
-%25 = OpConstant %5 60
-%26 = OpConstant %5 30
-%27 = OpConstant %5 40
-%28 = OpConstant %5 50
-%29 = OpTypeVector %5 4
-%32 = OpConstant %5 4
-%35 = OpConstant %5 8
-%38 = OpConstant %5 16
+%25 = OpConstant %5 4
+%28 = OpConstant %5 8
+%31 = OpConstant %5 16
+%34 = OpConstant %5 60
+%35 = OpConstant %5 30
+%36 = OpConstant %5 40
+%37 = OpConstant %5 50
+%38 = OpTypeVector %5 4
 %40 = OpTypePointer Function %5
 %42 = OpTypePointer Function %19
 %44 = OpConstantFalse %19
@@ -117,40 +117,40 @@ OpBranch %62
 OpSelectionMerge %60 None
 OpBranchConditional %23 %50 %49
 %50 = OpLabel
-%31 = OpBitwiseAnd %5 %16 %32
-%33 = OpIEqual %19 %31 %15
+%24 = OpBitwiseAnd %5 %16 %25
+%26 = OpIEqual %19 %24 %15
 OpSelectionMerge %59 None
-OpBranchConditional %33 %52 %51
+OpBranchConditional %26 %52 %51
 %52 = OpLabel
-%34 = OpBitwiseAnd %5 %16 %35
-%36 = OpIEqual %19 %34 %15
+%27 = OpBitwiseAnd %5 %16 %28
+%29 = OpIEqual %19 %27 %15
 OpSelectionMerge %58 None
-OpBranchConditional %36 %54 %53
+OpBranchConditional %29 %54 %53
 %54 = OpLabel
-%37 = OpBitwiseAnd %5 %16 %38
-%39 = OpIEqual %19 %37 %15
+%30 = OpBitwiseAnd %5 %16 %31
+%32 = OpIEqual %19 %30 %15
 OpSelectionMerge %57 None
-OpBranchConditional %39 %56 %55
+OpBranchConditional %32 %56 %55
 %56 = OpLabel
 OpStore %43 %46
 OpBranch %57
 %55 = OpLabel
-OpStore %41 %28
+OpStore %41 %37
 OpBranch %57
 %57 = OpLabel
 OpBranch %58
 %53 = OpLabel
-OpStore %41 %27
+OpStore %41 %36
 OpBranch %58
 %58 = OpLabel
 OpBranch %59
 %51 = OpLabel
-OpStore %41 %26
+OpStore %41 %35
 OpBranch %59
 %59 = OpLabel
 OpBranch %60
 %49 = OpLabel
-OpStore %41 %25
+OpStore %41 %34
 OpBranch %60
 %60 = OpLabel
 OpBranch %62
@@ -168,9 +168,9 @@ OpBranch %66
 %66 = OpLabel
 OpBranch %67
 %67 = OpLabel
-%24 = OpLoad %5 %41
-%30 = OpCompositeConstruct %29 %24 %24 %24 %24
-OpImageWrite %9 %15 %30
+%33 = OpLoad %5 %41
+%39 = OpCompositeConstruct %38 %33 %33 %33 %33
+OpImageWrite %9 %15 %39
 OpReturn
 OpFunctionEnd
 #endif

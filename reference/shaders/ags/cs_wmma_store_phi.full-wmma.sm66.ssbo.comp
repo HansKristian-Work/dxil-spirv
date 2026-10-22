@@ -41,9 +41,9 @@ void main()
         _82 = floatBitsToUint(_29._m0[0u]).x == 1u;
         if (_82)
         {
-            coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _86;
-            coopMatLoad(_86, _20._m0, _39 + 1024u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
-            _193 = _86;
+            coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _88;
+            coopMatLoad(_88, _20._m0, _39 + 1024u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
+            _193 = _88;
         }
         else
         {
@@ -172,9 +172,9 @@ OpDecorate %29 Binding 0
 %75 = OpTypePointer Uniform %25
 %78 = OpTypeVector %2 4
 %81 = OpTypeBool
-%84 = OpConstant %2 1024
-%87 = OpConstant %1 0x0p+0
-%88 = OpConstantComposite %8 %87
+%83 = OpConstant %1 0x0p+0
+%84 = OpConstantComposite %8 %83
+%86 = OpConstant %2 1024
 %92 = OpTypePointer Function %8
 %116 = OpConstant %9 0
 %117 = OpConstantComposite %11 %116
@@ -226,13 +226,13 @@ OpBranch %197
 OpSelectionMerge %200 None
 OpBranchConditional %82 %199 %198
 %199 = OpLabel
-%83 = OpIAdd %2 %39 %84
-%85 = OpAccessChain %42 %20 %3 %83
-%86 = OpCooperativeMatrixLoadKHR %8 %85 %7 %44 NonPrivatePointer
-OpStore %193 %86
+%85 = OpIAdd %2 %39 %86
+%87 = OpAccessChain %42 %20 %3 %85
+%88 = OpCooperativeMatrixLoadKHR %8 %87 %7 %44 NonPrivatePointer
+OpStore %193 %88
 OpBranch %200
 %198 = OpLabel
-OpStore %193 %88
+OpStore %193 %84
 OpBranch %200
 %200 = OpLabel
 OpBranch %201

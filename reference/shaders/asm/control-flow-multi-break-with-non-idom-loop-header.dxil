@@ -133,13 +133,13 @@ OpDecorate %13 NonWritable
 %38 = OpConstant %5 18
 %43 = OpTypeBool
 %45 = OpConstant %5 20
-%48 = OpConstant %5 21
-%54 = OpConstant %5 32
-%55 = OpConstant %5 23
-%62 = OpConstant %5 99
-%63 = OpConstant %5 24
-%69 = OpConstant %5 30
-%72 = OpConstant %5 43
+%46 = OpConstant %5 21
+%52 = OpConstant %5 32
+%53 = OpConstant %5 24
+%59 = OpConstant %5 30
+%60 = OpConstant %5 43
+%72 = OpConstant %5 99
+%75 = OpConstant %5 23
 %78 = OpTypePointer Function %43
 %81 = OpConstantFalse %43
 %82 = OpConstantTrue %43
@@ -174,35 +174,35 @@ OpBranchConditional %44 %95 %86
 OpStore %79 %81
 OpBranch %96
 %86 = OpLabel
-OpStore %32 %48
+OpStore %32 %46
+%47 = OpLoad %5 %32
+%48 = OpFunctionCall %1 %16 %47
 %49 = OpLoad %5 %32
-%50 = OpFunctionCall %1 %16 %49
-%51 = OpLoad %5 %32
-%52 = OpFunctionCall %5 %26 %51
-%53 = OpIEqual %43 %52 %54
+%50 = OpFunctionCall %5 %26 %49
+%51 = OpIEqual %43 %50 %52
 OpSelectionMerge %92 None
-OpBranchConditional %53 %92 %87
+OpBranchConditional %51 %92 %87
 %87 = OpLabel
-OpStore %32 %63
-%64 = OpLoad %5 %32
-%65 = OpFunctionCall %1 %16 %64
-%66 = OpLoad %5 %32
-%67 = OpFunctionCall %5 %26 %66
-%68 = OpIEqual %43 %67 %69
+OpStore %32 %53
+%54 = OpLoad %5 %32
+%55 = OpFunctionCall %1 %16 %54
+%56 = OpLoad %5 %32
+%57 = OpFunctionCall %5 %26 %56
+%58 = OpIEqual %43 %57 %59
 OpSelectionMerge %88 None
-OpBranchConditional %68 %91 %88
+OpBranchConditional %58 %91 %88
 %91 = OpLabel
 OpStore %79 %82
 OpBranch %96
 %88 = OpLabel
-OpStore %32 %72
-%73 = OpLoad %5 %32
-%74 = OpFunctionCall %1 %16 %73
-%75 = OpLoad %5 %32
-%76 = OpFunctionCall %5 %26 %75
-%77 = OpIEqual %43 %76 %69
+OpStore %32 %60
+%61 = OpLoad %5 %32
+%62 = OpFunctionCall %1 %16 %61
+%63 = OpLoad %5 %32
+%64 = OpFunctionCall %5 %26 %63
+%65 = OpIEqual %43 %64 %59
 OpSelectionMerge %89 None
-OpBranchConditional %77 %90 %89
+OpBranchConditional %65 %90 %89
 %90 = OpLabel
 OpStore %79 %82
 OpBranch %96
@@ -213,13 +213,13 @@ OpBranch %93
 %93 = OpLabel
 OpBranch %94
 %94 = OpLabel
-OpStore %32 %54
-%58 = OpLoad %5 %32
-%59 = OpFunctionCall %1 %16 %58
-%60 = OpLoad %5 %31
-%61 = OpSLessThan %43 %60 %62
+OpStore %32 %52
+%68 = OpLoad %5 %32
+%69 = OpFunctionCall %1 %16 %68
+%70 = OpLoad %5 %31
+%71 = OpSLessThan %43 %70 %72
 OpStore %79 %81
-OpBranchConditional %61 %84 %96
+OpBranchConditional %71 %84 %96
 %96 = OpLabel
 OpBranch %97
 %97 = OpLabel
@@ -227,23 +227,23 @@ OpBranch %97
 OpSelectionMerge %100 None
 OpBranchConditional %80 %98 %99
 %98 = OpLabel
-OpStore %32 %69
-%70 = OpLoad %5 %32
-%71 = OpFunctionCall %1 %16 %70
+OpStore %32 %59
+%66 = OpLoad %5 %32
+%67 = OpFunctionCall %1 %16 %66
 OpBranch %100
 %99 = OpLabel
 OpStore %32 %45
-%46 = OpLoad %5 %32
-%47 = OpFunctionCall %1 %16 %46
+%73 = OpLoad %5 %32
+%74 = OpFunctionCall %1 %16 %73
 OpBranch %100
 %100 = OpLabel
 OpBranch %101
 %101 = OpLabel
 OpBranch %102
 %102 = OpLabel
-OpStore %32 %55
-%56 = OpLoad %5 %32
-%57 = OpFunctionCall %1 %16 %56
+OpStore %32 %75
+%76 = OpLoad %5 %32
+%77 = OpFunctionCall %1 %16 %76
 OpReturn
 OpFunctionEnd
 %16 = OpFunction %1 None %14

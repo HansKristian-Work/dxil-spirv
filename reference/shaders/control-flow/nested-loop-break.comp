@@ -18,7 +18,7 @@ void main()
     else
     {
         uint _26;
-        uint _30;
+        uint _28;
         uint _84;
         uint _85;
         bool _93;
@@ -27,68 +27,68 @@ void main()
         uint _101;
         uint _90 = 0u;
         uint _91 = 0u;
-        uint _29;
-        uint _31;
-        bool _32;
+        uint _25;
+        uint _27;
+        bool _29;
         for (;;)
         {
-            _31 = _91;
-            _29 = _90;
-            _32 = gl_GlobalInvocationID.y == 0u;
-            if (_32)
+            _27 = _91;
+            _25 = _90;
+            _29 = gl_GlobalInvocationID.y == 0u;
+            if (_29)
             {
-                _84 = _31;
+                _84 = _27;
             }
             else
             {
-                uint _34;
-                uint _37;
+                uint _31;
+                uint _33;
                 uint _88 = 0u;
-                uint _89 = _31;
-                uint _36;
-                uint _38;
-                bool _56;
+                uint _89 = _27;
+                uint _30;
+                uint _32;
+                bool _52;
                 for (;;)
                 {
-                    _38 = _89;
-                    _36 = _88;
-                    _56 = imageLoad(_8, int(ByteAddressMask(_36 * 32u, 4u))).x == 10u;
-                    if (_56)
+                    _32 = _89;
+                    _30 = _88;
+                    _52 = imageLoad(_8, int(ByteAddressMask(_30 * 32u, 4u))).x == 10u;
+                    if (_52)
                     {
                         _93 = false;
                         break;
                     }
                     if (gl_GlobalInvocationID.z == 0u)
                     {
-                        _85 = _38;
+                        _85 = _32;
                     }
                     else
                     {
-                        uint _62;
-                        uint _66;
-                        uint _86 = _38;
+                        uint _56;
+                        uint _58;
+                        uint _86 = _32;
                         uint _87 = 0u;
-                        uint _64;
-                        uint _65;
-                        bool _72;
+                        uint _55;
+                        uint _57;
+                        bool _64;
                         for (;;)
                         {
-                            _65 = _87;
-                            _64 = _86;
-                            _72 = imageLoad(_8, int(ByteAddressMask(_65 * 32u, 4u))).x == 10u;
-                            if (_72)
+                            _57 = _87;
+                            _55 = _86;
+                            _64 = imageLoad(_8, int(ByteAddressMask(_57 * 32u, 4u))).x == 10u;
+                            if (_64)
                             {
                                 _96 = false;
                                 break;
                             }
-                            uint _76 = (_36 ^ _29) ^ _65;
-                            _62 = imageLoad(_8, int(ByteAddressMask(_76, 4u))).x + _64;
-                            _66 = _65 + 1u;
-                            _101 = _62;
-                            if (_66 < gl_GlobalInvocationID.z)
+                            uint _66 = (_30 ^ _25) ^ _57;
+                            _56 = imageLoad(_8, int(ByteAddressMask(_66, 4u))).x + _55;
+                            _58 = _57 + 1u;
+                            _101 = _56;
+                            if (_58 < gl_GlobalInvocationID.z)
                             {
-                                _86 = _62;
-                                _87 = _66;
+                                _86 = _56;
+                                _87 = _58;
                                 continue;
                             }
                             else
@@ -103,16 +103,16 @@ void main()
                         }
                         else
                         {
-                            _85 = imageLoad(_8, int(2u)).x + _64;
+                            _85 = imageLoad(_8, int(2u)).x + _55;
                         }
                     }
-                    _34 = _85;
-                    _37 = _36 + 1u;
-                    _99 = _34;
-                    if (_37 < gl_GlobalInvocationID.y)
+                    _33 = _85;
+                    _31 = _30 + 1u;
+                    _99 = _33;
+                    if (_31 < gl_GlobalInvocationID.y)
                     {
-                        _88 = _37;
-                        _89 = _34;
+                        _88 = _31;
+                        _89 = _33;
                         continue;
                     }
                     else
@@ -127,23 +127,23 @@ void main()
                 }
                 else
                 {
-                    _84 = imageLoad(_8, int(1u)).x + _38;
+                    _84 = imageLoad(_8, int(1u)).x + _32;
                 }
             }
-            _26 = _84;
-            _30 = _29 + 1u;
-            if (_30 == gl_GlobalInvocationID.x)
+            _28 = _84;
+            _26 = _25 + 1u;
+            if (_26 == gl_GlobalInvocationID.x)
             {
                 break;
             }
             else
             {
-                _90 = _30;
-                _91 = _26;
+                _90 = _26;
+                _91 = _28;
                 continue;
             }
         }
-        _83 = _26;
+        _83 = _28;
     }
     imageStore(_8, int(0u), uvec4(_83));
 }
@@ -162,9 +162,9 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %8 %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
-OpName %46 "ByteAddressMask"
-OpName %44 "index"
-OpName %45 "stride"
+OpName %41 "ByteAddressMask"
+OpName %39 "index"
+OpName %40 "stride"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %12 BuiltIn GlobalInvocationId
@@ -182,13 +182,13 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %18 = OpConstant %5 1
 %21 = OpConstant %5 2
 %23 = OpTypeBool
-%27 = OpTypeVector %5 4
-%40 = OpConstant %5 7
-%42 = OpConstant %5 32
-%43 = OpTypeFunction %5 %5 %5
-%49 = OpConstant %5 4294967295
-%53 = OpConstant %5 4
-%57 = OpConstant %5 10
+%35 = OpConstant %5 7
+%37 = OpConstant %5 32
+%38 = OpTypeFunction %5 %5 %5
+%44 = OpConstant %5 4294967295
+%48 = OpConstant %5 4
+%49 = OpTypeVector %5 4
+%53 = OpConstant %5 10
 %82 = OpTypePointer Function %5
 %92 = OpTypePointer Function %23
 %95 = OpConstantFalse %23
@@ -228,87 +228,87 @@ OpStore %90 %15
 OpStore %91 %15
 OpBranch %105
 %105 = OpLabel
-%31 = OpLoad %5 %91
-%29 = OpLoad %5 %90
-%32 = OpIEqual %23 %19 %15
+%27 = OpLoad %5 %91
+%25 = OpLoad %5 %90
+%29 = OpIEqual %23 %19 %15
 OpLoopMerge %141 %139 None
 OpBranch %106
 %106 = OpLabel
 OpSelectionMerge %136 None
-OpBranchConditional %32 %135 %107
+OpBranchConditional %29 %135 %107
 %135 = OpLabel
-OpStore %84 %31
+OpStore %84 %27
 OpBranch %136
 %107 = OpLabel
 OpStore %88 %15
-OpStore %89 %31
+OpStore %89 %27
 OpBranch %108
 %108 = OpLabel
-%38 = OpLoad %5 %89
-%36 = OpLoad %5 %88
-%39 = OpShiftLeftLogical %5 %36 %40
-%41 = OpIMul %5 %36 %42
-%52 = OpFunctionCall %5 %46 %41 %53
-%54 = OpImageRead %27 %9 %52
-%55 = OpCompositeExtract %5 %54 0
-%56 = OpIEqual %23 %55 %57
+%32 = OpLoad %5 %89
+%30 = OpLoad %5 %88
+%34 = OpShiftLeftLogical %5 %30 %35
+%36 = OpIMul %5 %30 %37
+%47 = OpFunctionCall %5 %41 %36 %48
+%50 = OpImageRead %49 %9 %47
+%51 = OpCompositeExtract %5 %50 0
+%52 = OpIEqual %23 %51 %53
 OpLoopMerge %130 %127 None
 OpBranch %109
 %109 = OpLabel
 OpSelectionMerge %110 None
-OpBranchConditional %56 %129 %110
+OpBranchConditional %52 %129 %110
 %129 = OpLabel
 OpStore %93 %95
 OpBranch %130
 %110 = OpLabel
-%60 = OpIEqual %23 %22 %15
+%54 = OpIEqual %23 %22 %15
 OpSelectionMerge %124 None
-OpBranchConditional %60 %123 %111
+OpBranchConditional %54 %123 %111
 %123 = OpLabel
-OpStore %85 %38
+OpStore %85 %32
 OpBranch %124
 %111 = OpLabel
-OpStore %86 %38
+OpStore %86 %32
 OpStore %87 %15
 OpBranch %112
 %112 = OpLabel
-%65 = OpLoad %5 %87
-%64 = OpLoad %5 %86
-%67 = OpShiftLeftLogical %5 %65 %40
-%68 = OpIMul %5 %65 %42
-%69 = OpFunctionCall %5 %46 %68 %53
-%70 = OpImageRead %27 %9 %69
-%71 = OpCompositeExtract %5 %70 0
-%72 = OpIEqual %23 %71 %57
+%57 = OpLoad %5 %87
+%55 = OpLoad %5 %86
+%59 = OpShiftLeftLogical %5 %57 %35
+%60 = OpIMul %5 %57 %37
+%61 = OpFunctionCall %5 %41 %60 %48
+%62 = OpImageRead %49 %9 %61
+%63 = OpCompositeExtract %5 %62 0
+%64 = OpIEqual %23 %63 %53
 OpLoopMerge %118 %115 None
 OpBranch %113
 %113 = OpLabel
 OpSelectionMerge %114 None
-OpBranchConditional %72 %117 %114
+OpBranchConditional %64 %117 %114
 %117 = OpLabel
 OpStore %96 %95
 OpBranch %118
 %114 = OpLabel
-%75 = OpBitwiseXor %5 %36 %29
-%76 = OpBitwiseXor %5 %75 %65
-%77 = OpShiftLeftLogical %5 %76 %21
-%78 = OpFunctionCall %5 %46 %76 %53
-%79 = OpImageRead %27 %9 %78
-%80 = OpCompositeExtract %5 %79 0
-%62 = OpIAdd %5 %80 %64
-%66 = OpIAdd %5 %65 %18
-%81 = OpULessThan %23 %66 %22
-OpStore %101 %62
+%65 = OpBitwiseXor %5 %30 %25
+%66 = OpBitwiseXor %5 %65 %57
+%67 = OpShiftLeftLogical %5 %66 %21
+%68 = OpFunctionCall %5 %41 %66 %48
+%69 = OpImageRead %49 %9 %68
+%70 = OpCompositeExtract %5 %69 0
+%56 = OpIAdd %5 %70 %55
+%58 = OpIAdd %5 %57 %18
+%71 = OpULessThan %23 %58 %22
+OpStore %101 %56
 OpSelectionMerge %149 None
-OpBranchConditional %81 %115 %116
+OpBranchConditional %71 %115 %116
 %116 = OpLabel
 OpStore %96 %98
 OpBranch %118
 %149 = OpLabel
 OpUnreachable
 %115 = OpLabel
-OpStore %86 %62
-OpStore %87 %66
+OpStore %86 %56
+OpStore %87 %58
 OpBranch %112
 %118 = OpLabel
 OpBranch %119
@@ -321,10 +321,10 @@ OpBranchConditional %97 %120 %121
 OpStore %85 %102
 OpBranch %122
 %121 = OpLabel
-%73 = OpImageRead %27 %9 %21
-%74 = OpCompositeExtract %5 %73 0
-%61 = OpIAdd %5 %74 %64
-OpStore %85 %61
+%72 = OpImageRead %49 %9 %21
+%73 = OpCompositeExtract %5 %72 0
+%74 = OpIAdd %5 %73 %55
+OpStore %85 %74
 OpBranch %122
 %122 = OpLabel
 OpBranch %124
@@ -333,20 +333,20 @@ OpBranch %125
 %125 = OpLabel
 OpBranch %126
 %126 = OpLabel
-%34 = OpLoad %5 %85
-%37 = OpIAdd %5 %36 %18
-%63 = OpULessThan %23 %37 %19
-OpStore %99 %34
+%33 = OpLoad %5 %85
+%31 = OpIAdd %5 %30 %18
+%75 = OpULessThan %23 %31 %19
+OpStore %99 %33
 OpSelectionMerge %150 None
-OpBranchConditional %63 %127 %128
+OpBranchConditional %75 %127 %128
 %128 = OpLabel
 OpStore %93 %98
 OpBranch %130
 %150 = OpLabel
 OpUnreachable
 %127 = OpLabel
-OpStore %88 %37
-OpStore %89 %34
+OpStore %88 %31
+OpStore %89 %33
 OpBranch %108
 %130 = OpLabel
 OpBranch %131
@@ -359,10 +359,10 @@ OpBranchConditional %94 %132 %133
 OpStore %84 %100
 OpBranch %134
 %133 = OpLabel
-%58 = OpImageRead %27 %9 %18
-%59 = OpCompositeExtract %5 %58 0
-%33 = OpIAdd %5 %59 %38
-OpStore %84 %33
+%76 = OpImageRead %49 %9 %18
+%77 = OpCompositeExtract %5 %76 0
+%78 = OpIAdd %5 %77 %32
+OpStore %84 %78
 OpBranch %134
 %134 = OpLabel
 OpBranch %136
@@ -371,25 +371,25 @@ OpBranch %137
 %137 = OpLabel
 OpBranch %138
 %138 = OpLabel
-%26 = OpLoad %5 %84
-%30 = OpIAdd %5 %29 %18
-%35 = OpIEqual %23 %30 %16
+%28 = OpLoad %5 %84
+%26 = OpIAdd %5 %25 %18
+%79 = OpIEqual %23 %26 %16
 OpSelectionMerge %151 None
-OpBranchConditional %35 %140 %139
+OpBranchConditional %79 %140 %139
 %140 = OpLabel
 OpBranch %141
 %151 = OpLabel
 OpUnreachable
 %139 = OpLabel
-OpStore %90 %30
-OpStore %91 %26
+OpStore %90 %26
+OpStore %91 %28
 OpBranch %105
 %141 = OpLabel
 OpBranch %142
 %142 = OpLabel
 OpBranch %143
 %143 = OpLabel
-OpStore %83 %26
+OpStore %83 %28
 OpBranch %144
 %144 = OpLabel
 OpBranch %146
@@ -398,17 +398,17 @@ OpBranch %147
 %147 = OpLabel
 OpBranch %148
 %148 = OpLabel
-%25 = OpLoad %5 %83
-%28 = OpCompositeConstruct %27 %25 %25 %25 %25
-OpImageWrite %9 %15 %28
+%80 = OpLoad %5 %83
+%81 = OpCompositeConstruct %49 %80 %80 %80 %80
+OpImageWrite %9 %15 %81
 OpReturn
 OpFunctionEnd
-%46 = OpFunction %5 None %43
-%44 = OpFunctionParameter %5
-%45 = OpFunctionParameter %5
-%47 = OpLabel
-%48 = OpUDiv %5 %49 %45
-%50 = OpBitwiseAnd %5 %44 %48
-OpReturnValue %50
+%41 = OpFunction %5 None %38
+%39 = OpFunctionParameter %5
+%40 = OpFunctionParameter %5
+%42 = OpLabel
+%43 = OpUDiv %5 %44 %40
+%45 = OpBitwiseAnd %5 %39 %43
+OpReturnValue %45
 OpFunctionEnd
 #endif

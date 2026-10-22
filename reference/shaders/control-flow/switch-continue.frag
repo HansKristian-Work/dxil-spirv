@@ -80,8 +80,8 @@ OpDecorate %11 Location 0
 %19 = OpConstant %14 1
 %23 = OpConstant %14 2
 %27 = OpConstant %14 3
-%37 = OpConstant %14 17
-%38 = OpConstant %14 6
+%35 = OpConstant %14 17
+%36 = OpConstant %14 6
 %39 = OpTypePointer Function %14
 %45 = OpTypeBool
 %47 = OpConstant %14 5
@@ -124,14 +124,14 @@ OpBranch %52
 OpSelectionMerge %60 None
 OpBranchConditional %46 %59 %53
 %59 = OpLabel
-OpStore %40 %38
+OpStore %40 %36
 OpBranch %60
 %53 = OpLabel
 %48 = OpIEqual %45 %30 %49
 OpSelectionMerge %58 None
 OpBranchConditional %48 %58 %54
 %58 = OpLabel
-OpStore %40 %37
+OpStore %40 %35
 OpBranch %60
 %60 = OpLabel
 OpBranch %61
@@ -151,9 +151,9 @@ OpBranch %56
 %56 = OpLabel
 OpBranch %57
 %57 = OpLabel
-%35 = OpIAdd %14 %32 %31
-%36 = OpConvertSToF %9 %35
-OpStore %11 %36
+%37 = OpIAdd %14 %32 %31
+%38 = OpConvertSToF %9 %37
+OpStore %11 %38
 OpReturn
 OpFunctionEnd
 #endif

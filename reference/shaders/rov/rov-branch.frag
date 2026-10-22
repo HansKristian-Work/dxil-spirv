@@ -28,13 +28,13 @@ void main()
     SPIRV_Cross_beginInvocationInterlock();
     if (gl_FragCoord.x < 10.0)
     {
-        vec4 _47 = imageLoad(_8, ivec2(uvec2(_25, _26)));
-        imageStore(_8, ivec2(uvec2(_25, _26)), vec4(_47.x + 1.0, _47.y + 2.0, _47.z + 3.0, _47.w + 4.0));
+        vec4 _59 = imageLoad(_8, ivec2(uvec2(_25, _26)));
+        imageStore(_8, ivec2(uvec2(_25, _26)), vec4(_59.x + 1.0, _59.y + 2.0, _59.z + 3.0, _59.w + 4.0));
     }
     else
     {
-        vec4 _59 = imageLoad(_9, ivec2(uvec2(_25, _26)));
-        imageStore(_9, ivec2(uvec2(_25, _26)), vec4(_59.x + 1.0, _59.y + 2.0, _59.z + 3.0, _59.w + 4.0));
+        vec4 _47 = imageLoad(_9, ivec2(uvec2(_25, _26)));
+        imageStore(_9, ivec2(uvec2(_25, _26)), vec4(_47.x + 1.0, _47.y + 2.0, _47.z + 3.0, _47.w + 4.0));
     }
     SPIRV_Cross_endInvocationInterlock();
 }
@@ -120,23 +120,8 @@ OpBeginInvocationInterlockEXT
 OpSelectionMerge %74 None
 OpBranchConditional %45 %73 %72
 %73 = OpLabel
-%48 = OpCompositeConstruct %28 %25 %26
-%47 = OpImageRead %11 %16 %48 None
-%49 = OpCompositeExtract %5 %47 0
-%50 = OpCompositeExtract %5 %47 1
-%51 = OpCompositeExtract %5 %47 2
-%52 = OpCompositeExtract %5 %47 3
-%53 = OpFAdd %5 %49 %35
-%54 = OpFAdd %5 %50 %37
-%55 = OpFAdd %5 %51 %39
-%56 = OpFAdd %5 %52 %41
-%57 = OpCompositeConstruct %28 %25 %26
-%58 = OpCompositeConstruct %11 %53 %54 %55 %56
-OpImageWrite %16 %57 %58
-OpBranch %74
-%72 = OpLabel
 %60 = OpCompositeConstruct %28 %25 %26
-%59 = OpImageRead %11 %15 %60 None
+%59 = OpImageRead %11 %16 %60 None
 %61 = OpCompositeExtract %5 %59 0
 %62 = OpCompositeExtract %5 %59 1
 %63 = OpCompositeExtract %5 %59 2
@@ -147,7 +132,22 @@ OpBranch %74
 %68 = OpFAdd %5 %64 %41
 %69 = OpCompositeConstruct %28 %25 %26
 %70 = OpCompositeConstruct %11 %65 %66 %67 %68
-OpImageWrite %15 %69 %70
+OpImageWrite %16 %69 %70
+OpBranch %74
+%72 = OpLabel
+%48 = OpCompositeConstruct %28 %25 %26
+%47 = OpImageRead %11 %15 %48 None
+%49 = OpCompositeExtract %5 %47 0
+%50 = OpCompositeExtract %5 %47 1
+%51 = OpCompositeExtract %5 %47 2
+%52 = OpCompositeExtract %5 %47 3
+%53 = OpFAdd %5 %49 %35
+%54 = OpFAdd %5 %50 %37
+%55 = OpFAdd %5 %51 %39
+%56 = OpFAdd %5 %52 %41
+%57 = OpCompositeConstruct %28 %25 %26
+%58 = OpCompositeConstruct %11 %53 %54 %55 %56
+OpImageWrite %15 %57 %58
 OpBranch %74
 %74 = OpLabel
 OpBranch %75

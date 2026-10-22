@@ -76,9 +76,9 @@ OpDecorate %15 Binding 0
 %28 = OpConstant %9 11
 %31 = OpConstant %9 440
 %39 = OpConstantTrue %26
-%40 = OpConstant %5 0
+%40 = OpConstant %5 1
 %41 = OpTypeVector %9 3
-%44 = OpConstant %5 1
+%44 = OpConstant %5 0
 %47 = OpTypePointer Function %26
 %3 = OpFunction %1 None %2
 %4 = OpLabel
@@ -117,14 +117,14 @@ OpBranch %54
 OpSelectionMerge %57 None
 OpBranchConditional %38 %56 %55
 %56 = OpLabel
-%42 = OpCompositeConstruct %41 %10 %10 %10
-%43 = OpCompositeConstruct %11 %40 %40 %40 %40
-OpImageWrite %16 %42 %43
-OpBranch %57
-%55 = OpLabel
 %45 = OpCompositeConstruct %41 %10 %10 %10
 %46 = OpCompositeConstruct %11 %44 %44 %44 %44
 OpImageWrite %16 %45 %46
+OpBranch %57
+%55 = OpLabel
+%42 = OpCompositeConstruct %41 %10 %10 %10
+%43 = OpCompositeConstruct %11 %40 %40 %40 %40
+OpImageWrite %16 %42 %43
 OpBranch %57
 %57 = OpLabel
 OpBranch %58

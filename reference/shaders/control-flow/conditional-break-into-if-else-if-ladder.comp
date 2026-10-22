@@ -83,15 +83,15 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %18 = OpConstant %5 1
 %19 = OpTypeBool
 %22 = OpConstant %5 2
-%25 = OpConstant %5 60
-%26 = OpConstant %5 30
-%27 = OpConstant %5 40
-%28 = OpConstant %5 50
-%29 = OpTypeVector %5 4
-%32 = OpConstant %5 4
-%34 = OpConstant %5 20
-%37 = OpConstant %5 8
-%40 = OpConstant %5 16
+%24 = OpConstant %5 20
+%25 = OpTypeVector %5 4
+%28 = OpConstant %5 4
+%31 = OpConstant %5 8
+%34 = OpConstant %5 16
+%37 = OpConstant %5 60
+%38 = OpConstant %5 30
+%39 = OpConstant %5 40
+%40 = OpConstant %5 50
 %42 = OpTypePointer Function %5
 %44 = OpTypePointer Function %19
 %46 = OpConstantFalse %19
@@ -119,42 +119,42 @@ OpBranch %64
 OpSelectionMerge %62 None
 OpBranchConditional %23 %52 %51
 %52 = OpLabel
-%31 = OpBitwiseAnd %5 %16 %32
-%33 = OpIEqual %19 %31 %15
+%27 = OpBitwiseAnd %5 %16 %28
+%29 = OpIEqual %19 %27 %15
 OpSelectionMerge %61 None
-OpBranchConditional %33 %54 %53
+OpBranchConditional %29 %54 %53
 %54 = OpLabel
-%36 = OpBitwiseAnd %5 %16 %37
-%38 = OpIEqual %19 %36 %15
+%30 = OpBitwiseAnd %5 %16 %31
+%32 = OpIEqual %19 %30 %15
 OpSelectionMerge %60 None
-OpBranchConditional %38 %56 %55
+OpBranchConditional %32 %56 %55
 %56 = OpLabel
-%39 = OpBitwiseAnd %5 %16 %40
-%41 = OpIEqual %19 %39 %15
+%33 = OpBitwiseAnd %5 %16 %34
+%35 = OpIEqual %19 %33 %15
 OpSelectionMerge %59 None
-OpBranchConditional %41 %58 %57
+OpBranchConditional %35 %58 %57
 %58 = OpLabel
 OpStore %45 %48
 OpBranch %59
 %57 = OpLabel
-OpStore %43 %28
+OpStore %43 %40
 OpBranch %59
 %59 = OpLabel
 OpBranch %60
 %55 = OpLabel
-OpStore %43 %27
+OpStore %43 %39
 OpBranch %60
 %60 = OpLabel
 OpBranch %61
 %53 = OpLabel
-OpStore %43 %26
+OpStore %43 %38
 OpBranch %61
 %61 = OpLabel
 OpBranch %62
 %51 = OpLabel
-%35 = OpCompositeConstruct %29 %34 %34 %34 %34
-OpImageWrite %9 %22 %35
-OpStore %43 %25
+%26 = OpCompositeConstruct %25 %24 %24 %24 %24
+OpImageWrite %9 %22 %26
+OpStore %43 %37
 OpBranch %62
 %62 = OpLabel
 OpBranch %64
@@ -172,9 +172,9 @@ OpBranch %68
 %68 = OpLabel
 OpBranch %69
 %69 = OpLabel
-%24 = OpLoad %5 %43
-%30 = OpCompositeConstruct %29 %24 %24 %24 %24
-OpImageWrite %9 %15 %30
+%36 = OpLoad %5 %43
+%41 = OpCompositeConstruct %25 %36 %36 %36 %36
+OpImageWrite %9 %15 %41
 OpReturn
 OpFunctionEnd
 #endif

@@ -84,9 +84,9 @@ OpDecorate %10 Location 0
 %26 = OpConstant %5 20
 %27 = OpConstant %5 10
 %30 = OpConstant %5 1
-%34 = OpConstant %5 30
-%36 = OpTypePointer Output %5
-%41 = OpConstant %13 3
+%35 = OpConstant %5 30
+%37 = OpTypePointer Output %5
+%42 = OpConstant %13 3
 %43 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
@@ -135,16 +135,16 @@ OpBranch %59
 %59 = OpLabel
 OpBranch %60
 %60 = OpLabel
-%32 = OpLoad %5 %46
-%42 = OpFOrdGreaterThan %22 %21 %24
+%31 = OpLoad %5 %46
+%32 = OpFOrdGreaterThan %22 %21 %24
 OpSelectionMerge %63 None
-OpBranchConditional %42 %62 %61
+OpBranchConditional %32 %62 %61
 %62 = OpLabel
-OpStore %44 %32
-OpStore %45 %34
+OpStore %44 %31
+OpStore %45 %35
 OpBranch %63
 %61 = OpLabel
-OpStore %44 %32
+OpStore %44 %31
 OpStore %45 %27
 OpBranch %63
 %63 = OpLabel
@@ -160,17 +160,17 @@ OpBranch %66
 %66 = OpLabel
 OpBranch %67
 %67 = OpLabel
-%33 = OpLoad %5 %45
-%31 = OpLoad %5 %44
-%35 = OpFAdd %5 %31 %27
-%37 = OpAccessChain %36 %10 %14
-OpStore %37 %25
-%38 = OpAccessChain %36 %10 %17
-OpStore %38 %35
-%39 = OpAccessChain %36 %10 %20
-OpStore %39 %27
-%40 = OpAccessChain %36 %10 %41
-OpStore %40 %33
+%34 = OpLoad %5 %45
+%33 = OpLoad %5 %44
+%36 = OpFAdd %5 %33 %27
+%38 = OpAccessChain %37 %10 %14
+OpStore %38 %25
+%39 = OpAccessChain %37 %10 %17
+OpStore %39 %36
+%40 = OpAccessChain %37 %10 %20
+OpStore %40 %27
+%41 = OpAccessChain %37 %10 %42
+OpStore %41 %34
 OpReturn
 OpFunctionEnd
 #endif

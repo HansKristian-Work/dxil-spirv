@@ -5,9 +5,9 @@
 #extension GL_KHR_shader_subgroup_vote : require
 layout(local_size_x = 18, local_size_y = 1, local_size_z = 1) in;
 
-uint _247;
-uint _248;
-uint _249;
+uint _230;
+uint _231;
+uint _232;
 vector<uint, 8> _131;
 vector<uint, 8> _152;
 vector<uint, 8> _172;
@@ -312,11 +312,11 @@ void main()
                                                 {
                                                     if (gl_GlobalInvocationID.x == 12u)
                                                     {
-                                                        vector<uint, 8> _246 = vector<uint, 8>(_247, _248, _249, 0u, 0u, 0u, 0u, 0u);
-                                                        _246[0] = _118.x;
-                                                        _246[1] = _119.x;
-                                                        _246[2] = _120.x;
-                                                        _255 = _246;
+                                                        vector<uint, 8> _229 = vector<uint, 8>(_230, _231, _232, 0u, 0u, 0u, 0u, 0u);
+                                                        _229[0] = _118.x;
+                                                        _229[1] = _119.x;
+                                                        _229[2] = _120.x;
+                                                        _255 = _229;
                                                     }
                                                     else
                                                     {
@@ -443,17 +443,17 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %125 = OpTypeVector %52 4
 %126 = OpTypeFunction %6 %6 %105
 %138 = OpConstantTrue %52
-%229 = OpConstantNull %6
-%233 = OpConstantComposite %6 %20 %20 %20 %20 %20 %20 %20 %20
-%234 = OpConstantComposite %6 %29 %29 %29 %29 %29 %29 %29 %29
-%238 = OpConstant %5 8
-%239 = OpConstantComposite %6 %238 %238 %238 %238 %238 %238 %238 %238
-%243 = OpConstant %5 16
+%230 = OpUndef %5
+%231 = OpUndef %5
+%232 = OpUndef %5
+%233 = OpConstantComposite %6 %230 %231 %232 %20 %20 %20 %20 %20
+%238 = OpConstantComposite %6 %20 %20 %20 %20 %20 %20 %20 %20
+%239 = OpConstantComposite %6 %29 %29 %29 %29 %29 %29 %29 %29
+%243 = OpConstant %5 8
 %244 = OpConstantComposite %6 %243 %243 %243 %243 %243 %243 %243 %243
-%247 = OpUndef %5
-%248 = OpUndef %5
-%249 = OpUndef %5
-%250 = OpConstantComposite %6 %247 %248 %249 %20 %20 %20 %20 %20
+%248 = OpConstant %5 16
+%249 = OpConstantComposite %6 %248 %248 %248 %248 %248 %248 %248 %248
+%252 = OpConstantNull %6
 %254 = OpTypePointer Function %6
 %261 = OpConstant %5 4
 %263 = OpConstant %5 5
@@ -622,7 +622,7 @@ OpBranchConditional %266 %325 %293
 OpStore %255 %47
 OpBranch %326
 %293 = OpLabel
-%268 = OpIEqual %52 %21 %238
+%268 = OpIEqual %52 %21 %243
 OpSelectionMerge %324 None
 OpBranchConditional %268 %323 %294
 %323 = OpLabel
@@ -647,27 +647,27 @@ OpBranch %320
 OpSelectionMerge %318 None
 OpBranchConditional %272 %317 %297
 %317 = OpLabel
-%235 = OpSelect %6 %54 %234 %233
-%236 = OpSelect %6 %71 %234 %233
-%237 = OpShiftLeftLogical %6 %236 %239
-%240 = OpBitwiseOr %6 %237 %235
-%241 = OpSelect %6 %88 %234 %233
+%240 = OpSelect %6 %54 %239 %238
+%241 = OpSelect %6 %71 %239 %238
 %242 = OpShiftLeftLogical %6 %241 %244
-%231 = OpBitwiseOr %6 %240 %242
-OpStore %255 %231
+%245 = OpBitwiseOr %6 %242 %240
+%246 = OpSelect %6 %88 %239 %238
+%247 = OpShiftLeftLogical %6 %246 %249
+%250 = OpBitwiseOr %6 %245 %247
+OpStore %255 %250
 OpBranch %318
 %297 = OpLabel
 %274 = OpIEqual %52 %21 %275
 OpSelectionMerge %316 None
 OpBranchConditional %274 %315 %298
 %315 = OpLabel
-%245 = OpCompositeExtract %5 %118 0
-%246 = OpCompositeInsert %6 %245 %250 0
-%251 = OpCompositeExtract %5 %119 0
-%252 = OpCompositeInsert %6 %251 %246 1
-%253 = OpCompositeExtract %5 %120 0
-%230 = OpCompositeInsert %6 %253 %252 2
-OpStore %255 %230
+%228 = OpCompositeExtract %5 %118 0
+%229 = OpCompositeInsert %6 %228 %233 0
+%234 = OpCompositeExtract %5 %119 0
+%235 = OpCompositeInsert %6 %234 %229 1
+%236 = OpCompositeExtract %5 %120 0
+%237 = OpCompositeInsert %6 %236 %235 2
+OpStore %255 %237
 OpBranch %316
 %298 = OpLabel
 %276 = OpIEqual %52 %21 %277
@@ -691,7 +691,7 @@ OpBranchConditional %280 %309 %301
 OpStore %255 %186
 OpBranch %310
 %301 = OpLabel
-%282 = OpIEqual %52 %21 %243
+%282 = OpIEqual %52 %21 %248
 OpSelectionMerge %308 None
 OpBranchConditional %282 %307 %302
 %307 = OpLabel
@@ -707,7 +707,7 @@ OpBranch %306
 %303 = OpLabel
 OpBranch %304
 %304 = OpLabel
-OpStore %255 %229
+OpStore %255 %252
 OpBranch %306
 %306 = OpLabel
 OpBranch %308
@@ -748,9 +748,9 @@ OpBranch %341
 %341 = OpLabel
 OpBranch %342
 %342 = OpLabel
-%228 = OpLoad %6 %255
-%232 = OpAccessChain %25 %14 %20 %21
-OpStore %232 %228
+%251 = OpLoad %6 %255
+%253 = OpAccessChain %25 %14 %20 %21
+OpStore %253 %251
 OpReturn
 OpFunctionEnd
 %108 = OpFunction %105 None %106

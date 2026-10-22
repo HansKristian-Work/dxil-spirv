@@ -38,11 +38,11 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %8 %18
+OpEntryPoint Fragment %3 "main" %8 %23
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "TEXCOORD"
-OpName %18 "discard_state"
+OpName %23 "discard_state"
 OpName %34 "discard_exit"
 OpDecorate %8 Location 0
 %1 = OpTypeVoid
@@ -56,15 +56,15 @@ OpDecorate %8 Location 0
 %12 = OpConstant %11 0
 %14 = OpTypeBool
 %16 = OpConstant %5 10
-%17 = OpTypePointer Private %14
-%18 = OpVariable %17 Private
-%19 = OpConstantFalse %14
-%21 = OpConstant %11 1
-%24 = OpConstant %5 20
+%18 = OpConstant %11 1
+%21 = OpConstant %5 20
+%22 = OpTypePointer Private %14
+%23 = OpVariable %22 Private
+%24 = OpConstantFalse %14
 %33 = OpConstantTrue %14
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpStore %18 %19
+OpStore %23 %24
 OpBranch %25
 %25 = OpLabel
 %10 = OpAccessChain %9 %8 %12
@@ -73,16 +73,16 @@ OpBranch %25
 OpSelectionMerge %30 None
 OpBranchConditional %15 %29 %26
 %29 = OpLabel
-OpStore %18 %33
+OpStore %23 %33
 OpBranch %30
 %26 = OpLabel
-%20 = OpAccessChain %9 %8 %21
-%22 = OpLoad %5 %20
-%23 = OpFOrdGreaterThan %14 %22 %24
+%17 = OpAccessChain %9 %8 %18
+%19 = OpLoad %5 %17
+%20 = OpFOrdGreaterThan %14 %19 %21
 OpSelectionMerge %28 None
-OpBranchConditional %23 %27 %28
+OpBranchConditional %20 %27 %28
 %27 = OpLabel
-OpStore %18 %33
+OpStore %23 %33
 OpBranch %28
 %28 = OpLabel
 OpBranch %30
@@ -96,7 +96,7 @@ OpReturn
 OpFunctionEnd
 %34 = OpFunction %1 None %2
 %35 = OpLabel
-%38 = OpLoad %14 %18
+%38 = OpLoad %14 %23
 OpSelectionMerge %37 None
 OpBranchConditional %38 %36 %37
 %36 = OpLabel
