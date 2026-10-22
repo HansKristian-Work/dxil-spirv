@@ -29,76 +29,76 @@ void main()
     }
     else
     {
-        uint _87;
+        uint _73;
         uint _102 = 0u;
-        uint _86;
-        uint _88;
-        bool _90;
+        uint _72;
+        uint _74;
+        bool _76;
         for (;;)
         {
-            _86 = _102;
-            _88 = _86 ^ 2u;
-            _90 = _88 < 4u;
-            float _91;
-            if (_90)
+            _72 = _102;
+            _74 = _72 ^ 2u;
+            _76 = _74 < 4u;
+            float _77;
+            if (_76)
             {
-                _91 = _34[_88];
+                _77 = _34[_74];
             }
             else
             {
-                _91 = 0.0;
+                _77 = 0.0;
             }
-            if (_90)
+            if (_76)
             {
-                _34[_88] = _91 + 60.0;
+                _34[_74] = _77 + 60.0;
             }
-            _87 = _86 + 1u;
-            bool _95 = _87 < 4u;
-            float _96;
-            if (_95)
+            _73 = _72 + 1u;
+            bool _81 = _73 < 4u;
+            float _82;
+            if (_81)
             {
-                _96 = _56[_87];
+                _82 = _56[_73];
             }
             else
             {
-                _96 = 0.0;
+                _82 = 0.0;
             }
-            if (_95)
+            if (_81)
             {
-                _56[_87] = _96 + 50.0;
+                _56[_73] = _82 + 50.0;
             }
-            if (_87 == A.w)
+            if (_73 == A.w)
             {
                 break;
             }
             else
             {
-                _102 = _87;
+                _102 = _73;
                 continue;
             }
         }
-        float _73;
+        float _86;
         if (_66)
         {
-            _73 = _56[A.x];
+            _86 = _56[A.x];
         }
         else
         {
-            _73 = 0.0;
+            _86 = 0.0;
         }
-        _100 = _73;
+        _100 = _86;
     }
-    float _80;
+    float _94;
     if (A.w < 4u)
     {
-        _80 = _34[A.w];
+        _94 = _34[A.w];
     }
     else
     {
-        _80 = 0.0;
+        _94 = 0.0;
     }
     gl_Position.x = _23[min(A.z, 4u)];
-    gl_Position.y = _80;
+    gl_Position.y = _94;
     gl_Position.z = _100;
     gl_Position.w = 1.0;
 }
@@ -113,7 +113,7 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability DrawParameters
-%75 = OpExtInstImport "GLSL.std.450"
+%89 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Vertex %3 "main" %7 %8 %11 %15 %25 %34 %48 %52
 OpName %3 "main"
@@ -170,9 +170,9 @@ OpDecorate %52 BuiltIn BaseVertex
 %59 = OpConstant %12 0
 %65 = OpTypeBool
 %68 = OpTypePointer Private %12
-%81 = OpTypePointer Output %12
-%93 = OpConstant %12 60
-%98 = OpConstant %12 50
+%79 = OpConstant %12 60
+%84 = OpConstant %12 50
+%95 = OpTypePointer Output %12
 %101 = OpTypePointer Function %5
 %125 = OpConstantNull %12
 %131 = OpConstantNull %12
@@ -235,55 +235,55 @@ OpBranch %114
 OpStore %102 %36
 OpBranch %105
 %105 = OpLabel
-%86 = OpLoad %5 %102
-%88 = OpBitwiseXor %5 %86 %42
-%90 = OpULessThan %65 %88 %26
-%89 = OpInBoundsAccessChain %68 %34 %88
+%72 = OpLoad %5 %102
+%74 = OpBitwiseXor %5 %72 %42
+%76 = OpULessThan %65 %74 %26
+%75 = OpInBoundsAccessChain %68 %34 %74
 OpLoopMerge %109 %107 None
 OpBranch %121
 %121 = OpLabel
 OpSelectionMerge %123 None
-OpBranchConditional %90 %122 %123
+OpBranchConditional %76 %122 %123
 %122 = OpLabel
-%124 = OpLoad %12 %89
+%124 = OpLoad %12 %75
 OpBranch %123
 %123 = OpLabel
-%91 = OpPhi %12 %124 %122 %125 %121
-%92 = OpFAdd %12 %91 %93
+%77 = OpPhi %12 %124 %122 %125 %121
+%78 = OpFAdd %12 %77 %79
 OpSelectionMerge %127 None
-OpBranchConditional %90 %126 %127
+OpBranchConditional %76 %126 %127
 %126 = OpLabel
-OpStore %89 %92
+OpStore %75 %78
 OpBranch %127
 %127 = OpLabel
-%87 = OpIAdd %5 %86 %39
-%95 = OpULessThan %65 %87 %26
-%94 = OpInBoundsAccessChain %57 %56 %87
+%73 = OpIAdd %5 %72 %39
+%81 = OpULessThan %65 %73 %26
+%80 = OpInBoundsAccessChain %57 %56 %73
 OpSelectionMerge %129 None
-OpBranchConditional %95 %128 %129
+OpBranchConditional %81 %128 %129
 %128 = OpLabel
-%130 = OpLoad %12 %94
+%130 = OpLoad %12 %80
 OpBranch %129
 %129 = OpLabel
-%96 = OpPhi %12 %130 %128 %131 %127
-%97 = OpFAdd %12 %96 %98
+%82 = OpPhi %12 %130 %128 %131 %127
+%83 = OpFAdd %12 %82 %84
 OpSelectionMerge %133 None
-OpBranchConditional %95 %132 %133
+OpBranchConditional %81 %132 %133
 %132 = OpLabel
-OpStore %94 %97
+OpStore %80 %83
 OpBranch %133
 %133 = OpLabel
-%99 = OpIEqual %65 %87 %46
+%85 = OpIEqual %65 %73 %46
 OpBranch %106
 %106 = OpLabel
 OpSelectionMerge %134 None
-OpBranchConditional %99 %108 %107
+OpBranchConditional %85 %108 %107
 %108 = OpLabel
 OpBranch %109
 %134 = OpLabel
 OpUnreachable
 %107 = OpLabel
-OpStore %102 %87
+OpStore %102 %73
 OpBranch %105
 %109 = OpLabel
 OpBranch %110
@@ -296,8 +296,8 @@ OpBranchConditional %66 %135 %136
 %137 = OpLoad %12 %64
 OpBranch %136
 %136 = OpLabel
-%73 = OpPhi %12 %137 %135 %138 %111
-OpStore %100 %73
+%86 = OpPhi %12 %137 %135 %138 %111
+OpStore %100 %86
 OpBranch %112
 %112 = OpLabel
 OpBranch %114
@@ -306,27 +306,27 @@ OpBranch %115
 %115 = OpLabel
 OpBranch %116
 %116 = OpLabel
-%72 = OpLoad %12 %100
-%76 = OpExtInst %5 %75 UMin %43 %26
-%74 = OpInBoundsAccessChain %68 %25 %76
-%77 = OpLoad %12 %74
-%79 = OpULessThan %65 %46 %26
-%78 = OpInBoundsAccessChain %68 %34 %46
+%87 = OpLoad %12 %100
+%90 = OpExtInst %5 %89 UMin %43 %26
+%88 = OpInBoundsAccessChain %68 %25 %90
+%91 = OpLoad %12 %88
+%93 = OpULessThan %65 %46 %26
+%92 = OpInBoundsAccessChain %68 %34 %46
 OpSelectionMerge %140 None
-OpBranchConditional %79 %139 %140
+OpBranchConditional %93 %139 %140
 %139 = OpLabel
-%141 = OpLoad %12 %78
+%141 = OpLoad %12 %92
 OpBranch %140
 %140 = OpLabel
-%80 = OpPhi %12 %141 %139 %142 %116
-%82 = OpAccessChain %81 %15 %36
-OpStore %82 %77
-%83 = OpAccessChain %81 %15 %39
-OpStore %83 %80
-%84 = OpAccessChain %81 %15 %42
-OpStore %84 %72
-%85 = OpAccessChain %81 %15 %45
-OpStore %85 %18
+%94 = OpPhi %12 %141 %139 %142 %116
+%96 = OpAccessChain %95 %15 %36
+OpStore %96 %91
+%97 = OpAccessChain %95 %15 %39
+OpStore %97 %94
+%98 = OpAccessChain %95 %15 %42
+OpStore %98 %87
+%99 = OpAccessChain %95 %15 %45
+OpStore %99 %18
 OpReturn
 OpFunctionEnd
 #endif

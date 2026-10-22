@@ -57,10 +57,10 @@ OpDecorate %15 BuiltIn LaunchIdKHR
 %35 = OpTypeVector %20 3
 %40 = OpConstant %5 268435455
 %41 = OpConstant %5 65535
-%48 = OpTypePointer RayPayloadKHR %5
-%50 = OpConstant %5 50
-%55 = OpTypeVector %5 4
-%57 = OpConstant %5 4
+%45 = OpConstant %5 4
+%51 = OpTypePointer RayPayloadKHR %5
+%53 = OpConstant %5 50
+%58 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %30 = OpVariable %29 Function
@@ -96,30 +96,30 @@ OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %42
 OpSelectionMerge %67 None
 OpBranchConditional %44 %67 %66
 %66 = OpLabel
-%58 = OpCompositeConstruct %35 %21 %32 %33
-%59 = OpCompositeConstruct %35 %32 %21 %34
-OpHitObjectRecordMissEXT %30 %57 %25 %58 %21 %59 %22
+%46 = OpCompositeConstruct %35 %21 %32 %33
+%47 = OpCompositeConstruct %35 %32 %21 %34
+OpHitObjectRecordMissEXT %30 %45 %25 %46 %21 %47 %22
 OpBranch %67
 %67 = OpLabel
 OpBranch %68
 %68 = OpLabel
 OpBranch %69
 %69 = OpLabel
-%45 = OpHitObjectIsHitEXT %26 %30
-%46 = OpSelect %5 %45 %40 %41
-%47 = OpBitwiseAnd %5 %25 %46
-OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %47
-%49 = OpInBoundsAccessChain %48 %12 %18
-OpStore %49 %50
+%48 = OpHitObjectIsHitEXT %26 %30
+%49 = OpSelect %5 %48 %40 %41
+%50 = OpBitwiseAnd %5 %25 %49
+OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %50
+%52 = OpInBoundsAccessChain %51 %12 %18
+OpStore %52 %53
 OpHitObjectExecuteShaderEXT %30 %12
-%51 = OpLoad %5 %49
-%52 = OpInBoundsAccessChain %48 %11 %18
-OpStore %52 %51
+%54 = OpLoad %5 %52
+%55 = OpInBoundsAccessChain %51 %11 %18
+OpStore %55 %54
 OpHitObjectExecuteShaderEXT %30 %11
-%53 = OpLoad %5 %52
-%54 = OpLoad %6 %8
-%56 = OpCompositeConstruct %55 %53 %53 %53 %53
-OpImageWrite %54 %19 %56
+%56 = OpLoad %5 %55
+%57 = OpLoad %6 %8
+%59 = OpCompositeConstruct %58 %56 %56 %56 %56
+OpImageWrite %57 %19 %59
 OpReturn
 OpFunctionEnd
 

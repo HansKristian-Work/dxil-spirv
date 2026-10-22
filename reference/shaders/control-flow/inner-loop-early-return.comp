@@ -102,9 +102,9 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %26 = OpConstant %5 10
 %27 = OpConstant %5 1
 %29 = OpConstant %5 20
-%31 = OpConstant %5 70
-%32 = OpConstant %5 80
-%33 = OpTypeVector %5 4
+%32 = OpConstant %5 70
+%33 = OpConstant %5 80
+%34 = OpTypeVector %5 4
 %36 = OpTypePointer Function %5
 %40 = OpTypePointer Function %24
 %43 = OpConstantTrue %24
@@ -165,9 +165,9 @@ OpBranch %57
 OpBranch %58
 %58 = OpLabel
 %21 = OpIAdd %5 %20 %27
-%35 = OpSLessThan %24 %21 %26
+%30 = OpSLessThan %24 %21 %26
 OpSelectionMerge %69 None
-OpBranchConditional %35 %59 %60
+OpBranchConditional %30 %59 %60
 %60 = OpLabel
 OpStore %41 %43
 OpBranch %61
@@ -183,19 +183,19 @@ OpBranch %62
 OpSelectionMerge %65 None
 OpBranchConditional %42 %63 %64
 %63 = OpLabel
-OpStore %37 %32
+OpStore %37 %33
 OpBranch %65
 %64 = OpLabel
-OpStore %37 %31
+OpStore %37 %32
 OpBranch %65
 %65 = OpLabel
 OpBranch %66
 %66 = OpLabel
 OpBranch %67
 %67 = OpLabel
-%30 = OpLoad %5 %37
-%34 = OpCompositeConstruct %33 %30 %30 %30 %30
-OpImageWrite %9 %16 %34
+%31 = OpLoad %5 %37
+%35 = OpCompositeConstruct %34 %31 %31 %31 %31
+OpImageWrite %9 %16 %35
 OpReturn
 OpFunctionEnd
 #endif

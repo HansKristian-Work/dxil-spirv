@@ -70,8 +70,8 @@ OpDecorate %17 BuiltIn LocalInvocationIndex
 %21 = OpConstant %5 16
 %23 = OpConstant %5 1024
 %25 = OpTypeVector %5 4
-%28 = OpTypePointer Workgroup %5
-%34 = OpConstant %5 1
+%29 = OpConstant %5 1
+%30 = OpTypePointer Workgroup %5
 %39 = OpConstant %5 50
 %41 = OpConstant %5 31
 %57 = OpConstant %5 3
@@ -88,19 +88,19 @@ OpBranch %45
 OpSelectionMerge %48 None
 OpBranchConditional %20 %47 %46
 %47 = OpLabel
-%24 = OpIAdd %5 %18 %23
-%26 = OpImageRead %25 %15 %24
-%27 = OpCompositeExtract %5 %26 0
-%29 = OpAccessChain %28 %13 %18
-OpStore %29 %27
+%32 = OpIAdd %5 %18 %23
+%33 = OpImageRead %25 %15 %32
+%34 = OpCompositeExtract %5 %33 0
+%35 = OpAccessChain %30 %13 %18
+OpStore %35 %34
 OpBranch %48
 %46 = OpLabel
-%30 = OpIAdd %5 %18 %23
-%31 = OpImageRead %25 %14 %30
-%32 = OpCompositeExtract %5 %31 0
-%33 = OpBitwiseXor %5 %18 %34
-%35 = OpAccessChain %28 %13 %33
-OpStore %35 %32
+%24 = OpIAdd %5 %18 %23
+%26 = OpImageRead %25 %14 %24
+%27 = OpCompositeExtract %5 %26 0
+%28 = OpBitwiseXor %5 %18 %29
+%31 = OpAccessChain %30 %13 %28
+OpStore %31 %27
 OpBranch %48
 %48 = OpLabel
 OpBranch %49
@@ -118,7 +118,7 @@ OpSelectionMerge %53 None
 OpBranchConditional %38 %52 %53
 %52 = OpLabel
 %40 = OpBitwiseXor %5 %18 %41
-%42 = OpAccessChain %28 %13 %40
+%42 = OpAccessChain %30 %13 %40
 %43 = OpLoad %5 %42
 %44 = OpCompositeConstruct %25 %43 %43 %43 %43
 OpImageWrite %15 %18 %44

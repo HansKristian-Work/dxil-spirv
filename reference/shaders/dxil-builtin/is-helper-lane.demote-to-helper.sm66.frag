@@ -32,14 +32,14 @@ void main()
     }
     else
     {
-        bool _44 = helperInvocationEXT();
-        bool _46 = helperInvocationEXT();
-        bool _48 = helperInvocationEXT();
-        bool _50 = helperInvocationEXT();
-        _53 = subgroupExclusiveAdd(_44 ? 0.0 : TEXCOORD.x);
-        _54 = subgroupExclusiveAdd(_46 ? 0.0 : TEXCOORD.y);
-        _55 = subgroupExclusiveAdd(_48 ? 0.0 : (TEXCOORD.x * TEXCOORD.x));
-        _56 = subgroupExclusiveAdd(_50 ? 0.0 : (TEXCOORD.y * TEXCOORD.y));
+        bool _30 = helperInvocationEXT();
+        bool _34 = helperInvocationEXT();
+        bool _37 = helperInvocationEXT();
+        bool _40 = helperInvocationEXT();
+        _53 = subgroupExclusiveAdd(_30 ? 0.0 : TEXCOORD.x);
+        _54 = subgroupExclusiveAdd(_34 ? 0.0 : TEXCOORD.y);
+        _55 = subgroupExclusiveAdd(_37 ? 0.0 : (TEXCOORD.x * TEXCOORD.x));
+        _56 = subgroupExclusiveAdd(_40 ? 0.0 : (TEXCOORD.y * TEXCOORD.y));
     }
     SV_Target.x = _53;
     SV_Target.y = _54;
@@ -83,10 +83,10 @@ OpDecorate %11 Location 0
 %20 = OpTypeBool
 %22 = OpConstant %5 10
 %24 = OpConstant %5 20
-%27 = OpConstant %5 0
-%35 = OpTypePointer Output %5
-%39 = OpConstant %14 2
-%41 = OpConstant %14 3
+%29 = OpConstant %14 3
+%31 = OpConstant %5 0
+%46 = OpTypePointer Output %5
+%50 = OpConstant %14 2
 %52 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
@@ -124,48 +124,48 @@ OpBranch %64
 OpSelectionMerge %67 None
 OpBranchConditional %25 %66 %65
 %66 = OpLabel
-OpStore %53 %27
-OpStore %54 %27
-OpStore %55 %27
-OpStore %56 %27
+OpStore %53 %31
+OpStore %54 %31
+OpStore %55 %31
+OpStore %56 %31
 OpBranch %67
 %65 = OpLabel
-%42 = OpFMul %5 %16 %16
-%43 = OpFMul %5 %19 %19
-%44 = OpIsHelperInvocationEXT %20
-%45 = OpSelect %5 %44 %27 %16
-%28 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %45
-%46 = OpIsHelperInvocationEXT %20
-%47 = OpSelect %5 %46 %27 %19
-%30 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %47
-%48 = OpIsHelperInvocationEXT %20
-%49 = OpSelect %5 %48 %27 %42
-%32 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %49
-%50 = OpIsHelperInvocationEXT %20
-%51 = OpSelect %5 %50 %27 %43
-%34 = OpGroupNonUniformFAdd %5 %41 ExclusiveScan %51
+%26 = OpFMul %5 %16 %16
+%27 = OpFMul %5 %19 %19
+%30 = OpIsHelperInvocationEXT %20
+%32 = OpSelect %5 %30 %31 %16
+%28 = OpGroupNonUniformFAdd %5 %29 ExclusiveScan %32
+%34 = OpIsHelperInvocationEXT %20
+%35 = OpSelect %5 %34 %31 %19
+%33 = OpGroupNonUniformFAdd %5 %29 ExclusiveScan %35
+%37 = OpIsHelperInvocationEXT %20
+%38 = OpSelect %5 %37 %31 %26
+%36 = OpGroupNonUniformFAdd %5 %29 ExclusiveScan %38
+%40 = OpIsHelperInvocationEXT %20
+%41 = OpSelect %5 %40 %31 %27
+%39 = OpGroupNonUniformFAdd %5 %29 ExclusiveScan %41
 OpStore %53 %28
-OpStore %54 %30
-OpStore %55 %32
-OpStore %56 %34
+OpStore %54 %33
+OpStore %55 %36
+OpStore %56 %39
 OpBranch %67
 %67 = OpLabel
 OpBranch %68
 %68 = OpLabel
 OpBranch %69
 %69 = OpLabel
-%33 = OpLoad %5 %56
-%31 = OpLoad %5 %55
-%29 = OpLoad %5 %54
-%26 = OpLoad %5 %53
-%36 = OpAccessChain %35 %11 %15
-OpStore %36 %26
-%37 = OpAccessChain %35 %11 %18
-OpStore %37 %29
-%38 = OpAccessChain %35 %11 %39
-OpStore %38 %31
-%40 = OpAccessChain %35 %11 %41
-OpStore %40 %33
+%45 = OpLoad %5 %56
+%44 = OpLoad %5 %55
+%43 = OpLoad %5 %54
+%42 = OpLoad %5 %53
+%47 = OpAccessChain %46 %11 %15
+OpStore %47 %42
+%48 = OpAccessChain %46 %11 %18
+OpStore %48 %43
+%49 = OpAccessChain %46 %11 %50
+OpStore %49 %44
+%51 = OpAccessChain %46 %11 %29
+OpStore %51 %45
 OpReturn
 OpFunctionEnd
 #endif

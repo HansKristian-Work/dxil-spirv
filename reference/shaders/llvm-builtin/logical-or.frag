@@ -47,8 +47,8 @@ OpDecorate %10 Location 0
 %14 = OpConstant %13 0
 %17 = OpConstant %13 2
 %19 = OpTypeBool
-%24 = OpConstant %13 3
-%27 = OpConstant %13 1
+%22 = OpConstant %13 3
+%25 = OpConstant %13 1
 %30 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
@@ -66,21 +66,21 @@ OpBranchConditional %20 %34 %33
 OpStore %31 %18
 OpBranch %35
 %33 = OpLabel
-%23 = OpAccessChain %11 %8 %24
-%25 = OpLoad %5 %23
-%26 = OpAccessChain %11 %8 %27
-%28 = OpLoad %5 %26
-%29 = OpIsNan %19 %28
-%22 = OpSelect %5 %29 %18 %25
-OpStore %31 %22
+%21 = OpAccessChain %11 %8 %22
+%23 = OpLoad %5 %21
+%24 = OpAccessChain %11 %8 %25
+%26 = OpLoad %5 %24
+%27 = OpIsNan %19 %26
+%28 = OpSelect %5 %27 %18 %23
+OpStore %31 %28
 OpBranch %35
 %35 = OpLabel
 OpBranch %36
 %36 = OpLabel
 OpBranch %37
 %37 = OpLabel
-%21 = OpLoad %5 %31
-OpStore %10 %21
+%29 = OpLoad %5 %31
+OpStore %10 %29
 OpReturn
 OpFunctionEnd
 #endif

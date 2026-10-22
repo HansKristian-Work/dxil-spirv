@@ -30,19 +30,19 @@ void main()
             }
             else
             {
-                uint _42 = gl_GlobalInvocationID.x + 10u;
+                uint _30 = gl_GlobalInvocationID.x + 10u;
                 bool _56 = false;
                 uint _50;
                 if (gl_GlobalInvocationID.x == 0u)
                 {
                     if (gl_GlobalInvocationID.z == 30u)
                     {
-                        _49 = _42 * 30u;
+                        _49 = _30 * 30u;
                         _52 = true;
                     }
                     else
                     {
-                        _50 = _42;
+                        _50 = _30;
                         _56 = true;
                     }
                 }
@@ -53,7 +53,7 @@ void main()
                 }
                 if (_56)
                 {
-                    _49 = _50 + _42;
+                    _49 = _50 + _30;
                     _52 = true;
                 }
             }
@@ -104,12 +104,12 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %21 = OpConstant %5 2
 %23 = OpTypeBool
 %25 = OpConstant %5 10
-%27 = OpConstant %5 40
-%29 = OpConstant %5 20
-%36 = OpConstant %5 50
-%39 = OpTypeVector %5 4
-%41 = OpConstant %5 24
-%45 = OpConstant %5 30
+%27 = OpConstant %5 20
+%29 = OpConstant %5 50
+%33 = OpConstant %5 30
+%38 = OpConstant %5 24
+%40 = OpConstant %5 40
+%45 = OpTypeVector %5 4
 %47 = OpTypePointer Function %5
 %51 = OpTypePointer Function %23
 %53 = OpConstantFalse %23
@@ -135,48 +135,48 @@ OpStore %52 %53
 OpSelectionMerge %79 None
 OpBranchConditional %24 %75 %59
 %75 = OpLabel
-%26 = OpIEqual %23 %22 %27
+%39 = OpIEqual %23 %22 %40
 OpSelectionMerge %78 None
-OpBranchConditional %26 %77 %76
+OpBranchConditional %39 %77 %76
 %77 = OpLabel
-%30 = OpIMul %5 %19 %25
-OpStore %48 %30
+%43 = OpIMul %5 %19 %25
+OpStore %48 %43
 OpBranch %78
 %76 = OpLabel
-OpStore %49 %29
+OpStore %49 %27
 OpStore %52 %55
 OpBranch %78
 %78 = OpLabel
 OpBranch %79
 %59 = OpLabel
-%28 = OpIEqual %23 %19 %29
+%26 = OpIEqual %23 %19 %27
 OpSelectionMerge %74 None
-OpBranchConditional %28 %61 %60
+OpBranchConditional %26 %61 %60
 %61 = OpLabel
-%35 = OpIEqual %23 %22 %36
+%28 = OpIEqual %23 %22 %29
 OpSelectionMerge %73 None
-OpBranchConditional %35 %72 %62
+OpBranchConditional %28 %72 %62
 %72 = OpLabel
-%38 = OpIMul %5 %16 %41
-OpStore %48 %38
+%37 = OpIMul %5 %16 %38
+OpStore %48 %37
 OpBranch %73
 %62 = OpLabel
-%42 = OpIAdd %5 %16 %25
-%43 = OpIEqual %23 %16 %15
+%30 = OpIAdd %5 %16 %25
+%31 = OpIEqual %23 %16 %15
 OpStore %56 %53
 OpSelectionMerge %68 None
-OpBranchConditional %43 %64 %63
+OpBranchConditional %31 %64 %63
 %64 = OpLabel
-%44 = OpIEqual %23 %22 %45
+%32 = OpIEqual %23 %22 %33
 OpSelectionMerge %67 None
-OpBranchConditional %44 %66 %65
+OpBranchConditional %32 %66 %65
 %66 = OpLabel
-%32 = OpIMul %5 %42 %45
-OpStore %49 %32
+%36 = OpIMul %5 %30 %33
+OpStore %49 %36
 OpStore %52 %55
 OpBranch %67
 %65 = OpLabel
-OpStore %50 %42
+OpStore %50 %30
 OpStore %56 %55
 OpBranch %67
 %67 = OpLabel
@@ -192,9 +192,9 @@ OpBranch %69
 OpSelectionMerge %71 None
 OpBranchConditional %57 %70 %71
 %70 = OpLabel
-%46 = OpLoad %5 %50
-%33 = OpIAdd %5 %46 %42
-OpStore %49 %33
+%34 = OpLoad %5 %50
+%35 = OpIAdd %5 %34 %30
+OpStore %49 %35
 OpStore %52 %55
 OpBranch %71
 %71 = OpLabel
@@ -214,18 +214,18 @@ OpBranch %80
 OpSelectionMerge %82 None
 OpBranchConditional %54 %81 %82
 %81 = OpLabel
-%31 = OpLoad %5 %49
-%34 = OpIAdd %5 %31 %16
-OpStore %48 %34
+%41 = OpLoad %5 %49
+%42 = OpIAdd %5 %41 %16
+OpStore %48 %42
 OpBranch %82
 %82 = OpLabel
 OpBranch %83
 %83 = OpLabel
 OpBranch %84
 %84 = OpLabel
-%37 = OpLoad %5 %48
-%40 = OpCompositeConstruct %39 %37 %37 %37 %37
-OpImageWrite %9 %15 %40
+%44 = OpLoad %5 %48
+%46 = OpCompositeConstruct %45 %44 %44 %44 %44
+OpImageWrite %9 %15 %46
 OpReturn
 OpFunctionEnd
 #endif

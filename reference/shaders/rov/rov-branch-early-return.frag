@@ -29,8 +29,8 @@ void main()
     bool _91 = false;
     if (gl_FragCoord.x < 10.0)
     {
-        vec4 _47 = imageLoad(_8, ivec2(uvec2(_25, _26)));
-        imageStore(_8, ivec2(uvec2(_25, _26)), vec4(_47.x + 1.0, _47.y + 2.0, _47.z + 3.0, _47.w + 4.0));
+        vec4 _59 = imageLoad(_8, ivec2(uvec2(_25, _26)));
+        imageStore(_8, ivec2(uvec2(_25, _26)), vec4(_59.x + 1.0, _59.y + 2.0, _59.z + 3.0, _59.w + 4.0));
         if (!(imageLoad(_10, ivec2(uvec2(_25, _26))).z > 100.0))
         {
             _91 = true;
@@ -38,8 +38,8 @@ void main()
     }
     else
     {
-        vec4 _64 = imageLoad(_9, ivec2(uvec2(_25, _26)));
-        imageStore(_9, ivec2(uvec2(_25, _26)), vec4(_64.x + 1.0, _64.y + 2.0, _64.z + 3.0, _64.w + 4.0));
+        vec4 _47 = imageLoad(_9, ivec2(uvec2(_25, _26)));
+        imageStore(_9, ivec2(uvec2(_25, _26)), vec4(_47.x + 1.0, _47.y + 2.0, _47.z + 3.0, _47.w + 4.0));
         _91 = true;
     }
     if (_91)
@@ -102,7 +102,7 @@ OpDecorate %13 BuiltIn FragCoord
 %41 = OpConstant %5 4
 %44 = OpTypeBool
 %46 = OpConstant %5 10
-%63 = OpConstant %5 100
+%75 = OpConstant %5 100
 %90 = OpTypePointer Function %44
 %92 = OpConstantFalse %44
 %94 = OpConstantTrue %44
@@ -139,8 +139,33 @@ OpStore %91 %92
 OpSelectionMerge %100 None
 OpBranchConditional %45 %97 %96
 %97 = OpLabel
+%60 = OpCompositeConstruct %28 %25 %26
+%59 = OpImageRead %11 %16 %60 None
+%61 = OpCompositeExtract %5 %59 0
+%62 = OpCompositeExtract %5 %59 1
+%63 = OpCompositeExtract %5 %59 2
+%64 = OpCompositeExtract %5 %59 3
+%65 = OpFAdd %5 %61 %35
+%66 = OpFAdd %5 %62 %37
+%67 = OpFAdd %5 %63 %39
+%68 = OpFAdd %5 %64 %41
+%69 = OpCompositeConstruct %28 %25 %26
+%70 = OpCompositeConstruct %11 %65 %66 %67 %68
+OpImageWrite %16 %69 %70
+%72 = OpCompositeConstruct %28 %25 %26
+%71 = OpImageRead %11 %14 %72 None
+%73 = OpCompositeExtract %5 %71 2
+%74 = OpFOrdGreaterThan %44 %73 %75
+OpSelectionMerge %99 None
+OpBranchConditional %74 %99 %98
+%98 = OpLabel
+OpStore %91 %94
+OpBranch %99
+%99 = OpLabel
+OpBranch %100
+%96 = OpLabel
 %48 = OpCompositeConstruct %28 %25 %26
-%47 = OpImageRead %11 %16 %48 None
+%47 = OpImageRead %11 %15 %48 None
 %49 = OpCompositeExtract %5 %47 0
 %50 = OpCompositeExtract %5 %47 1
 %51 = OpCompositeExtract %5 %47 2
@@ -151,32 +176,7 @@ OpBranchConditional %45 %97 %96
 %56 = OpFAdd %5 %52 %41
 %57 = OpCompositeConstruct %28 %25 %26
 %58 = OpCompositeConstruct %11 %53 %54 %55 %56
-OpImageWrite %16 %57 %58
-%60 = OpCompositeConstruct %28 %25 %26
-%59 = OpImageRead %11 %14 %60 None
-%61 = OpCompositeExtract %5 %59 2
-%62 = OpFOrdGreaterThan %44 %61 %63
-OpSelectionMerge %99 None
-OpBranchConditional %62 %99 %98
-%98 = OpLabel
-OpStore %91 %94
-OpBranch %99
-%99 = OpLabel
-OpBranch %100
-%96 = OpLabel
-%65 = OpCompositeConstruct %28 %25 %26
-%64 = OpImageRead %11 %15 %65 None
-%66 = OpCompositeExtract %5 %64 0
-%67 = OpCompositeExtract %5 %64 1
-%68 = OpCompositeExtract %5 %64 2
-%69 = OpCompositeExtract %5 %64 3
-%70 = OpFAdd %5 %66 %35
-%71 = OpFAdd %5 %67 %37
-%72 = OpFAdd %5 %68 %39
-%73 = OpFAdd %5 %69 %41
-%74 = OpCompositeConstruct %28 %25 %26
-%75 = OpCompositeConstruct %11 %70 %71 %72 %73
-OpImageWrite %15 %74 %75
+OpImageWrite %15 %57 %58
 OpStore %91 %94
 OpBranch %100
 %100 = OpLabel

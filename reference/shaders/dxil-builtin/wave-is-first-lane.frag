@@ -87,8 +87,8 @@ OpDecorate %49 BuiltIn HelperInvocation
 %20 = OpTypeFunction %13 %13
 %28 = OpConstant %5 3
 %32 = OpConstant %5 0
-%33 = OpConstant %5 1
-%34 = OpTypeVector %5 4
+%33 = OpTypeVector %5 4
+%35 = OpConstant %5 1
 %47 = OpConstantTrue %13
 %48 = OpTypePointer Input %13
 %49 = OpVariable %48 Input
@@ -117,12 +117,12 @@ OpBranch %41
 OpSelectionMerge %44 None
 OpBranchConditional %31 %43 %42
 %43 = OpLabel
-%35 = OpCompositeConstruct %34 %33 %33 %33 %33
-OpImageWrite %11 %32 %35
+%36 = OpCompositeConstruct %33 %35 %35 %35 %35
+OpImageWrite %11 %32 %36
 OpBranch %44
 %42 = OpLabel
-%36 = OpCompositeConstruct %34 %32 %32 %32 %32
-OpImageWrite %11 %32 %36
+%34 = OpCompositeConstruct %33 %32 %32 %32 %32
+OpImageWrite %11 %32 %34
 OpBranch %44
 %44 = OpLabel
 OpBranch %45

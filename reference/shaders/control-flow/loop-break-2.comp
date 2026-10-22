@@ -17,34 +17,34 @@ void main()
     }
     else
     {
-        uint _22;
-        uint _27;
+        uint _21;
+        uint _23;
         bool _54;
         uint _58;
         uint _51 = 0u;
         uint _52 = 0u;
-        uint _25;
-        uint _26;
-        uint _41;
-        bool _42;
+        uint _20;
+        uint _22;
+        uint _38;
+        bool _39;
         for (;;)
         {
-            _26 = _52;
-            _25 = _51;
-            _41 = imageLoad(_8, int(ByteAddressMask(_26, 4u))).x;
-            _42 = _41 == 30u;
-            if (_42)
+            _22 = _52;
+            _20 = _51;
+            _38 = imageLoad(_8, int(ByteAddressMask(_22, 4u))).x;
+            _39 = _38 == 30u;
+            if (_39)
             {
                 _54 = false;
                 break;
             }
-            _22 = _41 + _25;
-            _27 = _26 + 1u;
-            _58 = _22;
-            if (_27 < gl_GlobalInvocationID.z)
+            _21 = _38 + _20;
+            _23 = _22 + 1u;
+            _58 = _21;
+            if (_23 < gl_GlobalInvocationID.z)
             {
-                _51 = _22;
-                _52 = _27;
+                _51 = _21;
+                _52 = _23;
                 continue;
             }
             else
@@ -59,7 +59,7 @@ void main()
         }
         else
         {
-            _50 = imageLoad(_8, int(25u)).x + _25;
+            _50 = imageLoad(_8, int(25u)).x + _20;
         }
     }
     imageStore(_8, int(0u), uvec4(_50));
@@ -79,9 +79,9 @@ OpMemoryModel Logical GLSL450
 OpEntryPoint GLCompute %3 "main" %8 %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
-OpName %32 "ByteAddressMask"
-OpName %30 "index"
-OpName %31 "stride"
+OpName %28 "ByteAddressMask"
+OpName %26 "index"
+OpName %27 "stride"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %12 BuiltIn GlobalInvocationId
@@ -98,13 +98,13 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %15 = OpConstant %5 2
 %17 = OpTypeBool
 %19 = OpConstant %5 0
-%23 = OpTypeVector %5 4
-%29 = OpTypeFunction %5 %5 %5
-%35 = OpConstant %5 4294967295
-%39 = OpConstant %5 4
-%43 = OpConstant %5 30
-%44 = OpConstant %5 25
-%47 = OpConstant %5 1
+%25 = OpTypeFunction %5 %5 %5
+%31 = OpConstant %5 4294967295
+%35 = OpConstant %5 4
+%36 = OpTypeVector %5 4
+%40 = OpConstant %5 30
+%41 = OpConstant %5 1
+%43 = OpConstant %5 25
 %49 = OpTypePointer Function %5
 %53 = OpTypePointer Function %17
 %56 = OpConstantFalse %17
@@ -132,36 +132,36 @@ OpStore %51 %19
 OpStore %52 %19
 OpBranch %62
 %62 = OpLabel
-%26 = OpLoad %5 %52
-%25 = OpLoad %5 %51
-%28 = OpShiftLeftLogical %5 %26 %15
-%38 = OpFunctionCall %5 %32 %26 %39
-%40 = OpImageRead %23 %9 %38
-%41 = OpCompositeExtract %5 %40 0
-%42 = OpIEqual %17 %41 %43
+%22 = OpLoad %5 %52
+%20 = OpLoad %5 %51
+%24 = OpShiftLeftLogical %5 %22 %15
+%34 = OpFunctionCall %5 %28 %22 %35
+%37 = OpImageRead %36 %9 %34
+%38 = OpCompositeExtract %5 %37 0
+%39 = OpIEqual %17 %38 %40
 OpLoopMerge %68 %65 None
 OpBranch %63
 %63 = OpLabel
 OpSelectionMerge %64 None
-OpBranchConditional %42 %67 %64
+OpBranchConditional %39 %67 %64
 %67 = OpLabel
 OpStore %54 %56
 OpBranch %68
 %64 = OpLabel
-%22 = OpIAdd %5 %41 %25
-%27 = OpIAdd %5 %26 %47
-%48 = OpULessThan %17 %27 %16
-OpStore %58 %22
+%21 = OpIAdd %5 %38 %20
+%23 = OpIAdd %5 %22 %41
+%42 = OpULessThan %17 %23 %16
+OpStore %58 %21
 OpSelectionMerge %77 None
-OpBranchConditional %48 %65 %66
+OpBranchConditional %42 %65 %66
 %66 = OpLabel
 OpStore %54 %57
 OpBranch %68
 %77 = OpLabel
 OpUnreachable
 %65 = OpLabel
-OpStore %51 %22
-OpStore %52 %27
+OpStore %51 %21
+OpStore %52 %23
 OpBranch %62
 %68 = OpLabel
 OpBranch %69
@@ -174,10 +174,10 @@ OpBranchConditional %55 %70 %71
 OpStore %50 %59
 OpBranch %72
 %71 = OpLabel
-%45 = OpImageRead %23 %9 %44
-%46 = OpCompositeExtract %5 %45 0
-%21 = OpIAdd %5 %46 %25
-OpStore %50 %21
+%44 = OpImageRead %36 %9 %43
+%45 = OpCompositeExtract %5 %44 0
+%46 = OpIAdd %5 %45 %20
+OpStore %50 %46
 OpBranch %72
 %72 = OpLabel
 OpBranch %74
@@ -186,17 +186,17 @@ OpBranch %75
 %75 = OpLabel
 OpBranch %76
 %76 = OpLabel
-%20 = OpLoad %5 %50
-%24 = OpCompositeConstruct %23 %20 %20 %20 %20
-OpImageWrite %9 %19 %24
+%47 = OpLoad %5 %50
+%48 = OpCompositeConstruct %36 %47 %47 %47 %47
+OpImageWrite %9 %19 %48
 OpReturn
 OpFunctionEnd
-%32 = OpFunction %5 None %29
-%30 = OpFunctionParameter %5
-%31 = OpFunctionParameter %5
-%33 = OpLabel
-%34 = OpUDiv %5 %35 %31
-%36 = OpBitwiseAnd %5 %30 %34
-OpReturnValue %36
+%28 = OpFunction %5 None %25
+%26 = OpFunctionParameter %5
+%27 = OpFunctionParameter %5
+%29 = OpLabel
+%30 = OpUDiv %5 %31 %27
+%32 = OpBitwiseAnd %5 %26 %30
+OpReturnValue %32
 OpFunctionEnd
 #endif

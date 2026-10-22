@@ -63,10 +63,10 @@ OpDecorate %60 BuiltIn HelperInvocation
 %15 = OpConstant %14 0
 %18 = OpConstant %14 1
 %20 = OpTypeBool
-%23 = OpConstant %5 0
-%31 = OpTypePointer Output %5
-%35 = OpConstant %14 2
-%37 = OpConstant %14 3
+%25 = OpConstant %14 3
+%27 = OpConstant %5 0
+%42 = OpTypePointer Output %5
+%46 = OpConstant %14 2
 %48 = OpTypePointer Function %5
 %59 = OpTypePointer Input %20
 %60 = OpVariable %59 Input
@@ -86,48 +86,48 @@ OpBranch %53
 OpSelectionMerge %56 None
 OpBranchConditional %21 %55 %54
 %55 = OpLabel
-OpStore %49 %23
-OpStore %50 %23
-OpStore %51 %23
-OpStore %52 %23
+OpStore %49 %27
+OpStore %50 %27
+OpStore %51 %27
+OpStore %52 %27
 OpBranch %56
 %54 = OpLabel
-%38 = OpFMul %5 %16 %16
-%39 = OpFMul %5 %19 %19
-%40 = OpLoad %20 %60
-%41 = OpSelect %5 %40 %23 %16
-%24 = OpGroupNonUniformFAdd %5 %37 ExclusiveScan %41
-%42 = OpLoad %20 %60
-%43 = OpSelect %5 %42 %23 %19
-%26 = OpGroupNonUniformFAdd %5 %37 ExclusiveScan %43
-%44 = OpLoad %20 %60
-%45 = OpSelect %5 %44 %23 %38
-%28 = OpGroupNonUniformFAdd %5 %37 ExclusiveScan %45
-%46 = OpLoad %20 %60
-%47 = OpSelect %5 %46 %23 %39
-%30 = OpGroupNonUniformFAdd %5 %37 ExclusiveScan %47
+%22 = OpFMul %5 %16 %16
+%23 = OpFMul %5 %19 %19
+%26 = OpLoad %20 %60
+%28 = OpSelect %5 %26 %27 %16
+%24 = OpGroupNonUniformFAdd %5 %25 ExclusiveScan %28
+%30 = OpLoad %20 %60
+%31 = OpSelect %5 %30 %27 %19
+%29 = OpGroupNonUniformFAdd %5 %25 ExclusiveScan %31
+%33 = OpLoad %20 %60
+%34 = OpSelect %5 %33 %27 %22
+%32 = OpGroupNonUniformFAdd %5 %25 ExclusiveScan %34
+%36 = OpLoad %20 %60
+%37 = OpSelect %5 %36 %27 %23
+%35 = OpGroupNonUniformFAdd %5 %25 ExclusiveScan %37
 OpStore %49 %24
-OpStore %50 %26
-OpStore %51 %28
-OpStore %52 %30
+OpStore %50 %29
+OpStore %51 %32
+OpStore %52 %35
 OpBranch %56
 %56 = OpLabel
 OpBranch %57
 %57 = OpLabel
 OpBranch %58
 %58 = OpLabel
-%29 = OpLoad %5 %52
-%27 = OpLoad %5 %51
-%25 = OpLoad %5 %50
-%22 = OpLoad %5 %49
-%32 = OpAccessChain %31 %11 %15
-OpStore %32 %22
-%33 = OpAccessChain %31 %11 %18
-OpStore %33 %25
-%34 = OpAccessChain %31 %11 %35
-OpStore %34 %27
-%36 = OpAccessChain %31 %11 %37
-OpStore %36 %29
+%41 = OpLoad %5 %52
+%40 = OpLoad %5 %51
+%39 = OpLoad %5 %50
+%38 = OpLoad %5 %49
+%43 = OpAccessChain %42 %11 %15
+OpStore %43 %38
+%44 = OpAccessChain %42 %11 %18
+OpStore %44 %39
+%45 = OpAccessChain %42 %11 %46
+OpStore %45 %40
+%47 = OpAccessChain %42 %11 %25
+OpStore %47 %41
 OpReturn
 OpFunctionEnd
 #endif

@@ -51,9 +51,9 @@ OpDecorate %10 Location 4
 %14 = OpConstant %13 0
 %16 = OpTypeBool
 %18 = OpConstant %5 10
-%19 = OpConstant %5 40
-%21 = OpConstant %5 20
-%22 = OpConstant %5 50
+%20 = OpConstant %5 20
+%21 = OpConstant %5 50
+%22 = OpConstant %5 40
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %24
@@ -64,14 +64,14 @@ OpBranch %24
 OpSelectionMerge %29 None
 OpBranchConditional %17 %28 %25
 %28 = OpLabel
-OpStore %10 %19
+OpStore %10 %22
 OpBranch %29
 %25 = OpLabel
-%20 = OpFOrdEqual %16 %15 %21
+%19 = OpFOrdEqual %16 %15 %20
 OpSelectionMerge %27 None
-OpBranchConditional %20 %26 %27
+OpBranchConditional %19 %26 %27
 %26 = OpLabel
-OpStore %10 %22
+OpStore %10 %21
 OpBranch %27
 %27 = OpLabel
 OpBranch %29
