@@ -49,6 +49,7 @@ void main(uint thr : SV_GroupIndex)
 		RWFloat[11] = sphere.w;
 
 		RWBool[4 * thr + 1] = NvRtCommittedIsLss(q);
+		RWBool[4 * thr + 3] = NvRtCommittedIsSphere(q);
 		float2x4 position_and_radii = NvRtCommittedLssObjectPositionsAndRadii(q);
 		RWFloat[0] = position_and_radii[0][0];
 		RWFloat[1] = position_and_radii[0][1];
