@@ -1,0 +1,30 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+struct Payload
+{
+	uint index;
+};
+
+RaytracingAccelerationStructure AS : register(t0);
+RWStructuredBuffer<uint> RWUint : register(u2);
+
+[shader("raygeneration")]
+void main()
+{
+	Payload payload;
+	RayDesc ray;
+
+	ray.Origin = float3(1, 2, 3);
+	ray.Direction = float3(4, 5, 6);
+	ray.TMin = 7.0;
+	ray.TMax = 8.0;
+
+	NvHitObject hitobject = NvTraceRayHitObject(AS, 0, 0xff, 0, 0, 0, ray, payload);
+	bool spherical = hitobject.IsSphereHit();
+	bool lss = hitobject.IsLssHit();
+
+	RWUint[0] = spherical ? 1 : 0;
+	RWUint[1] = lss ? 1 : 0;
+}

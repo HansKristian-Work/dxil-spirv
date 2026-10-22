@@ -895,6 +895,18 @@ static bool emit_nvapi_extn_op_hit_object_get_bool(Converter::Impl &impl, uint32
 		op = spv::OpHitObjectIsEmptyNV;
 		break;
 
+	case NV_EXTN_OP_HIT_OBJECT_IS_SPHERE_HIT:
+		builder.addExtension("SPV_NV_linear_swept_spheres");
+		builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+		op = spv::OpHitObjectIsSphereHitNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_IS_LSS_HIT:
+		builder.addExtension("SPV_NV_linear_swept_spheres");
+		builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+		op = spv::OpHitObjectIsLSSHitNV;
+		break;
+
 	default:
 		return false;
 	}
@@ -1539,6 +1551,8 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
 		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+		case NV_EXTN_OP_HIT_OBJECT_IS_SPHERE_HIT:
+		case NV_EXTN_OP_HIT_OBJECT_IS_LSS_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_ID:
 		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_INDEX:
 		case NV_EXTN_OP_HIT_OBJECT_GET_PRIMITIVE_INDEX:
@@ -1667,6 +1681,8 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
 		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+		case NV_EXTN_OP_HIT_OBJECT_IS_SPHERE_HIT:
+		case NV_EXTN_OP_HIT_OBJECT_IS_LSS_HIT:
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_get_bool(impl, opcode))
 				return false;
