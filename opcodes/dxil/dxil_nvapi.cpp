@@ -1193,6 +1193,36 @@ static bool emit_nvapi_extn_op_rt_sphere_position_and_radius(Converter::Impl &im
 	return true;
 }
 
+static bool emit_nvapi_extn_op_rt_intersection_sphere_position_and_radius(Converter::Impl &impl,
+                                                                          spv::RayQueryIntersection intersection)
+{
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (!ray_flags)
+		return false;
+
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+		return false;
+
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+	builder.addExtension("SPV_NV_linear_swept_spheres");
+	builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+
+	auto *position = impl.allocate(spv::OpRayQueryGetIntersectionSpherePositionNV, builder.makeVectorType(float32, 3));
+	position->add_id(ray_object_id);
+	position->add_id(builder.makeUintConstant(intersection));
+	impl.add(position);
+
+	auto *radius = impl.allocate(spv::OpRayQueryGetIntersectionSphereRadiusNV, float32);
+	radius->add_id(ray_object_id);
+	radius->add_id(builder.makeUintConstant(intersection));
+	impl.add(radius);
+
+	emit_nvapi_sphere_position_and_radius(impl, position->id, radius->id);
+	return true;
+}
+
 static bool emit_nvapi_extn_op_hit_object_get_position_and_radii(Converter::Impl &impl)
 {
 	auto &builder = impl.builder();
@@ -1462,6 +1492,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_RT_LSS_OBJECT_POSITIONS_AND_RADII:
 			return true;
 
+		case NV_EXTN_OP_RT_CANDIDATE_SPHERE_OBJECT_POSITION_AND_RADIUS:
 		case NV_EXTN_OP_RT_CANDIDATE_LSS_OBJECT_POSITIONS_AND_RADII:
 		case NV_EXTN_OP_RT_COMMITTED_LSS_OBJECT_POSITIONS_AND_RADII:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
@@ -1615,6 +1646,15 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 4;
 			if (!analysis && !emit_nvapi_extn_op_rt_sphere_position_and_radius(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_CANDIDATE_SPHERE_OBJECT_POSITION_AND_RADIUS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 4;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_sphere_position_and_radius(impl,
+			                                                                   spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
 				return false;
 			break;
 
