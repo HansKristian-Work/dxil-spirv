@@ -1562,6 +1562,7 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_RT_CANDIDATE_IS_NONOPAQUE_LSS:
 		case NV_EXTN_OP_RT_COMMITTED_IS_LSS:
 		case NV_EXTN_OP_RT_CANDIDATE_LSS_HIT_PARAMETER:
+		case NV_EXTN_OP_RT_COMMITTED_LSS_HIT_PARAMETER:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		default:
@@ -1804,6 +1805,15 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			if (!analysis &&
 			    !emit_nvapi_extn_op_rt_intersection_float(impl, spv::OpRayQueryGetIntersectionLSSHitValueNV,
 			                                              spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_COMMITTED_LSS_HIT_PARAMETER:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_float(impl, spv::OpRayQueryGetIntersectionLSSHitValueNV,
+			                                              spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
 				return false;
 			break;
 
