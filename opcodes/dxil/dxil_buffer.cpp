@@ -700,8 +700,7 @@ static spv::Id build_vectorized_physical_load_store_access(Converter::Impl &impl
 }
 
 static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                                  const Converter::Impl::PhysicalPointerMeta &ptr_meta,
-                                                  const ReferenceVkMemoryModel &vkmm,
+                                                  const Converter::Impl::ResourceMeta &meta,
                                                   uint32_t vecsize, uint32_t alignment = 0,
                                                   bool is_vector = false)
 {
@@ -727,7 +726,7 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	// Fixup broken DXIL.
 	alignment = std::max<uint32_t>(alignment, scalar_alignment);
 
-	auto tmp_ptr_meta = ptr_meta;
+	auto tmp_ptr_meta = meta.physical_pointer_meta;
 	tmp_ptr_meta.stride = array_id ? vecsize * scalar_alignment : 0;
 	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(physical_type_id, tmp_ptr_meta);
 
@@ -736,6 +735,10 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 		alignment = std::max<uint32_t>(alignment, tmp_ptr_meta.stride);
 		alignment = std::min<uint32_t>(alignment, 16);
 	}
+
+	// Handle misaligned SRV/UAV root descriptors
+	if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
+		alignment = scalar_alignment;
 
 	spv::Id u64_ptr_id;
 	if (array_id)
@@ -761,9 +764,9 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	load_op->add_id(chain_op->id);
 	load_op->add_literal(spv::MemoryAccessAlignedMask);
 	load_op->add_literal(alignment);
-	add_vkmm_access_qualifiers(impl, load_op, vkmm);
+	add_vkmm_access_qualifiers(impl, load_op, meta.vkmm);
 
-	impl.add(load_op, ptr_meta.rov);
+	impl.add(load_op, meta.physical_pointer_meta.rov);
 
 	spv::Id loaded_id = load_op->id;
 
@@ -1022,7 +1025,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 		// We know the type must be 32-bit however ...
 		// Might be possible to do some fancy analysis to deduce a better alignment.
 
-		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm,
+		return emit_physical_buffer_load_instruction(impl, instruction, meta,
 		                                             vecsize, 4, is_vector);
 	}
 
@@ -1308,8 +1311,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 }
 
 static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *instruction,
-                                                   const Converter::Impl::PhysicalPointerMeta &ptr_meta,
-                                                   const ReferenceVkMemoryModel &vkmm,
+                                                   const Converter::Impl::ResourceMeta &meta,
                                                    uint32_t alignment = 0, bool is_vector = false)
 {
 	auto &builder = impl.builder();
@@ -1352,7 +1354,7 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	// Fixup broken DXIL.
 	alignment = std::max<uint32_t>(alignment, scalar_alignment);
 
-	auto tmp_ptr_meta = ptr_meta;
+	auto tmp_ptr_meta = meta.physical_pointer_meta;
 	tmp_ptr_meta.stride = array_id ? vecsize * scalar_alignment : 0;
 	spv::Id ptr_type_id = impl.get_physical_pointer_block_type(vec_type_id, tmp_ptr_meta);
 
@@ -1364,6 +1366,10 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 		// BAB is 16 byte aligned, and structured buffer alignment caps out at 16 byte for explicit offset API.
 		alignment = std::min<uint32_t>(alignment, 16);
 	}
+
+	// Handle misaligned SRV/UAV root descriptors
+	if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
+		alignment = scalar_alignment;
 
 	spv::Id u64_ptr_id;
 	if (array_id)
@@ -1422,9 +1428,9 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	store_op->add_id(vec_id);
 	store_op->add_literal(spv::MemoryAccessAlignedMask);
 	store_op->add_literal(alignment);
-	add_vkmm_access_qualifiers(impl, store_op, vkmm);
+	add_vkmm_access_qualifiers(impl, store_op, meta.vkmm);
 
-	impl.add(store_op, ptr_meta.rov);
+	impl.add(store_op, meta.physical_pointer_meta.rov);
 
 	return true;
 }
@@ -1475,7 +1481,7 @@ bool emit_raw_buffer_load_instruction(Converter::Impl &impl, const llvm::CallIns
 			vecsize = access_mask_to_vecsize(mask);
 		}
 
-		return emit_physical_buffer_load_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm, vecsize, 0, is_vector);
+		return emit_physical_buffer_load_instruction(impl, instruction, meta, vecsize, 0, is_vector);
 	}
 }
 
@@ -1633,7 +1639,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		// We don't more about alignment in SM 5.1 BufferStore.
 		// We know the type must be 32-bit however ...
 		// Might be possible to do some fancy analysis to deduce a better alignment.
-		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm, 4, is_vector);
+		return emit_physical_buffer_store_instruction(impl, instruction, meta, 4, is_vector);
 	}
 
 	emit_buffer_synchronization_validation(impl, instruction, BDAOperation::Store, is_vector);
@@ -1834,7 +1840,7 @@ bool emit_raw_buffer_store_instruction(Converter::Impl &impl, const llvm::CallIn
 		return emit_buffer_store_instruction(impl, instruction, is_vector);
 	}
 	else
-		return emit_physical_buffer_store_instruction(impl, instruction, meta.physical_pointer_meta, meta.vkmm, 0, is_vector);
+		return emit_physical_buffer_store_instruction(impl, instruction, meta, 0, is_vector);
 }
 
 spv::Id emit_atomic_access_chain(Converter::Impl &impl,
