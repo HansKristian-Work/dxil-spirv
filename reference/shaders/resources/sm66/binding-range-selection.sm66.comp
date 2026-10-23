@@ -26,7 +26,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 55
+; Bound: 54
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageArrayDynamicIndexing
@@ -109,8 +109,6 @@ OpBranch %52
 %52 = OpLabel
 OpBranch %53
 %53 = OpLabel
-OpBranch %54
-%54 = OpLabel
 %44 = OpLoad %6 %8
 %46 = OpImageTexelPointer %45 %9 %23 %23
 %47 = OpAtomicIAdd %5 %46 %37 %23 %37

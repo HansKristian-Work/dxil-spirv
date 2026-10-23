@@ -61,7 +61,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 77
+; Bound: 74
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -126,10 +126,6 @@ OpBranchConditional %23 %69 %70
 OpStore %25 %26
 OpBranch %70
 %70 = OpLabel
-OpBranch %71
-%71 = OpLabel
-OpBranch %72
-%72 = OpLabel
 OpControlBarrier %27 %27 %28
 %29 = OpBitwiseAnd %10 %21 %30
 %31 = OpUConvert %5 %21
@@ -152,21 +148,19 @@ OpControlBarrier %27 %27 %28
 %51 = OpAtomicIAdd %5 %32 %27 %20 %31
 %52 = OpAtomicIAdd %5 %32 %27 %20 %31
 OpControlBarrier %27 %27 %28
-OpSelectionMerge %74 None
-OpBranchConditional %23 %73 %74
-%73 = OpLabel
+OpSelectionMerge %72 None
+OpBranchConditional %23 %71 %72
+%71 = OpLabel
 %53 = OpAccessChain %24 %14 %21
 %54 = OpLoad %5 %53
 %55 = OpShiftLeftLogical %10 %21 %30
 %64 = OpFunctionCall %10 %59 %21 %65
 %67 = OpAccessChain %66 %9 %20 %64
 OpStore %67 %54
-OpBranch %74
-%74 = OpLabel
-OpBranch %75
-%75 = OpLabel
-OpBranch %76
-%76 = OpLabel
+OpBranch %72
+%72 = OpLabel
+OpBranch %73
+%73 = OpLabel
 OpReturn
 OpFunctionEnd
 %59 = OpFunction %10 None %56

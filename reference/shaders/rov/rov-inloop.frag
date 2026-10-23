@@ -66,7 +66,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 105
+; Bound: 103
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -192,12 +192,12 @@ OpImageWrite %16 %79 %80
 OpStore %84 %83
 %68 = OpIAdd %19 %67 %23
 %86 = OpIEqual %85 %68 %43
-OpLoopMerge %101 %99 None
+OpLoopMerge %100 %99 None
 OpBranch %98
 %98 = OpLabel
-OpSelectionMerge %104 None
+OpSelectionMerge %102 None
 OpBranchConditional %86 %100 %99
-%104 = OpLabel
+%102 = OpLabel
 OpUnreachable
 %99 = OpLabel
 OpStore %95 %68
@@ -205,10 +205,6 @@ OpBranch %97
 %100 = OpLabel
 OpBranch %101
 %101 = OpLabel
-OpBranch %102
-%102 = OpLabel
-OpBranch %103
-%103 = OpLabel
 OpEndInvocationInterlockEXT
 %87 = OpAccessChain %17 %12 %40
 %88 = OpLoad %5 %87

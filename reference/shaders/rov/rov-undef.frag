@@ -39,9 +39,6 @@ void main()
         _86 = _31.x;
         _87 = _31.y;
     }
-    else
-    {
-    }
     if (gl_FragCoord.x > 1100.0)
     {
         uint _41 = (_87 * 1000u) + _86;
@@ -66,7 +63,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 98
+; Bound: 94
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -125,11 +122,9 @@ OpBranch %88
 %19 = OpFOrdGreaterThan %18 %17 %20
 %21 = OpFOrdGreaterThan %18 %17 %22
 OpBeginInvocationInterlockEXT
-OpSelectionMerge %91 None
-OpBranchConditional %19 %90 %89
+OpSelectionMerge %90 None
+OpBranchConditional %19 %89 %90
 %89 = OpLabel
-OpBranch %91
-%90 = OpLabel
 %24 = OpImageRead %23 %13 %16
 %25 = OpCompositeExtract %5 %24 0
 %27 = OpIAdd %5 %16 %28
@@ -142,17 +137,13 @@ OpBranch %91
 OpImageWrite %13 %16 %35
 OpStore %86 %32
 OpStore %87 %33
-OpBranch %91
-%91 = OpLabel
-OpBranch %92
-%92 = OpLabel
-OpBranch %93
-%93 = OpLabel
+OpBranch %90
+%90 = OpLabel
 %38 = OpLoad %5 %87
 %36 = OpLoad %5 %86
-OpSelectionMerge %95 None
-OpBranchConditional %21 %94 %95
-%94 = OpLabel
+OpSelectionMerge %92 None
+OpBranchConditional %21 %91 %92
+%91 = OpLabel
 %39 = OpIMul %5 %38 %40
 %41 = OpIAdd %5 %39 %36
 %42 = OpShiftLeftLogical %5 %41 %43
@@ -191,12 +182,10 @@ OpImageWrite %13 %82 %81
 %83 = OpCompositeConstruct %23 %75 %75 %75 %75
 %84 = OpIAdd %5 %77 %65
 OpImageWrite %13 %84 %83
-OpBranch %95
-%95 = OpLabel
-OpBranch %96
-%96 = OpLabel
-OpBranch %97
-%97 = OpLabel
+OpBranch %92
+%92 = OpLabel
+OpBranch %93
+%93 = OpLabel
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

@@ -92,7 +92,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 217
+; Bound: 210
 ; Schema: 0
 OpCapability Shader
 OpCapability Int8
@@ -220,7 +220,7 @@ OpStore %50 %45
 %79 = OpBitcast %78 %77
 %80 = OpCompositeExtract %2 %79 0
 %82 = OpIEqual %81 %80 %7
-OpLoopMerge %205 %203 None
+OpLoopMerge %202 %201 None
 OpBranch %197
 %197 = OpLabel
 OpSelectionMerge %200 None
@@ -235,10 +235,6 @@ OpBranch %200
 OpStore %193 %88
 OpBranch %200
 %200 = OpLabel
-OpBranch %201
-%201 = OpLabel
-OpBranch %202
-%202 = OpLabel
 %89 = OpLoad %8 %193
 %90 = OpIMul %2 %37 %47
 %91 = OpIAdd %2 %3 %90
@@ -260,24 +256,18 @@ OpStore %93 %89
 %113 = OpIAdd %2 %73 %112
 %38 = OpIAdd %2 %37 %7
 %115 = OpIEqual %81 %38 %10
-OpSelectionMerge %215 None
-OpBranchConditional %115 %204 %203
-%215 = OpLabel
+OpSelectionMerge %208 None
+OpBranchConditional %115 %202 %201
+%208 = OpLabel
 OpUnreachable
-%203 = OpLabel
+%201 = OpLabel
 OpStore %194 %38
 OpBranch %196
-%204 = OpLabel
-OpBranch %205
-%205 = OpLabel
-OpBranch %206
-%206 = OpLabel
-OpBranch %207
-%207 = OpLabel
+%202 = OpLabel
 OpStore %190 %117
 OpStore %192 %3
-OpBranch %208
-%208 = OpLabel
+OpBranch %203
+%203 = OpLabel
 %120 = OpLoad %2 %192
 %118 = OpLoad %11 %190
 %122 = OpIMul %2 %120 %47
@@ -319,24 +309,20 @@ OpBranch %208
 %186 = OpCooperativeMatrixMulAddKHR %11 %129 %161 %118
 %121 = OpIAdd %2 %120 %7
 %187 = OpIEqual %81 %121 %10
-OpLoopMerge %212 %210 None
-OpBranch %209
+OpLoopMerge %206 %205 None
+OpBranch %204
+%204 = OpLabel
+OpSelectionMerge %209 None
+OpBranchConditional %187 %206 %205
 %209 = OpLabel
-OpSelectionMerge %216 None
-OpBranchConditional %187 %211 %210
-%216 = OpLabel
 OpUnreachable
-%210 = OpLabel
+%205 = OpLabel
 OpStore %190 %186
 OpStore %192 %121
-OpBranch %208
-%211 = OpLabel
-OpBranch %212
-%212 = OpLabel
-OpBranch %213
-%213 = OpLabel
-OpBranch %214
-%214 = OpLabel
+OpBranch %203
+%206 = OpLabel
+OpBranch %207
+%207 = OpLabel
 %188 = OpAccessChain %42 %24 %3 %3
 OpCooperativeMatrixStoreKHR %188 %186 %7 %44 NonPrivatePointer
 OpReturn

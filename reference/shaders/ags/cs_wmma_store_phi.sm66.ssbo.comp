@@ -145,7 +145,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 271
+; Bound: 264
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -295,7 +295,7 @@ OpStore %81 %77
 %110 = OpBitcast %109 %108
 %111 = OpCompositeExtract %2 %110 0
 %112 = OpIEqual %47 %111 %7
-OpLoopMerge %259 %257 None
+OpLoopMerge %256 %255 None
 OpBranch %251
 %251 = OpLabel
 OpSelectionMerge %254 None
@@ -312,10 +312,6 @@ OpStore %142 %119
 OpStore %247 %143
 OpBranch %254
 %254 = OpLabel
-OpBranch %255
-%255 = OpLabel
-OpBranch %256
-%256 = OpLabel
 %144 = OpLoad %8 %247
 %145 = OpIMul %2 %37 %79
 %146 = OpIAdd %2 %3 %145
@@ -337,24 +333,18 @@ OpStore %147 %144
 %167 = OpIAdd %2 %104 %166
 %38 = OpIAdd %2 %37 %7
 %169 = OpIEqual %47 %38 %10
-OpSelectionMerge %269 None
-OpBranchConditional %169 %258 %257
-%269 = OpLabel
+OpSelectionMerge %262 None
+OpBranchConditional %169 %256 %255
+%262 = OpLabel
 OpUnreachable
-%257 = OpLabel
+%255 = OpLabel
 OpStore %248 %38
 OpBranch %250
-%258 = OpLabel
-OpBranch %259
-%259 = OpLabel
-OpBranch %260
-%260 = OpLabel
-OpBranch %261
-%261 = OpLabel
+%256 = OpLabel
 OpStore %244 %171
 OpStore %246 %3
-OpBranch %262
-%262 = OpLabel
+OpBranch %257
+%257 = OpLabel
 %174 = OpLoad %2 %246
 %172 = OpLoad %11 %244
 %176 = OpIMul %2 %174 %79
@@ -396,24 +386,20 @@ OpBranch %262
 %240 = OpCooperativeMatrixMulAddKHR %11 %183 %215 %172
 %175 = OpIAdd %2 %174 %7
 %241 = OpIEqual %47 %175 %10
-OpLoopMerge %266 %264 None
-OpBranch %263
+OpLoopMerge %260 %259 None
+OpBranch %258
+%258 = OpLabel
+OpSelectionMerge %263 None
+OpBranchConditional %241 %260 %259
 %263 = OpLabel
-OpSelectionMerge %270 None
-OpBranchConditional %241 %265 %264
-%270 = OpLabel
 OpUnreachable
-%264 = OpLabel
+%259 = OpLabel
 OpStore %244 %240
 OpStore %246 %175
-OpBranch %262
-%265 = OpLabel
-OpBranch %266
-%266 = OpLabel
-OpBranch %267
-%267 = OpLabel
-OpBranch %268
-%268 = OpLabel
+OpBranch %257
+%260 = OpLabel
+OpBranch %261
+%261 = OpLabel
 %242 = OpAccessChain %43 %24 %3 %3
 OpCooperativeMatrixStoreKHR %242 %240 %7 %45 NonPrivatePointer
 OpReturn

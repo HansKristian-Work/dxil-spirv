@@ -57,9 +57,6 @@ void main()
         _967 = dFdyCoarse(_30);
         _968 = dFdxCoarse(_30);
     }
-    else
-    {
-    }
     vector<float, 8> _961;
     vector<float, 8> _962;
     vector<float, 8> _963;
@@ -70,9 +67,6 @@ void main()
         _962 = subgroupQuadSwapHorizontal(_30);
         _963 = subgroupQuadSwapVertical(_30);
         _964 = subgroupQuadSwapDiagonal(_30);
-    }
-    else
-    {
     }
     vector<float, 8> _960;
     if (gl_GlobalInvocationID.x == 0u)
@@ -793,7 +787,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 1276
+; Bound: 1268
 ; Schema: 0
 OpCapability Shader
 OpCapability Float64
@@ -991,11 +985,9 @@ OpBranch %1082
 %44 = OpBitcast %29 %43
 %46 = OpIEqual %45 %21 %47
 %59 = OpFunctionCall %45 %50 %46
-OpSelectionMerge %1085 None
-OpBranchConditional %59 %1084 %1083
+OpSelectionMerge %1084 None
+OpBranchConditional %59 %1083 %1084
 %1083 = OpLabel
-OpBranch %1085
-%1084 = OpLabel
 %60 = OpDPdxCoarse %29 %30
 %61 = OpDPdyCoarse %29 %30
 %62 = OpDPdxFine %29 %30
@@ -1004,23 +996,17 @@ OpStore %965 %63
 OpStore %966 %62
 OpStore %967 %61
 OpStore %968 %60
-OpBranch %1085
-%1085 = OpLabel
-OpBranch %1086
-%1086 = OpLabel
-OpBranch %1087
-%1087 = OpLabel
+OpBranch %1084
+%1084 = OpLabel
 %68 = OpLoad %29 %968
 %67 = OpLoad %29 %967
 %66 = OpLoad %29 %966
 %64 = OpLoad %29 %965
 %69 = OpIEqual %45 %21 %70
 %71 = OpFunctionCall %45 %50 %69
-OpSelectionMerge %1090 None
-OpBranchConditional %71 %1089 %1088
-%1088 = OpLabel
-OpBranch %1090
-%1089 = OpLabel
+OpSelectionMerge %1086 None
+OpBranchConditional %71 %1085 %1086
+%1085 = OpLabel
 %72 = OpGroupNonUniformQuadBroadcast %29 %23 %30 %32
 %73 = OpGroupNonUniformQuadSwap %29 %23 %30 %20
 %74 = OpGroupNonUniformQuadSwap %29 %23 %30 %32
@@ -1029,281 +1015,275 @@ OpStore %961 %72
 OpStore %962 %73
 OpStore %963 %74
 OpStore %964 %75
-OpBranch %1090
-%1090 = OpLabel
-OpBranch %1091
-%1091 = OpLabel
-OpBranch %1092
-%1092 = OpLabel
+OpBranch %1086
+%1086 = OpLabel
 %79 = OpLoad %29 %964
 %78 = OpLoad %29 %963
 %77 = OpLoad %29 %962
 %76 = OpLoad %29 %961
 %969 = OpIEqual %45 %21 %20
-OpSelectionMerge %1273 None
-OpBranchConditional %969 %1272 %1093
-%1093 = OpLabel
+OpSelectionMerge %1266 None
+OpBranchConditional %969 %1265 %1087
+%1087 = OpLabel
 %970 = OpIEqual %45 %21 %32
-OpSelectionMerge %1271 None
-OpBranchConditional %970 %1270 %1094
-%1094 = OpLabel
+OpSelectionMerge %1264 None
+OpBranchConditional %970 %1263 %1088
+%1088 = OpLabel
 %971 = OpIEqual %45 %21 %39
-OpSelectionMerge %1269 None
-OpBranchConditional %971 %1268 %1095
-%1095 = OpLabel
+OpSelectionMerge %1262 None
+OpBranchConditional %971 %1261 %1089
+%1089 = OpLabel
 %972 = OpIEqual %45 %21 %23
-OpSelectionMerge %1267 None
-OpBranchConditional %972 %1266 %1096
-%1096 = OpLabel
+OpSelectionMerge %1260 None
+OpBranchConditional %972 %1259 %1090
+%1090 = OpLabel
 %973 = OpIEqual %45 %21 %974
-OpSelectionMerge %1265 None
-OpBranchConditional %973 %1264 %1097
-%1097 = OpLabel
+OpSelectionMerge %1258 None
+OpBranchConditional %973 %1257 %1091
+%1091 = OpLabel
 %975 = OpIEqual %45 %21 %976
-OpSelectionMerge %1263 None
-OpBranchConditional %975 %1262 %1098
-%1098 = OpLabel
+OpSelectionMerge %1256 None
+OpBranchConditional %975 %1255 %1092
+%1092 = OpLabel
 %977 = OpIEqual %45 %21 %978
-OpSelectionMerge %1261 None
-OpBranchConditional %977 %1260 %1099
-%1099 = OpLabel
+OpSelectionMerge %1254 None
+OpBranchConditional %977 %1253 %1093
+%1093 = OpLabel
 %979 = OpIEqual %45 %21 %980
-OpSelectionMerge %1259 None
-OpBranchConditional %979 %1258 %1100
-%1100 = OpLabel
+OpSelectionMerge %1252 None
+OpBranchConditional %979 %1251 %1094
+%1094 = OpLabel
 %981 = OpIEqual %45 %21 %982
-OpSelectionMerge %1257 None
-OpBranchConditional %981 %1256 %1101
-%1101 = OpLabel
+OpSelectionMerge %1250 None
+OpBranchConditional %981 %1249 %1095
+%1095 = OpLabel
 %983 = OpIEqual %45 %21 %984
-OpSelectionMerge %1255 None
-OpBranchConditional %983 %1254 %1102
-%1102 = OpLabel
+OpSelectionMerge %1248 None
+OpBranchConditional %983 %1247 %1096
+%1096 = OpLabel
 %985 = OpIEqual %45 %21 %986
-OpSelectionMerge %1253 None
-OpBranchConditional %985 %1252 %1103
-%1103 = OpLabel
+OpSelectionMerge %1246 None
+OpBranchConditional %985 %1245 %1097
+%1097 = OpLabel
 %987 = OpIEqual %45 %21 %988
-OpSelectionMerge %1251 None
-OpBranchConditional %987 %1250 %1104
-%1104 = OpLabel
+OpSelectionMerge %1244 None
+OpBranchConditional %987 %1243 %1098
+%1098 = OpLabel
 %989 = OpIEqual %45 %21 %990
-OpSelectionMerge %1249 None
-OpBranchConditional %989 %1248 %1105
-%1105 = OpLabel
+OpSelectionMerge %1242 None
+OpBranchConditional %989 %1241 %1099
+%1099 = OpLabel
 %991 = OpIEqual %45 %21 %992
-OpSelectionMerge %1247 None
-OpBranchConditional %991 %1246 %1106
-%1106 = OpLabel
+OpSelectionMerge %1240 None
+OpBranchConditional %991 %1239 %1100
+%1100 = OpLabel
 %993 = OpIEqual %45 %21 %994
-OpSelectionMerge %1245 None
-OpBranchConditional %993 %1244 %1107
-%1107 = OpLabel
+OpSelectionMerge %1238 None
+OpBranchConditional %993 %1237 %1101
+%1101 = OpLabel
 %995 = OpIEqual %45 %21 %996
-OpSelectionMerge %1243 None
-OpBranchConditional %995 %1242 %1108
-%1108 = OpLabel
+OpSelectionMerge %1236 None
+OpBranchConditional %995 %1235 %1102
+%1102 = OpLabel
 %997 = OpIEqual %45 %21 %998
-OpSelectionMerge %1241 None
-OpBranchConditional %997 %1240 %1109
-%1109 = OpLabel
+OpSelectionMerge %1234 None
+OpBranchConditional %997 %1233 %1103
+%1103 = OpLabel
 %999 = OpIEqual %45 %21 %1000
-OpSelectionMerge %1239 None
-OpBranchConditional %999 %1238 %1110
-%1110 = OpLabel
+OpSelectionMerge %1232 None
+OpBranchConditional %999 %1231 %1104
+%1104 = OpLabel
 %1001 = OpIEqual %45 %21 %1002
-OpSelectionMerge %1237 None
-OpBranchConditional %1001 %1236 %1111
-%1111 = OpLabel
+OpSelectionMerge %1230 None
+OpBranchConditional %1001 %1229 %1105
+%1105 = OpLabel
 %1003 = OpIEqual %45 %21 %1004
-OpSelectionMerge %1235 None
-OpBranchConditional %1003 %1234 %1112
-%1112 = OpLabel
+OpSelectionMerge %1228 None
+OpBranchConditional %1003 %1227 %1106
+%1106 = OpLabel
 %1005 = OpIEqual %45 %21 %1006
-OpSelectionMerge %1233 None
-OpBranchConditional %1005 %1232 %1113
-%1113 = OpLabel
+OpSelectionMerge %1226 None
+OpBranchConditional %1005 %1225 %1107
+%1107 = OpLabel
 %1007 = OpIEqual %45 %21 %1008
-OpSelectionMerge %1231 None
-OpBranchConditional %1007 %1230 %1114
-%1114 = OpLabel
+OpSelectionMerge %1224 None
+OpBranchConditional %1007 %1223 %1108
+%1108 = OpLabel
 %1009 = OpIEqual %45 %21 %1010
-OpSelectionMerge %1229 None
-OpBranchConditional %1009 %1228 %1115
-%1115 = OpLabel
+OpSelectionMerge %1222 None
+OpBranchConditional %1009 %1221 %1109
+%1109 = OpLabel
 %1011 = OpIEqual %45 %21 %1012
-OpSelectionMerge %1227 None
-OpBranchConditional %1011 %1226 %1116
-%1116 = OpLabel
+OpSelectionMerge %1220 None
+OpBranchConditional %1011 %1219 %1110
+%1110 = OpLabel
 %1013 = OpIEqual %45 %21 %1014
-OpSelectionMerge %1225 None
-OpBranchConditional %1013 %1224 %1117
-%1117 = OpLabel
+OpSelectionMerge %1218 None
+OpBranchConditional %1013 %1217 %1111
+%1111 = OpLabel
 %1015 = OpIEqual %45 %21 %1016
-OpSelectionMerge %1223 None
-OpBranchConditional %1015 %1222 %1118
-%1118 = OpLabel
+OpSelectionMerge %1216 None
+OpBranchConditional %1015 %1215 %1112
+%1112 = OpLabel
 %1017 = OpIEqual %45 %21 %1018
-OpSelectionMerge %1221 None
-OpBranchConditional %1017 %1220 %1119
-%1119 = OpLabel
+OpSelectionMerge %1214 None
+OpBranchConditional %1017 %1213 %1113
+%1113 = OpLabel
 %1019 = OpIEqual %45 %21 %1020
-OpSelectionMerge %1219 None
-OpBranchConditional %1019 %1218 %1120
-%1120 = OpLabel
+OpSelectionMerge %1212 None
+OpBranchConditional %1019 %1211 %1114
+%1114 = OpLabel
 %1021 = OpIEqual %45 %21 %47
-OpSelectionMerge %1217 None
-OpBranchConditional %1021 %1216 %1121
-%1121 = OpLabel
+OpSelectionMerge %1210 None
+OpBranchConditional %1021 %1209 %1115
+%1115 = OpLabel
 %1022 = OpIEqual %45 %21 %1023
-OpSelectionMerge %1215 None
-OpBranchConditional %1022 %1214 %1122
-%1122 = OpLabel
+OpSelectionMerge %1208 None
+OpBranchConditional %1022 %1207 %1116
+%1116 = OpLabel
 %1024 = OpIEqual %45 %21 %1025
-OpSelectionMerge %1213 None
-OpBranchConditional %1024 %1212 %1123
-%1123 = OpLabel
+OpSelectionMerge %1206 None
+OpBranchConditional %1024 %1205 %1117
+%1117 = OpLabel
 %1026 = OpIEqual %45 %21 %552
-OpSelectionMerge %1211 None
-OpBranchConditional %1026 %1210 %1124
-%1124 = OpLabel
+OpSelectionMerge %1204 None
+OpBranchConditional %1026 %1203 %1118
+%1118 = OpLabel
 %1027 = OpIEqual %45 %21 %1028
-OpSelectionMerge %1209 None
-OpBranchConditional %1027 %1208 %1125
-%1125 = OpLabel
+OpSelectionMerge %1202 None
+OpBranchConditional %1027 %1201 %1119
+%1119 = OpLabel
 %1029 = OpIEqual %45 %21 %1030
-OpSelectionMerge %1207 None
-OpBranchConditional %1029 %1206 %1126
-%1126 = OpLabel
+OpSelectionMerge %1200 None
+OpBranchConditional %1029 %1199 %1120
+%1120 = OpLabel
 %1031 = OpIEqual %45 %21 %1032
-OpSelectionMerge %1205 None
-OpBranchConditional %1031 %1204 %1127
-%1127 = OpLabel
+OpSelectionMerge %1198 None
+OpBranchConditional %1031 %1197 %1121
+%1121 = OpLabel
 %1033 = OpIEqual %45 %21 %1034
-OpSelectionMerge %1203 None
-OpBranchConditional %1033 %1202 %1128
-%1128 = OpLabel
+OpSelectionMerge %1196 None
+OpBranchConditional %1033 %1195 %1122
+%1122 = OpLabel
 %1035 = OpIEqual %45 %21 %1036
-OpSelectionMerge %1201 None
-OpBranchConditional %1035 %1200 %1129
-%1129 = OpLabel
+OpSelectionMerge %1194 None
+OpBranchConditional %1035 %1193 %1123
+%1123 = OpLabel
 %1037 = OpIEqual %45 %21 %1038
-OpSelectionMerge %1199 None
-OpBranchConditional %1037 %1198 %1130
-%1130 = OpLabel
+OpSelectionMerge %1192 None
+OpBranchConditional %1037 %1191 %1124
+%1124 = OpLabel
 %1039 = OpIEqual %45 %21 %1040
-OpSelectionMerge %1197 None
-OpBranchConditional %1039 %1196 %1131
-%1131 = OpLabel
+OpSelectionMerge %1190 None
+OpBranchConditional %1039 %1189 %1125
+%1125 = OpLabel
 %1041 = OpIEqual %45 %21 %1042
-OpSelectionMerge %1195 None
-OpBranchConditional %1041 %1194 %1132
-%1132 = OpLabel
+OpSelectionMerge %1188 None
+OpBranchConditional %1041 %1187 %1126
+%1126 = OpLabel
 %1043 = OpIEqual %45 %21 %1044
-OpSelectionMerge %1193 None
-OpBranchConditional %1043 %1192 %1133
-%1133 = OpLabel
+OpSelectionMerge %1186 None
+OpBranchConditional %1043 %1185 %1127
+%1127 = OpLabel
 %1045 = OpIEqual %45 %21 %1046
-OpSelectionMerge %1191 None
-OpBranchConditional %1045 %1190 %1134
-%1134 = OpLabel
+OpSelectionMerge %1184 None
+OpBranchConditional %1045 %1183 %1128
+%1128 = OpLabel
 %1047 = OpIEqual %45 %21 %1048
-OpSelectionMerge %1189 None
-OpBranchConditional %1047 %1188 %1135
-%1135 = OpLabel
+OpSelectionMerge %1182 None
+OpBranchConditional %1047 %1181 %1129
+%1129 = OpLabel
 %1049 = OpIEqual %45 %21 %1050
-OpSelectionMerge %1187 None
-OpBranchConditional %1049 %1186 %1136
-%1136 = OpLabel
+OpSelectionMerge %1180 None
+OpBranchConditional %1049 %1179 %1130
+%1130 = OpLabel
 %1051 = OpIEqual %45 %21 %1052
-OpSelectionMerge %1185 None
-OpBranchConditional %1051 %1184 %1137
-%1137 = OpLabel
+OpSelectionMerge %1178 None
+OpBranchConditional %1051 %1177 %1131
+%1131 = OpLabel
 %1053 = OpIEqual %45 %21 %1054
-OpSelectionMerge %1183 None
-OpBranchConditional %1053 %1182 %1138
-%1138 = OpLabel
+OpSelectionMerge %1176 None
+OpBranchConditional %1053 %1175 %1132
+%1132 = OpLabel
 %1055 = OpIEqual %45 %21 %1056
-OpSelectionMerge %1181 None
-OpBranchConditional %1055 %1180 %1139
-%1139 = OpLabel
+OpSelectionMerge %1174 None
+OpBranchConditional %1055 %1173 %1133
+%1133 = OpLabel
 %1057 = OpIEqual %45 %21 %1058
-OpSelectionMerge %1179 None
-OpBranchConditional %1057 %1178 %1140
-%1140 = OpLabel
+OpSelectionMerge %1172 None
+OpBranchConditional %1057 %1171 %1134
+%1134 = OpLabel
 %1059 = OpIEqual %45 %21 %1060
-OpSelectionMerge %1177 None
-OpBranchConditional %1059 %1176 %1141
-%1141 = OpLabel
+OpSelectionMerge %1170 None
+OpBranchConditional %1059 %1169 %1135
+%1135 = OpLabel
 %1061 = OpIEqual %45 %21 %1062
-OpSelectionMerge %1175 None
-OpBranchConditional %1061 %1174 %1142
-%1142 = OpLabel
+OpSelectionMerge %1168 None
+OpBranchConditional %1061 %1167 %1136
+%1136 = OpLabel
 %1063 = OpIEqual %45 %21 %1064
-OpSelectionMerge %1173 None
-OpBranchConditional %1063 %1172 %1143
-%1143 = OpLabel
+OpSelectionMerge %1166 None
+OpBranchConditional %1063 %1165 %1137
+%1137 = OpLabel
 %1065 = OpIEqual %45 %21 %1066
-OpSelectionMerge %1171 None
-OpBranchConditional %1065 %1170 %1144
-%1144 = OpLabel
+OpSelectionMerge %1164 None
+OpBranchConditional %1065 %1163 %1138
+%1138 = OpLabel
 %1067 = OpIEqual %45 %21 %1068
-OpSelectionMerge %1169 None
-OpBranchConditional %1067 %1168 %1145
-%1145 = OpLabel
+OpSelectionMerge %1162 None
+OpBranchConditional %1067 %1161 %1139
+%1139 = OpLabel
 %1069 = OpIEqual %45 %21 %1070
-OpSelectionMerge %1167 None
-OpBranchConditional %1069 %1166 %1146
-%1146 = OpLabel
+OpSelectionMerge %1160 None
+OpBranchConditional %1069 %1159 %1140
+%1140 = OpLabel
 %1071 = OpIEqual %45 %21 %1072
-OpSelectionMerge %1165 None
-OpBranchConditional %1071 %1164 %1147
-%1147 = OpLabel
+OpSelectionMerge %1158 None
+OpBranchConditional %1071 %1157 %1141
+%1141 = OpLabel
 %1073 = OpIEqual %45 %21 %1074
-OpSelectionMerge %1163 None
-OpBranchConditional %1073 %1162 %1148
-%1148 = OpLabel
+OpSelectionMerge %1156 None
+OpBranchConditional %1073 %1155 %1142
+%1142 = OpLabel
 %1075 = OpIEqual %45 %21 %70
-OpSelectionMerge %1161 None
-OpBranchConditional %1075 %1160 %1149
-%1149 = OpLabel
+OpSelectionMerge %1154 None
+OpBranchConditional %1075 %1153 %1143
+%1143 = OpLabel
 %1076 = OpIEqual %45 %21 %1077
-OpSelectionMerge %1159 None
-OpBranchConditional %1076 %1158 %1150
-%1150 = OpLabel
+OpSelectionMerge %1152 None
+OpBranchConditional %1076 %1151 %1144
+%1144 = OpLabel
 %1078 = OpIEqual %45 %21 %1079
-OpSelectionMerge %1157 None
-OpBranchConditional %1078 %1156 %1151
-%1151 = OpLabel
+OpSelectionMerge %1150 None
+OpBranchConditional %1078 %1149 %1145
+%1145 = OpLabel
 %1080 = OpIEqual %45 %21 %1081
-OpSelectionMerge %1155 None
-OpBranchConditional %1080 %1154 %1152
-%1152 = OpLabel
-OpBranch %1153
-%1153 = OpLabel
+OpSelectionMerge %1148 None
+OpBranchConditional %1080 %1147 %1146
+%1146 = OpLabel
 OpStore %960 %653
-OpBranch %1155
-%1154 = OpLabel
+OpBranch %1148
+%1147 = OpLabel
 OpStore %960 %79
-OpBranch %1155
-%1155 = OpLabel
-OpBranch %1157
-%1156 = OpLabel
+OpBranch %1148
+%1148 = OpLabel
+OpBranch %1150
+%1149 = OpLabel
 OpStore %960 %78
-OpBranch %1157
-%1157 = OpLabel
-OpBranch %1159
-%1158 = OpLabel
+OpBranch %1150
+%1150 = OpLabel
+OpBranch %1152
+%1151 = OpLabel
 OpStore %960 %77
-OpBranch %1159
-%1159 = OpLabel
-OpBranch %1161
-%1160 = OpLabel
+OpBranch %1152
+%1152 = OpLabel
+OpBranch %1154
+%1153 = OpLabel
 OpStore %960 %76
-OpBranch %1161
-%1161 = OpLabel
-OpBranch %1163
-%1162 = OpLabel
+OpBranch %1154
+%1154 = OpLabel
+OpBranch %1156
+%1155 = OpLabel
 %80 = OpCompositeExtract %28 %30 0
 %81 = OpCompositeExtract %28 %30 1
 %82 = OpCompositeExtract %28 %30 2
@@ -1386,10 +1366,10 @@ OpBranch %1163
 %167 = OpSelect %28 %166 %108 %89
 %168 = OpCompositeInsert %29 %167 %141 2
 OpStore %960 %168
-OpBranch %1163
-%1163 = OpLabel
-OpBranch %1165
-%1164 = OpLabel
+OpBranch %1156
+%1156 = OpLabel
+OpBranch %1158
+%1157 = OpLabel
 %169 = OpCompositeExtract %28 %30 0
 %170 = OpCompositeExtract %28 %30 1
 %171 = OpCompositeExtract %28 %30 2
@@ -1472,10 +1452,10 @@ OpBranch %1165
 %248 = OpSelect %28 %247 %108 %89
 %249 = OpCompositeInsert %29 %248 %222 2
 OpStore %960 %249
-OpBranch %1165
-%1165 = OpLabel
-OpBranch %1167
-%1166 = OpLabel
+OpBranch %1158
+%1158 = OpLabel
+OpBranch %1160
+%1159 = OpLabel
 %250 = OpCompositeExtract %28 %30 0
 %251 = OpCompositeExtract %28 %30 1
 %252 = OpCompositeExtract %28 %30 2
@@ -1502,10 +1482,10 @@ OpBranch %1167
 %273 = OpCompositeInsert %97 %265 %272 7
 %274 = OpSelect %29 %273 %37 %44
 OpStore %960 %274
-OpBranch %1167
-%1167 = OpLabel
-OpBranch %1169
-%1168 = OpLabel
+OpBranch %1160
+%1160 = OpLabel
+OpBranch %1162
+%1161 = OpLabel
 %275 = OpCompositeExtract %28 %37 0
 %276 = OpCompositeExtract %28 %37 1
 %277 = OpCompositeExtract %28 %37 2
@@ -1580,10 +1560,10 @@ OpBranch %1169
 %346 = OpCompositeInsert %29 %338 %345 6
 %347 = OpCompositeInsert %29 %339 %346 7
 OpStore %960 %347
-OpBranch %1169
-%1169 = OpLabel
-OpBranch %1171
-%1170 = OpLabel
+OpBranch %1162
+%1162 = OpLabel
+OpBranch %1164
+%1163 = OpLabel
 %348 = OpCompositeExtract %28 %37 0
 %349 = OpCompositeExtract %28 %37 1
 %350 = OpCompositeExtract %28 %37 2
@@ -1658,10 +1638,10 @@ OpBranch %1171
 %419 = OpCompositeInsert %29 %411 %418 6
 %420 = OpCompositeInsert %29 %412 %419 7
 OpStore %960 %420
-OpBranch %1171
-%1171 = OpLabel
-OpBranch %1173
-%1172 = OpLabel
+OpBranch %1164
+%1164 = OpLabel
+OpBranch %1166
+%1165 = OpLabel
 %421 = OpCompositeExtract %28 %30 0
 %425 = OpCompositeConstruct %424 %421 %89
 %423 = OpExtInst %5 %422 PackHalf2x16 %425
@@ -1696,10 +1676,10 @@ OpBranch %1173
 %455 = OpCompositeInsert %6 %453 %451 7
 %456 = OpBitcast %29 %455
 OpStore %960 %456
-OpBranch %1173
-%1173 = OpLabel
-OpBranch %1175
-%1174 = OpLabel
+OpBranch %1166
+%1166 = OpLabel
+OpBranch %1168
+%1167 = OpLabel
 %457 = OpCompositeExtract %28 %30 0
 %458 = OpCompositeExtract %28 %30 1
 %459 = OpCompositeExtract %28 %30 2
@@ -1741,10 +1721,10 @@ OpBranch %1175
 %495 = OpCompositeExtract %28 %494 0
 %496 = OpCompositeInsert %29 %495 %493 7
 OpStore %960 %496
-OpBranch %1175
-%1175 = OpLabel
-OpBranch %1177
-%1176 = OpLabel
+OpBranch %1168
+%1168 = OpLabel
+OpBranch %1170
+%1169 = OpLabel
 %497 = OpCompositeExtract %28 %30 0
 %498 = OpCompositeExtract %28 %30 1
 %499 = OpCompositeExtract %28 %30 2
@@ -1772,10 +1752,10 @@ OpBranch %1177
 %521 = OpExtInst %6 %422 FindILsb %520
 %522 = OpBitcast %29 %521
 OpStore %960 %522
-OpBranch %1177
-%1177 = OpLabel
-OpBranch %1179
-%1178 = OpLabel
+OpBranch %1170
+%1170 = OpLabel
+OpBranch %1172
+%1171 = OpLabel
 %523 = OpCompositeExtract %28 %30 0
 %524 = OpCompositeExtract %28 %30 1
 %525 = OpCompositeExtract %28 %30 2
@@ -1809,10 +1789,10 @@ OpBranch %1179
 %557 = OpBitcast %29 %555
 %558 = OpSelect %29 %556 %560 %557
 OpStore %960 %558
-OpBranch %1179
-%1179 = OpLabel
-OpBranch %1181
-%1180 = OpLabel
+OpBranch %1172
+%1172 = OpLabel
+OpBranch %1174
+%1173 = OpLabel
 %561 = OpCompositeExtract %28 %30 0
 %562 = OpCompositeExtract %28 %30 1
 %563 = OpCompositeExtract %28 %30 2
@@ -1840,10 +1820,10 @@ OpBranch %1181
 %585 = OpBitCount %6 %584
 %586 = OpBitcast %29 %585
 OpStore %960 %586
-OpBranch %1181
-%1181 = OpLabel
-OpBranch %1183
-%1182 = OpLabel
+OpBranch %1174
+%1174 = OpLabel
+OpBranch %1176
+%1175 = OpLabel
 %587 = OpCompositeExtract %28 %30 0
 %588 = OpCompositeExtract %28 %30 1
 %589 = OpCompositeExtract %28 %30 2
@@ -1871,10 +1851,10 @@ OpBranch %1183
 %611 = OpBitReverse %6 %610
 %612 = OpBitcast %29 %611
 OpStore %960 %612
-OpBranch %1183
-%1183 = OpLabel
-OpBranch %1185
-%1184 = OpLabel
+OpBranch %1176
+%1176 = OpLabel
+OpBranch %1178
+%1177 = OpLabel
 %613 = OpDot %28 %30 %37
 %614 = OpCompositeInsert %29 %613 %114 0
 %615 = OpDot %28 %30 %44
@@ -1882,10 +1862,10 @@ OpBranch %1185
 %617 = OpDot %28 %37 %44
 %618 = OpCompositeInsert %29 %617 %616 2
 OpStore %960 %618
-OpBranch %1185
-%1185 = OpLabel
-OpBranch %1187
-%1186 = OpLabel
+OpBranch %1178
+%1178 = OpLabel
+OpBranch %1180
+%1179 = OpLabel
 %619 = OpExtInst %29 %422 Trunc %30
 %620 = OpFSub %29 %622 %619
 %623 = OpConvertFToS %6 %619
@@ -1917,17 +1897,17 @@ OpBranch %1187
 %649 = OpFAdd %29 %30 %620
 %650 = OpFAdd %29 %649 %648
 OpStore %960 %650
-OpBranch %1187
-%1187 = OpLabel
-OpBranch %1189
-%1188 = OpLabel
+OpBranch %1180
+%1180 = OpLabel
+OpBranch %1182
+%1181 = OpLabel
 %651 = OpFOrdLessThan %97 %37 %30
 %652 = OpSelect %29 %651 %653 %654
 OpStore %960 %652
-OpBranch %1189
-%1189 = OpLabel
-OpBranch %1191
-%1190 = OpLabel
+OpBranch %1182
+%1182 = OpLabel
+OpBranch %1184
+%1183 = OpLabel
 %655 = OpFSub %29 %37 %30
 %656 = OpFSub %29 %44 %30
 %657 = OpFDiv %29 %656 %655
@@ -1937,10 +1917,10 @@ OpBranch %1191
 %666 = OpFMul %29 %659 %659
 %667 = OpFMul %29 %666 %663
 OpStore %960 %667
-OpBranch %1191
-%1191 = OpLabel
-OpBranch %1193
-%1192 = OpLabel
+OpBranch %1184
+%1184 = OpLabel
+OpBranch %1186
+%1185 = OpLabel
 %668 = OpFOrdGreaterThan %97 %30 %653
 %669 = OpFOrdLessThan %97 %30 %653
 %672 = OpSelect %6 %668 %671 %670
@@ -1948,32 +1928,32 @@ OpBranch %1193
 %674 = OpISub %6 %672 %673
 %675 = OpConvertSToF %29 %674
 OpStore %960 %675
-OpBranch %1193
-%1193 = OpLabel
-OpBranch %1195
-%1194 = OpLabel
+OpBranch %1186
+%1186 = OpLabel
+OpBranch %1188
+%1187 = OpLabel
 %676 = OpFDiv %29 %654 %30
 OpStore %960 %676
-OpBranch %1195
-%1195 = OpLabel
-OpBranch %1197
-%1196 = OpLabel
+OpBranch %1188
+%1188 = OpLabel
+OpBranch %1190
+%1189 = OpLabel
 %677 = OpExtInst %29 %422 Log2 %30
 %678 = OpFMul %29 %677 %37
 %679 = OpExtInst %29 %422 Exp2 %678
 OpStore %960 %679
-OpBranch %1197
-%1197 = OpLabel
-OpBranch %1199
-%1198 = OpLabel
+OpBranch %1190
+%1190 = OpLabel
+OpBranch %1192
+%1191 = OpLabel
 %680 = OpFSub %29 %37 %30
 %681 = OpFMul %29 %44 %680
 %682 = OpFAdd %29 %681 %30
 OpStore %960 %682
-OpBranch %1199
-%1199 = OpLabel
-OpBranch %1201
-%1200 = OpLabel
+OpBranch %1192
+%1192 = OpLabel
+OpBranch %1194
+%1193 = OpLabel
 %683 = OpFDiv %29 %30 %37
 %684 = OpFSub %29 %622 %683
 %685 = OpFOrdGreaterThanEqual %97 %683 %684
@@ -1983,29 +1963,29 @@ OpBranch %1201
 %689 = OpSelect %29 %685 %687 %688
 %690 = OpFMul %29 %689 %37
 OpStore %960 %690
-OpBranch %1201
-%1201 = OpLabel
-OpBranch %1203
-%1202 = OpLabel
+OpBranch %1194
+%1194 = OpLabel
+OpBranch %1196
+%1195 = OpLabel
 %691 = OpExtInst %29 %422 NMax %30 %37
 %692 = OpExtInst %29 %422 NMin %691 %44
 OpStore %960 %692
-OpBranch %1203
-%1203 = OpLabel
-OpBranch %1205
-%1204 = OpLabel
+OpBranch %1196
+%1196 = OpLabel
+OpBranch %1198
+%1197 = OpLabel
 %693 = OpFMul %29 %30 %695
 OpStore %960 %693
-OpBranch %1205
-%1205 = OpLabel
-OpBranch %1207
-%1206 = OpLabel
+OpBranch %1198
+%1198 = OpLabel
+OpBranch %1200
+%1199 = OpLabel
 %696 = OpFMul %29 %30 %698
 OpStore %960 %696
-OpBranch %1207
-%1207 = OpLabel
-OpBranch %1209
-%1208 = OpLabel
+OpBranch %1200
+%1200 = OpLabel
+OpBranch %1202
+%1201 = OpLabel
 %699 = OpFDiv %29 %30 %37
 %700 = OpExtInst %29 %422 Atan %699
 %701 = OpFAdd %29 %700 %703
@@ -2023,30 +2003,30 @@ OpBranch %1209
 %719 = OpLogicalAnd %97 %708 %709
 %720 = OpSelect %29 %719 %722 %716
 OpStore %960 %720
-OpBranch %1209
-%1209 = OpLabel
-OpBranch %1211
-%1210 = OpLabel
+OpBranch %1202
+%1202 = OpLabel
+OpBranch %1204
+%1203 = OpLabel
 OpStore %960 %64
-OpBranch %1211
-%1211 = OpLabel
-OpBranch %1213
-%1212 = OpLabel
+OpBranch %1204
+%1204 = OpLabel
+OpBranch %1206
+%1205 = OpLabel
 OpStore %960 %66
-OpBranch %1213
-%1213 = OpLabel
-OpBranch %1215
-%1214 = OpLabel
+OpBranch %1206
+%1206 = OpLabel
+OpBranch %1208
+%1207 = OpLabel
 OpStore %960 %67
-OpBranch %1215
-%1215 = OpLabel
-OpBranch %1217
-%1216 = OpLabel
+OpBranch %1208
+%1208 = OpLabel
+OpBranch %1210
+%1209 = OpLabel
 OpStore %960 %68
-OpBranch %1217
-%1217 = OpLabel
-OpBranch %1219
-%1218 = OpLabel
+OpBranch %1210
+%1210 = OpLabel
+OpBranch %1212
+%1211 = OpLabel
 %723 = OpCompositeExtract %28 %44 0
 %724 = OpCompositeExtract %28 %44 1
 %725 = OpCompositeExtract %28 %44 2
@@ -2145,136 +2125,136 @@ OpBranch %1219
 %821 = OpCompositeInsert %29 %813 %820 6
 %822 = OpCompositeInsert %29 %814 %821 7
 OpStore %960 %822
-OpBranch %1219
-%1219 = OpLabel
-OpBranch %1221
-%1220 = OpLabel
+OpBranch %1212
+%1212 = OpLabel
+OpBranch %1214
+%1213 = OpLabel
 %823 = OpExtInst %29 %422 Fma %30 %37 %44
 OpStore %960 %823
-OpBranch %1221
-%1221 = OpLabel
-OpBranch %1223
-%1222 = OpLabel
+OpBranch %1214
+%1214 = OpLabel
+OpBranch %1216
+%1215 = OpLabel
 %824 = OpExtInst %29 %422 NMin %30 %37
 OpStore %960 %824
-OpBranch %1223
-%1223 = OpLabel
-OpBranch %1225
-%1224 = OpLabel
+OpBranch %1216
+%1216 = OpLabel
+OpBranch %1218
+%1217 = OpLabel
 %825 = OpExtInst %29 %422 NMax %30 %37
 OpStore %960 %825
-OpBranch %1225
-%1225 = OpLabel
-OpBranch %1227
-%1226 = OpLabel
+OpBranch %1218
+%1218 = OpLabel
+OpBranch %1220
+%1219 = OpLabel
 %826 = OpExtInst %29 %422 Floor %30
 OpStore %960 %826
-OpBranch %1227
-%1227 = OpLabel
-OpBranch %1229
-%1228 = OpLabel
+OpBranch %1220
+%1220 = OpLabel
+OpBranch %1222
+%1221 = OpLabel
 %827 = OpExtInst %29 %422 Ceil %30
 OpStore %960 %827
-OpBranch %1229
-%1229 = OpLabel
-OpBranch %1231
-%1230 = OpLabel
+OpBranch %1222
+%1222 = OpLabel
+OpBranch %1224
+%1223 = OpLabel
 %828 = OpExtInst %29 %422 Trunc %30
 OpStore %960 %828
-OpBranch %1231
-%1231 = OpLabel
-OpBranch %1233
-%1232 = OpLabel
+OpBranch %1224
+%1224 = OpLabel
+OpBranch %1226
+%1225 = OpLabel
 %829 = OpExtInst %29 %422 RoundEven %30
 OpStore %960 %829
-OpBranch %1233
-%1233 = OpLabel
-OpBranch %1235
-%1234 = OpLabel
+OpBranch %1226
+%1226 = OpLabel
+OpBranch %1228
+%1227 = OpLabel
 %830 = OpExtInst %29 %422 InverseSqrt %30
 OpStore %960 %830
-OpBranch %1235
-%1235 = OpLabel
-OpBranch %1237
-%1236 = OpLabel
+OpBranch %1228
+%1228 = OpLabel
+OpBranch %1230
+%1229 = OpLabel
 %831 = OpExtInst %29 %422 Sqrt %30
 OpStore %960 %831
-OpBranch %1237
-%1237 = OpLabel
-OpBranch %1239
-%1238 = OpLabel
+OpBranch %1230
+%1230 = OpLabel
+OpBranch %1232
+%1231 = OpLabel
 %832 = OpExtInst %29 %422 Log2 %30
 OpStore %960 %832
-OpBranch %1239
-%1239 = OpLabel
-OpBranch %1241
-%1240 = OpLabel
+OpBranch %1232
+%1232 = OpLabel
+OpBranch %1234
+%1233 = OpLabel
 %833 = OpExtInst %29 %422 Fract %30
 OpStore %960 %833
-OpBranch %1241
-%1241 = OpLabel
-OpBranch %1243
-%1242 = OpLabel
+OpBranch %1234
+%1234 = OpLabel
+OpBranch %1236
+%1235 = OpLabel
 %834 = OpExtInst %29 %422 Exp2 %30
 OpStore %960 %834
-OpBranch %1243
-%1243 = OpLabel
-OpBranch %1245
-%1244 = OpLabel
+OpBranch %1236
+%1236 = OpLabel
+OpBranch %1238
+%1237 = OpLabel
 %835 = OpExtInst %29 %422 Tanh %30
 OpStore %960 %835
-OpBranch %1245
-%1245 = OpLabel
-OpBranch %1247
-%1246 = OpLabel
+OpBranch %1238
+%1238 = OpLabel
+OpBranch %1240
+%1239 = OpLabel
 %836 = OpExtInst %29 %422 Sinh %30
 OpStore %960 %836
-OpBranch %1247
-%1247 = OpLabel
-OpBranch %1249
-%1248 = OpLabel
+OpBranch %1240
+%1240 = OpLabel
+OpBranch %1242
+%1241 = OpLabel
 %837 = OpExtInst %29 %422 Cosh %30
 OpStore %960 %837
-OpBranch %1249
-%1249 = OpLabel
-OpBranch %1251
-%1250 = OpLabel
+OpBranch %1242
+%1242 = OpLabel
+OpBranch %1244
+%1243 = OpLabel
 %838 = OpExtInst %29 %422 Atan %30
 OpStore %960 %838
-OpBranch %1251
-%1251 = OpLabel
-OpBranch %1253
-%1252 = OpLabel
+OpBranch %1244
+%1244 = OpLabel
+OpBranch %1246
+%1245 = OpLabel
 %839 = OpExtInst %29 %422 Asin %30
 OpStore %960 %839
-OpBranch %1253
-%1253 = OpLabel
-OpBranch %1255
-%1254 = OpLabel
+OpBranch %1246
+%1246 = OpLabel
+OpBranch %1248
+%1247 = OpLabel
 %840 = OpExtInst %29 %422 Acos %30
 OpStore %960 %840
-OpBranch %1255
-%1255 = OpLabel
-OpBranch %1257
-%1256 = OpLabel
+OpBranch %1248
+%1248 = OpLabel
+OpBranch %1250
+%1249 = OpLabel
 %841 = OpExtInst %29 %422 Tan %30
 OpStore %960 %841
-OpBranch %1257
-%1257 = OpLabel
-OpBranch %1259
-%1258 = OpLabel
+OpBranch %1250
+%1250 = OpLabel
+OpBranch %1252
+%1251 = OpLabel
 %842 = OpExtInst %29 %422 Sin %30
 OpStore %960 %842
-OpBranch %1259
-%1259 = OpLabel
-OpBranch %1261
-%1260 = OpLabel
+OpBranch %1252
+%1252 = OpLabel
+OpBranch %1254
+%1253 = OpLabel
 %843 = OpExtInst %29 %422 Cos %30
 OpStore %960 %843
-OpBranch %1261
-%1261 = OpLabel
-OpBranch %1263
-%1262 = OpLabel
+OpBranch %1254
+%1254 = OpLabel
+OpBranch %1256
+%1255 = OpLabel
 %844 = OpExtInst %29 %422 FAbs %30
 %849 = OpFOrdGreaterThanEqual %97 %844 %846
 %850 = OpFOrdLessThan %97 %844 %848
@@ -2304,10 +2284,10 @@ OpBranch %1263
 %874 = OpCompositeInsert %29 %866 %873 6
 %875 = OpCompositeInsert %29 %867 %874 7
 OpStore %960 %875
-OpBranch %1263
-%1263 = OpLabel
-OpBranch %1265
-%1264 = OpLabel
+OpBranch %1256
+%1256 = OpLabel
+OpBranch %1258
+%1257 = OpLabel
 %876 = OpIsNan %97 %30
 %877 = OpIsInf %97 %30
 %878 = OpLogicalOr %97 %876 %877
@@ -2337,10 +2317,10 @@ OpBranch %1265
 %902 = OpCompositeInsert %29 %894 %901 6
 %903 = OpCompositeInsert %29 %895 %902 7
 OpStore %960 %903
-OpBranch %1265
-%1265 = OpLabel
-OpBranch %1267
-%1266 = OpLabel
+OpBranch %1258
+%1258 = OpLabel
+OpBranch %1260
+%1259 = OpLabel
 %904 = OpIsInf %97 %30
 %905 = OpCompositeExtract %45 %904 0
 %906 = OpCompositeExtract %45 %904 1
@@ -2367,10 +2347,10 @@ OpBranch %1267
 %927 = OpCompositeInsert %29 %919 %926 6
 %928 = OpCompositeInsert %29 %920 %927 7
 OpStore %960 %928
-OpBranch %1267
-%1267 = OpLabel
-OpBranch %1269
-%1268 = OpLabel
+OpBranch %1260
+%1260 = OpLabel
+OpBranch %1262
+%1261 = OpLabel
 %929 = OpIsNan %97 %30
 %930 = OpCompositeExtract %45 %929 0
 %931 = OpCompositeExtract %45 %929 1
@@ -2397,24 +2377,22 @@ OpBranch %1269
 %952 = OpCompositeInsert %29 %944 %951 6
 %953 = OpCompositeInsert %29 %945 %952 7
 OpStore %960 %953
-OpBranch %1269
-%1269 = OpLabel
-OpBranch %1271
-%1270 = OpLabel
+OpBranch %1262
+%1262 = OpLabel
+OpBranch %1264
+%1263 = OpLabel
 %954 = OpExtInst %29 %422 NClamp %30 %658 %654
 OpStore %960 %954
-OpBranch %1271
-%1271 = OpLabel
-OpBranch %1273
-%1272 = OpLabel
+OpBranch %1264
+%1264 = OpLabel
+OpBranch %1266
+%1265 = OpLabel
 %955 = OpExtInst %29 %422 FAbs %30
 OpStore %960 %955
-OpBranch %1273
-%1273 = OpLabel
-OpBranch %1274
-%1274 = OpLabel
-OpBranch %1275
-%1275 = OpLabel
+OpBranch %1266
+%1266 = OpLabel
+OpBranch %1267
+%1267 = OpLabel
 %956 = OpLoad %29 %960
 %957 = OpBitcast %6 %956
 %958 = OpAccessChain %25 %14 %20 %21

@@ -82,7 +82,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 110
+; Bound: 102
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -140,8 +140,8 @@ OpBranch %84
 %17 = OpAccessChain %13 %12 %18
 %19 = OpLoad %5 %17
 %21 = OpIEqual %20 %16 %15
-OpSelectionMerge %106 None
-OpBranchConditional %21 %105 %85
+OpSelectionMerge %99 None
+OpBranchConditional %21 %98 %85
 %85 = OpLabel
 OpStore %77 %15
 OpStore %78 %15
@@ -155,7 +155,7 @@ OpBranch %86
 %40 = OpCompositeExtract %5 %39 0
 %41 = OpIEqual %20 %40 %42
 OpStore %80 %81
-OpLoopMerge %101 %99 None
+OpLoopMerge %97 %96 None
 OpBranch %87
 %87 = OpLabel
 OpSelectionMerge %93 None
@@ -192,12 +192,10 @@ OpBranch %92
 %92 = OpLabel
 OpBranch %93
 %93 = OpLabel
-OpBranch %94
-%94 = OpLabel
 %82 = OpLoad %20 %80
-OpSelectionMerge %96 None
-OpBranchConditional %82 %95 %96
-%95 = OpLabel
+OpSelectionMerge %95 None
+OpBranchConditional %82 %94 %95
+%94 = OpLabel
 %57 = OpLoad %5 %76
 %58 = OpIAdd %5 %57 %22
 %59 = OpShiftLeftLogical %5 %24 %46
@@ -209,42 +207,28 @@ OpBranchConditional %82 %95 %96
 %65 = OpIAdd %5 %24 %18
 OpStore %74 %64
 OpStore %75 %65
-OpBranch %96
-%96 = OpLabel
-OpBranch %97
-%97 = OpLabel
-OpBranch %98
-%98 = OpLabel
+OpBranch %95
+%95 = OpLabel
 %25 = OpLoad %5 %75
 %23 = OpLoad %5 %74
 %69 = OpULessThan %20 %25 %16
-OpSelectionMerge %109 None
-OpBranchConditional %69 %99 %100
-%109 = OpLabel
+OpSelectionMerge %101 None
+OpBranchConditional %69 %96 %97
+%101 = OpLabel
 OpUnreachable
-%99 = OpLabel
+%96 = OpLabel
 OpStore %77 %23
 OpStore %78 %25
 OpBranch %86
-%100 = OpLabel
-OpBranch %101
-%101 = OpLabel
-OpBranch %102
-%102 = OpLabel
-OpBranch %103
-%103 = OpLabel
+%97 = OpLabel
 OpStore %73 %23
-OpBranch %104
-%104 = OpLabel
-OpBranch %106
-%105 = OpLabel
+OpBranch %99
+%98 = OpLabel
 OpStore %73 %15
-OpBranch %106
-%106 = OpLabel
-OpBranch %107
-%107 = OpLabel
-OpBranch %108
-%108 = OpLabel
+OpBranch %99
+%99 = OpLabel
+OpBranch %100
+%100 = OpLabel
 %70 = OpLoad %5 %73
 %71 = OpCompositeConstruct %38 %70 %70 %70 %70
 OpImageWrite %9 %15 %71

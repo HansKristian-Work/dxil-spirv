@@ -110,7 +110,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 139
+; Bound: 138
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
@@ -174,8 +174,6 @@ OpBranch %136
 %136 = OpLabel
 OpBranch %137
 %137 = OpLabel
-OpBranch %138
-%138 = OpLabel
 %18 = OpLoad %6 %8
 %19 = OpIMul %5 %14 %20
 %22 = OpImageFetch %21 %18 %19

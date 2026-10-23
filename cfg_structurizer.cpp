@@ -1941,11 +1941,19 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 		// First, rewrite PHI inputs.
 		// Since we only have one pred now, we can resolve PHIs directly.
 		auto *block = pool.create_node();
+		block->interposing = true;
 		block->name = node->name + ".dup." + pred->name;
 
 		block->immediate_post_dominator = node->immediate_post_dominator;
 		block->immediate_dominator = pred;
-		pred->retarget_branch(node, block);
+
+		if (limited_control_flow_analysis)
+		{
+			pred->idom_children.push_back(block);
+			pred->retarget_branch_pre_traversal(node, block);
+		}
+		else
+			pred->retarget_branch(node, block);
 
 		for (auto *succ : node_succs)
 			block->add_branch(succ);

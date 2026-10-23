@@ -85,7 +85,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 124
+; Bound: 119
 ; Schema: 0
 OpCapability Shader
 OpCapability Int8
@@ -183,8 +183,8 @@ OpBranch %109
 %31 = OpCooperativeMatrixLengthKHR %2 %5
 %32 = OpUDiv %2 %31 %33
 %35 = OpIEqual %34 %32 %3
-OpSelectionMerge %120 None
-OpBranchConditional %35 %119 %110
+OpSelectionMerge %116 None
+OpBranchConditional %35 %115 %110
 %110 = OpLabel
 OpStore %106 %30
 OpStore %108 %3
@@ -243,36 +243,26 @@ OpStore %100 %98
 %101 = OpLoad %5 %81
 %39 = OpIAdd %2 %38 %48
 %102 = OpIEqual %34 %39 %32
-OpLoopMerge %115 %113 None
+OpLoopMerge %114 %113 None
 OpBranch %112
 %112 = OpLabel
-OpSelectionMerge %123 None
+OpSelectionMerge %118 None
 OpBranchConditional %102 %114 %113
-%123 = OpLabel
+%118 = OpLabel
 OpUnreachable
 %113 = OpLabel
 OpStore %106 %101
 OpStore %108 %39
 OpBranch %111
 %114 = OpLabel
-OpBranch %115
+OpStore %105 %101
+OpBranch %116
 %115 = OpLabel
+OpStore %105 %30
 OpBranch %116
 %116 = OpLabel
 OpBranch %117
 %117 = OpLabel
-OpStore %105 %101
-OpBranch %118
-%118 = OpLabel
-OpBranch %120
-%119 = OpLabel
-OpStore %105 %30
-OpBranch %120
-%120 = OpLabel
-OpBranch %121
-%121 = OpLabel
-OpBranch %122
-%122 = OpLabel
 %103 = OpLoad %5 %105
 %104 = OpAccessChain %28 %19 %3 %3
 OpCooperativeMatrixStoreKHR %104 %103 %3 %4 NonPrivatePointer

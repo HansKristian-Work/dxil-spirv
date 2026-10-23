@@ -69,7 +69,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 124
+; Bound: 117
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
@@ -167,8 +167,8 @@ OpStore %43 %41
 %47 = OpBitcast %6 %46
 %48 = OpCompositeExtract %5 %47 0
 %50 = OpIEqual %49 %48 %32
-OpSelectionMerge %120 None
-OpBranchConditional %50 %120 %107
+OpSelectionMerge %114 None
+OpBranchConditional %50 %114 %107
 %107 = OpLabel
 OpStore %105 %32
 OpBranch %108
@@ -180,7 +180,7 @@ OpBranch %108
 %58 = OpLoad %5 %57
 OpControlBarrier %35 %35 %59
 %60 = OpULessThan %49 %58 %61
-OpLoopMerge %116 %114 None
+OpLoopMerge %113 %112 None
 OpBranch %109
 %109 = OpLabel
 OpSelectionMerge %111 None
@@ -213,38 +213,24 @@ OpBranchConditional %60 %110 %111
 OpStore %85 %84
 OpBranch %111
 %111 = OpLabel
-OpBranch %112
-%112 = OpLabel
-OpBranch %113
-%113 = OpLabel
 %52 = OpIAdd %5 %51 %20
 %86 = OpAccessChain %44 %26 %32 %32
 %87 = OpLoad %22 %86
 %88 = OpBitcast %6 %87
 %89 = OpCompositeExtract %5 %88 0
 %90 = OpULessThan %49 %52 %89
-OpSelectionMerge %123 None
-OpBranchConditional %90 %114 %115
-%123 = OpLabel
+OpSelectionMerge %116 None
+OpBranchConditional %90 %112 %113
+%116 = OpLabel
 OpUnreachable
-%114 = OpLabel
+%112 = OpLabel
 OpStore %105 %52
 OpBranch %108
+%113 = OpLabel
+OpBranch %114
+%114 = OpLabel
+OpBranch %115
 %115 = OpLabel
-OpBranch %116
-%116 = OpLabel
-OpBranch %117
-%117 = OpLabel
-OpBranch %118
-%118 = OpLabel
-OpBranch %119
-%119 = OpLabel
-OpBranch %120
-%120 = OpLabel
-OpBranch %121
-%121 = OpLabel
-OpBranch %122
-%122 = OpLabel
 %91 = OpAccessChain %42 %33 %32 %29
 %92 = OpLoad %6 %91
 %93 = OpBitcast %22 %92

@@ -74,7 +74,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 70
+; Bound: 65
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -128,71 +128,61 @@ OpBranch %48
 %48 = OpLabel
 %20 = OpLoad %5 %39
 OpStore %38 %15
-OpLoopMerge %61 %59 None
+OpLoopMerge %58 %56 None
 OpBranch %49
 %49 = OpLabel
 %22 = OpLoad %5 %38
 %25 = OpULessThan %24 %19 %26
 OpStore %44 %45
-OpLoopMerge %55 %52 None
+OpLoopMerge %54 %52 None
 OpBranch %50
 %50 = OpLabel
 OpSelectionMerge %51 None
-OpBranchConditional %25 %54 %51
+OpBranchConditional %25 %53 %51
 %51 = OpLabel
 %23 = OpIAdd %5 %22 %27
 %28 = OpSLessThan %24 %23 %29
-OpSelectionMerge %68 None
-OpBranchConditional %28 %52 %53
-%68 = OpLabel
+OpSelectionMerge %63 None
+OpBranchConditional %28 %52 %54
+%63 = OpLabel
 OpUnreachable
 %52 = OpLabel
 OpStore %38 %23
 OpBranch %49
 %53 = OpLabel
-OpBranch %55
-%54 = OpLabel
 OpStore %44 %43
 OpStore %41 %45
-OpBranch %55
-%55 = OpLabel
+OpBranch %54
+%54 = OpLabel
 %46 = OpLoad %24 %44
-OpSelectionMerge %56 None
-OpBranchConditional %46 %61 %56
-%56 = OpLabel
-OpBranch %57
-%57 = OpLabel
-OpBranch %58
-%58 = OpLabel
+OpSelectionMerge %55 None
+OpBranchConditional %46 %58 %55
+%55 = OpLabel
 %21 = OpIAdd %5 %20 %27
 %30 = OpSLessThan %24 %21 %26
-OpSelectionMerge %69 None
-OpBranchConditional %30 %59 %60
-%69 = OpLabel
+OpSelectionMerge %64 None
+OpBranchConditional %30 %56 %57
+%64 = OpLabel
 OpUnreachable
-%59 = OpLabel
+%56 = OpLabel
 OpStore %39 %21
 OpBranch %48
-%60 = OpLabel
+%57 = OpLabel
 OpStore %41 %43
+OpBranch %58
+%58 = OpLabel
+%42 = OpLoad %24 %41
+OpSelectionMerge %61 None
+OpBranchConditional %42 %59 %60
+%59 = OpLabel
+OpStore %37 %33
+OpBranch %61
+%60 = OpLabel
+OpStore %37 %32
 OpBranch %61
 %61 = OpLabel
 OpBranch %62
 %62 = OpLabel
-%42 = OpLoad %24 %41
-OpSelectionMerge %65 None
-OpBranchConditional %42 %63 %64
-%63 = OpLabel
-OpStore %37 %33
-OpBranch %65
-%64 = OpLabel
-OpStore %37 %32
-OpBranch %65
-%65 = OpLabel
-OpBranch %66
-%66 = OpLabel
-OpBranch %67
-%67 = OpLabel
 %31 = OpLoad %5 %37
 %35 = OpCompositeConstruct %34 %31 %31 %31 %31
 OpImageWrite %9 %16 %35
