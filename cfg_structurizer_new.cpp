@@ -184,6 +184,14 @@ void CFGStructurizer::convert_phi_to_variables()
 
 			for (auto &incoming : phi.incoming)
 			{
+				// If the incoming is undefined, it's more idiomatic to simply leave the variable uninitialized.
+				// It accomplishes the same thing and less likely to confuse compilers.
+				// For loops, it's possible the variable is already initialized by a previous iteration somehow,
+				// but that's okay. Undef is undef.
+				if (auto *inst = module.get_builder().getInstruction(incoming.id))
+					if (inst->getOpCode() == spv::OpUndef)
+						continue;
+
 				assert(incoming.block->ir.terminator.type == Terminator::Type::Branch);
 				auto *store_op = module.allocate_op(spv::OpStore);
 				store_op->add_id(alloca_id);
