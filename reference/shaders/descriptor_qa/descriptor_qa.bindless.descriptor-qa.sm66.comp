@@ -264,7 +264,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 520
+; Bound: 489
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -552,19 +552,15 @@ OpBranch %448
 OpStore %444 %159
 OpBranch %448
 %448 = OpLabel
-OpBranch %449
-%449 = OpLabel
-OpBranch %450
-%450 = OpLabel
 %160 = OpLoad %9 %444
 %162 = OpBitwiseAnd %5 %58 %163
 %164 = OpUGreaterThan %61 %162 %94
-OpSelectionMerge %453 None
-OpBranchConditional %164 %452 %451
-%451 = OpLabel
+OpSelectionMerge %451 None
+OpBranchConditional %164 %450 %449
+%449 = OpLabel
 OpStore %443 %160
-OpBranch %453
-%452 = OpLabel
+OpBranch %451
+%450 = OpLabel
 %165 = OpIAdd %5 %58 %89
 %167 = OpAccessChain %66 %8 %68
 %168 = OpLoad %5 %167
@@ -576,21 +572,17 @@ OpBranch %453
 %173 = OpCompositeExtract %9 %172 0
 %174 = OpFAdd %9 %173 %160
 OpStore %443 %174
-OpBranch %453
-%453 = OpLabel
-OpBranch %454
-%454 = OpLabel
-OpBranch %455
-%455 = OpLabel
+OpBranch %451
+%451 = OpLabel
 %175 = OpLoad %9 %443
 %176 = OpBitwiseAnd %5 %58 %177
 %178 = OpUGreaterThan %61 %176 %87
-OpSelectionMerge %458 None
-OpBranchConditional %178 %457 %456
-%456 = OpLabel
+OpSelectionMerge %454 None
+OpBranchConditional %178 %453 %452
+%452 = OpLabel
 OpStore %442 %175
-OpBranch %458
-%457 = OpLabel
+OpBranch %454
+%453 = OpLabel
 %181 = OpAccessChain %66 %8 %57
 %182 = OpLoad %5 %181
 %183 = OpFunctionCall %5 %117 %182 %89 %94
@@ -606,21 +598,17 @@ OpBranch %458
 %196 = OpCompositeExtract %9 %193 0
 %197 = OpFAdd %9 %196 %175
 OpStore %442 %197
-OpBranch %458
-%458 = OpLabel
-OpBranch %459
-%459 = OpLabel
-OpBranch %460
-%460 = OpLabel
+OpBranch %454
+%454 = OpLabel
 %198 = OpLoad %9 %442
 %199 = OpBitwiseAnd %5 %58 %200
 %201 = OpUGreaterThan %61 %199 %68
-OpSelectionMerge %463 None
-OpBranchConditional %201 %462 %461
-%461 = OpLabel
+OpSelectionMerge %457 None
+OpBranchConditional %201 %456 %455
+%455 = OpLabel
 OpStore %441 %198
-OpBranch %463
-%462 = OpLabel
+OpBranch %457
+%456 = OpLabel
 %202 = OpBitwiseAnd %5 %58 %89
 %203 = OpIAdd %5 %202 %89
 %205 = OpAccessChain %66 %8 %57
@@ -634,21 +622,17 @@ OpBranch %463
 %212 = OpCompositeExtract %9 %210 0
 %213 = OpFAdd %9 %212 %198
 OpStore %441 %213
-OpBranch %463
-%463 = OpLabel
-OpBranch %464
-%464 = OpLabel
-OpBranch %465
-%465 = OpLabel
+OpBranch %457
+%457 = OpLabel
 %214 = OpLoad %9 %441
 %215 = OpBitwiseAnd %5 %58 %216
 %217 = OpUGreaterThan %61 %215 %98
-OpSelectionMerge %468 None
-OpBranchConditional %217 %467 %466
-%466 = OpLabel
+OpSelectionMerge %460 None
+OpBranchConditional %217 %459 %458
+%458 = OpLabel
 OpStore %440 %214
-OpBranch %468
-%467 = OpLabel
+OpBranch %460
+%459 = OpLabel
 %220 = OpAccessChain %66 %8 %89
 %221 = OpLoad %5 %220
 %222 = OpIAdd %5 %221 %94
@@ -659,21 +643,17 @@ OpBranch %468
 %227 = OpCompositeExtract %9 %226 0
 %228 = OpFAdd %9 %227 %214
 OpStore %440 %228
-OpBranch %468
-%468 = OpLabel
-OpBranch %469
-%469 = OpLabel
-OpBranch %470
-%470 = OpLabel
+OpBranch %460
+%460 = OpLabel
 %229 = OpLoad %9 %440
 %230 = OpBitwiseAnd %5 %58 %224
 %231 = OpUGreaterThan %61 %230 %100
-OpSelectionMerge %473 None
-OpBranchConditional %231 %472 %471
-%471 = OpLabel
+OpSelectionMerge %463 None
+OpBranchConditional %231 %462 %461
+%461 = OpLabel
 OpStore %439 %229
-OpBranch %473
-%472 = OpLabel
+OpBranch %463
+%462 = OpLabel
 %232 = OpBitwiseAnd %5 %58 %89
 %233 = OpIAdd %5 %232 %87
 %235 = OpAccessChain %66 %8 %89
@@ -686,21 +666,17 @@ OpBranch %473
 %241 = OpCompositeExtract %9 %240 0
 %242 = OpFAdd %9 %241 %229
 OpStore %439 %242
-OpBranch %473
-%473 = OpLabel
-OpBranch %474
-%474 = OpLabel
-OpBranch %475
-%475 = OpLabel
+OpBranch %463
+%463 = OpLabel
 %243 = OpLoad %9 %439
 %244 = OpBitwiseAnd %5 %58 %245
 %246 = OpUGreaterThan %61 %244 %108
-OpSelectionMerge %478 None
-OpBranchConditional %246 %477 %476
-%476 = OpLabel
+OpSelectionMerge %466 None
+OpBranchConditional %246 %465 %464
+%464 = OpLabel
 OpStore %438 %243
-OpBranch %478
-%477 = OpLabel
+OpBranch %466
+%465 = OpLabel
 %249 = OpAccessChain %66 %8 %89
 %250 = OpLoad %5 %249
 %251 = OpIAdd %5 %250 %98
@@ -712,21 +688,17 @@ OpBranch %478
 %257 = OpBitcast %9 %256
 %258 = OpFAdd %9 %257 %243
 OpStore %438 %258
-OpBranch %478
-%478 = OpLabel
-OpBranch %479
-%479 = OpLabel
-OpBranch %480
-%480 = OpLabel
+OpBranch %466
+%466 = OpLabel
 %259 = OpLoad %9 %438
 %260 = OpBitwiseAnd %5 %58 %261
 %262 = OpUGreaterThan %61 %260 %124
-OpSelectionMerge %483 None
-OpBranchConditional %262 %482 %481
-%481 = OpLabel
+OpSelectionMerge %469 None
+OpBranchConditional %262 %468 %467
+%467 = OpLabel
 OpStore %437 %259
-OpBranch %483
-%482 = OpLabel
+OpBranch %469
+%468 = OpLabel
 %263 = OpBitwiseAnd %5 %58 %89
 %264 = OpIAdd %5 %263 %100
 %266 = OpAccessChain %66 %8 %89
@@ -740,21 +712,17 @@ OpBranch %483
 %273 = OpBitcast %9 %272
 %274 = OpFAdd %9 %273 %259
 OpStore %437 %274
-OpBranch %483
-%483 = OpLabel
-OpBranch %484
-%484 = OpLabel
-OpBranch %485
-%485 = OpLabel
+OpBranch %469
+%469 = OpLabel
 %275 = OpLoad %9 %437
 %276 = OpBitwiseAnd %5 %58 %277
 %278 = OpUGreaterThan %61 %276 %136
-OpSelectionMerge %488 None
-OpBranchConditional %278 %487 %486
-%486 = OpLabel
+OpSelectionMerge %472 None
+OpBranchConditional %278 %471 %470
+%470 = OpLabel
 OpStore %436 %275
-OpBranch %488
-%487 = OpLabel
+OpBranch %472
+%471 = OpLabel
 %279 = OpShiftLeftLogical %5 %58 %63
 %281 = OpAccessChain %66 %8 %89
 %282 = OpLoad %5 %281
@@ -768,21 +736,17 @@ OpBranch %488
 %297 = OpBitcast %9 %296
 %298 = OpFAdd %9 %297 %275
 OpStore %436 %298
-OpBranch %488
-%488 = OpLabel
-OpBranch %489
-%489 = OpLabel
-OpBranch %490
-%490 = OpLabel
+OpBranch %472
+%472 = OpLabel
 %299 = OpLoad %9 %436
 %300 = OpBitwiseAnd %5 %58 %301
 %302 = OpUGreaterThan %61 %300 %303
-OpSelectionMerge %493 None
-OpBranchConditional %302 %492 %491
-%491 = OpLabel
+OpSelectionMerge %475 None
+OpBranchConditional %302 %474 %473
+%473 = OpLabel
 OpStore %435 %299
-OpBranch %493
-%492 = OpLabel
+OpBranch %475
+%474 = OpLabel
 %304 = OpBitwiseAnd %5 %58 %89
 %305 = OpIAdd %5 %304 %136
 %307 = OpAccessChain %66 %8 %89
@@ -797,18 +761,14 @@ OpBranch %493
 %315 = OpBitcast %9 %314
 %316 = OpFAdd %9 %315 %299
 OpStore %435 %316
-OpBranch %493
-%493 = OpLabel
-OpBranch %494
-%494 = OpLabel
-OpBranch %495
-%495 = OpLabel
+OpBranch %475
+%475 = OpLabel
 %317 = OpLoad %9 %435
 %318 = OpBitwiseAnd %5 %58 %319
 %320 = OpUGreaterThan %61 %318 %89
-OpSelectionMerge %497 None
-OpBranchConditional %320 %496 %497
-%496 = OpLabel
+OpSelectionMerge %477 None
+OpBranchConditional %320 %476 %477
+%476 = OpLabel
 %323 = OpAccessChain %66 %8 %87
 %324 = OpLoad %5 %323
 %325 = OpFunctionCall %5 %117 %324 %326 %303
@@ -817,17 +777,13 @@ OpBranchConditional %320 %496 %497
 %328 = OpBitcast %5 %317
 %329 = OpCompositeConstruct %254 %328 %328 %328 %328
 OpImageWrite %327 %58 %329
-OpBranch %497
-%497 = OpLabel
-OpBranch %498
-%498 = OpLabel
-OpBranch %499
-%499 = OpLabel
+OpBranch %477
+%477 = OpLabel
 %330 = OpBitwiseAnd %5 %58 %331
 %332 = OpUGreaterThan %61 %330 %333
-OpSelectionMerge %501 None
-OpBranchConditional %332 %500 %501
-%500 = OpLabel
+OpSelectionMerge %479 None
+OpBranchConditional %332 %478 %479
+%478 = OpLabel
 %334 = OpBitwiseAnd %5 %58 %89
 %335 = OpIAdd %5 %334 %89
 %337 = OpAccessChain %66 %8 %87
@@ -839,17 +795,13 @@ OpBranchConditional %332 %500 %501
 %343 = OpBitcast %5 %317
 %344 = OpCompositeConstruct %254 %343 %343 %343 %343
 OpImageWrite %342 %58 %344
-OpBranch %501
-%501 = OpLabel
-OpBranch %502
-%502 = OpLabel
-OpBranch %503
-%503 = OpLabel
+OpBranch %479
+%479 = OpLabel
 %345 = OpBitwiseAnd %5 %58 %346
 %347 = OpUGreaterThan %61 %345 %348
-OpSelectionMerge %505 None
-OpBranchConditional %347 %504 %505
-%504 = OpLabel
+OpSelectionMerge %481 None
+OpBranchConditional %347 %480 %481
+%480 = OpLabel
 %349 = OpBitcast %5 %317
 %350 = OpShiftLeftLogical %5 %58 %63
 %352 = OpAccessChain %66 %8 %87
@@ -861,17 +813,13 @@ OpBranchConditional %347 %504 %505
 %358 = OpFunctionCall %5 %289 %58 %87
 %359 = OpCompositeConstruct %254 %349 %349 %349 %349
 OpImageWrite %357 %358 %359
-OpBranch %505
-%505 = OpLabel
-OpBranch %506
-%506 = OpLabel
-OpBranch %507
-%507 = OpLabel
+OpBranch %481
+%481 = OpLabel
 %360 = OpBitwiseAnd %5 %58 %361
 %362 = OpUGreaterThan %61 %360 %363
-OpSelectionMerge %509 None
-OpBranchConditional %362 %508 %509
-%508 = OpLabel
+OpSelectionMerge %483 None
+OpBranchConditional %362 %482 %483
+%482 = OpLabel
 %364 = OpBitwiseAnd %5 %58 %89
 %365 = OpBitcast %5 %317
 %366 = OpShiftLeftLogical %5 %58 %63
@@ -885,17 +833,13 @@ OpBranchConditional %362 %508 %509
 %375 = OpFunctionCall %5 %289 %58 %87
 %376 = OpCompositeConstruct %254 %365 %365 %365 %365
 OpImageWrite %374 %375 %376
-OpBranch %509
-%509 = OpLabel
-OpBranch %510
-%510 = OpLabel
-OpBranch %511
-%511 = OpLabel
+OpBranch %483
+%483 = OpLabel
 %377 = OpBitwiseAnd %5 %58 %378
 %379 = OpUGreaterThan %61 %377 %380
-OpSelectionMerge %513 None
-OpBranchConditional %379 %512 %513
-%512 = OpLabel
+OpSelectionMerge %485 None
+OpBranchConditional %379 %484 %485
+%484 = OpLabel
 %383 = OpAccessChain %66 %8 %94
 %384 = OpLoad %5 %383
 %385 = OpIAdd %5 %384 %98
@@ -905,16 +849,12 @@ OpBranchConditional %379 %512 %513
 %389 = OpCompositeConstruct %29 %58 %57
 %390 = OpCompositeConstruct %41 %317 %317 %317 %317
 OpImageWrite %388 %389 %390
-OpBranch %513
-%513 = OpLabel
-OpBranch %514
-%514 = OpLabel
-OpBranch %515
-%515 = OpLabel
+OpBranch %485
+%485 = OpLabel
 %391 = OpUGreaterThan %61 %199 %392
-OpSelectionMerge %517 None
-OpBranchConditional %391 %516 %517
-%516 = OpLabel
+OpSelectionMerge %487 None
+OpBranchConditional %391 %486 %487
+%486 = OpLabel
 %393 = OpBitwiseAnd %5 %58 %89
 %394 = OpIAdd %5 %393 %100
 %396 = OpAccessChain %66 %8 %94
@@ -926,12 +866,10 @@ OpBranchConditional %391 %516 %517
 %401 = OpCompositeConstruct %29 %57 %58
 %402 = OpCompositeConstruct %41 %317 %317 %317 %317
 OpImageWrite %400 %401 %402
-OpBranch %517
-%517 = OpLabel
-OpBranch %518
-%518 = OpLabel
-OpBranch %519
-%519 = OpLabel
+OpBranch %487
+%487 = OpLabel
+OpBranch %488
+%488 = OpLabel
 %404 = OpAccessChain %66 %8 %87
 %405 = OpLoad %5 %404
 %406 = OpFunctionCall %5 %117 %405 %326 %407

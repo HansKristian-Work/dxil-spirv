@@ -47,7 +47,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 162
+; Bound: 161
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -116,8 +116,6 @@ OpBranch %159
 %159 = OpLabel
 OpBranch %160
 %160 = OpLabel
-OpBranch %161
-%161 = OpLabel
 %17 = OpGroupNonUniformIAdd %5 %18 Reduce %13
 %19 = OpIMul %5 %13 %20
 %21 = OpLoad %6 %8

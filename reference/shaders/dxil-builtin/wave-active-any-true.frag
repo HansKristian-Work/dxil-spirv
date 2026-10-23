@@ -30,7 +30,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 47
+; Bound: 44
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -81,28 +81,22 @@ OpBranchConditional %14 %39 %40
 OpDemoteToHelperInvocation
 OpBranch %40
 %40 = OpLabel
-OpBranch %41
-%41 = OpLabel
-OpBranch %42
-%42 = OpLabel
 %16 = OpULessThan %13 %12 %17
 %20 = OpIsHelperInvocationEXT %13
 %21 = OpLogicalNot %13 %20
 %22 = OpLogicalAnd %13 %16 %21
 %18 = OpGroupNonUniformAny %13 %19 %22
-OpSelectionMerge %44 None
-OpBranchConditional %18 %43 %44
-%43 = OpLabel
+OpSelectionMerge %42 None
+OpBranchConditional %18 %41 %42
+%41 = OpLabel
 %23 = OpShiftLeftLogical %5 %12 %24
 %33 = OpFunctionCall %5 %28 %12 %34
 %37 = OpCompositeConstruct %36 %35 %35 %35 %35
 OpImageWrite %11 %33 %37
-OpBranch %44
-%44 = OpLabel
-OpBranch %45
-%45 = OpLabel
-OpBranch %46
-%46 = OpLabel
+OpBranch %42
+%42 = OpLabel
+OpBranch %43
+%43 = OpLabel
 OpReturn
 OpFunctionEnd
 %28 = OpFunction %5 None %25

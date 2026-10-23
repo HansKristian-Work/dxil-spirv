@@ -98,7 +98,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 167
+; Bound: 166
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -276,8 +276,6 @@ OpBranch %164
 %164 = OpLabel
 OpBranch %165
 %165 = OpLabel
-OpBranch %166
-%166 = OpLabel
 %140 = OpAccessChain %40 %8 %30
 %141 = OpLoad %5 %140
 %142 = OpFunctionCall %5 %93 %141 %33 %70

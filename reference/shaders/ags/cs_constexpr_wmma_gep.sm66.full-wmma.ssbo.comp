@@ -89,7 +89,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 221
+; Bound: 216
 ; Schema: 0
 OpCapability Shader
 OpCapability Int8
@@ -238,23 +238,17 @@ OpStore %92 %89
 %112 = OpIAdd %2 %85 %111
 %55 = OpIAdd %2 %54 %7
 %115 = OpIEqual %114 %55 %25
-OpLoopMerge %209 %207 None
+OpLoopMerge %208 %207 None
 OpBranch %206
 %206 = OpLabel
-OpSelectionMerge %219 None
+OpSelectionMerge %214 None
 OpBranchConditional %115 %208 %207
-%219 = OpLabel
+%214 = OpLabel
 OpUnreachable
 %207 = OpLabel
 OpStore %203 %55
 OpBranch %205
 %208 = OpLabel
-OpBranch %209
-%209 = OpLabel
-OpBranch %210
-%210 = OpLabel
-OpBranch %211
-%211 = OpLabel
 %118 = OpAccessChain %39 %29 %3
 %119 = OpLoad %5 %118
 %120 = OpAccessChain %44 %33 %3
@@ -267,8 +261,8 @@ OpBranch %211
 %127 = OpCooperativeMatrixMulAddKHR %11 %124 %126 %122
 OpStore %200 %127
 OpStore %202 %10
-OpBranch %212
-%212 = OpLabel
+OpBranch %209
+%209 = OpLabel
 %130 = OpLoad %2 %202
 %128 = OpLoad %11 %200
 %132 = OpIMul %2 %130 %60
@@ -310,24 +304,20 @@ OpBranch %212
 %196 = OpCooperativeMatrixMulAddKHR %11 %135 %167 %128
 %131 = OpIAdd %2 %130 %7
 %197 = OpIEqual %114 %131 %25
-OpLoopMerge %216 %214 None
-OpBranch %213
-%213 = OpLabel
-OpSelectionMerge %220 None
-OpBranchConditional %197 %215 %214
-%220 = OpLabel
+OpLoopMerge %212 %211 None
+OpBranch %210
+%210 = OpLabel
+OpSelectionMerge %215 None
+OpBranchConditional %197 %212 %211
+%215 = OpLabel
 OpUnreachable
-%214 = OpLabel
+%211 = OpLabel
 OpStore %200 %196
 OpStore %202 %131
-OpBranch %212
-%215 = OpLabel
-OpBranch %216
-%216 = OpLabel
-OpBranch %217
-%217 = OpLabel
-OpBranch %218
-%218 = OpLabel
+OpBranch %209
+%212 = OpLabel
+OpBranch %213
+%213 = OpLabel
 %198 = OpAccessChain %35 %24 %3 %3
 OpCooperativeMatrixStoreKHR %198 %196 %7 %37 NonPrivatePointer
 OpReturn

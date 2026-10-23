@@ -24,7 +24,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 37
+; Bound: 36
 ; Schema: 0
 OpCapability Shader
 OpCapability DerivativeControl
@@ -78,8 +78,6 @@ OpBranch %34
 %34 = OpLabel
 OpBranch %35
 %35 = OpLabel
-OpBranch %36
-%36 = OpLabel
 %25 = OpLoad %5 %30
 %28 = OpDPdxFine %5 %25
 OpStore %7 %28

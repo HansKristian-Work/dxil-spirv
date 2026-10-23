@@ -90,7 +90,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 140
+; Bound: 139
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -207,8 +207,6 @@ OpBranch %137
 %137 = OpLabel
 OpBranch %138
 %138 = OpLabel
-OpBranch %139
-%139 = OpLabel
 %33 = OpIAdd %5 %29 %34
 %35 = OpCompositeInsert %6 %29 %36 0
 %37 = OpCompositeInsert %6 %33 %35 1

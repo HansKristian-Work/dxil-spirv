@@ -24,7 +24,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 30
+; Bound: 29
 ; Schema: 0
 OpCapability Shader
 OpCapability DemoteToHelperInvocation
@@ -74,8 +74,6 @@ OpBranch %27
 %27 = OpLabel
 OpBranch %28
 %28 = OpLabel
-OpBranch %29
-%29 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

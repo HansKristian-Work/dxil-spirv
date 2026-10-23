@@ -420,6 +420,10 @@ private:
 
 	bool branch_requires_breaking_construct(const Vector<SerializationLevel> &levels, CFGNode *node);
 	bool branch_requires_redirection(const Vector<SerializationLevel> &levels, CFGNode *node);
+
+	void cleanup_degenerate_blocks();
+	void rewrite_degenerate_phi_constructs();
+	void rewrite_degenerate_interposing_frontiers();
 };
 
 template <typename Container, typename T>

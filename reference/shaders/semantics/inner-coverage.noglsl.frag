@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 23
+; Bound: 22
 ; Schema: 0
 OpCapability Shader
 OpCapability FragmentFullyCoveredEXT
@@ -42,8 +42,6 @@ OpBranch %20
 %20 = OpLabel
 OpBranch %21
 %21 = OpLabel
-OpBranch %22
-%22 = OpLabel
 OpStore %7 %17
 OpReturn
 OpFunctionEnd

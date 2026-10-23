@@ -23,7 +23,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 38
+; Bound: 37
 ; Schema: 0
 OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -77,8 +77,6 @@ OpBranch %35
 %35 = OpLabel
 OpBranch %36
 %36 = OpLabel
-OpBranch %37
-%37 = OpLabel
 %29 = OpLoad %5 %31
 OpStore %10 %29
 OpReturn

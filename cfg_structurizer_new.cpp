@@ -161,6 +161,54 @@ bool CFGStructurizer::ensure_valid_phi_rewrites(CFGNode *node)
 	return true;
 }
 
+void CFGStructurizer::rewrite_degenerate_phi_constructs()
+{
+	bool rewrote_cfg = false;
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->succ_back_edge || node->pred_back_edge)
+			continue;
+
+		if (node->ir.operations.empty() && !node->ir.phi.empty() && node->idom_children.empty() &&
+			node->num_forward_preds() >= 2 &&
+			(node->ir.terminator.type == Terminator::Type::Branch ||
+			node->ir.terminator.type == Terminator::Type::Condition))
+		{
+			duplicate_node(node);
+			rewrote_cfg = true;
+		}
+	}
+
+	if (rewrote_cfg)
+		recompute_cfg();
+}
+
+void CFGStructurizer::rewrite_degenerate_interposing_frontiers()
+{
+	bool rewrote_cfg = false;
+
+	// This shouldn't normally happen, but could happen for some rare switch rewrites.
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->succ_back_edge || node->pred_back_edge)
+			continue;
+
+		if (node->interposing && node->num_forward_preds() >= 2 &&
+			node->idom_children.empty() &&
+			(node->ir.terminator.type == Terminator::Type::Branch ||
+			node->ir.terminator.type == Terminator::Type::Condition))
+		{
+			duplicate_node(node);
+			rewrote_cfg = true;
+		}
+	}
+
+	if (rewrote_cfg)
+		recompute_cfg();
+}
+
 void CFGStructurizer::convert_phi_to_variables()
 {
 	// Go out of SSA by writing to alloca variable on a branch.
@@ -1110,16 +1158,21 @@ void CFGStructurizer::move_interposing_nodes_into_loop(
 			candidate->num_forward_preds() == 1 &&
 		    has_element(back_edge_candidates, candidate->immediate_dominator))
 		{
+			assert(candidate->ir.terminator.type == Terminator::Type::Branch ||
+			       candidate->ir.terminator.type == Terminator::Type::Condition);
 			push_back_unique(back_edge_candidates, candidate);
-			assert(candidate->ir.terminator.type == Terminator::Type::Branch);
 			*itr = outer_idom.back();
 			outer_idom.pop_back();
 
-			auto *real_next = candidate->ir.terminator.direct_block;
+			for (auto *succ : candidate->succ)
+				if (header->dominates(succ) && !find_level_for_block(outer_levels, succ))
+					push_back_unique(outer_idom, succ);
 
-			// This cannot invalidate iterators since we just popped, so current reservation cannot be exceeded.
-			if (header->dominates(real_next) && !find_level_for_block(outer_levels, real_next))
-				push_back_unique(outer_idom, real_next);
+			if (candidate->succ.size() > 1)
+			{
+				// Restart traversal if iterator may have been invalidated.
+				itr = outer_idom.begin();
+			}
 		}
 		else
 		{
@@ -1649,6 +1702,98 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths_entry()
 	serialize_merge_levels_for_dominated_paths(entry_block, levels, nullptr);
 }
 
+void CFGStructurizer::cleanup_degenerate_blocks()
+{
+	Vector<CFGNode *> merge_blocks;
+
+	// We cannot remove blocks that are merge blocks for others.
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->ir.merge_info.merge_block)
+			merge_blocks.push_back(node->ir.merge_info.merge_block);
+		if (node->ir.merge_info.continue_block)
+			merge_blocks.push_back(node->ir.merge_info.continue_block);
+	}
+
+	bool rewrote_cfg = false;
+
+	// In this process we will have generated a lot of redundant blocks that can be trivially removed.
+	// Remove blocks bottom-up.
+	for (auto *node : forward_post_visit_order)
+	{
+		// Never rewrite loop headers or back-edges. Too annoying and we don't expect anything useful to happen here.
+		if (node->succ_back_edge || node->pred_back_edge)
+			continue;
+
+		const auto try_remove_block = [&](CFGNode *succ)
+		{
+			// Don't mess with loops whatsoever.
+			if (succ->succ_back_edge || succ->pred_back_edge)
+				return;
+
+			if (node->dominates(succ) && !has_element(merge_blocks, succ))
+			{
+				// Cannot fuse operations if it needs to be executed conditionally.
+				if (node->ir.terminator.type == Terminator::Type::Condition && !succ->ir.operations.empty())
+					return;
+
+				if (succ->ir.terminator.type == Terminator::Type::Branch)
+				{
+					if (has_element(node->succ, succ->ir.terminator.direct_block))
+					{
+						// Collapse the branch instead.
+						node->clear_branches();
+						node->ir.merge_info = {};
+						node->ir.terminator.type = Terminator::Type::Branch;
+						node->ir.terminator.direct_block = succ->ir.terminator.direct_block;
+						node->add_branch(succ->ir.terminator.direct_block);
+					}
+					else
+					{
+						node->retarget_branch_pre_traversal(succ, succ->ir.terminator.direct_block);
+					}
+
+					rewrote_cfg = true;
+				}
+				else if (node->ir.terminator.type == Terminator::Type::Branch &&
+				         (succ->ir.terminator.type == Terminator::Type::Condition ||
+				          succ->ir.terminator.type == Terminator::Type::Switch))
+				{
+					// Fuse the blocks.
+					auto *old_idom = node->immediate_dominator;
+					node->succ = succ->succ;
+					retarget_succ_from(node, succ);
+					node->immediate_dominator = old_idom;
+					node->ir.terminator = succ->ir.terminator;
+					node->ir.merge_info = succ->ir.merge_info;
+					rewrote_cfg = true;
+				}
+				else
+				{
+					return;
+				}
+
+				// Collapse the operations.
+				node->ir.operations.insert(node->ir.operations.end(), succ->ir.operations.begin(), succ->ir.operations.end());
+				succ->ir.operations.clear();
+			}
+		};
+
+		if (node->ir.terminator.type == Terminator::Type::Branch)
+		{
+			try_remove_block(node->ir.terminator.direct_block);
+		}
+		else if (node->ir.terminator.type == Terminator::Type::Condition)
+		{
+			try_remove_block(node->ir.terminator.true_block);
+			try_remove_block(node->ir.terminator.false_block);
+		}
+	}
+
+	if (rewrote_cfg)
+		recompute_cfg();
+}
+
 bool CFGStructurizer::run_structurizer()
 {
 	limited_control_flow_analysis = true;
@@ -1665,6 +1810,10 @@ bool CFGStructurizer::run_structurizer()
 	// Shouldn't happen, but it's valid and fuzzer can hit it.
 	fixup_degenerate_conditional_branches();
 
+	// More frontier nodes is just annoying to deal with and could be a performance hazard.
+	// Eliminate nodes that only contain PHI constructs and nothing else.
+	rewrite_degenerate_phi_constructs();
+
 	// We will not rely on re-inserting PHI here, so convert everything back to plain old variables.
 	convert_phi_to_variables();
 
@@ -1680,6 +1829,10 @@ bool CFGStructurizer::run_structurizer()
 	// NIR does this too, which this implementation is heavily based on.
 	// Explode any non-trivial switch blocks into a series of conditional branches.
 	rewrite_switch_blocks();
+
+	// In some rare cases, interposing blocks can become merge frontiers, which is just dumb for performance.
+	// Just split those up.
+	rewrite_degenerate_interposing_frontiers();
 
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
 	if (!graphviz_path.empty())
@@ -1702,6 +1855,16 @@ bool CFGStructurizer::run_structurizer()
 
 	serialize_merge_levels_for_dominated_paths_entry();
 	recompute_cfg();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".struct";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+#endif
+
+	cleanup_degenerate_blocks();
 
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
 	if (!graphviz_path.empty())

@@ -97,7 +97,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 152
+; Bound: 151
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
@@ -258,8 +258,6 @@ OpBranch %149
 %149 = OpLabel
 OpBranch %150
 %150 = OpLabel
-OpBranch %151
-%151 = OpLabel
 %37 = OpAccessChain %36 %8 %26
 %38 = OpLoad %5 %37
 %39 = OpFunctionCall %5 %89 %38 %29 %29

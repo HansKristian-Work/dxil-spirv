@@ -154,7 +154,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 151
+; Bound: 140
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -218,8 +218,8 @@ OpBranch %102
 %20 = OpAccessChain %13 %12 %21
 %22 = OpLoad %5 %20
 %24 = OpIEqual %23 %16 %15
-OpSelectionMerge %145 None
-OpBranchConditional %24 %144 %103
+OpSelectionMerge %135 None
+OpBranchConditional %24 %134 %103
 %103 = OpLabel
 OpStore %89 %15
 OpStore %90 %15
@@ -228,11 +228,11 @@ OpBranch %104
 %27 = OpLoad %5 %90
 %25 = OpLoad %5 %89
 %29 = OpIEqual %23 %19 %15
-OpLoopMerge %140 %138 None
+OpLoopMerge %133 %132 None
 OpBranch %105
 %105 = OpLabel
-OpSelectionMerge %135 None
-OpBranchConditional %29 %134 %106
+OpSelectionMerge %131 None
+OpBranchConditional %29 %130 %106
 %106 = OpLabel
 OpStore %87 %15
 OpStore %88 %27
@@ -246,15 +246,15 @@ OpBranch %107
 %49 = OpImageRead %48 %9 %46
 %50 = OpCompositeExtract %5 %49 0
 %51 = OpIEqual %23 %50 %52
-OpLoopMerge %129 %126 None
+OpLoopMerge %126 %123 None
 OpBranch %108
 %108 = OpLabel
 OpSelectionMerge %109 None
-OpBranchConditional %51 %128 %109
+OpBranchConditional %51 %125 %109
 %109 = OpLabel
 %53 = OpIEqual %23 %22 %15
-OpSelectionMerge %123 None
-OpBranchConditional %53 %122 %110
+OpSelectionMerge %122 None
+OpBranchConditional %53 %121 %110
 %110 = OpLabel
 OpStore %85 %32
 OpStore %86 %15
@@ -284,9 +284,9 @@ OpBranchConditional %63 %116 %113
 %57 = OpIAdd %5 %56 %18
 %70 = OpULessThan %23 %57 %22
 OpStore %100 %55
-OpSelectionMerge %148 None
+OpSelectionMerge %137 None
 OpBranchConditional %70 %114 %115
-%148 = OpLabel
+%137 = OpLabel
 OpUnreachable
 %114 = OpLabel
 OpStore %85 %55
@@ -299,105 +299,83 @@ OpBranch %117
 OpStore %95 %94
 OpBranch %117
 %117 = OpLabel
-OpBranch %118
-%118 = OpLabel
 %96 = OpLoad %23 %95
-OpSelectionMerge %121 None
-OpBranchConditional %96 %119 %120
-%119 = OpLabel
+OpSelectionMerge %120 None
+OpBranchConditional %96 %118 %119
+%118 = OpLabel
 %101 = OpLoad %5 %100
 OpStore %84 %101
-OpBranch %121
-%120 = OpLabel
+OpBranch %120
+%119 = OpLabel
 %71 = OpImageRead %48 %9 %21
 %72 = OpCompositeExtract %5 %71 0
 %73 = OpIAdd %5 %72 %54
 OpStore %84 %73
-OpBranch %121
+OpBranch %120
+%120 = OpLabel
+OpBranch %122
 %121 = OpLabel
-OpBranch %123
-%122 = OpLabel
 OpStore %84 %32
-OpBranch %123
-%123 = OpLabel
-OpBranch %124
-%124 = OpLabel
-OpBranch %125
-%125 = OpLabel
+OpBranch %122
+%122 = OpLabel
 %33 = OpLoad %5 %84
 %31 = OpIAdd %5 %30 %18
 %74 = OpULessThan %23 %31 %19
 OpStore %98 %33
-OpSelectionMerge %149 None
-OpBranchConditional %74 %126 %127
-%149 = OpLabel
+OpSelectionMerge %138 None
+OpBranchConditional %74 %123 %124
+%138 = OpLabel
 OpUnreachable
-%126 = OpLabel
+%123 = OpLabel
 OpStore %87 %31
 OpStore %88 %33
 OpBranch %107
-%127 = OpLabel
+%124 = OpLabel
 OpStore %92 %97
-OpBranch %129
-%128 = OpLabel
+OpBranch %126
+%125 = OpLabel
 OpStore %92 %94
-OpBranch %129
-%129 = OpLabel
-OpBranch %130
-%130 = OpLabel
+OpBranch %126
+%126 = OpLabel
 %93 = OpLoad %23 %92
-OpSelectionMerge %133 None
-OpBranchConditional %93 %131 %132
-%131 = OpLabel
+OpSelectionMerge %129 None
+OpBranchConditional %93 %127 %128
+%127 = OpLabel
 %99 = OpLoad %5 %98
 OpStore %83 %99
-OpBranch %133
-%132 = OpLabel
+OpBranch %129
+%128 = OpLabel
 %75 = OpImageRead %48 %9 %18
 %76 = OpCompositeExtract %5 %75 0
 %77 = OpIAdd %5 %76 %32
 OpStore %83 %77
-OpBranch %133
+OpBranch %129
+%129 = OpLabel
+OpBranch %131
+%130 = OpLabel
+OpStore %83 %27
+OpBranch %131
+%131 = OpLabel
+%28 = OpLoad %5 %83
+%26 = OpIAdd %5 %25 %18
+%78 = OpIEqual %23 %26 %16
+OpSelectionMerge %139 None
+OpBranchConditional %78 %133 %132
+%139 = OpLabel
+OpUnreachable
+%132 = OpLabel
+OpStore %89 %26
+OpStore %90 %28
+OpBranch %104
 %133 = OpLabel
+OpStore %82 %28
 OpBranch %135
 %134 = OpLabel
-OpStore %83 %27
+OpStore %82 %15
 OpBranch %135
 %135 = OpLabel
 OpBranch %136
 %136 = OpLabel
-OpBranch %137
-%137 = OpLabel
-%28 = OpLoad %5 %83
-%26 = OpIAdd %5 %25 %18
-%78 = OpIEqual %23 %26 %16
-OpSelectionMerge %150 None
-OpBranchConditional %78 %139 %138
-%150 = OpLabel
-OpUnreachable
-%138 = OpLabel
-OpStore %89 %26
-OpStore %90 %28
-OpBranch %104
-%139 = OpLabel
-OpBranch %140
-%140 = OpLabel
-OpBranch %141
-%141 = OpLabel
-OpBranch %142
-%142 = OpLabel
-OpStore %82 %28
-OpBranch %143
-%143 = OpLabel
-OpBranch %145
-%144 = OpLabel
-OpStore %82 %15
-OpBranch %145
-%145 = OpLabel
-OpBranch %146
-%146 = OpLabel
-OpBranch %147
-%147 = OpLabel
 %79 = OpLoad %5 %82
 %80 = OpCompositeConstruct %48 %79 %79 %79 %79
 OpImageWrite %9 %15 %80

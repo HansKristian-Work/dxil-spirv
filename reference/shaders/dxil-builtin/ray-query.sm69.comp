@@ -290,7 +290,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 518
+; Bound: 505
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -413,7 +413,7 @@ OpBranch %479
 %35 = OpCompositeConstruct %32 %27 %29 %31
 OpRayQueryInitializeKHR %21 %22 %23 %24 %33 %34 %35 %36
 %38 = OpRayQueryProceedKHR %37 %21
-OpSelectionMerge %502 None
+OpSelectionMerge %494 None
 OpBranchConditional %38 %481 %480
 %480 = OpLabel
 %39 = OpShiftLeftLogical %9 %18 %40
@@ -421,7 +421,7 @@ OpStore %469 %39
 OpStore %470 %43
 OpStore %471 %43
 OpStore %472 %43
-OpBranch %502
+OpBranch %494
 %481 = OpLabel
 OpStore %476 %43
 OpStore %477 %43
@@ -595,7 +595,7 @@ OpImageWrite %191 %200 %199
 OpImageWrite %191 %202 %201
 %203 = OpRayQueryGetIntersectionTypeKHR %9 %21 %43
 %204 = OpIEqual %37 %203 %43
-OpLoopMerge %498 %496 None
+OpLoopMerge %493 %492 None
 OpBranch %483
 %483 = OpLabel
 OpSelectionMerge %489 None
@@ -656,53 +656,33 @@ OpStore %474 %44
 OpStore %475 %46
 OpBranch %489
 %489 = OpLabel
-OpBranch %490
-%490 = OpLabel
-OpBranch %491
-%491 = OpLabel
 %47 = OpLoad %9 %475
 %45 = OpLoad %9 %474
 %42 = OpLoad %9 %473
 %241 = OpIEqual %37 %42 %79
-OpSelectionMerge %493 None
-OpBranchConditional %241 %492 %493
-%492 = OpLabel
+OpSelectionMerge %491 None
+OpBranchConditional %241 %490 %491
+%490 = OpLabel
 OpRayQueryTerminateKHR %21
-OpBranch %493
-%493 = OpLabel
-OpBranch %494
-%494 = OpLabel
-OpBranch %495
-%495 = OpLabel
+OpBranch %491
+%491 = OpLabel
 %242 = OpRayQueryProceedKHR %37 %21
-OpSelectionMerge %517 None
-OpBranchConditional %242 %496 %497
-%517 = OpLabel
+OpSelectionMerge %504 None
+OpBranchConditional %242 %492 %493
+%504 = OpLabel
 OpUnreachable
-%496 = OpLabel
+%492 = OpLabel
 OpStore %476 %42
 OpStore %477 %45
 OpStore %478 %47
 OpBranch %482
-%497 = OpLabel
-OpBranch %498
-%498 = OpLabel
-OpBranch %499
-%499 = OpLabel
-OpBranch %500
-%500 = OpLabel
+%493 = OpLabel
 OpStore %469 %49
 OpStore %470 %42
 OpStore %471 %45
 OpStore %472 %47
-OpBranch %501
-%501 = OpLabel
-OpBranch %502
-%502 = OpLabel
-OpBranch %503
-%503 = OpLabel
-OpBranch %504
-%504 = OpLabel
+OpBranch %494
+%494 = OpLabel
 %246 = OpLoad %9 %472
 %245 = OpLoad %9 %471
 %244 = OpLoad %9 %470
@@ -738,9 +718,9 @@ OpImageWrite %264 %265 %267
 OpImageWrite %270 %271 %273
 %274 = OpRayQueryGetIntersectionTypeKHR %9 %21 %57
 %275 = OpIEqual %37 %274 %43
-OpSelectionMerge %506 None
-OpBranchConditional %275 %506 %505
-%505 = OpLabel
+OpSelectionMerge %496 None
+OpBranchConditional %275 %496 %495
+%495 = OpLabel
 %276 = OpRayQueryGetIntersectionInstanceIdKHR %9 %21 %57
 %277 = OpBitwiseOr %9 %243 %278
 %279 = OpLoad %10 %12
@@ -909,36 +889,32 @@ OpImageWrite %418 %430 %429
 %436 = OpBitcast %9 %431
 %437 = OpCompositeConstruct %53 %436 %436 %436 %436
 OpImageWrite %434 %435 %437
-OpBranch %506
-%506 = OpLabel
-OpBranch %507
-%507 = OpLabel
-OpBranch %508
-%508 = OpLabel
+OpBranch %496
+%496 = OpLabel
 %438 = OpRayQueryGetIntersectionTypeKHR %9 %21 %57
 %439 = OpIEqual %37 %438 %57
 %440 = OpLoad %10 %12
-OpSelectionMerge %514 None
-OpBranchConditional %439 %513 %509
-%509 = OpLabel
+OpSelectionMerge %502 None
+OpBranchConditional %439 %501 %497
+%497 = OpLabel
 %441 = OpIEqual %37 %438 %64
-OpSelectionMerge %512 None
-OpBranchConditional %441 %511 %510
-%510 = OpLabel
+OpSelectionMerge %500 None
+OpBranchConditional %441 %499 %498
+%498 = OpLabel
 %442 = OpBitwiseOr %9 %243 %443
 %444 = OpIAdd %9 %442 %43
 %445 = OpCompositeConstruct %53 %246 %246 %246 %246
 OpImageWrite %440 %444 %445
-OpBranch %512
-%511 = OpLabel
+OpBranch %500
+%499 = OpLabel
 %446 = OpBitwiseOr %9 %243 %447
 %448 = OpIAdd %9 %243 %447
 %449 = OpCompositeConstruct %53 %245 %245 %245 %245
 OpImageWrite %440 %448 %449
-OpBranch %512
-%512 = OpLabel
-OpBranch %514
-%513 = OpLabel
+OpBranch %500
+%500 = OpLabel
+OpBranch %502
+%501 = OpLabel
 %450 = OpBitwiseOr %9 %243 %451
 %452 = OpIAdd %9 %450 %43
 %453 = OpCompositeConstruct %53 %244 %244 %244 %244
@@ -957,12 +933,10 @@ OpImageWrite %458 %459 %461
 %466 = OpIAdd %9 %464 %43
 %467 = OpCompositeConstruct %53 %463 %463 %463 %463
 OpImageWrite %440 %466 %467
-OpBranch %514
-%514 = OpLabel
-OpBranch %515
-%515 = OpLabel
-OpBranch %516
-%516 = OpLabel
+OpBranch %502
+%502 = OpLabel
+OpBranch %503
+%503 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

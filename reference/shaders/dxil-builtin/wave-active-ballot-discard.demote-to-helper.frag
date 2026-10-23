@@ -25,7 +25,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 39
+; Bound: 38
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformBallot
@@ -70,8 +70,6 @@ OpBranch %36
 %36 = OpLabel
 OpBranch %37
 %37 = OpLabel
-OpBranch %38
-%38 = OpLabel
 %15 = OpULessThan %12 %11 %16
 %17 = OpIsHelperInvocationEXT %12
 %18 = OpLogicalNot %12 %17

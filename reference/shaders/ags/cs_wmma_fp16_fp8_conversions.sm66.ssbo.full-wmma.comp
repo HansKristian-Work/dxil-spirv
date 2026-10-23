@@ -40,7 +40,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 72
+; Bound: 71
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -139,8 +139,6 @@ OpBranch %69
 %69 = OpLabel
 OpBranch %70
 %70 = OpLabel
-OpBranch %71
-%71 = OpLabel
 OpReturn
 OpFunctionEnd
 %57 = OpFunction %2 None %54

@@ -49,7 +49,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 61
+; Bound: 56
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -93,8 +93,8 @@ OpBranch %46
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %18 = OpIEqual %17 %16 %19
-OpSelectionMerge %57 None
-OpBranchConditional %18 %56 %47
+OpSelectionMerge %53 None
+OpBranchConditional %18 %52 %47
 %47 = OpLabel
 OpStore %44 %19
 OpStore %45 %19
@@ -109,36 +109,26 @@ OpBranch %48
 %21 = OpIAdd %5 %37 %20
 %23 = OpIAdd %5 %22 %38
 %39 = OpIEqual %17 %23 %16
-OpLoopMerge %52 %50 None
+OpLoopMerge %51 %50 None
 OpBranch %49
 %49 = OpLabel
-OpSelectionMerge %60 None
+OpSelectionMerge %55 None
 OpBranchConditional %39 %51 %50
-%60 = OpLabel
+%55 = OpLabel
 OpUnreachable
 %50 = OpLabel
 OpStore %44 %21
 OpStore %45 %23
 OpBranch %48
 %51 = OpLabel
-OpBranch %52
+OpStore %43 %21
+OpBranch %53
 %52 = OpLabel
+OpStore %43 %19
 OpBranch %53
 %53 = OpLabel
 OpBranch %54
 %54 = OpLabel
-OpStore %43 %21
-OpBranch %55
-%55 = OpLabel
-OpBranch %57
-%56 = OpLabel
-OpStore %43 %19
-OpBranch %57
-%57 = OpLabel
-OpBranch %58
-%58 = OpLabel
-OpBranch %59
-%59 = OpLabel
 %40 = OpLoad %5 %43
 %41 = OpCompositeConstruct %35 %40 %40 %40 %40
 OpImageWrite %9 %19 %41

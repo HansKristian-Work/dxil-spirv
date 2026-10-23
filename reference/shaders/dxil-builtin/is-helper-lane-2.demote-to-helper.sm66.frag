@@ -42,7 +42,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 59
+; Bound: 58
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformArithmetic
@@ -119,8 +119,6 @@ OpBranch %56
 %56 = OpLabel
 OpBranch %57
 %57 = OpLabel
-OpBranch %58
-%58 = OpLabel
 %41 = OpLoad %5 %52
 %40 = OpLoad %5 %51
 %39 = OpLoad %5 %50

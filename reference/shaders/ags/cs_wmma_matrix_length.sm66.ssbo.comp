@@ -63,7 +63,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 86
+; Bound: 84
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -171,12 +171,12 @@ OpBranch %78
 OpStore %71 %56 NonPrivatePointer
 %59 = OpIAdd %5 %58 %23
 %73 = OpIEqual %72 %59 %10
-OpLoopMerge %82 %80 None
+OpLoopMerge %81 %80 None
 OpBranch %79
 %79 = OpLabel
-OpSelectionMerge %85 None
+OpSelectionMerge %83 None
 OpBranchConditional %73 %81 %80
-%85 = OpLabel
+%83 = OpLabel
 OpUnreachable
 %80 = OpLabel
 %74 = OpInBoundsAccessChain %21 %13 %59
@@ -187,10 +187,6 @@ OpBranch %78
 %81 = OpLabel
 OpBranch %82
 %82 = OpLabel
-OpBranch %83
-%83 = OpLabel
-OpBranch %84
-%84 = OpLabel
 OpReturn
 OpFunctionEnd
 %64 = OpFunction %5 None %61

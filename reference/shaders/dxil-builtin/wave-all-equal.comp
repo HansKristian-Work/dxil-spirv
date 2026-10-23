@@ -23,7 +23,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 40
+; Bound: 39
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -77,8 +77,6 @@ OpBranch %37
 %37 = OpLabel
 OpBranch %38
 %38 = OpLabel
-OpBranch %39
-%39 = OpLabel
 OpReturn
 OpFunctionEnd
 %25 = OpFunction %5 None %22
