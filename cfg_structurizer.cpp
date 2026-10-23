@@ -1791,11 +1791,9 @@ Operation *CFGStructurizer::duplicate_op(Operation *op, UnorderedMap<spv::Id, sp
 
 void CFGStructurizer::fixup_partial_stage_output_writes()
 {
-	bool old_limited = limited_control_flow_analysis;
 	if (limited_control_flow_analysis)
 	{
 		// Need full fat analysis with post-dominance, reachability, etc.
-		limited_control_flow_analysis = false;
 		compute_full_control_flow_analysis();
 	}
 
@@ -1877,8 +1875,6 @@ void CFGStructurizer::fixup_partial_stage_output_writes()
 			builder.addGlobalVariableZeroInitializer(var_id);
 		}
 	}
-
-	limited_control_flow_analysis = old_limited;
 }
 
 bool CFGStructurizer::can_duplicate_phis(const CFGNode *node)

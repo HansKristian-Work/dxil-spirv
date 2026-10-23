@@ -41,8 +41,6 @@ void main()
     }
     else
     {
-        _86 = _37;
-        _87 = _37;
     }
     if (gl_FragCoord.x > 1100.0)
     {
@@ -130,8 +128,6 @@ OpBeginInvocationInterlockEXT
 OpSelectionMerge %91 None
 OpBranchConditional %19 %90 %89
 %89 = OpLabel
-OpStore %86 %37
-OpStore %87 %37
 OpBranch %91
 %90 = OpLabel
 %24 = OpImageRead %23 %13 %16

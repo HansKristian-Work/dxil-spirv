@@ -123,11 +123,9 @@ OpRayQueryInitializeKHR %35 %36 %37 %38 %45 %46 %47 %48
 OpSelectionMerge %147 None
 OpBranchConditional %50 %127 %126
 %126 = OpLabel
-OpStore %118 %53
 OpStore %120 %28
 OpBranch %147
 %127 = OpLabel
-OpStore %123 %53
 OpStore %124 %28
 OpBranch %128
 %128 = OpLabel

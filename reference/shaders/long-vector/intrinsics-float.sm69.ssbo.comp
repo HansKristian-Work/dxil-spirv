@@ -59,10 +59,6 @@ void main()
     }
     else
     {
-        _965 = _65;
-        _966 = _65;
-        _967 = _65;
-        _968 = _65;
     }
     vector<float, 8> _961;
     vector<float, 8> _962;
@@ -77,10 +73,6 @@ void main()
     }
     else
     {
-        _961 = _65;
-        _962 = _65;
-        _963 = _65;
-        _964 = _65;
     }
     vector<float, 8> _960;
     if (gl_GlobalInvocationID.x == 0u)
@@ -1002,10 +994,6 @@ OpBranch %1082
 OpSelectionMerge %1085 None
 OpBranchConditional %59 %1084 %1083
 %1083 = OpLabel
-OpStore %965 %65
-OpStore %966 %65
-OpStore %967 %65
-OpStore %968 %65
 OpBranch %1085
 %1084 = OpLabel
 %60 = OpDPdxCoarse %29 %30
@@ -1031,10 +1019,6 @@ OpBranch %1087
 OpSelectionMerge %1090 None
 OpBranchConditional %71 %1089 %1088
 %1088 = OpLabel
-OpStore %961 %65
-OpStore %962 %65
-OpStore %963 %65
-OpStore %964 %65
 OpBranch %1090
 %1089 = OpLabel
 %72 = OpGroupNonUniformQuadBroadcast %29 %23 %30 %32
