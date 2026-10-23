@@ -49,7 +49,8 @@ void main()
 ; Bound: 165
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -121,132 +122,132 @@ OpBranch %164
 %17 = OpShiftRightLogical %5 %16 %18
 %21 = OpBitcast %5 %20
 %23 = OpAccessChain %22 %9 %15 %17
-OpStore %23 %21
+OpStore %23 %21 NonPrivatePointer
 %24 = OpShiftLeftLogical %5 %16 %25
 %26 = OpShiftRightLogical %5 %24 %18
 %28 = OpBitcast %5 %27
 %29 = OpAccessChain %22 %9 %15 %26
-OpStore %29 %28
+OpStore %29 %28 NonPrivatePointer
 %30 = OpIMul %5 %16 %31
 %32 = OpShiftRightLogical %5 %30 %18
 %34 = OpBitcast %5 %33
 %35 = OpAccessChain %22 %9 %15 %32
-OpStore %35 %34
+OpStore %35 %34 NonPrivatePointer
 %36 = OpShiftLeftLogical %5 %16 %18
 %45 = OpFunctionCall %5 %40 %16 %46
 %48 = OpBitcast %5 %47
 %49 = OpAccessChain %22 %9 %15 %45
-OpStore %49 %48
+OpStore %49 %48 NonPrivatePointer
 %50 = OpShiftLeftLogical %5 %16 %31
 %51 = OpIMul %5 %16 %18
 %52 = OpFunctionCall %5 %40 %51 %46
 %54 = OpBitcast %5 %53
 %55 = OpAccessChain %22 %9 %15 %52
-OpStore %55 %54
+OpStore %55 %54 NonPrivatePointer
 %56 = OpIMul %5 %16 %57
 %58 = OpIMul %5 %16 %31
 %59 = OpFunctionCall %5 %40 %58 %46
 %61 = OpBitcast %5 %60
 %62 = OpAccessChain %22 %9 %15 %59
-OpStore %62 %61
+OpStore %62 %61 NonPrivatePointer
 %63 = OpFunctionCall %5 %40 %16 %46
 %65 = OpBitcast %5 %64
 %66 = OpAccessChain %22 %9 %15 %63
-OpStore %66 %65
+OpStore %66 %65 NonPrivatePointer
 %67 = OpIMul %5 %16 %18
 %68 = OpFunctionCall %5 %40 %67 %46
 %70 = OpBitcast %5 %69
 %71 = OpAccessChain %22 %9 %15 %68
-OpStore %71 %70
+OpStore %71 %70 NonPrivatePointer
 %72 = OpShiftLeftLogical %5 %16 %46
 %73 = OpIMul %5 %16 %46
 %74 = OpFunctionCall %5 %40 %73 %46
 %76 = OpBitcast %5 %75
 %77 = OpAccessChain %22 %9 %15 %74
-OpStore %77 %76
+OpStore %77 %76 NonPrivatePointer
 %78 = OpBitwiseOr %5 %56 %25
 %79 = OpShiftRightLogical %5 %78 %18
 %81 = OpBitcast %5 %80
 %82 = OpAccessChain %22 %9 %15 %79
-OpStore %82 %81
+OpStore %82 %81 NonPrivatePointer
 %83 = OpBitwiseOr %5 %56 %18
 %84 = OpShiftRightLogical %5 %83 %18
 %86 = OpBitcast %5 %85
 %87 = OpAccessChain %22 %9 %15 %84
-OpStore %87 %86
+OpStore %87 %86 NonPrivatePointer
 %88 = OpBitwiseOr %5 %56 %31
 %89 = OpShiftRightLogical %5 %88 %18
 %91 = OpBitcast %5 %90
 %92 = OpAccessChain %22 %9 %15 %89
-OpStore %92 %91
+OpStore %92 %91 NonPrivatePointer
 %93 = OpIAdd %5 %56 %46
 %94 = OpIMul %5 %16 %31
 %95 = OpIAdd %5 %94 %25
 %96 = OpFunctionCall %5 %40 %95 %46
 %98 = OpBitcast %5 %97
 %99 = OpAccessChain %22 %9 %15 %96
-OpStore %99 %98
+OpStore %99 %98 NonPrivatePointer
 %100 = OpIAdd %5 %56 %101
 %102 = OpIMul %5 %16 %31
 %103 = OpIAdd %5 %102 %18
 %104 = OpFunctionCall %5 %40 %103 %46
 %106 = OpBitcast %5 %105
 %107 = OpAccessChain %22 %9 %15 %104
-OpStore %107 %106
+OpStore %107 %106 NonPrivatePointer
 %108 = OpIAdd %5 %56 %109
 %110 = OpIMul %5 %16 %31
 %111 = OpISub %5 %110 %25
 %112 = OpFunctionCall %5 %40 %111 %46
 %114 = OpBitcast %5 %113
 %115 = OpAccessChain %22 %9 %15 %112
-OpStore %115 %114
+OpStore %115 %114 NonPrivatePointer
 %116 = OpIAdd %5 %56 %117
 %118 = OpIMul %5 %16 %31
 %119 = OpISub %5 %118 %18
 %120 = OpFunctionCall %5 %40 %119 %46
 %122 = OpBitcast %5 %121
 %123 = OpAccessChain %22 %9 %15 %120
-OpStore %123 %122
+OpStore %123 %122 NonPrivatePointer
 %124 = OpIAdd %5 %16 %46
 %125 = OpShiftRightLogical %5 %124 %18
 %127 = OpBitcast %5 %126
 %128 = OpAccessChain %22 %9 %15 %125
-OpStore %128 %127
+OpStore %128 %127 NonPrivatePointer
 %129 = OpIAdd %5 %16 %101
 %130 = OpShiftRightLogical %5 %129 %18
 %132 = OpBitcast %5 %131
 %133 = OpAccessChain %22 %9 %15 %130
-OpStore %133 %132
+OpStore %133 %132 NonPrivatePointer
 %134 = OpIAdd %5 %16 %109
 %135 = OpShiftRightLogical %5 %134 %18
 %137 = OpBitcast %5 %136
 %138 = OpAccessChain %22 %9 %15 %135
-OpStore %138 %137
+OpStore %138 %137 NonPrivatePointer
 %139 = OpIAdd %5 %16 %117
 %140 = OpShiftRightLogical %5 %139 %18
 %142 = OpBitcast %5 %141
 %143 = OpAccessChain %22 %9 %15 %140
-OpStore %143 %142
+OpStore %143 %142 NonPrivatePointer
 %144 = OpIAdd %5 %16 %145
 %146 = OpShiftRightLogical %5 %144 %18
 %147 = OpBitcast %5 %126
 %148 = OpAccessChain %22 %9 %15 %146
-OpStore %148 %147
+OpStore %148 %147 NonPrivatePointer
 %149 = OpIAdd %5 %16 %150
 %151 = OpShiftRightLogical %5 %149 %18
 %152 = OpBitcast %5 %131
 %153 = OpAccessChain %22 %9 %15 %151
-OpStore %153 %152
+OpStore %153 %152 NonPrivatePointer
 %154 = OpIAdd %5 %16 %155
 %156 = OpShiftRightLogical %5 %154 %18
 %157 = OpBitcast %5 %136
 %158 = OpAccessChain %22 %9 %15 %156
-OpStore %158 %157
+OpStore %158 %157 NonPrivatePointer
 %159 = OpIAdd %5 %16 %160
 %161 = OpShiftRightLogical %5 %159 %18
 %162 = OpBitcast %5 %141
 %163 = OpAccessChain %22 %9 %15 %161
-OpStore %163 %162
+OpStore %163 %162 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %40 = OpFunction %5 None %37

@@ -22,10 +22,10 @@ void main()
 {
     uint64_t _31 = uint64_t(gl_GlobalInvocationID.x);
     uint64_t _34 = atomicAdd(_10[0u]._m0[0u], _31);
-    uint64_t _36 = atomicAnd(_10[0u]._m0[1u], _31);
-    uint64_t _38 = atomicOr(_10[0u]._m0[2u], _31);
-    uint64_t _41 = atomicXor(_10[0u]._m0[3u], _31);
-    uint64_t _44 = atomicMin(_10[0u]._m0[4u], _31);
+    uint64_t _37 = atomicAnd(_10[0u]._m0[1u], _31);
+    uint64_t _39 = atomicOr(_10[0u]._m0[2u], _31);
+    uint64_t _42 = atomicXor(_10[0u]._m0[3u], _31);
+    uint64_t _45 = atomicMin(_10[0u]._m0[4u], _31);
     uint64_t _47 = atomicMax(_10[0u]._m0[5u], _31);
     uint64_t _50 = atomicMin(_10[1u]._m0[6u], _31);
     uint64_t _53 = atomicMax(_10[1u]._m0[7u], _31);
@@ -49,8 +49,9 @@ OpCapability Shader
 OpCapability Int64
 OpCapability Int64Atomics
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %15 %19
 OpExecutionMode %3 LocalSize 128 1 1
 OpName %3 "main"
@@ -91,9 +92,9 @@ OpDecorate %19 BuiltIn GlobalInvocationId
 %28 = OpTypePointer StorageBuffer %12
 %30 = OpConstant %16 2
 %32 = OpTypePointer StorageBuffer %5
-%39 = OpConstant %16 3
-%42 = OpConstant %16 4
-%45 = OpConstant %16 5
+%35 = OpConstant %16 5
+%40 = OpConstant %16 3
+%43 = OpConstant %16 4
 %48 = OpConstant %16 6
 %51 = OpConstant %16 7
 %54 = OpConstant %16 8
@@ -112,33 +113,33 @@ OpBranch %71
 %29 = OpAccessChain %28 %15 %30
 %31 = OpUConvert %5 %23
 %33 = OpAccessChain %32 %25 %22 %22
-%34 = OpAtomicIAdd %5 %33 %27 %22 %31
-%35 = OpAccessChain %32 %25 %22 %27
-%36 = OpAtomicAnd %5 %35 %27 %22 %31
-%37 = OpAccessChain %32 %25 %22 %30
-%38 = OpAtomicOr %5 %37 %27 %22 %31
-%40 = OpAccessChain %32 %25 %22 %39
-%41 = OpAtomicXor %5 %40 %27 %22 %31
-%43 = OpAccessChain %32 %25 %22 %42
-%44 = OpAtomicUMin %5 %43 %27 %22 %31
-%46 = OpAccessChain %32 %25 %22 %45
-%47 = OpAtomicUMax %5 %46 %27 %22 %31
+%34 = OpAtomicIAdd %5 %33 %35 %22 %31
+%36 = OpAccessChain %32 %25 %22 %27
+%37 = OpAtomicAnd %5 %36 %35 %22 %31
+%38 = OpAccessChain %32 %25 %22 %30
+%39 = OpAtomicOr %5 %38 %35 %22 %31
+%41 = OpAccessChain %32 %25 %22 %40
+%42 = OpAtomicXor %5 %41 %35 %22 %31
+%44 = OpAccessChain %32 %25 %22 %43
+%45 = OpAtomicUMin %5 %44 %35 %22 %31
+%46 = OpAccessChain %32 %25 %22 %35
+%47 = OpAtomicUMax %5 %46 %35 %22 %31
 %49 = OpAccessChain %32 %26 %22 %48
-%50 = OpAtomicSMin %5 %49 %27 %22 %31
+%50 = OpAtomicSMin %5 %49 %35 %22 %31
 %52 = OpAccessChain %32 %26 %22 %51
-%53 = OpAtomicSMax %5 %52 %27 %22 %31
+%53 = OpAtomicSMax %5 %52 %35 %22 %31
 %55 = OpAccessChain %32 %25 %22 %54
-%56 = OpAtomicExchange %5 %55 %27 %22 %31
+%56 = OpAtomicExchange %5 %55 %35 %22 %31
 %58 = OpAccessChain %32 %25 %22 %57
-%59 = OpAtomicCompareExchange %5 %58 %27 %22 %22 %56 %60
+%59 = OpAtomicCompareExchange %5 %58 %35 %22 %22 %56 %60
 %62 = OpAccessChain %32 %25 %22 %61
-%63 = OpAtomicCompareExchange %5 %62 %27 %22 %22 %31 %64
+%63 = OpAtomicCompareExchange %5 %62 %35 %22 %22 %31 %64
 %65 = OpAccessChain %32 %29 %22 %22
-%66 = OpAtomicIAdd %5 %65 %27 %22 %31
+%66 = OpAtomicIAdd %5 %65 %35 %22 %31
 %67 = OpAccessChain %32 %29 %22 %27
-%68 = OpAtomicAnd %5 %67 %27 %22 %31
+%68 = OpAtomicAnd %5 %67 %35 %22 %31
 %69 = OpAccessChain %32 %29 %22 %30
-%70 = OpAtomicOr %5 %69 %27 %22 %31
+%70 = OpAtomicOr %5 %69 %35 %22 %31
 OpReturn
 OpFunctionEnd
 #endif

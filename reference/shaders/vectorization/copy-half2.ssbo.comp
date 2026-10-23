@@ -39,8 +39,9 @@ OpCapability Float16
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %14 %18
 OpExecutionMode %3 LocalSize 2 1 1
 OpExecutionMode %3 DenormPreserve 16
@@ -88,7 +89,7 @@ OpBranch %35
 %20 = OpAccessChain %19 %18 %21
 %22 = OpLoad %15 %20
 %24 = OpAccessChain %23 %10 %21 %22
-%25 = OpLoad %6 %24
+%25 = OpLoad %6 %24 NonPrivatePointer
 %28 = OpBitcast %27 %25
 %29 = OpCompositeExtract %26 %28 0
 %30 = OpCompositeExtract %26 %28 1
@@ -96,7 +97,7 @@ OpBranch %35
 %32 = OpBitcast %5 %30
 %33 = OpCompositeConstruct %6 %31 %32
 %34 = OpAccessChain %23 %14 %21 %22
-OpStore %34 %33
+OpStore %34 %33 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

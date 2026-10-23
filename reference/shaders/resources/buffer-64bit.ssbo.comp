@@ -93,7 +93,8 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %11 %15 %19 %23 %26
 OpExecutionMode %3 LocalSize 128 1 1
 OpName %3 "main"
@@ -207,7 +208,7 @@ OpBranch %163
 %54 = OpIMul %5 %30 %55
 %56 = OpCompositeConstruct %7 %49 %50 %51
 %57 = OpAccessChain %35 %19 %29 %54
-OpStore %57 %56
+OpStore %57 %56 NonPrivatePointer
 %58 = OpISub %6 %38 %46
 %59 = OpISub %6 %39 %47
 %60 = OpISub %6 %40 %48
@@ -216,7 +217,7 @@ OpStore %57 %56
 %63 = OpIAdd %5 %62 %32
 %64 = OpCompositeConstruct %7 %58 %59 %60
 %65 = OpAccessChain %35 %19 %29 %63
-OpStore %65 %64
+OpStore %65 %64 NonPrivatePointer
 %66 = OpIMul %6 %46 %38
 %67 = OpIMul %6 %47 %39
 %68 = OpIMul %6 %48 %40
@@ -225,7 +226,7 @@ OpStore %65 %64
 %71 = OpIAdd %5 %70 %34
 %72 = OpCompositeConstruct %7 %66 %67 %68
 %73 = OpAccessChain %35 %19 %29 %71
-OpStore %73 %72
+OpStore %73 %72 NonPrivatePointer
 %87 = OpFunctionCall %6 %77 %38 %46
 %88 = OpFunctionCall %6 %77 %39 %47
 %89 = OpFunctionCall %6 %77 %40 %48
@@ -234,7 +235,7 @@ OpStore %73 %72
 %92 = OpIAdd %5 %91 %53
 %93 = OpCompositeConstruct %7 %87 %88 %89
 %94 = OpAccessChain %35 %19 %29 %92
-OpStore %94 %93
+OpStore %94 %93 NonPrivatePointer
 %95 = OpBitwiseAnd %6 %46 %96
 %97 = OpBitwiseAnd %6 %47 %96
 %98 = OpBitwiseAnd %6 %48 %96
@@ -246,7 +247,7 @@ OpStore %94 %93
 %105 = OpIAdd %5 %104 %103
 %106 = OpCompositeConstruct %7 %99 %100 %101
 %107 = OpAccessChain %35 %19 %29 %105
-OpStore %107 %106
+OpStore %107 %106 NonPrivatePointer
 %108 = OpShiftRightLogical %6 %38 %95
 %109 = OpShiftRightLogical %6 %39 %97
 %110 = OpShiftRightLogical %6 %40 %98
@@ -255,7 +256,7 @@ OpStore %107 %106
 %114 = OpIAdd %5 %113 %112
 %115 = OpCompositeConstruct %7 %108 %109 %110
 %116 = OpAccessChain %35 %19 %29 %114
-OpStore %116 %115
+OpStore %116 %115 NonPrivatePointer
 %117 = OpShiftRightArithmetic %6 %38 %95
 %118 = OpShiftRightArithmetic %6 %39 %97
 %119 = OpShiftRightArithmetic %6 %40 %98
@@ -264,7 +265,7 @@ OpStore %116 %115
 %123 = OpIAdd %5 %122 %121
 %124 = OpCompositeConstruct %7 %117 %118 %119
 %125 = OpAccessChain %35 %19 %29 %123
-OpStore %125 %124
+OpStore %125 %124 NonPrivatePointer
 %126 = OpBitwiseAnd %6 %46 %38
 %127 = OpBitwiseAnd %6 %47 %39
 %128 = OpBitwiseAnd %6 %48 %40
@@ -273,7 +274,7 @@ OpStore %125 %124
 %132 = OpIAdd %5 %131 %130
 %133 = OpCompositeConstruct %7 %126 %127 %128
 %134 = OpAccessChain %35 %19 %29 %132
-OpStore %134 %133
+OpStore %134 %133 NonPrivatePointer
 %135 = OpIMul %5 %30 %136
 %137 = OpIMul %5 %30 %53
 %146 = OpFunctionCall %5 %141 %137 %55
@@ -287,13 +288,13 @@ OpStore %134 %133
 %156 = OpCompositeExtract %6 %154 1
 %157 = OpFunctionCall %5 %141 %30 %55
 %158 = OpAccessChain %147 %23 %29 %157
-OpStore %158 %155
+OpStore %158 %155 NonPrivatePointer
 %160 = OpIAdd %5 %157 %32
 %159 = OpAccessChain %147 %23 %29 %160
-OpStore %159 %156
+OpStore %159 %156 NonPrivatePointer
 %162 = OpIAdd %5 %157 %34
 %161 = OpAccessChain %147 %23 %29 %162
-OpStore %161 %40
+OpStore %161 %40 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %77 = OpFunction %6 None %74

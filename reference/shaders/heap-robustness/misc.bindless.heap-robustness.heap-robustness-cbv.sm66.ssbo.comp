@@ -63,17 +63,17 @@ layout(set = 2, binding = 0) uniform sampler _65[];
 
 uint RobustPhysicalAtomicCounter(uvec2 _236, uint _237, uint _238)
 {
-    uint _253;
+    uint _252;
     if (any(notEqual(_236, uvec2(0u))))
     {
         uint _250 = atomicAdd(uintPointer(_236).value, _237);
-        _253 = _250 + _238;
+        _252 = _250 + _238;
     }
     else
     {
-        _253 = 0u;
+        _252 = 0u;
     }
-    return _253;
+    return _252;
 }
 
 void main()
@@ -92,7 +92,7 @@ void main()
     _57[nonuniformEXT(min((registers._m4 + _205), DescriptorHeapSize.count))]._m0[gl_GlobalInvocationID.x] = uvec4(floatBitsToUint(_199.x), floatBitsToUint(_199.y), floatBitsToUint(_199.z), floatBitsToUint(_199.w));
     barrier();
     uvec2 _234 = _30.counters[min((registers._m4 + _205), DescriptorHeapSize.count)];
-    uint _254 = RobustPhysicalAtomicCounter(_234, 1u, 0u);
+    uint _253 = RobustPhysicalAtomicCounter(_234, 1u, 0u);
     barrier();
     uint _278 = gl_GlobalInvocationID.x + 400u;
     uvec2 _289 = _30.counters[min(_278, DescriptorHeapSize.count)];
@@ -132,11 +132,12 @@ OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
 OpCapability StorageTexelBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 %83 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %13 %17 %21 %25 %30 %36 %43 %46 %49 %52 %57 %62 %65 %68
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -336,7 +337,7 @@ OpDecorate %340 NonUniform
 %110 = OpConstant %5 4
 %113 = OpConstant %5 100
 %119 = OpTypePointer StorageBuffer %31
-%121 = OpConstant %5 264
+%121 = OpConstant %5 24840
 %144 = OpTypePointer UniformConstant %18
 %147 = OpConstant %5 3
 %157 = OpTypePointer Uniform %59
@@ -349,7 +350,7 @@ OpDecorate %340 NonUniform
 %244 = OpTypeVector %243 2
 %245 = OpConstantNull %26
 %248 = OpTypePointer PhysicalStorageBuffer %5
-%251 = OpConstant %5 1
+%254 = OpConstant %5 1
 %265 = OpConstant %5 200
 %272 = OpConstant %5 300
 %279 = OpConstant %5 400
@@ -395,7 +396,7 @@ OpBranch %342
 %117 = OpBitcast %5 %106
 %118 = OpCompositeConstruct %31 %114 %115 %116 %117
 %120 = OpAccessChain %119 %108 %71 %72
-OpStore %120 %118
+OpStore %120 %118 NonPrivatePointer
 OpControlBarrier %90 %90 %121
 %123 = OpAccessChain %76 %8 %71
 %124 = OpLoad %5 %123
@@ -429,7 +430,7 @@ OpControlBarrier %90 %90 %121
 %153 = OpLoad %18 %145
 %154 = OpCompositeConstruct %26 %72 %71
 %155 = OpCompositeConstruct %37 %139 %140 %141 %142
-OpImageWrite %153 %154 %155
+OpImageWrite %153 %154 %155 NonPrivateTexel
 OpControlBarrier %90 %90 %121
 %156 = OpIAdd %5 %72 %71
 %159 = OpAccessChain %76 %8 %160
@@ -455,7 +456,7 @@ OpControlBarrier %90 %90 %121
 %175 = OpAccessChain %174 %52 %181
 %182 = OpLoad %22 %175
 %183 = OpCompositeConstruct %37 %169 %170 %171 %172
-OpImageWrite %182 %72 %183
+OpImageWrite %182 %72 %183 NonPrivateTexel
 OpControlBarrier %90 %90 %121
 %185 = OpAccessChain %76 %8 %71
 %186 = OpLoad %5 %185
@@ -492,7 +493,7 @@ OpControlBarrier %90 %90 %121
 %216 = OpBitcast %5 %204
 %217 = OpCompositeConstruct %31 %213 %214 %215 %216
 %218 = OpAccessChain %119 %206 %71 %72
-OpStore %218 %217
+OpStore %218 %217 NonPrivatePointer
 OpControlBarrier %90 %90 %121
 %220 = OpAccessChain %76 %8 %110
 %221 = OpLoad %5 %220
@@ -509,7 +510,7 @@ OpControlBarrier %90 %90 %121
 %233 = OpExtInst %5 %83 UMin %230 %232
 %227 = OpAccessChain %226 %30 %71 %233
 %234 = OpLoad %26 %227
-%254 = OpFunctionCall %5 %239 %234 %251 %71
+%253 = OpFunctionCall %5 %239 %234 %254 %71
 OpControlBarrier %90 %90 %121
 %256 = OpAccessChain %80 %46 %71
 %257 = OpLoad %5 %256
@@ -564,7 +565,7 @@ OpControlBarrier %90 %90 %121
 %311 = OpBitcast %5 %303
 %312 = OpCompositeConstruct %31 %308 %309 %310 %311
 %313 = OpAccessChain %119 %304 %71 %72
-OpStore %313 %312
+OpStore %313 %312 NonPrivatePointer
 OpControlBarrier %90 %90 %121
 %315 = OpCompositeConstruct %101 %98 %98
 %314 = OpImageSampleExplicitLod %37 %297 %315 Lod %99
@@ -574,7 +575,7 @@ OpControlBarrier %90 %90 %121
 %319 = OpCompositeExtract %9 %314 3
 %320 = OpCompositeConstruct %26 %72 %71
 %321 = OpCompositeConstruct %37 %316 %317 %318 %319
-OpImageWrite %270 %320 %321
+OpImageWrite %270 %320 %321 NonPrivateTexel
 OpControlBarrier %90 %90 %121
 %322 = OpAccessChain %166 %293 %71 %71
 %323 = OpLoad %37 %322
@@ -583,7 +584,7 @@ OpControlBarrier %90 %90 %121
 %326 = OpCompositeExtract %9 %323 2
 %327 = OpCompositeExtract %9 %323 3
 %328 = OpCompositeConstruct %37 %324 %325 %326 %327
-OpImageWrite %277 %72 %328
+OpImageWrite %277 %72 %328 NonPrivateTexel
 OpControlBarrier %90 %90 %121
 %330 = OpCompositeConstruct %101 %98 %98
 %329 = OpImageSampleExplicitLod %37 %297 %330 Lod %99
@@ -597,9 +598,9 @@ OpControlBarrier %90 %90 %121
 %338 = OpBitcast %5 %334
 %339 = OpCompositeConstruct %31 %335 %336 %337 %338
 %340 = OpAccessChain %119 %281 %71 %72
-OpStore %340 %339
+OpStore %340 %339 NonPrivatePointer
 OpControlBarrier %90 %90 %121
-%341 = OpFunctionCall %5 %239 %289 %251 %71
+%341 = OpFunctionCall %5 %239 %289 %254 %71
 OpControlBarrier %90 %90 %121
 OpReturn
 OpFunctionEnd
@@ -614,11 +615,11 @@ OpSelectionMerge %242 None
 OpBranchConditional %247 %241 %242
 %241 = OpLabel
 %249 = OpBitcast %248 %236
-%250 = OpAtomicIAdd %5 %249 %251 %71 %237
-%252 = OpIAdd %5 %250 %238
+%250 = OpAtomicIAdd %5 %249 %160 %71 %237
+%251 = OpIAdd %5 %250 %238
 OpBranch %242
 %242 = OpLabel
-%253 = OpPhi %5 %71 %240 %252 %241
-OpReturnValue %253
+%252 = OpPhi %5 %71 %240 %251 %241
+OpReturnValue %252
 OpFunctionEnd
 #endif

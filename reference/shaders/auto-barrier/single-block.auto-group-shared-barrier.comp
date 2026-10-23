@@ -34,7 +34,8 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %12 %15
 OpExecutionMode %3 LocalSize 32 1 1
 OpName %3 "main"
@@ -63,7 +64,7 @@ OpDecorate %15 BuiltIn LocalInvocationIndex
 %33 = OpConstant %5 0
 %34 = OpConstant %5 1
 %38 = OpConstant %5 3
-%39 = OpConstant %5 264
+%39 = OpConstant %5 24840
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %37
@@ -71,18 +72,18 @@ OpBranch %37
 %13 = OpLoad %6 %8
 %16 = OpLoad %5 %15
 %18 = OpAccessChain %17 %12 %16
-OpStore %18 %19
+OpStore %18 %19 NonPrivatePointer
 %20 = OpBitwiseXor %5 %16 %21
 %22 = OpAccessChain %17 %12 %20
 OpControlBarrier %38 %38 %39
-%23 = OpLoad %5 %22
+%23 = OpLoad %5 %22 NonPrivatePointer
 %25 = OpCompositeConstruct %24 %23 %23 %23 %23
-OpImageWrite %13 %16 %25
+OpImageWrite %13 %16 %25 NonPrivateTexel
 %26 = OpBitwiseXor %5 %16 %27
 %28 = OpAccessChain %17 %12 %26
-%29 = OpLoad %5 %28
+%29 = OpLoad %5 %28 NonPrivatePointer
 %30 = OpCompositeConstruct %24 %29 %29 %29 %29
-OpImageWrite %13 %16 %30
+OpImageWrite %13 %16 %30 NonPrivateTexel
 OpControlBarrier %38 %38 %39
 %31 = OpAtomicIAdd %5 %18 %32 %33 %34
 %35 = OpAtomicOr %5 %18 %32 %33 %34

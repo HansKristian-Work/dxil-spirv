@@ -35,7 +35,8 @@ OpCapability Shader
 OpCapability StorageImageMultisample
 OpCapability SampleRateShading
 OpCapability InputAttachment
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %12 %16 %17 %18 %21 %22 %25 %27 %29
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

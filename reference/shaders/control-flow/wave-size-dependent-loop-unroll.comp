@@ -141,12 +141,13 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 207
+; Bound: 206
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniform
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %13 %17 %22
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -244,7 +245,7 @@ OpDecorate %22 BuiltIn SubgroupSize
 %140 = OpConstant %5 31
 %141 = OpConstant %10 31
 %144 = OpConstantTrue %32
-%145 = OpConstant %5 264
+%145 = OpConstant %5 24840
 %169 = OpTypeVector %5 4
 %178 = OpTypePointer Function %5
 %180 = OpTypePointer Function %32
@@ -264,40 +265,40 @@ OpSelectionMerge %197 None
 OpBranchConditional %38 %196 %183
 %183 = OpLabel
 %40 = OpAccessChain %39 %13 %20
-OpStore %40 %41
+OpStore %40 %41 NonPrivatePointer
 %42 = OpAccessChain %39 %13 %43
-OpStore %42 %44
+OpStore %42 %44 NonPrivatePointer
 %45 = OpAccessChain %39 %13 %46
-OpStore %45 %47
+OpStore %45 %47 NonPrivatePointer
 %48 = OpAccessChain %39 %13 %49
-OpStore %48 %50
+OpStore %48 %50 NonPrivatePointer
 %51 = OpUGreaterThan %32 %37 %43
 %52 = OpAccessChain %39 %13 %53
-OpStore %52 %54
+OpStore %52 %54 NonPrivatePointer
 %55 = OpAccessChain %39 %13 %56
-OpStore %55 %57
+OpStore %55 %57 NonPrivatePointer
 %58 = OpAccessChain %39 %13 %59
-OpStore %58 %60
+OpStore %58 %60 NonPrivatePointer
 %61 = OpAccessChain %39 %13 %62
-OpStore %61 %63
+OpStore %61 %63 NonPrivatePointer
 %64 = OpUGreaterThan %32 %37 %46
 %65 = OpAccessChain %39 %13 %66
-OpStore %65 %67
+OpStore %65 %67 NonPrivatePointer
 %68 = OpAccessChain %39 %13 %69
-OpStore %68 %70
+OpStore %68 %70 NonPrivatePointer
 %71 = OpAccessChain %39 %13 %72
-OpStore %71 %73
+OpStore %71 %73 NonPrivatePointer
 %74 = OpAccessChain %39 %13 %75
-OpStore %74 %76
+OpStore %74 %76 NonPrivatePointer
 %77 = OpUGreaterThan %32 %37 %49
 %78 = OpAccessChain %39 %13 %79
-OpStore %78 %80
+OpStore %78 %80 NonPrivatePointer
 %81 = OpAccessChain %39 %13 %82
-OpStore %81 %83
+OpStore %81 %83 NonPrivatePointer
 %84 = OpAccessChain %39 %13 %85
-OpStore %84 %86
+OpStore %84 %86 NonPrivatePointer
 %87 = OpAccessChain %39 %13 %88
-OpStore %87 %89
+OpStore %87 %89 NonPrivatePointer
 %90 = OpUGreaterThan %32 %37 %53
 OpSelectionMerge %195 None
 OpBranchConditional %90 %185 %184
@@ -306,13 +307,13 @@ OpStore %181 %38
 OpBranch %195
 %185 = OpLabel
 %91 = OpAccessChain %39 %13 %92
-OpStore %91 %93
+OpStore %91 %93 NonPrivatePointer
 %94 = OpAccessChain %39 %13 %95
-OpStore %94 %96
+OpStore %94 %96 NonPrivatePointer
 %97 = OpAccessChain %39 %13 %98
-OpStore %97 %99
+OpStore %97 %99 NonPrivatePointer
 %100 = OpAccessChain %39 %13 %101
-OpStore %100 %102
+OpStore %100 %102 NonPrivatePointer
 %103 = OpUGreaterThan %32 %37 %56
 OpSelectionMerge %194 None
 OpBranchConditional %103 %187 %186
@@ -321,13 +322,13 @@ OpStore %181 %38
 OpBranch %194
 %187 = OpLabel
 %104 = OpAccessChain %39 %13 %105
-OpStore %104 %106
+OpStore %104 %106 NonPrivatePointer
 %107 = OpAccessChain %39 %13 %108
-OpStore %107 %109
+OpStore %107 %109 NonPrivatePointer
 %110 = OpAccessChain %39 %13 %111
-OpStore %110 %112
+OpStore %110 %112 NonPrivatePointer
 %113 = OpAccessChain %39 %13 %114
-OpStore %113 %115
+OpStore %113 %115 NonPrivatePointer
 %116 = OpUGreaterThan %32 %37 %59
 OpSelectionMerge %193 None
 OpBranchConditional %116 %189 %188
@@ -336,13 +337,13 @@ OpStore %181 %38
 OpBranch %193
 %189 = OpLabel
 %117 = OpAccessChain %39 %13 %118
-OpStore %117 %119
+OpStore %117 %119 NonPrivatePointer
 %120 = OpAccessChain %39 %13 %121
-OpStore %120 %122
+OpStore %120 %122 NonPrivatePointer
 %123 = OpAccessChain %39 %13 %124
-OpStore %123 %125
+OpStore %123 %125 NonPrivatePointer
 %126 = OpAccessChain %39 %13 %127
-OpStore %126 %128
+OpStore %126 %128 NonPrivatePointer
 %129 = OpUGreaterThan %32 %37 %62
 OpSelectionMerge %192 None
 OpBranchConditional %129 %191 %190
@@ -351,13 +352,13 @@ OpStore %181 %38
 OpBranch %192
 %191 = OpLabel
 %130 = OpAccessChain %39 %13 %131
-OpStore %130 %132
+OpStore %130 %132 NonPrivatePointer
 %133 = OpAccessChain %39 %13 %134
-OpStore %133 %135
+OpStore %133 %135 NonPrivatePointer
 %136 = OpAccessChain %39 %13 %137
-OpStore %136 %138
+OpStore %136 %138 NonPrivatePointer
 %139 = OpAccessChain %39 %13 %140
-OpStore %139 %141
+OpStore %139 %141 NonPrivatePointer
 %142 = OpUGreaterThan %32 %37 %66
 OpStore %181 %38
 OpBranch %192
@@ -373,66 +374,64 @@ OpBranch %197
 OpStore %181 %144
 OpBranch %197
 %197 = OpLabel
-OpBranch %198
-%198 = OpLabel
 %143 = OpLoad %32 %181
 OpControlBarrier %46 %46 %145
-OpSelectionMerge %204 None
-OpBranchConditional %143 %204 %199
-%199 = OpLabel
+OpSelectionMerge %203 None
+OpBranchConditional %143 %203 %198
+%198 = OpLabel
 OpStore %179 %20
-OpBranch %200
-%200 = OpLabel
+OpBranch %199
+%199 = OpLabel
 %146 = OpLoad %5 %179
 %148 = OpIMul %5 %146 %53
 %149 = OpIAdd %5 %20 %148
 %150 = OpAccessChain %39 %13 %149
-%151 = OpLoad %10 %150
+%151 = OpLoad %10 %150 NonPrivatePointer
 %152 = OpIMul %5 %146 %53
 %153 = OpIAdd %5 %43 %152
 %154 = OpAccessChain %39 %13 %153
-%155 = OpLoad %10 %154
+%155 = OpLoad %10 %154 NonPrivatePointer
 %156 = OpIMul %5 %146 %53
 %157 = OpIAdd %5 %46 %156
 %158 = OpAccessChain %39 %13 %157
-%159 = OpLoad %10 %158
+%159 = OpLoad %10 %158 NonPrivatePointer
 %160 = OpIMul %5 %146 %53
 %161 = OpIAdd %5 %49 %160
 %162 = OpAccessChain %39 %13 %161
-%163 = OpLoad %10 %162
+%163 = OpLoad %10 %162 NonPrivatePointer
 %164 = OpIMul %5 %21 %53
 %165 = OpBitcast %5 %151
 %166 = OpBitcast %5 %155
 %167 = OpBitcast %5 %159
 %168 = OpBitcast %5 %163
 %170 = OpCompositeConstruct %169 %165 %165 %165 %165
-OpImageWrite %14 %164 %170
+OpImageWrite %14 %164 %170 NonPrivateTexel
 %171 = OpCompositeConstruct %169 %166 %166 %166 %166
 %172 = OpIAdd %5 %164 %43
-OpImageWrite %14 %172 %171
+OpImageWrite %14 %172 %171 NonPrivateTexel
 %173 = OpCompositeConstruct %169 %167 %167 %167 %167
 %174 = OpIAdd %5 %164 %46
-OpImageWrite %14 %174 %173
+OpImageWrite %14 %174 %173 NonPrivateTexel
 %175 = OpCompositeConstruct %169 %168 %168 %168 %168
 %176 = OpIAdd %5 %164 %49
-OpImageWrite %14 %176 %175
+OpImageWrite %14 %176 %175 NonPrivateTexel
 %147 = OpIAdd %5 %146 %43
 %177 = OpULessThan %32 %147 %37
-OpLoopMerge %203 %202 None
-OpBranch %201
-%201 = OpLabel
-OpSelectionMerge %206 None
-OpBranchConditional %177 %202 %203
-%206 = OpLabel
-OpUnreachable
-%202 = OpLabel
-OpStore %179 %147
+OpLoopMerge %202 %201 None
 OpBranch %200
+%200 = OpLabel
+OpSelectionMerge %205 None
+OpBranchConditional %177 %201 %202
+%205 = OpLabel
+OpUnreachable
+%201 = OpLabel
+OpStore %179 %147
+OpBranch %199
+%202 = OpLabel
+OpBranch %203
 %203 = OpLabel
 OpBranch %204
 %204 = OpLabel
-OpBranch %205
-%205 = OpLabel
 OpReturn
 OpFunctionEnd
 %27 = OpFunction %5 None %24

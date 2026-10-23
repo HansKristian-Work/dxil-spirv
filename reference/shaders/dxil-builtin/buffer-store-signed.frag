@@ -22,7 +22,8 @@ void main()
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %14
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -67,7 +68,7 @@ OpBranch %30
 %25 = OpLoad %9 %11
 %27 = OpCompositeConstruct %26 %20 %24 %20 %20
 %29 = OpBitcast %28 %27
-OpImageWrite %15 %25 %29
+OpImageWrite %15 %25 %29 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

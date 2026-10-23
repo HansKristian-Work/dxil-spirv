@@ -33,17 +33,17 @@ layout(set = 3, binding = 0) uniform writeonly image2D _22[];
 
 uint RobustPhysicalAtomicCounter(uvec2 _71, uint _72, uint _73)
 {
-    uint _86;
+    uint _87;
     if (any(notEqual(_71, uvec2(0u))))
     {
         uint _84 = atomicAdd(uintPointer(_71).value, _72);
-        _86 = _84 + _73;
+        _87 = _84 + _73;
     }
     else
     {
-        _86 = 0u;
+        _87 = 0u;
     }
-    return _86;
+    return _87;
 }
 
 void main()
@@ -57,7 +57,7 @@ void main()
         }
     }
     uvec2 _69 = _17.counters[registers._m4];
-    uint _87 = RobustPhysicalAtomicCounter(_69, 1u, 0u);
+    uint _88 = RobustPhysicalAtomicCounter(_69, 1u, 0u);
 }
 
 
@@ -66,17 +66,18 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 94
+; Bound: 95
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageArrayDynamicIndexing
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %12 %17 %22 %25
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -152,16 +153,17 @@ OpDecorate %25 BuiltIn GlobalInvocationId
 %78 = OpTypeVector %30 2
 %79 = OpConstantNull %13
 %82 = OpTypePointer PhysicalStorageBuffer %5
+%85 = OpConstant %5 5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %88
-%88 = OpLabel
+OpBranch %89
+%89 = OpLabel
 %27 = OpAccessChain %26 %25 %28
 %29 = OpLoad %5 %27
 %31 = OpUGreaterThan %30 %29 %32
-OpSelectionMerge %92 None
-OpBranchConditional %31 %89 %92
-%89 = OpLabel
+OpSelectionMerge %93 None
+OpBranchConditional %31 %90 %93
+%90 = OpLabel
 %36 = OpAccessChain %35 %8 %37
 %38 = OpLoad %5 %36
 %39 = OpIAdd %5 %38 %40
@@ -169,11 +171,11 @@ OpBranchConditional %31 %89 %92
 %41 = OpLoad %19 %34
 %43 = OpCompositeConstruct %13 %29 %28
 %45 = OpCompositeConstruct %44 %42 %42 %42 %42
-OpImageWrite %41 %43 %45
+OpImageWrite %41 %43 %45 NonPrivateTexel
 %46 = OpUGreaterThan %30 %29 %47
-OpSelectionMerge %91 None
-OpBranchConditional %46 %90 %91
-%90 = OpLabel
+OpSelectionMerge %92 None
+OpBranchConditional %46 %91 %92
+%91 = OpLabel
 %48 = OpBitwiseAnd %5 %29 %49
 %50 = OpIAdd %5 %48 %51
 %53 = OpAccessChain %35 %8 %37
@@ -183,13 +185,13 @@ OpBranchConditional %46 %90 %91
 %56 = OpLoad %19 %52
 %57 = OpCompositeConstruct %13 %28 %29
 %58 = OpCompositeConstruct %44 %42 %42 %42 %42
-OpImageWrite %56 %57 %58
-OpBranch %91
-%91 = OpLabel
+OpImageWrite %56 %57 %58 NonPrivateTexel
 OpBranch %92
 %92 = OpLabel
 OpBranch %93
 %93 = OpLabel
+OpBranch %94
+%94 = OpLabel
 %61 = OpAccessChain %35 %8 %62
 %63 = OpLoad %5 %61
 %60 = OpAccessChain %59 %12 %63
@@ -198,7 +200,7 @@ OpBranch %93
 %68 = OpLoad %5 %67
 %66 = OpAccessChain %65 %17 %28 %68
 %69 = OpLoad %13 %66
-%87 = OpFunctionCall %5 %74 %69 %49 %28
+%88 = OpFunctionCall %5 %74 %69 %49 %28
 OpReturn
 OpFunctionEnd
 %74 = OpFunction %5 None %70
@@ -212,11 +214,11 @@ OpSelectionMerge %77 None
 OpBranchConditional %81 %76 %77
 %76 = OpLabel
 %83 = OpBitcast %82 %71
-%84 = OpAtomicIAdd %5 %83 %49 %28 %72
-%85 = OpIAdd %5 %84 %73
+%84 = OpAtomicIAdd %5 %83 %85 %28 %72
+%86 = OpIAdd %5 %84 %73
 OpBranch %77
 %77 = OpLabel
-%86 = OpPhi %5 %28 %75 %85 %76
-OpReturnValue %86
+%87 = OpPhi %5 %28 %75 %86 %76
+OpReturnValue %87
 OpFunctionEnd
 #endif

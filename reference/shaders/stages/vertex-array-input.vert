@@ -21,7 +21,8 @@ void main()
 ; Bound: 57
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Vertex %3 "main" %11 %14 %16
 OpName %3 "main"
 OpName %11 "ATTR"

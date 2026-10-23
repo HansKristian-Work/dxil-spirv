@@ -45,9 +45,10 @@ OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformBallot
 OpCapability GroupNonUniformShuffle
+OpCapability VulkanMemoryModel
 OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -114,13 +115,13 @@ OpBranch %68
 %49 = OpIMul %5 %16 %35
 %58 = OpFunctionCall %5 %53 %49 %59
 %60 = OpCompositeConstruct %32 %42 %42 %42 %42
-OpImageWrite %12 %58 %60
+OpImageWrite %12 %58 %60 NonPrivateTexel
 %61 = OpCompositeConstruct %32 %44 %44 %44 %44
 %62 = OpIAdd %5 %58 %18
-OpImageWrite %12 %62 %61
+OpImageWrite %12 %62 %61 NonPrivateTexel
 %63 = OpCompositeConstruct %32 %46 %46 %46 %46
 %64 = OpIAdd %5 %58 %21
-OpImageWrite %12 %64 %63
+OpImageWrite %12 %64 %63 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %30 = OpFunction %5 None %27

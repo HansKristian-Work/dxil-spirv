@@ -465,10 +465,11 @@ OpCapability Float16
 OpCapability GroupNonUniformArithmetic
 OpCapability GroupNonUniformBallot
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %10 %14 %18 %20
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
@@ -586,7 +587,7 @@ OpBranch %373
 %80 = OpIMul %5 %21 %81
 %82 = OpIMul %5 %21 %81
 %83 = OpAccessChain %22 %18 %24 %82
-OpStore %83 %77
+OpStore %83 %77 NonPrivatePointer
 %107 = OpCompositeConstruct %6 %47 %48 %49 %50
 %108 = OpIsHelperInvocationEXT %51
 %106 = OpFunctionCall %35 %88 %39 %107 %108
@@ -604,7 +605,7 @@ OpStore %83 %77
 %122 = OpIMul %5 %21 %81
 %123 = OpIAdd %5 %122 %121
 %124 = OpAccessChain %22 %18 %24 %123
-OpStore %124 %119
+OpStore %124 %119 NonPrivatePointer
 %148 = OpCompositeConstruct %6 %47 %48 %49 %50
 %149 = OpIsHelperInvocationEXT %51
 %147 = OpFunctionCall %43 %129 %46 %148 %149
@@ -620,7 +621,7 @@ OpStore %124 %119
 %160 = OpIMul %5 %21 %81
 %161 = OpIAdd %5 %160 %159
 %162 = OpAccessChain %22 %18 %24 %161
-OpStore %162 %157
+OpStore %162 %157 NonPrivatePointer
 %185 = OpCompositeConstruct %6 %47 %48 %49 %50
 %186 = OpIsHelperInvocationEXT %51
 %184 = OpFunctionCall %6 %166 %27 %185 %186
@@ -628,7 +629,7 @@ OpStore %162 %157
 %188 = OpIMul %5 %21 %81
 %189 = OpIAdd %5 %188 %68
 %190 = OpAccessChain %22 %18 %24 %189
-OpStore %190 %184
+OpStore %190 %184 NonPrivatePointer
 %213 = OpCompositeConstruct %6 %47 %48 %49 %50
 %214 = OpIsHelperInvocationEXT %51
 %212 = OpFunctionCall %35 %194 %39 %213 %214
@@ -646,7 +647,7 @@ OpStore %190 %184
 %227 = OpIMul %5 %21 %81
 %228 = OpIAdd %5 %227 %226
 %229 = OpAccessChain %22 %18 %24 %228
-OpStore %229 %224
+OpStore %229 %224 NonPrivatePointer
 %252 = OpCompositeConstruct %6 %47 %48 %49 %50
 %253 = OpIsHelperInvocationEXT %51
 %251 = OpFunctionCall %43 %233 %46 %252 %253
@@ -662,7 +663,7 @@ OpStore %229 %224
 %264 = OpIMul %5 %21 %81
 %265 = OpIAdd %5 %264 %263
 %266 = OpAccessChain %22 %18 %24 %265
-OpStore %266 %261
+OpStore %266 %261 NonPrivatePointer
 %289 = OpCompositeConstruct %6 %47 %48 %49 %50
 %290 = OpIsHelperInvocationEXT %51
 %288 = OpFunctionCall %6 %270 %27 %289 %290
@@ -670,7 +671,7 @@ OpStore %266 %261
 %293 = OpIMul %5 %21 %81
 %294 = OpIAdd %5 %293 %292
 %295 = OpAccessChain %22 %18 %24 %294
-OpStore %295 %288
+OpStore %295 %288 NonPrivatePointer
 %297 = OpConvertFToS %296 %39
 %321 = OpCompositeConstruct %6 %47 %48 %49 %50
 %322 = OpIsHelperInvocationEXT %51
@@ -686,7 +687,7 @@ OpStore %295 %288
 %332 = OpIMul %5 %21 %81
 %333 = OpIAdd %5 %332 %331
 %334 = OpAccessChain %22 %18 %24 %333
-OpStore %334 %329
+OpStore %334 %329 NonPrivatePointer
 %336 = OpConvertFToS %335 %46
 %360 = OpCompositeConstruct %6 %47 %48 %49 %50
 %361 = OpIsHelperInvocationEXT %51
@@ -701,7 +702,7 @@ OpStore %334 %329
 %370 = OpIMul %5 %21 %81
 %371 = OpIAdd %5 %370 %369
 %372 = OpAccessChain %22 %18 %24 %371
-OpStore %372 %367
+OpStore %372 %367 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %57 = OpFunction %6 None %53

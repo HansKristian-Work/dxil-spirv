@@ -46,7 +46,8 @@ OpCapability Shader
 OpCapability Geometry
 OpCapability MultiViewport
 OpCapability MultiView
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Geometry %3 "main" %11 %12 %14 %15 %47 %56
 OpExecutionMode %3 Invocations 1
 OpExecutionMode %3 OutputVertices 2

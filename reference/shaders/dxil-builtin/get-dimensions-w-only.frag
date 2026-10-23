@@ -31,7 +31,8 @@ OpCapability Shader
 OpCapability Sampled1D
 OpCapability SampledCubeArray
 OpCapability ImageQuery
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26 %29 %32 %35 %37
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

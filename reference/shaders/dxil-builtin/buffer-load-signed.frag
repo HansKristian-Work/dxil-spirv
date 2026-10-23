@@ -26,7 +26,8 @@ void main()
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %14 %17
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -71,7 +72,7 @@ OpBranch %40
 %24 = OpBitcast %23 %22
 %25 = OpCompositeExtract %12 %24 0
 %26 = OpCompositeExtract %12 %24 1
-%27 = OpImageRead %21 %18 %20
+%27 = OpImageRead %21 %18 %20 NonPrivateTexel
 %28 = OpBitcast %23 %27
 %29 = OpCompositeExtract %12 %28 0
 %30 = OpCompositeExtract %12 %28 1

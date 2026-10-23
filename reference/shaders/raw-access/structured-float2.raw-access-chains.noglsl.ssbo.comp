@@ -4,9 +4,10 @@
 ; Bound: 31
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability RawAccessChainsNV
 OpExtension "SPV_NV_raw_access_chains"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %12
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -41,14 +42,14 @@ OpBranch %30
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %20 = OpRawAccessChainNV %19 %9 %21 %16 %15 RobustnessPerElementNV
-%22 = OpLoad %18 %20 Aligned 8
+%22 = OpLoad %18 %20 Aligned|NonPrivatePointer 8
 %23 = OpCompositeExtract %17 %22 0
 %24 = OpCompositeExtract %17 %22 1
 %25 = OpFAdd %17 %23 %26
 %27 = OpFAdd %17 %24 %26
 %28 = OpRawAccessChainNV %19 %9 %21 %16 %15 RobustnessPerElementNV
 %29 = OpCompositeConstruct %18 %25 %27
-OpStore %28 %29 Aligned 8
+OpStore %28 %29 Aligned|NonPrivatePointer 8
 OpReturn
 OpFunctionEnd
 

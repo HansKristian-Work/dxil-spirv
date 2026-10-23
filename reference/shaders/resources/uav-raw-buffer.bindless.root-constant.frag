@@ -61,10 +61,11 @@ OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
 OpCapability StorageTexelBufferArrayDynamicIndexing
 OpCapability StorageTexelBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint Fragment %3 "main" %8 %12 %16 %18 %21
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -153,10 +154,10 @@ OpBranch %112
 %37 = OpShiftLeftLogical %5 %36 %29
 %38 = OpIMul %5 %36 %39
 %48 = OpFunctionCall %5 %43 %38 %26
-%50 = OpImageRead %49 %30 %48
+%50 = OpImageRead %49 %30 %48 NonPrivateTexel
 %51 = OpCompositeExtract %5 %50 0
 %53 = OpIAdd %5 %48 %54
-%52 = OpImageRead %49 %30 %53
+%52 = OpImageRead %49 %30 %53 NonPrivateTexel
 %55 = OpCompositeExtract %5 %52 0
 %56 = OpCompositeConstruct %19 %51 %55
 %57 = OpCompositeExtract %5 %56 0
@@ -179,10 +180,10 @@ OpBranch %112
 %77 = OpLoad %9 %73
 %78 = OpIMul %5 %36 %39
 %79 = OpFunctionCall %5 %43 %78 %26
-%80 = OpImageRead %49 %77 %79
+%80 = OpImageRead %49 %77 %79 NonPrivateTexel
 %81 = OpCompositeExtract %5 %80 0
 %83 = OpIAdd %5 %79 %54
-%82 = OpImageRead %49 %77 %83
+%82 = OpImageRead %49 %77 %83 NonPrivateTexel
 %84 = OpCompositeExtract %5 %82 0
 %85 = OpCompositeConstruct %19 %81 %84
 %86 = OpCompositeExtract %5 %85 0
@@ -197,10 +198,10 @@ OpBranch %112
 %96 = OpLoad %9 %92
 %97 = OpIMul %5 %36 %39
 %98 = OpFunctionCall %5 %43 %97 %26
-%99 = OpImageRead %49 %96 %98
+%99 = OpImageRead %49 %96 %98 NonPrivateTexel
 %100 = OpCompositeExtract %5 %99 0
 %102 = OpIAdd %5 %98 %54
-%101 = OpImageRead %49 %96 %102
+%101 = OpImageRead %49 %96 %102 NonPrivateTexel
 %103 = OpCompositeExtract %5 %101 0
 %104 = OpCompositeConstruct %19 %100 %103
 %105 = OpCompositeExtract %5 %104 0

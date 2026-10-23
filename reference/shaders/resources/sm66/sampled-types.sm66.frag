@@ -47,9 +47,10 @@ OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability UniformTexelBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %9 %13 %17 %20 %23 %26
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16

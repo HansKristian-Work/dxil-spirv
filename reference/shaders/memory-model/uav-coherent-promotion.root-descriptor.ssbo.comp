@@ -3,12 +3,11 @@
 #extension GL_EXT_buffer_reference_uvec2 : require
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
-layout(buffer_reference) buffer PhysicalPointerFloat4CoherentArray;
+layout(buffer_reference) buffer PhysicalPointerFloat4Array;
 layout(buffer_reference) buffer PhysicalPointerUint4NonWriteCBVArray;
 layout(buffer_reference) buffer PhysicalPointerUintNonWriteArray;
-layout(buffer_reference) buffer PhysicalPointerFloat4Array;
 
-layout(buffer_reference, buffer_reference_align = 4, std430) coherent buffer PhysicalPointerFloat4CoherentArray
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat4Array
 {
     vec4 value[];
 };
@@ -21,11 +20,6 @@ layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer Ph
 layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerUintNonWriteArray
 {
     uint value[];
-};
-
-layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat4Array
-{
-    vec4 value[];
 };
 
 layout(set = 0, binding = 1, std430) restrict readonly buffer SSBO
@@ -48,19 +42,19 @@ layout(push_constant, std430) uniform RootConstants
 
 void main()
 {
-    PhysicalPointerFloat4CoherentArray(registers._m2).value[gl_LocalInvocationIndex] = vec4(0.0);
+    PhysicalPointerFloat4Array(registers._m2).value[gl_LocalInvocationIndex] = vec4(0.0);
     uvec4 _52 = PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u];
     if (!(_52.x == 0u))
     {
         uint _57;
-        uint _115 = 0u;
+        uint _112 = 0u;
         uint _56;
         uint _60;
         uint _67;
         bool _69;
         for (;;)
         {
-            _56 = _115;
+            _56 = _112;
             _60 = (_56 << 8u) + gl_LocalInvocationIndex;
             _67 = PhysicalPointerUintNonWriteArray(registers._m1).value[_60];
             groupMemoryBarrier();
@@ -69,14 +63,14 @@ void main()
             if (_69)
             {
                 vec4 _74 = uintBitsToFloat(_14._m0[_60]);
-                vec4 _81 = PhysicalPointerFloat4CoherentArray(registers._m2).value[_67];
-                PhysicalPointerFloat4CoherentArray(registers._m2).value[_67] = vec4(_81.x + _74.x, _81.y + _74.y, _81.z + _74.z, _81.w + _74.w);
+                vec4 _81 = PhysicalPointerFloat4Array(registers._m2).value[_67];
+                PhysicalPointerFloat4Array(registers._m2).value[_67] = vec4(_81.x + _74.x, _81.y + _74.y, _81.z + _74.z, _81.w + _74.w);
             }
             _57 = _56 + 1u;
             uvec4 _95 = PhysicalPointerUint4NonWriteCBVArray(registers._m0).value[0u];
             if (_57 < _95.x)
             {
-                _115 = _57;
+                _112 = _57;
                 continue;
             }
             else
@@ -85,8 +79,8 @@ void main()
             }
         }
     }
-    vec4 _103 = PhysicalPointerFloat4Array(registers._m3).value[gl_LocalInvocationIndex];
-    _18._m0[gl_LocalInvocationIndex] = uvec4(floatBitsToUint(_103.x), floatBitsToUint(_103.y), floatBitsToUint(_103.z), floatBitsToUint(_103.w));
+    vec4 _100 = PhysicalPointerFloat4Array(registers._m3).value[gl_LocalInvocationIndex];
+    _18._m0[gl_LocalInvocationIndex] = uvec4(floatBitsToUint(_100.x), floatBitsToUint(_100.y), floatBitsToUint(_100.z), floatBitsToUint(_100.w));
 }
 
 
@@ -95,12 +89,13 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 127
+; Bound: 124
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %14 %18 %33
 OpExecutionMode %3 LocalSize 256 1 1
 OpName %3 "main"
@@ -108,14 +103,12 @@ OpName %7 "RootConstants"
 OpName %9 "registers"
 OpName %12 "SSBO"
 OpName %16 "SSBO"
-OpName %38 "PhysicalPointerFloat4CoherentArray"
+OpName %38 "PhysicalPointerFloat4Array"
 OpMemberName %38 0 "value"
 OpName %47 "PhysicalPointerUint4NonWriteCBVArray"
 OpMemberName %47 0 "value"
 OpName %62 "PhysicalPointerUintNonWriteArray"
 OpMemberName %62 0 "value"
-OpName %99 "PhysicalPointerFloat4Array"
-OpMemberName %99 0 "value"
 OpDecorate %7 Block
 OpMemberDecorate %7 0 Offset 0
 OpMemberDecorate %7 1 Offset 8
@@ -138,7 +131,6 @@ OpDecorate %33 BuiltIn LocalInvocationIndex
 OpDecorate %37 ArrayStride 16
 OpMemberDecorate %38 0 Offset 0
 OpDecorate %38 Block
-OpMemberDecorate %38 0 Coherent
 OpDecorate %46 ArrayStride 16
 OpMemberDecorate %47 0 Offset 0
 OpDecorate %47 Block
@@ -147,9 +139,6 @@ OpDecorate %61 ArrayStride 4
 OpMemberDecorate %62 0 Offset 0
 OpDecorate %62 Block
 OpMemberDecorate %62 0 NonWritable
-OpDecorate %98 ArrayStride 16
-OpMemberDecorate %99 0 Offset 0
-OpDecorate %99 Block
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -191,18 +180,15 @@ OpDecorate %99 Block
 %62 = OpTypeStruct %61
 %63 = OpTypePointer PhysicalStorageBuffer %62
 %65 = OpTypePointer PhysicalStorageBuffer %5
-%68 = OpConstant %5 2120
+%68 = OpConstant %5 26696
 %70 = OpConstant %5 256
 %71 = OpTypePointer StorageBuffer %10
-%98 = OpTypeRuntimeArray %36
-%99 = OpTypeStruct %98
-%100 = OpTypePointer PhysicalStorageBuffer %99
-%114 = OpTypePointer Function %5
+%111 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%115 = OpVariable %114 Function
-OpBranch %116
-%116 = OpLabel
+%112 = OpVariable %111 Function
+OpBranch %113
+%113 = OpLabel
 %20 = OpAccessChain %19 %9 %21
 %22 = OpLoad %6 %20
 %23 = OpAccessChain %19 %9 %24
@@ -215,19 +201,19 @@ OpBranch %116
 %40 = OpBitcast %39 %25
 %42 = OpInBoundsAccessChain %41 %40 %30 %34
 %44 = OpCompositeConstruct %36 %43 %43 %43 %43
-OpStore %42 %44 Aligned 4
+OpStore %42 %44 Aligned|NonPrivatePointer 4
 %49 = OpBitcast %48 %31
 %51 = OpInBoundsAccessChain %50 %49 %30 %30
 %52 = OpLoad %10 %51 Aligned 16
 %53 = OpCompositeExtract %5 %52 0
 %55 = OpIEqual %54 %53 %30
-OpSelectionMerge %124 None
-OpBranchConditional %55 %124 %117
-%117 = OpLabel
-OpStore %115 %30
-OpBranch %118
-%118 = OpLabel
-%56 = OpLoad %5 %115
+OpSelectionMerge %121 None
+OpBranchConditional %55 %121 %114
+%114 = OpLabel
+OpStore %112 %30
+OpBranch %115
+%115 = OpLabel
+%56 = OpLoad %5 %112
 %58 = OpShiftLeftLogical %5 %56 %59
 %60 = OpIAdd %5 %58 %34
 %64 = OpBitcast %63 %28
@@ -235,12 +221,12 @@ OpBranch %118
 %67 = OpLoad %5 %66 Aligned 4
 OpControlBarrier %24 %24 %68
 %69 = OpULessThan %54 %67 %70
-OpLoopMerge %123 %122 None
-OpBranch %119
-%119 = OpLabel
-OpSelectionMerge %121 None
-OpBranchConditional %69 %120 %121
-%120 = OpLabel
+OpLoopMerge %120 %119 None
+OpBranch %116
+%116 = OpLabel
+OpSelectionMerge %118 None
+OpBranchConditional %69 %117 %118
+%117 = OpLabel
 %72 = OpAccessChain %71 %14 %30 %60
 %73 = OpLoad %10 %72
 %74 = OpBitcast %36 %73
@@ -250,7 +236,7 @@ OpBranchConditional %69 %120 %121
 %78 = OpCompositeExtract %35 %74 3
 %79 = OpBitcast %39 %25
 %80 = OpInBoundsAccessChain %41 %79 %30 %67
-%81 = OpLoad %36 %80 Aligned 4
+%81 = OpLoad %36 %80 Aligned|NonPrivatePointer 4
 %82 = OpCompositeExtract %35 %81 0
 %83 = OpCompositeExtract %35 %81 1
 %84 = OpCompositeExtract %35 %81 2
@@ -262,41 +248,41 @@ OpBranchConditional %69 %120 %121
 %90 = OpBitcast %39 %25
 %91 = OpInBoundsAccessChain %41 %90 %30 %67
 %92 = OpCompositeConstruct %36 %86 %87 %88 %89
-OpStore %91 %92 Aligned 4
-OpBranch %121
-%121 = OpLabel
+OpStore %91 %92 Aligned|NonPrivatePointer 4
+OpBranch %118
+%118 = OpLabel
 %57 = OpIAdd %5 %56 %27
 %93 = OpBitcast %48 %31
 %94 = OpInBoundsAccessChain %50 %93 %30 %30
 %95 = OpLoad %10 %94 Aligned 16
 %96 = OpCompositeExtract %5 %95 0
 %97 = OpULessThan %54 %57 %96
-OpSelectionMerge %126 None
-OpBranchConditional %97 %122 %123
-%126 = OpLabel
-OpUnreachable
-%122 = OpLabel
-OpStore %115 %57
-OpBranch %118
+OpSelectionMerge %123 None
+OpBranchConditional %97 %119 %120
 %123 = OpLabel
-OpBranch %124
-%124 = OpLabel
-OpBranch %125
-%125 = OpLabel
-%101 = OpBitcast %100 %22
-%102 = OpInBoundsAccessChain %41 %101 %30 %34
-%103 = OpLoad %36 %102 Aligned 4
-%104 = OpCompositeExtract %35 %103 0
-%105 = OpCompositeExtract %35 %103 1
-%106 = OpCompositeExtract %35 %103 2
-%107 = OpCompositeExtract %35 %103 3
+OpUnreachable
+%119 = OpLabel
+OpStore %112 %57
+OpBranch %115
+%120 = OpLabel
+OpBranch %121
+%121 = OpLabel
+OpBranch %122
+%122 = OpLabel
+%98 = OpBitcast %39 %22
+%99 = OpInBoundsAccessChain %41 %98 %30 %34
+%100 = OpLoad %36 %99 Aligned|NonPrivatePointer 4
+%101 = OpCompositeExtract %35 %100 0
+%102 = OpCompositeExtract %35 %100 1
+%103 = OpCompositeExtract %35 %100 2
+%104 = OpCompositeExtract %35 %100 3
+%105 = OpBitcast %5 %101
+%106 = OpBitcast %5 %102
+%107 = OpBitcast %5 %103
 %108 = OpBitcast %5 %104
-%109 = OpBitcast %5 %105
-%110 = OpBitcast %5 %106
-%111 = OpBitcast %5 %107
-%112 = OpCompositeConstruct %10 %108 %109 %110 %111
-%113 = OpAccessChain %71 %18 %30 %34
-OpStore %113 %112
+%109 = OpCompositeConstruct %10 %105 %106 %107 %108
+%110 = OpAccessChain %71 %18 %30 %34
+OpStore %110 %109 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

@@ -25,7 +25,8 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability ClipDistance
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Vertex %3 "main" %8 %10 %12 %17
 OpName %3 "main"
 OpName %8 "POS"

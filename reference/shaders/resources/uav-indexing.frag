@@ -26,7 +26,8 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageArrayDynamicIndexing
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %11 %13 %16
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -67,7 +68,7 @@ OpBranch %62
 %19 = OpAccessChain %18 %11 %20
 %21 = OpLoad %6 %19
 %24 = OpCompositeConstruct %23 %20 %20
-%22 = OpImageRead %14 %21 %24 None
+%22 = OpImageRead %14 %21 %24 NonPrivateTexel
 %25 = OpCompositeExtract %5 %22 0
 %26 = OpCompositeExtract %5 %22 1
 %27 = OpCompositeExtract %5 %22 2
@@ -75,7 +76,7 @@ OpBranch %62
 %29 = OpAccessChain %18 %11 %30
 %31 = OpLoad %6 %29
 %33 = OpCompositeConstruct %23 %20 %20
-%32 = OpImageRead %14 %31 %33 None
+%32 = OpImageRead %14 %31 %33 NonPrivateTexel
 %34 = OpCompositeExtract %5 %32 0
 %35 = OpCompositeExtract %5 %32 1
 %36 = OpCompositeExtract %5 %32 2
@@ -88,7 +89,7 @@ OpBranch %62
 %44 = OpAccessChain %18 %11 %17
 %45 = OpLoad %6 %44
 %47 = OpCompositeConstruct %23 %20 %20
-%46 = OpImageRead %14 %45 %47 None
+%46 = OpImageRead %14 %45 %47 NonPrivateTexel
 %48 = OpCompositeExtract %5 %46 0
 %49 = OpCompositeExtract %5 %46 1
 %50 = OpCompositeExtract %5 %46 2

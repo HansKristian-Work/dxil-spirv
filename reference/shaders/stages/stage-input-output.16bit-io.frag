@@ -38,8 +38,9 @@ OpCapability Float16
 OpCapability Int16
 OpCapability StorageInputOutput16
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %12 %15 %17 %19 %21
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16

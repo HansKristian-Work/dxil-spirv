@@ -80,7 +80,8 @@ OpCapability SampledCubeArray
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability ImageQuery
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26 %29 %32 %35 %39 %40 %43 %46 %49 %52 %55 %58 %61 %62 %64 %66
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

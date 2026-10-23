@@ -76,7 +76,8 @@ void main()
 ; Bound: 87
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %9
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -119,7 +120,7 @@ OpDecorate %9 Binding 0
 OpBranch %65
 %65 = OpLabel
 %12 = OpAccessChain %11 %9 %10 %10
-%13 = OpLoad %5 %12
+%13 = OpLoad %5 %12 NonPrivatePointer
 %15 = OpIEqual %14 %13 %10
 OpStore %59 %60
 OpSelectionMerge %70 None
@@ -129,7 +130,7 @@ OpStore %59 %62
 OpBranch %70
 %67 = OpLabel
 %17 = OpAccessChain %11 %9 %10 %16
-%18 = OpLoad %5 %17
+%18 = OpLoad %5 %17 NonPrivatePointer
 %19 = OpIEqual %14 %18 %10
 OpSelectionMerge %69 None
 OpBranchConditional %19 %68 %69
@@ -151,7 +152,7 @@ OpBranch %72
 %24 = OpIAdd %5 %22 %25
 %26 = OpIAdd %5 %20 %23
 %27 = OpAccessChain %11 %9 %10 %26
-%28 = OpLoad %5 %27
+%28 = OpLoad %5 %27 NonPrivatePointer
 %29 = OpIEqual %14 %28 %10
 OpStore %63 %60
 OpLoopMerge %83 %82 None
@@ -166,7 +167,7 @@ OpBranch %78
 %30 = OpIAdd %5 %22 %31
 %32 = OpIAdd %5 %20 %33
 %34 = OpAccessChain %11 %9 %10 %32
-%35 = OpLoad %5 %34
+%35 = OpLoad %5 %34 NonPrivatePointer
 %36 = OpIEqual %14 %35 %10
 OpSelectionMerge %77 None
 OpBranchConditional %36 %77 %76
@@ -183,7 +184,7 @@ OpBranchConditional %64 %79 %81
 %37 = OpIAdd %5 %22 %38
 %39 = OpIAdd %5 %20 %40
 %41 = OpAccessChain %11 %9 %10 %39
-%42 = OpLoad %5 %41
+%42 = OpLoad %5 %41 NonPrivatePointer
 %43 = OpIEqual %14 %42 %10
 OpSelectionMerge %80 None
 OpBranchConditional %43 %83 %80
@@ -193,11 +194,11 @@ OpBranch %81
 %44 = OpIAdd %5 %22 %45
 %46 = OpIAdd %5 %20 %47
 %48 = OpAccessChain %11 %9 %10 %46
-OpStore %48 %20
+OpStore %48 %20 NonPrivatePointer
 %49 = OpIAdd %5 %22 %50
 %51 = OpIAdd %5 %20 %52
 %53 = OpAccessChain %11 %9 %10 %51
-%54 = OpLoad %5 %53
+%54 = OpLoad %5 %53 NonPrivatePointer
 %55 = OpIEqual %14 %54 %10
 %21 = OpIAdd %5 %20 %16
 OpSelectionMerge %86 None

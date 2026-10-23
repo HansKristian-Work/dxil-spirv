@@ -15,7 +15,7 @@ layout(pixel_interlock_ordered) in;
 #endif
 layout(early_fragment_tests) in;
 
-layout(set = 0, binding = 0, r32f) uniform coherent image2D _8;
+layout(set = 0, binding = 0, r32f) uniform image2D _8;
 layout(set = 0, binding = 2, r32f) uniform image2D _9;
 
 layout(location = 0) out float SV_Target;
@@ -70,9 +70,10 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
+OpCapability VulkanMemoryModel
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_fragment_shader_interlock"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %9 %12 %14
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
@@ -82,7 +83,6 @@ OpName %12 "SV_Position"
 OpName %14 "SV_Target"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
-OpDecorate %8 Coherent
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 2
 OpDecorate %12 BuiltIn FragCoord
@@ -155,7 +155,7 @@ OpStore %48 %50
 %51 = OpInBoundsAccessChain %31 %28 %52
 OpStore %51 %53
 %56 = OpCompositeConstruct %55 %29 %30
-%54 = OpImageRead %10 %15 %56 None
+%54 = OpImageRead %10 %15 %56 NonPrivateTexel
 %57 = OpCompositeExtract %5 %54 0
 %58 = OpCompositeExtract %5 %54 1
 %59 = OpCompositeExtract %5 %54 2
@@ -166,14 +166,14 @@ OpStore %51 %53
 %64 = OpFAdd %5 %60 %44
 %65 = OpCompositeConstruct %55 %29 %30
 %66 = OpCompositeConstruct %10 %61 %62 %63 %64
-OpImageWrite %15 %65 %66
+OpImageWrite %15 %65 %66 NonPrivateTexel
 OpBeginInvocationInterlockEXT
 OpStore %95 %20
 OpBranch %97
 %97 = OpLabel
 %67 = OpLoad %19 %95
 %70 = OpCompositeConstruct %55 %29 %30
-%69 = OpImageRead %10 %16 %70 None
+%69 = OpImageRead %10 %16 %70 MakeTexelVisible|NonPrivateTexel %46
 %71 = OpCompositeExtract %5 %69 0
 %72 = OpCompositeExtract %5 %69 1
 %73 = OpCompositeExtract %5 %69 2
@@ -184,9 +184,9 @@ OpBranch %97
 %78 = OpFAdd %5 %74 %44
 %79 = OpCompositeConstruct %55 %29 %30
 %80 = OpCompositeConstruct %10 %75 %76 %77 %78
-OpImageWrite %16 %79 %80
+OpImageWrite %16 %79 %80 MakeTexelAvailable|NonPrivateTexel %46
 %82 = OpCompositeConstruct %55 %29 %30
-%81 = OpImageRead %10 %16 %82 None
+%81 = OpImageRead %10 %16 %82 MakeTexelVisible|NonPrivateTexel %46
 %83 = OpCompositeExtract %5 %81 1
 %84 = OpInBoundsAccessChain %31 %28 %67
 OpStore %84 %83

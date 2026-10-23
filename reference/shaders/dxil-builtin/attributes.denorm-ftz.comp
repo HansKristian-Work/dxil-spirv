@@ -22,8 +22,9 @@ OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability DenormFlushToZero
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %11 %16
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormFlushToZero 32
@@ -65,7 +66,7 @@ OpBranch %30
 %26 = OpFMul %24 %25 %27
 %28 = OpBitcast %5 %26
 %29 = OpCompositeConstruct %21 %28 %28 %28 %28
-OpImageWrite %12 %20 %29
+OpImageWrite %12 %20 %29 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

@@ -28,8 +28,9 @@ OpCapability Shader
 OpCapability SampledBuffer
 OpCapability RuntimeDescriptorArray
 OpCapability UniformTexelBufferArrayDynamicIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %9 %12 %15
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

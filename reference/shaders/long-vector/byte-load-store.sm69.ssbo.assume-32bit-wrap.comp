@@ -40,9 +40,10 @@ void main()
 ; Bound: 83
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability LongVectorEXT
 OpExtension "SPV_EXT_long_vector"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %15 %20 %25 %28
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -132,36 +133,36 @@ OpBranch %82
 %32 = OpLoad %5 %30
 %33 = OpIMul %5 %32 %34
 %36 = OpAccessChain %35 %10 %31 %32
-%37 = OpLoad %6 %36
+%37 = OpLoad %6 %36 NonPrivatePointer
 %40 = OpBitcast %39 %37
 %41 = OpFAdd %39 %40 %43
 %44 = OpBitcast %6 %41
 %45 = OpAccessChain %35 %10 %31 %32
-OpStore %45 %44
+OpStore %45 %44 NonPrivatePointer
 %46 = OpIMul %5 %32 %47
 %49 = OpAccessChain %48 %15 %31 %32
-%50 = OpLoad %11 %49
+%50 = OpLoad %11 %49 NonPrivatePointer
 %52 = OpBitcast %51 %50
 %53 = OpFAdd %51 %52 %55
 %56 = OpBitcast %11 %53
 %57 = OpAccessChain %48 %15 %31 %32
-OpStore %57 %56
+OpStore %57 %56 NonPrivatePointer
 %58 = OpIMul %5 %32 %59
 %61 = OpAccessChain %60 %20 %31 %32
-%62 = OpLoad %16 %61
+%62 = OpLoad %16 %61 NonPrivatePointer
 %64 = OpBitcast %63 %62
 %65 = OpFAdd %63 %64 %67
 %68 = OpBitcast %16 %65
 %69 = OpAccessChain %60 %20 %31 %32
-OpStore %69 %68
+OpStore %69 %68 NonPrivatePointer
 %70 = OpShiftLeftLogical %5 %32 %71
 %73 = OpAccessChain %72 %25 %31 %32
-%74 = OpLoad %21 %73
+%74 = OpLoad %21 %73 NonPrivatePointer
 %76 = OpBitcast %75 %74
 %77 = OpFAdd %75 %76 %79
 %80 = OpBitcast %21 %77
 %81 = OpAccessChain %72 %25 %31 %32
-OpStore %81 %80
+OpStore %81 %80 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

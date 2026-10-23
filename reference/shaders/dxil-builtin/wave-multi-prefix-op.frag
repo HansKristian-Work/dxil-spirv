@@ -323,9 +323,10 @@ OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability GroupNonUniformArithmetic
 OpCapability GroupNonUniformBallot
+OpCapability VulkanMemoryModel
 OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %9 %12 %14
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -405,7 +406,7 @@ OpBranch %369
 %71 = OpIMul %5 %18 %72
 %73 = OpIMul %5 %18 %72
 %74 = OpCompositeConstruct %21 %68 %68 %68 %68
-OpImageWrite %15 %73 %74
+OpImageWrite %15 %73 %74 NonPrivateTexel
 %75 = OpIMul %5 %18 %20
 %76 = OpImageFetch %21 %16 %75
 %77 = OpCompositeExtract %5 %76 0
@@ -434,7 +435,7 @@ OpImageWrite %15 %73 %74
 %123 = OpIMul %5 %18 %72
 %124 = OpIAdd %5 %123 %26
 %125 = OpCompositeConstruct %21 %121 %121 %121 %121
-OpImageWrite %15 %124 %125
+OpImageWrite %15 %124 %125 NonPrivateTexel
 %126 = OpIMul %5 %18 %20
 %127 = OpImageFetch %21 %16 %126
 %128 = OpCompositeExtract %5 %127 0
@@ -461,7 +462,7 @@ OpImageWrite %15 %124 %125
 %170 = OpIMul %5 %18 %72
 %171 = OpIAdd %5 %170 %30
 %172 = OpCompositeConstruct %21 %166 %166 %166 %166
-OpImageWrite %15 %171 %172
+OpImageWrite %15 %171 %172 NonPrivateTexel
 %173 = OpIMul %5 %18 %20
 %174 = OpImageFetch %21 %16 %173
 %175 = OpCompositeExtract %5 %174 0
@@ -490,7 +491,7 @@ OpImageWrite %15 %171 %172
 %219 = OpIMul %5 %18 %72
 %220 = OpIAdd %5 %219 %34
 %221 = OpCompositeConstruct %21 %217 %217 %217 %217
-OpImageWrite %15 %220 %221
+OpImageWrite %15 %220 %221 NonPrivateTexel
 %222 = OpIMul %5 %18 %20
 %223 = OpImageFetch %21 %16 %222
 %224 = OpCompositeExtract %5 %223 0
@@ -517,7 +518,7 @@ OpImageWrite %15 %220 %221
 %266 = OpIMul %5 %18 %72
 %267 = OpIAdd %5 %266 %20
 %268 = OpCompositeConstruct %21 %262 %262 %262 %262
-OpImageWrite %15 %267 %268
+OpImageWrite %15 %267 %268 NonPrivateTexel
 %269 = OpIMul %5 %18 %20
 %270 = OpImageFetch %21 %16 %269
 %271 = OpCompositeExtract %5 %270 0
@@ -546,7 +547,7 @@ OpImageWrite %15 %267 %268
 %316 = OpIMul %5 %18 %72
 %317 = OpIAdd %5 %316 %315
 %318 = OpCompositeConstruct %21 %311 %311 %311 %311
-OpImageWrite %15 %317 %318
+OpImageWrite %15 %317 %318 NonPrivateTexel
 %319 = OpIMul %5 %18 %20
 %320 = OpImageFetch %21 %16 %319
 %321 = OpCompositeExtract %5 %320 0
@@ -575,7 +576,7 @@ OpImageWrite %15 %317 %318
 %366 = OpIMul %5 %18 %72
 %367 = OpIAdd %5 %366 %365
 %368 = OpCompositeConstruct %21 %361 %361 %361 %361
-OpImageWrite %15 %367 %368
+OpImageWrite %15 %367 %368 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %49 = OpFunction %5 None %45

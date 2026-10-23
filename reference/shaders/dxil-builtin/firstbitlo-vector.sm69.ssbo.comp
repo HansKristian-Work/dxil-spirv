@@ -50,8 +50,9 @@ OpCapability Shader
 OpCapability Int64
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
+OpCapability VulkanMemoryModel
 %32 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %16 %22 %27
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -123,19 +124,19 @@ OpDecorate %27 NonReadable
 OpBranch %58
 %58 = OpLabel
 %30 = OpAccessChain %29 %10 %28 %28
-%31 = OpLoad %6 %30
+%31 = OpLoad %6 %30 NonPrivatePointer
 %33 = OpExtInst %6 %32 FindILsb %31
 %34 = OpVectorShuffle %23 %33 %35 0 1
 %37 = OpAccessChain %36 %27 %28 %28
-OpStore %37 %34
+OpStore %37 %34 NonPrivatePointer
 %39 = OpAccessChain %38 %16 %28 %28
-%40 = OpLoad %12 %39
+%40 = OpLoad %12 %39 NonPrivatePointer
 %41 = OpUConvert %23 %40
 %42 = OpExtInst %23 %32 FindILsb %41
 %44 = OpAccessChain %36 %27 %28 %43
-OpStore %44 %42
+OpStore %44 %42 NonPrivatePointer
 %46 = OpAccessChain %45 %22 %28 %28
-%47 = OpLoad %18 %46
+%47 = OpLoad %18 %46 NonPrivatePointer
 %48 = OpBitcast %6 %47
 %49 = OpExtInst %6 %32 FindILsb %48
 %50 = OpVectorShuffle %23 %49 %49 0 2
@@ -143,7 +144,7 @@ OpStore %44 %42
 %52 = OpBitwiseOr %23 %51 %54
 %55 = OpExtInst %23 %32 UMin %50 %52
 %57 = OpAccessChain %36 %27 %28 %56
-OpStore %57 %55
+OpStore %57 %55 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

@@ -27,10 +27,11 @@ void main()
 OpCapability Shader
 OpCapability Float16
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability FloatControls2
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_float_controls2"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %7 %9
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16

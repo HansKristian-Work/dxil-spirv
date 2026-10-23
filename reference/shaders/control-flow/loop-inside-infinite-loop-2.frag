@@ -7,49 +7,49 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    uint _88;
     uint _89;
     uint _90;
     uint _91;
+    uint _92;
     if (V.x < 10u)
     {
-        uint _94 = V.x;
-        uint _57;
-        bool _61;
+        uint _95 = V.x;
+        uint _58;
+        bool _62;
         for (;;)
         {
-            _57 = _94;
-            uint _60 = imageAtomicAdd(_8, int(0u), _57);
-            _61 = V.y == 0u;
-            if (!_61)
+            _58 = _95;
+            uint _61 = imageAtomicAdd(_8, int(0u), _58);
+            _62 = V.y == 0u;
+            if (!_62)
             {
-                uint _62 = _57 & 3u;
+                uint _63 = _58 & 3u;
+                uint _66;
+                bool _101;
+                uint _93 = _63;
+                uint _94 = 0u;
                 uint _65;
-                bool _100;
-                uint _92 = _62;
-                uint _93 = 0u;
-                uint _64;
-                bool _66;
+                bool _67;
                 for (;;)
                 {
-                    _64 = _93;
-                    _66 = _92 == 0u;
-                    _100 = false;
-                    if (!_66)
+                    _65 = _94;
+                    _67 = _93 == 0u;
+                    _101 = false;
+                    if (!_67)
                     {
-                        _100 = true;
+                        _101 = true;
                         break;
                     }
-                    if (!((_57 & 7u) == 0u))
+                    if (!((_58 & 7u) == 0u))
                     {
                         break;
                     }
-                    uint _83 = imageAtomicAdd(_8, int(0u), _57);
-                    _65 = _64 + 1u;
-                    if (_65 < V.y)
+                    uint _84 = imageAtomicAdd(_8, int(0u), _58);
+                    _66 = _65 + 1u;
+                    if (_66 < V.y)
                     {
-                        _92 = 0u;
-                        _93 = _65;
+                        _93 = 0u;
+                        _94 = _66;
                         continue;
                     }
                     else
@@ -57,61 +57,61 @@ void main()
                         break;
                     }
                 }
-                if (_100)
+                if (_101)
                 {
                     break;
                 }
             }
-            uint _86 = imageAtomicAdd(_8, int(0u), _57);
-            _94 = _57 + 1u;
+            uint _87 = imageAtomicAdd(_8, int(0u), _58);
+            _95 = _58 + 1u;
             continue;
         }
-        _88 = _57;
-        _89 = V.y;
-        _90 = V.z;
-        _91 = V.w;
+        _89 = _58;
+        _90 = V.y;
+        _91 = V.z;
+        _92 = V.w;
     }
     else
     {
         uint _33 = ~V.x;
         uint _34 = ~V.y;
-        uint _97 = _33;
+        uint _98 = _33;
         uint _36;
-        bool _41;
+        bool _42;
         for (;;)
         {
-            _36 = _97;
+            _36 = _98;
             uint _40 = imageAtomicAdd(_8, int(0u), _36);
-            _41 = V.y == 4294967295u;
-            if (!_41)
+            _42 = V.y == 4294967295u;
+            if (!_42)
             {
-                uint _43 = _36 & 3u;
+                uint _44 = _36 & 3u;
+                uint _47;
+                bool _104;
+                uint _96 = _44;
+                uint _97 = 0u;
                 uint _46;
-                bool _103;
-                uint _95 = _43;
-                uint _96 = 0u;
-                uint _45;
-                bool _47;
+                bool _48;
                 for (;;)
                 {
-                    _45 = _96;
-                    _47 = _95 == 0u;
-                    _103 = false;
-                    if (!_47)
+                    _46 = _97;
+                    _48 = _96 == 0u;
+                    _104 = false;
+                    if (!_48)
                     {
-                        _103 = true;
+                        _104 = true;
                         break;
                     }
                     if (!((_36 & 7u) == 0u))
                     {
                         break;
                     }
-                    uint _53 = imageAtomicAdd(_8, int(0u), _36);
-                    _46 = _45 + 1u;
-                    if (_46 < _34)
+                    uint _54 = imageAtomicAdd(_8, int(0u), _36);
+                    _47 = _46 + 1u;
+                    if (_47 < _34)
                     {
-                        _95 = 0u;
-                        _96 = _46;
+                        _96 = 0u;
+                        _97 = _47;
                         continue;
                     }
                     else
@@ -119,24 +119,24 @@ void main()
                         break;
                     }
                 }
-                if (_103)
+                if (_104)
                 {
                     break;
                 }
             }
-            uint _56 = imageAtomicAdd(_8, int(0u), _36);
-            _97 = _36 + 1u;
+            uint _57 = imageAtomicAdd(_8, int(0u), _36);
+            _98 = _36 + 1u;
             continue;
         }
-        _88 = _36;
-        _89 = _34;
-        _90 = ~V.z;
-        _91 = ~V.w;
+        _89 = _36;
+        _90 = _34;
+        _91 = ~V.z;
+        _92 = ~V.w;
     }
-    SV_Target.x = float(_88);
-    SV_Target.y = float(_89);
-    SV_Target.z = float(_90);
-    SV_Target.w = float(_91);
+    SV_Target.x = float(_89);
+    SV_Target.y = float(_90);
+    SV_Target.z = float(_91);
+    SV_Target.w = float(_92);
 }
 
 
@@ -145,11 +145,12 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 140
+; Bound: 141
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %15
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -181,29 +182,30 @@ OpDecorate %15 Location 0
 %30 = OpTypeBool
 %32 = OpConstant %5 10
 %38 = OpTypePointer Image %5
-%42 = OpConstant %5 4294967295
-%50 = OpConstant %5 7
-%75 = OpTypePointer Output %12
-%87 = OpTypePointer Function %5
-%98 = OpConstantTrue %30
-%99 = OpTypePointer Function %30
-%101 = OpConstantFalse %30
+%41 = OpConstant %5 5
+%43 = OpConstant %5 4294967295
+%51 = OpConstant %5 7
+%76 = OpTypePointer Output %12
+%88 = OpTypePointer Function %5
+%99 = OpConstantTrue %30
+%100 = OpTypePointer Function %30
+%102 = OpConstantFalse %30
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%88 = OpVariable %87 Function
-%89 = OpVariable %87 Function
-%90 = OpVariable %87 Function
-%91 = OpVariable %87 Function
-%92 = OpVariable %87 Function
-%93 = OpVariable %87 Function
-%94 = OpVariable %87 Function
-%95 = OpVariable %87 Function
-%96 = OpVariable %87 Function
-%97 = OpVariable %87 Function
-%100 = OpVariable %99 Function
-%103 = OpVariable %99 Function
-OpBranch %105
-%105 = OpLabel
+%89 = OpVariable %88 Function
+%90 = OpVariable %88 Function
+%91 = OpVariable %88 Function
+%92 = OpVariable %88 Function
+%93 = OpVariable %88 Function
+%94 = OpVariable %88 Function
+%95 = OpVariable %88 Function
+%96 = OpVariable %88 Function
+%97 = OpVariable %88 Function
+%98 = OpVariable %88 Function
+%101 = OpVariable %100 Function
+%104 = OpVariable %100 Function
+OpBranch %106
+%106 = OpLabel
 %16 = OpLoad %6 %8
 %18 = OpAccessChain %17 %11 %19
 %20 = OpLoad %5 %18
@@ -214,169 +216,169 @@ OpBranch %105
 %27 = OpAccessChain %17 %11 %28
 %29 = OpLoad %5 %27
 %31 = OpULessThan %30 %20 %32
-OpSelectionMerge %134 None
-OpBranchConditional %31 %121 %106
-%106 = OpLabel
+OpSelectionMerge %135 None
+OpBranchConditional %31 %122 %107
+%107 = OpLabel
 %33 = OpNot %5 %20
 %34 = OpNot %5 %23
 %35 = OpNot %5 %26
-OpStore %97 %33
-OpBranch %107
-%107 = OpLabel
-%36 = OpLoad %5 %97
-%39 = OpImageTexelPointer %38 %8 %19 %19
-%40 = OpAtomicIAdd %5 %39 %22 %19 %36
-%41 = OpIEqual %30 %23 %42
-OpLoopMerge %118 %120 None
+OpStore %98 %33
 OpBranch %108
 %108 = OpLabel
-OpSelectionMerge %119 None
-OpBranchConditional %41 %119 %109
+%36 = OpLoad %5 %98
+%39 = OpImageTexelPointer %38 %8 %19 %19
+%40 = OpAtomicIAdd %5 %39 %41 %19 %36
+%42 = OpIEqual %30 %23 %43
+OpLoopMerge %119 %121 None
+OpBranch %109
 %109 = OpLabel
-%43 = OpBitwiseAnd %5 %36 %28
-OpStore %95 %43
-OpStore %96 %19
-OpBranch %110
+OpSelectionMerge %120 None
+OpBranchConditional %42 %120 %110
 %110 = OpLabel
-%45 = OpLoad %5 %96
-%44 = OpLoad %5 %95
-%47 = OpIEqual %30 %44 %19
-OpStore %103 %101
-OpLoopMerge %116 %115 None
+%44 = OpBitwiseAnd %5 %36 %28
+OpStore %96 %44
+OpStore %97 %19
 OpBranch %111
 %111 = OpLabel
-OpSelectionMerge %113 None
-OpBranchConditional %47 %113 %112
+%46 = OpLoad %5 %97
+%45 = OpLoad %5 %96
+%48 = OpIEqual %30 %45 %19
+OpStore %104 %102
+OpLoopMerge %117 %116 None
+OpBranch %112
 %112 = OpLabel
-OpStore %103 %98
-OpBranch %116
-%113 = OpLabel
-%49 = OpBitwiseAnd %5 %36 %50
-%51 = OpIEqual %30 %49 %19
 OpSelectionMerge %114 None
-OpBranchConditional %51 %114 %116
+OpBranchConditional %48 %114 %113
+%113 = OpLabel
+OpStore %104 %99
+OpBranch %117
 %114 = OpLabel
-%52 = OpImageTexelPointer %38 %8 %19 %19
-%53 = OpAtomicIAdd %5 %52 %22 %19 %36
-%46 = OpIAdd %5 %45 %22
-%54 = OpULessThan %30 %46 %34
-OpSelectionMerge %138 None
-OpBranchConditional %54 %115 %116
-%138 = OpLabel
-OpUnreachable
+%50 = OpBitwiseAnd %5 %36 %51
+%52 = OpIEqual %30 %50 %19
+OpSelectionMerge %115 None
+OpBranchConditional %52 %115 %117
 %115 = OpLabel
-OpStore %95 %19
-OpStore %96 %46
-OpBranch %110
-%116 = OpLabel
-%104 = OpLoad %30 %103
-OpSelectionMerge %117 None
-OpBranchConditional %104 %118 %117
-%117 = OpLabel
-OpBranch %119
-%118 = OpLabel
-%48 = OpNot %5 %29
-OpStore %88 %36
-OpStore %89 %34
-OpStore %90 %35
-OpStore %91 %48
-OpBranch %134
-%119 = OpLabel
-OpBranch %120
-%120 = OpLabel
-%55 = OpImageTexelPointer %38 %8 %19 %19
-%56 = OpAtomicIAdd %5 %55 %22 %19 %36
-%37 = OpIAdd %5 %36 %22
-OpStore %97 %37
-OpBranch %107
-%121 = OpLabel
-OpStore %94 %20
-OpBranch %122
-%122 = OpLabel
-%57 = OpLoad %5 %94
-%59 = OpImageTexelPointer %38 %8 %19 %19
-%60 = OpAtomicIAdd %5 %59 %22 %19 %57
-%61 = OpIEqual %30 %23 %19
-OpLoopMerge %133 %137 None
-OpBranch %123
-%123 = OpLabel
-OpSelectionMerge %136 None
-OpBranchConditional %61 %136 %124
-%124 = OpLabel
-%62 = OpBitwiseAnd %5 %57 %28
-OpStore %92 %62
-OpStore %93 %19
-OpBranch %125
-%125 = OpLabel
-%64 = OpLoad %5 %93
-%63 = OpLoad %5 %92
-%66 = OpIEqual %30 %63 %19
-OpStore %100 %101
-OpLoopMerge %131 %130 None
-OpBranch %126
-%126 = OpLabel
-OpSelectionMerge %128 None
-OpBranchConditional %66 %128 %127
-%127 = OpLabel
-OpStore %100 %98
-OpBranch %131
-%128 = OpLabel
-%80 = OpBitwiseAnd %5 %57 %50
-%81 = OpIEqual %30 %80 %19
-OpSelectionMerge %129 None
-OpBranchConditional %81 %129 %131
-%129 = OpLabel
-%82 = OpImageTexelPointer %38 %8 %19 %19
-%83 = OpAtomicIAdd %5 %82 %22 %19 %57
-%65 = OpIAdd %5 %64 %22
-%84 = OpULessThan %30 %65 %23
+%53 = OpImageTexelPointer %38 %8 %19 %19
+%54 = OpAtomicIAdd %5 %53 %41 %19 %36
+%47 = OpIAdd %5 %46 %22
+%55 = OpULessThan %30 %47 %34
 OpSelectionMerge %139 None
-OpBranchConditional %84 %130 %131
+OpBranchConditional %55 %116 %117
 %139 = OpLabel
 OpUnreachable
+%116 = OpLabel
+OpStore %96 %19
+OpStore %97 %47
+OpBranch %111
+%117 = OpLabel
+%105 = OpLoad %30 %104
+OpSelectionMerge %118 None
+OpBranchConditional %105 %119 %118
+%118 = OpLabel
+OpBranch %120
+%119 = OpLabel
+%49 = OpNot %5 %29
+OpStore %89 %36
+OpStore %90 %34
+OpStore %91 %35
+OpStore %92 %49
+OpBranch %135
+%120 = OpLabel
+OpBranch %121
+%121 = OpLabel
+%56 = OpImageTexelPointer %38 %8 %19 %19
+%57 = OpAtomicIAdd %5 %56 %41 %19 %36
+%37 = OpIAdd %5 %36 %22
+OpStore %98 %37
+OpBranch %108
+%122 = OpLabel
+OpStore %95 %20
+OpBranch %123
+%123 = OpLabel
+%58 = OpLoad %5 %95
+%60 = OpImageTexelPointer %38 %8 %19 %19
+%61 = OpAtomicIAdd %5 %60 %41 %19 %58
+%62 = OpIEqual %30 %23 %19
+OpLoopMerge %134 %138 None
+OpBranch %124
+%124 = OpLabel
+OpSelectionMerge %137 None
+OpBranchConditional %62 %137 %125
+%125 = OpLabel
+%63 = OpBitwiseAnd %5 %58 %28
+OpStore %93 %63
+OpStore %94 %19
+OpBranch %126
+%126 = OpLabel
+%65 = OpLoad %5 %94
+%64 = OpLoad %5 %93
+%67 = OpIEqual %30 %64 %19
+OpStore %101 %102
+OpLoopMerge %132 %131 None
+OpBranch %127
+%127 = OpLabel
+OpSelectionMerge %129 None
+OpBranchConditional %67 %129 %128
+%128 = OpLabel
+OpStore %101 %99
+OpBranch %132
+%129 = OpLabel
+%81 = OpBitwiseAnd %5 %58 %51
+%82 = OpIEqual %30 %81 %19
+OpSelectionMerge %130 None
+OpBranchConditional %82 %130 %132
 %130 = OpLabel
-OpStore %92 %19
-OpStore %93 %65
-OpBranch %125
+%83 = OpImageTexelPointer %38 %8 %19 %19
+%84 = OpAtomicIAdd %5 %83 %41 %19 %58
+%66 = OpIAdd %5 %65 %22
+%85 = OpULessThan %30 %66 %23
+OpSelectionMerge %140 None
+OpBranchConditional %85 %131 %132
+%140 = OpLabel
+OpUnreachable
 %131 = OpLabel
-%102 = OpLoad %30 %100
-OpSelectionMerge %132 None
-OpBranchConditional %102 %133 %132
+OpStore %93 %19
+OpStore %94 %66
+OpBranch %126
 %132 = OpLabel
-OpBranch %136
+%103 = OpLoad %30 %101
+OpSelectionMerge %133 None
+OpBranchConditional %103 %134 %133
 %133 = OpLabel
-OpStore %88 %57
-OpStore %89 %23
-OpStore %90 %26
-OpStore %91 %29
-OpBranch %134
+OpBranch %137
 %134 = OpLabel
+OpStore %89 %58
+OpStore %90 %23
+OpStore %91 %26
+OpStore %92 %29
 OpBranch %135
 %135 = OpLabel
+OpBranch %136
+%136 = OpLabel
+%71 = OpLoad %5 %92
 %70 = OpLoad %5 %91
 %69 = OpLoad %5 %90
 %68 = OpLoad %5 %89
-%67 = OpLoad %5 %88
-%71 = OpConvertUToF %12 %67
 %72 = OpConvertUToF %12 %68
 %73 = OpConvertUToF %12 %69
 %74 = OpConvertUToF %12 %70
-%76 = OpAccessChain %75 %15 %19
-OpStore %76 %71
-%77 = OpAccessChain %75 %15 %22
+%75 = OpConvertUToF %12 %71
+%77 = OpAccessChain %76 %15 %19
 OpStore %77 %72
-%78 = OpAccessChain %75 %15 %25
+%78 = OpAccessChain %76 %15 %22
 OpStore %78 %73
-%79 = OpAccessChain %75 %15 %28
+%79 = OpAccessChain %76 %15 %25
 OpStore %79 %74
+%80 = OpAccessChain %76 %15 %28
+OpStore %80 %75
 OpReturn
-%136 = OpLabel
-OpBranch %137
 %137 = OpLabel
-%85 = OpImageTexelPointer %38 %8 %19 %19
-%86 = OpAtomicIAdd %5 %85 %22 %19 %57
-%58 = OpIAdd %5 %57 %22
-OpStore %94 %58
-OpBranch %122
+OpBranch %138
+%138 = OpLabel
+%86 = OpImageTexelPointer %38 %8 %19 %19
+%87 = OpAtomicIAdd %5 %86 %41 %19 %58
+%59 = OpIAdd %5 %58 %22
+OpStore %95 %59
+OpBranch %123
 OpFunctionEnd
 #endif

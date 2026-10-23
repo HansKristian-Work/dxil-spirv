@@ -19,7 +19,7 @@ layout(early_fragment_tests) in;
 
 layout(buffer_reference) buffer PhysicalPointerUint4CoherentArray;
 
-layout(buffer_reference, buffer_reference_align = 4, std430) coherent buffer PhysicalPointerUint4CoherentArray
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerUint4CoherentArray
 {
     uvec4 value[];
 };
@@ -52,14 +52,15 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 64
+; Bound: 65
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_fragment_shader_interlock"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint Fragment %3 "main" %9 %13
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
@@ -82,7 +83,6 @@ OpDecorate %13 BuiltIn FragCoord
 OpDecorate %43 ArrayStride 16
 OpMemberDecorate %44 0 Offset 0
 OpDecorate %44 Block
-OpMemberDecorate %44 0 Coherent
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -109,11 +109,12 @@ OpMemberDecorate %44 0 Coherent
 %44 = OpTypeStruct %43
 %45 = OpTypePointer PhysicalStorageBuffer %44
 %47 = OpTypePointer PhysicalStorageBuffer %42
-%57 = OpConstant %5 3
+%50 = OpConstant %5 5
+%58 = OpConstant %5 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %63
-%63 = OpLabel
+OpBranch %64
+%64 = OpLabel
 %15 = OpAccessChain %14 %9 %16
 %17 = OpLoad %6 %15
 %19 = OpAccessChain %18 %13 %20
@@ -129,37 +130,20 @@ OpBranch %63
 %46 = OpBitcast %45 %17
 %48 = OpInBoundsAccessChain %47 %46 %20 %40
 OpBeginInvocationInterlockEXT
-<<<<<<< HEAD
-%50 = OpLoad %43 %49 Aligned 4
-%51 = OpCompositeExtract %5 %50 0
-%52 = OpCompositeExtract %5 %50 1
-%53 = OpCompositeExtract %5 %50 2
-%54 = OpCompositeExtract %5 %50 3
+%49 = OpLoad %42 %48 Aligned|MakePointerVisible|NonPrivatePointer 4 %50
+%51 = OpCompositeExtract %5 %49 0
+%52 = OpCompositeExtract %5 %49 1
+%53 = OpCompositeExtract %5 %49 2
+%54 = OpCompositeExtract %5 %49 3
 %55 = OpIAdd %5 %51 %23
 %56 = OpIAdd %5 %52 %16
 %57 = OpIAdd %5 %53 %58
 %59 = OpIAdd %5 %54 %31
-%60 = OpFunctionCall %5 %35 %29 %42
-%61 = OpBitcast %46 %17
-%62 = OpInBoundsAccessChain %48 %61 %20 %60
-%63 = OpCompositeConstruct %43 %55 %56 %57 %59
-OpStore %62 %63 Aligned 4
-=======
-%49 = OpLoad %42 %48 Aligned 16
-%50 = OpCompositeExtract %5 %49 0
-%51 = OpCompositeExtract %5 %49 1
-%52 = OpCompositeExtract %5 %49 2
-%53 = OpCompositeExtract %5 %49 3
-%54 = OpIAdd %5 %50 %23
-%55 = OpIAdd %5 %51 %16
-%56 = OpIAdd %5 %52 %57
-%58 = OpIAdd %5 %53 %31
-%59 = OpFunctionCall %5 %35 %29 %41
-%60 = OpBitcast %45 %17
-%61 = OpInBoundsAccessChain %47 %60 %20 %59
-%62 = OpCompositeConstruct %42 %54 %55 %56 %58
-OpStore %61 %62 Aligned 16
->>>>>>> 68a7fed (Rewrite the block traversal for glslang emitter.)
+%60 = OpFunctionCall %5 %35 %29 %41
+%61 = OpBitcast %45 %17
+%62 = OpInBoundsAccessChain %47 %61 %20 %60
+%63 = OpCompositeConstruct %42 %55 %56 %57 %59
+OpStore %62 %63 Aligned|MakePointerAvailable|NonPrivatePointer 4 %50
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

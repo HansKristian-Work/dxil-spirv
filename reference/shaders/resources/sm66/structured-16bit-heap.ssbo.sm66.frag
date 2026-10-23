@@ -91,9 +91,10 @@ OpCapability Int16
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %10 %17 %22 %27 %33 %39 %44 %49 %51 %55 %59
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
@@ -287,11 +288,11 @@ OpBranch %184
 %115 = OpFConvert %56 %113
 %116 = OpFConvert %56 %114
 %117 = OpAccessChain %103 %86 %62 %72
-%118 = OpLoad %5 %117
+%118 = OpLoad %5 %117 NonPrivatePointer
 %119 = OpBitcast %56 %118
 %120 = OpFAdd %56 %116 %119
 %121 = OpAccessChain %107 %90 %62 %76
-%122 = OpLoad %12 %121
+%122 = OpLoad %12 %121 NonPrivatePointer
 %123 = OpBitcast %111 %122
 %124 = OpCompositeExtract %110 %123 0
 %125 = OpCompositeExtract %110 %123 1
@@ -325,7 +326,7 @@ OpBranch %184
 %156 = OpFAdd %56 %144 %152
 %157 = OpFAdd %56 %145 %153
 %158 = OpAccessChain %129 %100 %62 %66
-%159 = OpLoad %28 %158
+%159 = OpLoad %28 %158 NonPrivatePointer
 %160 = OpBitcast %132 %159
 %161 = OpCompositeExtract %110 %160 0
 %162 = OpCompositeExtract %110 %160 1
@@ -345,7 +346,7 @@ OpBranch %184
 %176 = OpBitcast %5 %172
 %177 = OpCompositeConstruct %34 %173 %174 %175 %176
 %178 = OpAccessChain %146 %102 %62 %66
-OpStore %178 %177
+OpStore %178 %177 NonPrivatePointer
 %180 = OpAccessChain %179 %59 %62
 OpStore %180 %169
 %181 = OpAccessChain %179 %59 %66

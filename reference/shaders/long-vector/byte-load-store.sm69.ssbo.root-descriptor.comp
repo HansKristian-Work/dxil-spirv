@@ -84,11 +84,12 @@ void main()
 ; Bound: 140
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability LongVectorEXT
 OpExtension "SPV_EXT_long_vector"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %12
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -187,7 +188,7 @@ OpBranch %139
 %34 = OpCompositeConstruct %6 %31 %33
 %35 = OpBitcast %26 %34
 %37 = OpInBoundsAccessChain %36 %35 %15
-%38 = OpLoad %24 %37 Aligned 4
+%38 = OpLoad %24 %37 Aligned|NonPrivatePointer 4
 %39 = OpFAdd %24 %38 %41
 %42 = OpCompositeExtract %5 %22 0
 %43 = OpCompositeExtract %5 %22 1
@@ -198,7 +199,7 @@ OpBranch %139
 %48 = OpCompositeConstruct %6 %45 %47
 %49 = OpBitcast %26 %48
 %50 = OpInBoundsAccessChain %36 %49 %15
-OpStore %50 %39 Aligned 4
+OpStore %50 %39 Aligned|NonPrivatePointer 4
 %51 = OpIMul %5 %16 %52
 %53 = OpAccessChain %19 %9 %21
 %54 = OpLoad %6 %53
@@ -211,7 +212,7 @@ OpStore %50 %39 Aligned 4
 %64 = OpCompositeConstruct %6 %61 %63
 %65 = OpBitcast %57 %64
 %67 = OpInBoundsAccessChain %66 %65 %15
-%68 = OpLoad %55 %67 Aligned 4
+%68 = OpLoad %55 %67 Aligned|NonPrivatePointer 4
 %69 = OpFAdd %55 %68 %71
 %72 = OpCompositeExtract %5 %54 0
 %73 = OpCompositeExtract %5 %54 1
@@ -222,7 +223,7 @@ OpStore %50 %39 Aligned 4
 %78 = OpCompositeConstruct %6 %75 %77
 %79 = OpBitcast %57 %78
 %80 = OpInBoundsAccessChain %66 %79 %15
-OpStore %80 %69 Aligned 4
+OpStore %80 %69 Aligned|NonPrivatePointer 4
 %81 = OpIMul %5 %16 %82
 %83 = OpAccessChain %19 %9 %21
 %84 = OpLoad %6 %83
@@ -235,7 +236,7 @@ OpStore %80 %69 Aligned 4
 %94 = OpCompositeConstruct %6 %91 %93
 %95 = OpBitcast %87 %94
 %97 = OpInBoundsAccessChain %96 %95 %15
-%98 = OpLoad %85 %97 Aligned 4
+%98 = OpLoad %85 %97 Aligned|NonPrivatePointer 4
 %99 = OpFAdd %85 %98 %101
 %102 = OpCompositeExtract %5 %84 0
 %103 = OpCompositeExtract %5 %84 1
@@ -246,31 +247,19 @@ OpStore %80 %69 Aligned 4
 %108 = OpCompositeConstruct %6 %105 %107
 %109 = OpBitcast %87 %108
 %110 = OpInBoundsAccessChain %96 %109 %15
-OpStore %110 %99 Aligned 4
+OpStore %110 %99 Aligned|NonPrivatePointer 4
 %111 = OpShiftLeftLogical %5 %16 %112
 %113 = OpAccessChain %19 %9 %21
 %114 = OpLoad %6 %113
-<<<<<<< HEAD
-%124 = OpFunctionCall %5 %118 %16 %125
-%130 = OpBitcast %129 %114
-%132 = OpInBoundsAccessChain %131 %130 %15 %124
-%133 = OpLoad %126 %132 Aligned 4
-%134 = OpFAdd %126 %133 %136
-%137 = OpFunctionCall %5 %118 %16 %125
-%138 = OpBitcast %129 %114
-%139 = OpInBoundsAccessChain %131 %138 %15 %137
-OpStore %139 %134 Aligned 4
-=======
 %123 = OpFunctionCall %5 %118 %16 %124
 %129 = OpBitcast %128 %114
 %131 = OpInBoundsAccessChain %130 %129 %15 %123
-%132 = OpLoad %125 %131 Aligned 16
+%132 = OpLoad %125 %131 Aligned|NonPrivatePointer 4
 %133 = OpFAdd %125 %132 %135
 %136 = OpFunctionCall %5 %118 %16 %124
 %137 = OpBitcast %128 %114
 %138 = OpInBoundsAccessChain %130 %137 %15 %136
-OpStore %138 %133 Aligned 16
->>>>>>> 68a7fed (Rewrite the block traversal for glslang emitter.)
+OpStore %138 %133 Aligned|NonPrivatePointer 4
 OpReturn
 OpFunctionEnd
 %118 = OpFunction %5 None %115

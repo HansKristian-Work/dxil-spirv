@@ -55,10 +55,11 @@ OpCapability SampledBuffer
 OpCapability RuntimeDescriptorArray
 OpCapability UniformTexelBufferArrayDynamicIndexing
 OpCapability UniformTexelBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint Fragment %3 "main" %8 %13 %17 %22 %25 %27 %29
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

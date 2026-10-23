@@ -85,9 +85,10 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
+OpCapability VulkanMemoryModel
 OpCapability LongVectorEXT
 OpExtension "SPV_EXT_long_vector"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %9 %10 %11 %14
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -148,19 +149,19 @@ OpBranch %221
 %18 = OpLoad %5 %16
 %19 = OpLoad %6 %8
 %20 = OpIMul %5 %18 %21
-%23 = OpImageRead %22 %19 %20
+%23 = OpImageRead %22 %19 %20 NonPrivateTexel
 %24 = OpCompositeExtract %5 %23 0
 %26 = OpIAdd %5 %20 %27
-%25 = OpImageRead %22 %19 %26
+%25 = OpImageRead %22 %19 %26 NonPrivateTexel
 %28 = OpCompositeExtract %5 %25 0
 %30 = OpIAdd %5 %20 %31
-%29 = OpImageRead %22 %19 %30
+%29 = OpImageRead %22 %19 %30 NonPrivateTexel
 %32 = OpCompositeExtract %5 %29 0
 %34 = OpIAdd %5 %20 %35
-%33 = OpImageRead %22 %19 %34
+%33 = OpImageRead %22 %19 %34 NonPrivateTexel
 %36 = OpCompositeExtract %5 %33 0
 %38 = OpIAdd %5 %20 %39
-%37 = OpImageRead %22 %19 %38
+%37 = OpImageRead %22 %19 %38 NonPrivateTexel
 %40 = OpCompositeExtract %5 %37 0
 %42 = OpCompositeConstruct %41 %24 %28 %32 %36 %40
 %45 = OpBitcast %44 %42
@@ -173,37 +174,37 @@ OpBranch %221
 %54 = OpCompositeExtract %5 %50 3
 %55 = OpCompositeExtract %5 %50 4
 %56 = OpCompositeConstruct %22 %51 %51 %51 %51
-OpImageWrite %19 %49 %56
+OpImageWrite %19 %49 %56 NonPrivateTexel
 %57 = OpCompositeConstruct %22 %52 %52 %52 %52
 %58 = OpIAdd %5 %49 %27
-OpImageWrite %19 %58 %57
+OpImageWrite %19 %58 %57 NonPrivateTexel
 %59 = OpCompositeConstruct %22 %53 %53 %53 %53
 %60 = OpIAdd %5 %49 %31
-OpImageWrite %19 %60 %59
+OpImageWrite %19 %60 %59 NonPrivateTexel
 %61 = OpCompositeConstruct %22 %54 %54 %54 %54
 %62 = OpIAdd %5 %49 %35
-OpImageWrite %19 %62 %61
+OpImageWrite %19 %62 %61 NonPrivateTexel
 %63 = OpCompositeConstruct %22 %55 %55 %55 %55
 %64 = OpIAdd %5 %49 %39
-OpImageWrite %19 %64 %63
+OpImageWrite %19 %64 %63 NonPrivateTexel
 %65 = OpLoad %6 %9
 %66 = OpIMul %5 %18 %67
-%68 = OpImageRead %22 %65 %66
+%68 = OpImageRead %22 %65 %66 NonPrivateTexel
 %69 = OpCompositeExtract %5 %68 0
 %71 = OpIAdd %5 %66 %27
-%70 = OpImageRead %22 %65 %71
+%70 = OpImageRead %22 %65 %71 NonPrivateTexel
 %72 = OpCompositeExtract %5 %70 0
 %74 = OpIAdd %5 %66 %31
-%73 = OpImageRead %22 %65 %74
+%73 = OpImageRead %22 %65 %74 NonPrivateTexel
 %75 = OpCompositeExtract %5 %73 0
 %77 = OpIAdd %5 %66 %35
-%76 = OpImageRead %22 %65 %77
+%76 = OpImageRead %22 %65 %77 NonPrivateTexel
 %78 = OpCompositeExtract %5 %76 0
 %80 = OpIAdd %5 %66 %39
-%79 = OpImageRead %22 %65 %80
+%79 = OpImageRead %22 %65 %80 NonPrivateTexel
 %81 = OpCompositeExtract %5 %79 0
 %83 = OpIAdd %5 %66 %21
-%82 = OpImageRead %22 %65 %83
+%82 = OpImageRead %22 %65 %83 NonPrivateTexel
 %84 = OpCompositeExtract %5 %82 0
 %86 = OpCompositeConstruct %85 %69 %72 %75 %78 %81 %84
 %88 = OpBitcast %87 %86
@@ -217,43 +218,43 @@ OpImageWrite %19 %64 %63
 %98 = OpCompositeExtract %5 %93 4
 %99 = OpCompositeExtract %5 %93 5
 %100 = OpCompositeConstruct %22 %94 %94 %94 %94
-OpImageWrite %65 %92 %100
+OpImageWrite %65 %92 %100 NonPrivateTexel
 %101 = OpCompositeConstruct %22 %95 %95 %95 %95
 %102 = OpIAdd %5 %92 %27
-OpImageWrite %65 %102 %101
+OpImageWrite %65 %102 %101 NonPrivateTexel
 %103 = OpCompositeConstruct %22 %96 %96 %96 %96
 %104 = OpIAdd %5 %92 %31
-OpImageWrite %65 %104 %103
+OpImageWrite %65 %104 %103 NonPrivateTexel
 %105 = OpCompositeConstruct %22 %97 %97 %97 %97
 %106 = OpIAdd %5 %92 %35
-OpImageWrite %65 %106 %105
+OpImageWrite %65 %106 %105 NonPrivateTexel
 %107 = OpCompositeConstruct %22 %98 %98 %98 %98
 %108 = OpIAdd %5 %92 %39
-OpImageWrite %65 %108 %107
+OpImageWrite %65 %108 %107 NonPrivateTexel
 %109 = OpCompositeConstruct %22 %99 %99 %99 %99
 %110 = OpIAdd %5 %92 %21
-OpImageWrite %65 %110 %109
+OpImageWrite %65 %110 %109 NonPrivateTexel
 %111 = OpLoad %6 %10
 %112 = OpIMul %5 %18 %113
-%114 = OpImageRead %22 %111 %112
+%114 = OpImageRead %22 %111 %112 NonPrivateTexel
 %115 = OpCompositeExtract %5 %114 0
 %117 = OpIAdd %5 %112 %27
-%116 = OpImageRead %22 %111 %117
+%116 = OpImageRead %22 %111 %117 NonPrivateTexel
 %118 = OpCompositeExtract %5 %116 0
 %120 = OpIAdd %5 %112 %31
-%119 = OpImageRead %22 %111 %120
+%119 = OpImageRead %22 %111 %120 NonPrivateTexel
 %121 = OpCompositeExtract %5 %119 0
 %123 = OpIAdd %5 %112 %35
-%122 = OpImageRead %22 %111 %123
+%122 = OpImageRead %22 %111 %123 NonPrivateTexel
 %124 = OpCompositeExtract %5 %122 0
 %126 = OpIAdd %5 %112 %39
-%125 = OpImageRead %22 %111 %126
+%125 = OpImageRead %22 %111 %126 NonPrivateTexel
 %127 = OpCompositeExtract %5 %125 0
 %129 = OpIAdd %5 %112 %21
-%128 = OpImageRead %22 %111 %129
+%128 = OpImageRead %22 %111 %129 NonPrivateTexel
 %130 = OpCompositeExtract %5 %128 0
 %132 = OpIAdd %5 %112 %67
-%131 = OpImageRead %22 %111 %132
+%131 = OpImageRead %22 %111 %132 NonPrivateTexel
 %133 = OpCompositeExtract %5 %131 0
 %135 = OpCompositeConstruct %134 %115 %118 %121 %124 %127 %130 %133
 %137 = OpBitcast %136 %135
@@ -268,49 +269,49 @@ OpImageWrite %65 %110 %109
 %148 = OpCompositeExtract %5 %142 5
 %149 = OpCompositeExtract %5 %142 6
 %150 = OpCompositeConstruct %22 %143 %143 %143 %143
-OpImageWrite %111 %141 %150
+OpImageWrite %111 %141 %150 NonPrivateTexel
 %151 = OpCompositeConstruct %22 %144 %144 %144 %144
 %152 = OpIAdd %5 %141 %27
-OpImageWrite %111 %152 %151
+OpImageWrite %111 %152 %151 NonPrivateTexel
 %153 = OpCompositeConstruct %22 %145 %145 %145 %145
 %154 = OpIAdd %5 %141 %31
-OpImageWrite %111 %154 %153
+OpImageWrite %111 %154 %153 NonPrivateTexel
 %155 = OpCompositeConstruct %22 %146 %146 %146 %146
 %156 = OpIAdd %5 %141 %35
-OpImageWrite %111 %156 %155
+OpImageWrite %111 %156 %155 NonPrivateTexel
 %157 = OpCompositeConstruct %22 %147 %147 %147 %147
 %158 = OpIAdd %5 %141 %39
-OpImageWrite %111 %158 %157
+OpImageWrite %111 %158 %157 NonPrivateTexel
 %159 = OpCompositeConstruct %22 %148 %148 %148 %148
 %160 = OpIAdd %5 %141 %21
-OpImageWrite %111 %160 %159
+OpImageWrite %111 %160 %159 NonPrivateTexel
 %161 = OpCompositeConstruct %22 %149 %149 %149 %149
 %162 = OpIAdd %5 %141 %67
-OpImageWrite %111 %162 %161
+OpImageWrite %111 %162 %161 NonPrivateTexel
 %163 = OpLoad %6 %11
 %164 = OpIMul %5 %18 %165
-%166 = OpImageRead %22 %163 %164
+%166 = OpImageRead %22 %163 %164 NonPrivateTexel
 %167 = OpCompositeExtract %5 %166 0
 %169 = OpIAdd %5 %164 %27
-%168 = OpImageRead %22 %163 %169
+%168 = OpImageRead %22 %163 %169 NonPrivateTexel
 %170 = OpCompositeExtract %5 %168 0
 %172 = OpIAdd %5 %164 %31
-%171 = OpImageRead %22 %163 %172
+%171 = OpImageRead %22 %163 %172 NonPrivateTexel
 %173 = OpCompositeExtract %5 %171 0
 %175 = OpIAdd %5 %164 %35
-%174 = OpImageRead %22 %163 %175
+%174 = OpImageRead %22 %163 %175 NonPrivateTexel
 %176 = OpCompositeExtract %5 %174 0
 %178 = OpIAdd %5 %164 %39
-%177 = OpImageRead %22 %163 %178
+%177 = OpImageRead %22 %163 %178 NonPrivateTexel
 %179 = OpCompositeExtract %5 %177 0
 %181 = OpIAdd %5 %164 %21
-%180 = OpImageRead %22 %163 %181
+%180 = OpImageRead %22 %163 %181 NonPrivateTexel
 %182 = OpCompositeExtract %5 %180 0
 %184 = OpIAdd %5 %164 %67
-%183 = OpImageRead %22 %163 %184
+%183 = OpImageRead %22 %163 %184 NonPrivateTexel
 %185 = OpCompositeExtract %5 %183 0
 %187 = OpIAdd %5 %164 %113
-%186 = OpImageRead %22 %163 %187
+%186 = OpImageRead %22 %163 %187 NonPrivateTexel
 %188 = OpCompositeExtract %5 %186 0
 %190 = OpCompositeConstruct %189 %167 %170 %173 %176 %179 %182 %185 %188
 %192 = OpBitcast %191 %190
@@ -326,28 +327,28 @@ OpImageWrite %111 %162 %161
 %204 = OpCompositeExtract %5 %197 6
 %205 = OpCompositeExtract %5 %197 7
 %206 = OpCompositeConstruct %22 %198 %198 %198 %198
-OpImageWrite %163 %196 %206
+OpImageWrite %163 %196 %206 NonPrivateTexel
 %207 = OpCompositeConstruct %22 %199 %199 %199 %199
 %208 = OpIAdd %5 %196 %27
-OpImageWrite %163 %208 %207
+OpImageWrite %163 %208 %207 NonPrivateTexel
 %209 = OpCompositeConstruct %22 %200 %200 %200 %200
 %210 = OpIAdd %5 %196 %31
-OpImageWrite %163 %210 %209
+OpImageWrite %163 %210 %209 NonPrivateTexel
 %211 = OpCompositeConstruct %22 %201 %201 %201 %201
 %212 = OpIAdd %5 %196 %35
-OpImageWrite %163 %212 %211
+OpImageWrite %163 %212 %211 NonPrivateTexel
 %213 = OpCompositeConstruct %22 %202 %202 %202 %202
 %214 = OpIAdd %5 %196 %39
-OpImageWrite %163 %214 %213
+OpImageWrite %163 %214 %213 NonPrivateTexel
 %215 = OpCompositeConstruct %22 %203 %203 %203 %203
 %216 = OpIAdd %5 %196 %21
-OpImageWrite %163 %216 %215
+OpImageWrite %163 %216 %215 NonPrivateTexel
 %217 = OpCompositeConstruct %22 %204 %204 %204 %204
 %218 = OpIAdd %5 %196 %67
-OpImageWrite %163 %218 %217
+OpImageWrite %163 %218 %217 NonPrivateTexel
 %219 = OpCompositeConstruct %22 %205 %205 %205 %205
 %220 = OpIAdd %5 %196 %113
-OpImageWrite %163 %220 %219
+OpImageWrite %163 %220 %219 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

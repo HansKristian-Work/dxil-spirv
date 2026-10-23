@@ -35,7 +35,8 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %12 %18 %20
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

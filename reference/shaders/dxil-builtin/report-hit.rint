@@ -41,15 +41,15 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint IntersectionKHR %3 "main" %8 %13 %15
 OpName %3 "main"
 OpName %6 ""
 OpName %8 "hit"
 OpDecorate %13 BuiltIn RayTmaxKHR
-OpDecorate %13 Volatile
 OpDecorate %15 BuiltIn RayTminKHR
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -75,7 +75,7 @@ OpDecorate %15 BuiltIn RayTminKHR
 %11 = OpVariable %9 Function
 OpBranch %31
 %31 = OpLabel
-%14 = OpLoad %5 %13
+%14 = OpLoad %5 %13 Volatile
 %16 = OpLoad %5 %15
 %18 = OpInBoundsAccessChain %17 %11 %20
 OpStore %18 %14

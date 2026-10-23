@@ -34,12 +34,13 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 41
+; Bound: 42
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %16
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -81,10 +82,11 @@ OpDecorate %33 Block
 %34 = OpTypePointer PhysicalStorageBuffer %33
 %36 = OpTypePointer PhysicalStorageBuffer %5
 %39 = OpConstant %5 1
+%40 = OpConstant %5 5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %40
-%40 = OpLabel
+OpBranch %41
+%41 = OpLabel
 %11 = OpAccessChain %10 %9 %12
 %13 = OpLoad %6 %11
 %18 = OpAccessChain %17 %16 %19
@@ -93,7 +95,7 @@ OpBranch %40
 %30 = OpFunctionCall %5 %25 %20 %31
 %35 = OpBitcast %34 %13
 %37 = OpAccessChain %36 %35 %19 %30
-%38 = OpAtomicCompareExchange %5 %37 %39 %19 %19 %12 %39
+%38 = OpAtomicCompareExchange %5 %37 %40 %19 %19 %12 %39
 OpReturn
 OpFunctionEnd
 %25 = OpFunction %5 None %22

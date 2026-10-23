@@ -5,8 +5,9 @@
 ; Schema: 0
 OpCapability Shader
 OpCapability FragmentShadingRateKHR
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_fragment_shading_rate"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Vertex %3 "main" %8 %11
 OpName %3 "main"
 OpName %8 "SV_Position"

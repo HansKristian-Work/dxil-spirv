@@ -70,9 +70,10 @@ void main()
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformArithmetic
+OpCapability VulkanMemoryModel
 OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %9 %10 %12
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -151,7 +152,7 @@ OpBranch %188
 %27 = OpIMul %5 %16 %28
 %37 = OpFunctionCall %5 %32 %27 %38
 %40 = OpCompositeConstruct %39 %20 %20 %20 %20
-OpImageWrite %15 %37 %40
+OpImageWrite %15 %37 %40 NonPrivateTexel
 %42 = OpIsHelperInvocationEXT %17
 %44 = OpSelect %5 %42 %43 %16
 %41 = OpGroupNonUniformIMul %5 %21 Reduce %44
@@ -160,7 +161,7 @@ OpImageWrite %15 %37 %40
 %47 = OpIAdd %5 %46 %43
 %48 = OpFunctionCall %5 %32 %47 %38
 %49 = OpCompositeConstruct %39 %41 %41 %41 %41
-OpImageWrite %15 %48 %49
+OpImageWrite %15 %48 %49 NonPrivateTexel
 %51 = OpIsHelperInvocationEXT %17
 %52 = OpSelect %5 %51 %35 %16
 %50 = OpGroupNonUniformBitwiseAnd %5 %21 Reduce %52
@@ -169,7 +170,7 @@ OpImageWrite %15 %48 %49
 %56 = OpIAdd %5 %55 %57
 %58 = OpFunctionCall %5 %32 %56 %38
 %59 = OpCompositeConstruct %39 %50 %50 %50 %50
-OpImageWrite %15 %58 %59
+OpImageWrite %15 %58 %59 NonPrivateTexel
 %61 = OpIsHelperInvocationEXT %17
 %62 = OpSelect %5 %61 %23 %16
 %60 = OpGroupNonUniformBitwiseOr %5 %21 Reduce %62
@@ -178,7 +179,7 @@ OpImageWrite %15 %58 %59
 %66 = OpIAdd %5 %65 %21
 %67 = OpFunctionCall %5 %32 %66 %38
 %68 = OpCompositeConstruct %39 %60 %60 %60 %60
-OpImageWrite %15 %67 %68
+OpImageWrite %15 %67 %68 NonPrivateTexel
 %70 = OpIsHelperInvocationEXT %17
 %71 = OpSelect %5 %70 %23 %16
 %69 = OpGroupNonUniformBitwiseXor %5 %21 Reduce %71
@@ -187,7 +188,7 @@ OpImageWrite %15 %67 %68
 %75 = OpIAdd %5 %74 %38
 %76 = OpFunctionCall %5 %32 %75 %38
 %77 = OpCompositeConstruct %39 %69 %69 %69 %69
-OpImageWrite %15 %76 %77
+OpImageWrite %15 %76 %77 NonPrivateTexel
 %79 = OpIsHelperInvocationEXT %17
 %80 = OpSelect %5 %79 %35 %16
 %78 = OpGroupNonUniformUMin %5 %21 Reduce %80
@@ -196,7 +197,7 @@ OpImageWrite %15 %76 %77
 %84 = OpIAdd %5 %83 %85
 %86 = OpFunctionCall %5 %32 %84 %38
 %87 = OpCompositeConstruct %39 %78 %78 %78 %78
-OpImageWrite %15 %86 %87
+OpImageWrite %15 %86 %87 NonPrivateTexel
 %89 = OpIsHelperInvocationEXT %17
 %90 = OpSelect %5 %89 %23 %16
 %88 = OpGroupNonUniformUMax %5 %21 Reduce %90
@@ -205,14 +206,14 @@ OpImageWrite %15 %86 %87
 %94 = OpIAdd %5 %93 %95
 %96 = OpFunctionCall %5 %32 %94 %38
 %97 = OpCompositeConstruct %39 %88 %88 %88 %88
-OpImageWrite %15 %96 %97
+OpImageWrite %15 %96 %97 NonPrivateTexel
 %99 = OpIsHelperInvocationEXT %17
 %100 = OpSelect %5 %99 %23 %16
 %98 = OpGroupNonUniformIAdd %5 %21 Reduce %100
 %101 = OpIMul %5 %16 %28
 %102 = OpFunctionCall %5 %32 %101 %38
 %103 = OpCompositeConstruct %39 %98 %98 %98 %98
-OpImageWrite %14 %102 %103
+OpImageWrite %14 %102 %103 NonPrivateTexel
 %105 = OpIsHelperInvocationEXT %17
 %106 = OpSelect %5 %105 %43 %16
 %104 = OpGroupNonUniformIMul %5 %21 Reduce %106
@@ -220,7 +221,7 @@ OpImageWrite %14 %102 %103
 %108 = OpIAdd %5 %107 %43
 %109 = OpFunctionCall %5 %32 %108 %38
 %110 = OpCompositeConstruct %39 %104 %104 %104 %104
-OpImageWrite %14 %109 %110
+OpImageWrite %14 %109 %110 NonPrivateTexel
 %112 = OpIsHelperInvocationEXT %17
 %113 = OpSelect %5 %112 %35 %16
 %111 = OpGroupNonUniformBitwiseAnd %5 %21 Reduce %113
@@ -228,7 +229,7 @@ OpImageWrite %14 %109 %110
 %115 = OpIAdd %5 %114 %57
 %116 = OpFunctionCall %5 %32 %115 %38
 %117 = OpCompositeConstruct %39 %111 %111 %111 %111
-OpImageWrite %14 %116 %117
+OpImageWrite %14 %116 %117 NonPrivateTexel
 %119 = OpIsHelperInvocationEXT %17
 %120 = OpSelect %5 %119 %23 %16
 %118 = OpGroupNonUniformBitwiseOr %5 %21 Reduce %120
@@ -236,7 +237,7 @@ OpImageWrite %14 %116 %117
 %122 = OpIAdd %5 %121 %21
 %123 = OpFunctionCall %5 %32 %122 %38
 %124 = OpCompositeConstruct %39 %118 %118 %118 %118
-OpImageWrite %14 %123 %124
+OpImageWrite %14 %123 %124 NonPrivateTexel
 %126 = OpIsHelperInvocationEXT %17
 %127 = OpSelect %5 %126 %23 %16
 %125 = OpGroupNonUniformBitwiseXor %5 %21 Reduce %127
@@ -244,7 +245,7 @@ OpImageWrite %14 %123 %124
 %129 = OpIAdd %5 %128 %38
 %130 = OpFunctionCall %5 %32 %129 %38
 %131 = OpCompositeConstruct %39 %125 %125 %125 %125
-OpImageWrite %14 %130 %131
+OpImageWrite %14 %130 %131 NonPrivateTexel
 %133 = OpIsHelperInvocationEXT %17
 %135 = OpSelect %5 %133 %134 %16
 %132 = OpGroupNonUniformSMin %5 %21 Reduce %135
@@ -252,7 +253,7 @@ OpImageWrite %14 %130 %131
 %137 = OpIAdd %5 %136 %85
 %138 = OpFunctionCall %5 %32 %137 %38
 %139 = OpCompositeConstruct %39 %132 %132 %132 %132
-OpImageWrite %14 %138 %139
+OpImageWrite %14 %138 %139 NonPrivateTexel
 %141 = OpIsHelperInvocationEXT %17
 %143 = OpSelect %5 %141 %142 %16
 %140 = OpGroupNonUniformSMax %5 %21 Reduce %143
@@ -260,7 +261,7 @@ OpImageWrite %14 %138 %139
 %145 = OpIAdd %5 %144 %95
 %146 = OpFunctionCall %5 %32 %145 %38
 %147 = OpCompositeConstruct %39 %140 %140 %140 %140
-OpImageWrite %14 %146 %147
+OpImageWrite %14 %146 %147 NonPrivateTexel
 %149 = OpConvertUToF %148 %16
 %151 = OpIsHelperInvocationEXT %17
 %153 = OpSelect %148 %151 %152 %149
@@ -269,7 +270,7 @@ OpImageWrite %14 %146 %147
 %155 = OpIMul %5 %16 %28
 %156 = OpFunctionCall %5 %32 %155 %38
 %157 = OpCompositeConstruct %39 %154 %154 %154 %154
-OpImageWrite %13 %156 %157
+OpImageWrite %13 %156 %157 NonPrivateTexel
 %159 = OpIsHelperInvocationEXT %17
 %161 = OpSelect %148 %159 %160 %149
 %158 = OpGroupNonUniformFMul %148 %21 Reduce %161
@@ -278,7 +279,7 @@ OpImageWrite %13 %156 %157
 %164 = OpIAdd %5 %163 %43
 %165 = OpFunctionCall %5 %32 %164 %38
 %166 = OpCompositeConstruct %39 %162 %162 %162 %162
-OpImageWrite %13 %165 %166
+OpImageWrite %13 %165 %166 NonPrivateTexel
 %168 = OpIsHelperInvocationEXT %17
 %170 = OpSelect %148 %168 %169 %149
 %167 = OpGroupNonUniformFMin %148 %21 Reduce %170
@@ -287,7 +288,7 @@ OpImageWrite %13 %165 %166
 %173 = OpIAdd %5 %172 %85
 %174 = OpFunctionCall %5 %32 %173 %38
 %175 = OpCompositeConstruct %39 %171 %171 %171 %171
-OpImageWrite %13 %174 %175
+OpImageWrite %13 %174 %175 NonPrivateTexel
 %177 = OpIsHelperInvocationEXT %17
 %179 = OpSelect %148 %177 %178 %149
 %176 = OpGroupNonUniformFMax %148 %21 Reduce %179
@@ -296,7 +297,7 @@ OpImageWrite %13 %174 %175
 %182 = OpIAdd %5 %181 %95
 %183 = OpFunctionCall %5 %32 %182 %38
 %184 = OpCompositeConstruct %39 %180 %180 %180 %180
-OpImageWrite %13 %183 %184
+OpImageWrite %13 %183 %184 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %32 = OpFunction %5 None %29

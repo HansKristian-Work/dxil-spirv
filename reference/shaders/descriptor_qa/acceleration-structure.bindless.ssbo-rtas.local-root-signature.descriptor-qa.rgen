@@ -138,11 +138,12 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint RayGenerationKHR %3 "main" %8 %16 %20 %25 %26 %27 %28 %39 %79
 OpName %3 "main"
 OpName %6 "RootConstants"
@@ -377,28 +378,28 @@ OpFunctionEnd
 %47 = OpFunctionParameter %5
 %49 = OpLabel
 %51 = OpAccessChain %50 %39 %52
-%53 = OpAtomicIAdd %5 %51 %54 %31 %54
+%53 = OpAtomicIAdd %5 %51 %9 %31 %54
 %56 = OpIEqual %55 %53 %31
 OpSelectionMerge %58 None
 OpBranchConditional %56 %57 %58
 %57 = OpLabel
 %59 = OpAccessChain %50 %39 %60
-OpStore %59 %43
+OpStore %59 %43 NonPrivatePointer
 %61 = OpAccessChain %50 %39 %54
-OpStore %61 %42
+OpStore %61 %42 NonPrivatePointer
 %62 = OpAccessChain %50 %39 %63
-OpStore %62 %44
+OpStore %62 %44 NonPrivatePointer
 %64 = OpAccessChain %50 %39 %11
-OpStore %64 %45
+OpStore %64 %45 NonPrivatePointer
 %65 = OpAccessChain %50 %39 %66
-OpStore %65 %46
+OpStore %65 %46 NonPrivatePointer
 %67 = OpAccessChain %50 %39 %9
-OpStore %67 %47
+OpStore %67 %47 NonPrivatePointer
 %71 = OpAccessChain %70 %39 %31
-OpStore %71 %69
-OpMemoryBarrier %54 %72
+OpStore %71 %69 NonPrivatePointer
+OpMemoryBarrier %9 %72
 %73 = OpAccessChain %50 %39 %74
-OpStore %73 %41
+OpStore %73 %41 NonPrivatePointer
 OpBranch %58
 %58 = OpLabel
 OpReturn

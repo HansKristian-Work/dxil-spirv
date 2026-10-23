@@ -1,96 +1,3 @@
-#version 460
-layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
-
-layout(set = 0, binding = 0, r32f) uniform coherent image2DMS _8;
-layout(set = 0, binding = 1, r32f) uniform coherent image2DMSArray _11;
-layout(set = 0, binding = 2, r32ui) uniform writeonly uimageBuffer _15;
-
-void main()
-{
-    uint _33 = gl_GlobalInvocationID.x ^ 1u;
-    uint _34 = gl_GlobalInvocationID.y ^ 2u;
-    uint _35 = gl_GlobalInvocationID.z ^ 3u;
-    uint _44 = ((_34 << 4u) + (_33 << 2u)) + (_35 << 6u);
-    float _45 = float(_44);
-    float _47 = float(_44 | 1u);
-    float _49 = float(_44 | 2u);
-    float _51 = float(_44 | 3u);
-    if (gl_GlobalInvocationID.z == 3u)
-    {
-        imageStore(_8, ivec2(uvec2(_33, _34)), 0u, vec4(_45));
-        imageStore(_8, ivec2(uvec2(_33, _34)), 1u, vec4(_47));
-        imageStore(_8, ivec2(uvec2(_33, _34)), 2u, vec4(_49));
-        imageStore(_8, ivec2(uvec2(_33, _34)), 3u, vec4(_51));
-    }
-    else
-    {
-        imageStore(_11, ivec3(uvec3(_33, _34, _35)), 0u, vec4(_45));
-        imageStore(_11, ivec3(uvec3(_33, _34, _35)), 1u, vec4(_47));
-        imageStore(_11, ivec3(uvec3(_33, _34, _35)), 2u, vec4(_49));
-        imageStore(_11, ivec3(uvec3(_33, _34, _35)), 3u, vec4(_51));
-    }
-    groupMemoryBarrier();
-    barrier();
-    float _32[4];
-    float _139;
-    float _140;
-    float _141;
-    float _142;
-    if (gl_GlobalInvocationID.z == 0u)
-    {
-        vec4 _102 = imageLoad(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), 0u);
-        float _104 = _102.x;
-        _32[0u] = _104;
-        vec4 _105 = imageLoad(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), 1u);
-        float _107 = _105.x;
-        _32[1u] = _107;
-        vec4 _109 = imageLoad(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), 2u);
-        float _111 = _109.x;
-        _32[2u] = _111;
-        vec4 _113 = imageLoad(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), 3u);
-        float _115 = _113.x;
-        _32[3u] = _115;
-        _139 = _115;
-        _140 = _111;
-        _141 = _107;
-        _142 = _104;
-    }
-    else
-    {
-        _32[0u] = imageLoad(_11, ivec3(uvec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, gl_GlobalInvocationID.z)), 0u).x;
-        uint _144 = 1u;
-        uint _87;
-        bool _93;
-        for (;;)
-        {
-            _32[_144] = imageLoad(_11, ivec3(uvec3(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, gl_GlobalInvocationID.z)), _144).x;
-            _87 = _144 + 1u;
-            _93 = _87 == 4u;
-            if (_93)
-            {
-                break;
-            }
-            else
-            {
-                _144 = _87;
-                continue;
-            }
-        }
-        _139 = _32[3u];
-        _140 = _32[2u];
-        _141 = _32[1u];
-        _142 = _32[0u];
-    }
-    uint _126 = (((gl_GlobalInvocationID.y << 2u) + gl_GlobalInvocationID.x) + (gl_GlobalInvocationID.z << 4u)) * 4u;
-    imageStore(_15, int(_126), uvec4(floatBitsToUint(_142)));
-    imageStore(_15, int(_126 + 1u), uvec4(floatBitsToUint(_141)));
-    imageStore(_15, int(_126 + 2u), uvec4(floatBitsToUint(_140)));
-    imageStore(_15, int(_126 + 3u), uvec4(floatBitsToUint(_139)));
-}
-
-
-#if 0
-// SPIR-V disassembly
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
@@ -101,16 +8,15 @@ OpCapability StorageImageMultisample
 OpCapability ImageBuffer
 OpCapability ImageMSArray
 OpCapability StorageImageWriteWithoutFormat
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %11 %15 %18
 OpExecutionMode %3 LocalSize 4 4 4
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
-OpDecorate %8 Coherent
 OpDecorate %11 DescriptorSet 0
 OpDecorate %11 Binding 1
-OpDecorate %11 Coherent
 OpDecorate %15 DescriptorSet 0
 OpDecorate %15 Binding 2
 OpDecorate %15 NonReadable
@@ -143,7 +49,7 @@ OpDecorate %18 BuiltIn GlobalInvocationId
 %40 = OpConstant %12 6
 %54 = OpTypeVector %5 4
 %66 = OpTypeVector %12 2
-%78 = OpConstant %12 2120
+%78 = OpConstant %12 26696
 %80 = OpTypePointer Function %5
 %131 = OpTypeVector %12 4
 %143 = OpTypePointer Function %12
@@ -185,37 +91,37 @@ OpBranchConditional %38 %147 %146
 %52 = OpLoad %9 %11
 %53 = OpCompositeConstruct %16 %33 %34 %35
 %55 = OpCompositeConstruct %54 %45 %45 %45 %45
-OpImageWrite %52 %53 %55 Sample %21
+OpImageWrite %52 %53 %55 Sample|NonPrivateTexel %21
 %56 = OpLoad %9 %11
 %57 = OpCompositeConstruct %16 %33 %34 %35
 %58 = OpCompositeConstruct %54 %47 %47 %47 %47
-OpImageWrite %56 %57 %58 Sample %24
+OpImageWrite %56 %57 %58 Sample|NonPrivateTexel %24
 %59 = OpLoad %9 %11
 %60 = OpCompositeConstruct %16 %33 %34 %35
 %61 = OpCompositeConstruct %54 %49 %49 %49 %49
-OpImageWrite %59 %60 %61 Sample %27
+OpImageWrite %59 %60 %61 Sample|NonPrivateTexel %27
 %62 = OpLoad %9 %11
 %63 = OpCompositeConstruct %16 %33 %34 %35
 %64 = OpCompositeConstruct %54 %51 %51 %51 %51
-OpImageWrite %62 %63 %64 Sample %36
+OpImageWrite %62 %63 %64 Sample|NonPrivateTexel %36
 OpBranch %148
 %147 = OpLabel
 %65 = OpLoad %6 %8
 %67 = OpCompositeConstruct %66 %33 %34
 %68 = OpCompositeConstruct %54 %45 %45 %45 %45
-OpImageWrite %65 %67 %68 Sample %21
+OpImageWrite %65 %67 %68 Sample|NonPrivateTexel %21
 %69 = OpLoad %6 %8
 %70 = OpCompositeConstruct %66 %33 %34
 %71 = OpCompositeConstruct %54 %47 %47 %47 %47
-OpImageWrite %69 %70 %71 Sample %24
+OpImageWrite %69 %70 %71 Sample|NonPrivateTexel %24
 %72 = OpLoad %6 %8
 %73 = OpCompositeConstruct %66 %33 %34
 %74 = OpCompositeConstruct %54 %49 %49 %49 %49
-OpImageWrite %72 %73 %74 Sample %27
+OpImageWrite %72 %73 %74 Sample|NonPrivateTexel %27
 %75 = OpLoad %6 %8
 %76 = OpCompositeConstruct %66 %33 %34
 %77 = OpCompositeConstruct %54 %51 %51 %51 %51
-OpImageWrite %75 %76 %77 Sample %36
+OpImageWrite %75 %76 %77 Sample|NonPrivateTexel %36
 OpBranch %148
 %148 = OpLabel
 OpControlBarrier %27 %27 %78
@@ -226,7 +132,7 @@ OpBranchConditional %79 %154 %149
 %149 = OpLabel
 %82 = OpLoad %9 %11
 %84 = OpCompositeConstruct %16 %22 %25 %28
-%83 = OpImageRead %54 %82 %84 Sample %21
+%83 = OpImageRead %54 %82 %84 Sample|NonPrivateTexel %21
 %85 = OpCompositeExtract %5 %83 0
 OpStore %81 %85
 OpStore %144 %24
@@ -235,7 +141,7 @@ OpBranch %150
 %86 = OpLoad %12 %144
 %88 = OpLoad %9 %11
 %90 = OpCompositeConstruct %16 %22 %25 %28
-%89 = OpImageRead %54 %88 %90 Sample %86
+%89 = OpImageRead %54 %88 %90 Sample|NonPrivateTexel %86
 %91 = OpCompositeExtract %5 %89 0
 %92 = OpAccessChain %80 %32 %86
 OpStore %92 %91
@@ -267,21 +173,21 @@ OpBranch %155
 %154 = OpLabel
 %101 = OpLoad %6 %8
 %103 = OpCompositeConstruct %66 %22 %25
-%102 = OpImageRead %54 %101 %103 Sample %21
+%102 = OpImageRead %54 %101 %103 Sample|NonPrivateTexel %21
 %104 = OpCompositeExtract %5 %102 0
 OpStore %81 %104
 %106 = OpCompositeConstruct %66 %22 %25
-%105 = OpImageRead %54 %101 %106 Sample %24
+%105 = OpImageRead %54 %101 %106 Sample|NonPrivateTexel %24
 %107 = OpCompositeExtract %5 %105 0
 %108 = OpAccessChain %80 %32 %24
 OpStore %108 %107
 %110 = OpCompositeConstruct %66 %22 %25
-%109 = OpImageRead %54 %101 %110 Sample %27
+%109 = OpImageRead %54 %101 %110 Sample|NonPrivateTexel %27
 %111 = OpCompositeExtract %5 %109 0
 %112 = OpAccessChain %80 %32 %27
 OpStore %112 %111
 %114 = OpCompositeConstruct %66 %22 %25
-%113 = OpImageRead %54 %101 %114 Sample %36
+%113 = OpImageRead %54 %101 %114 Sample|NonPrivateTexel %36
 %115 = OpCompositeExtract %5 %113 0
 %116 = OpAccessChain %80 %32 %36
 OpStore %116 %115
@@ -308,16 +214,16 @@ OpBranch %156
 %129 = OpBitcast %12 %118
 %130 = OpBitcast %12 %117
 %132 = OpCompositeConstruct %131 %127 %127 %127 %127
-OpImageWrite %125 %126 %132
+OpImageWrite %125 %126 %132 NonPrivateTexel
 %133 = OpCompositeConstruct %131 %128 %128 %128 %128
 %134 = OpIAdd %12 %126 %24
-OpImageWrite %125 %134 %133
+OpImageWrite %125 %134 %133 NonPrivateTexel
 %135 = OpCompositeConstruct %131 %129 %129 %129 %129
 %136 = OpIAdd %12 %126 %27
-OpImageWrite %125 %136 %135
+OpImageWrite %125 %136 %135 NonPrivateTexel
 %137 = OpCompositeConstruct %131 %130 %130 %130 %130
 %138 = OpIAdd %12 %126 %36
-OpImageWrite %125 %138 %137
+OpImageWrite %125 %138 %137 NonPrivateTexel
 OpReturn
 OpFunctionEnd
-#endif
+

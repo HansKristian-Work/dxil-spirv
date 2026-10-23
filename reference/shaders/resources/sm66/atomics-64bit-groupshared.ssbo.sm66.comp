@@ -66,7 +66,8 @@ void main()
 OpCapability Shader
 OpCapability Int64
 OpCapability Int64Atomics
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %14 %17
 OpExecutionMode %3 LocalSize 128 1 1
 OpName %3 "main"
@@ -103,7 +104,7 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %24 = OpTypePointer Workgroup %5
 %26 = OpConstant %5 0
 %27 = OpConstant %10 2
-%28 = OpConstant %10 264
+%28 = OpConstant %10 24840
 %30 = OpConstant %10 3
 %43 = OpConstant %5 10
 %45 = OpTypeStruct %5 %22
@@ -123,7 +124,7 @@ OpSelectionMerge %70 None
 OpBranchConditional %23 %69 %70
 %69 = OpLabel
 %25 = OpAccessChain %24 %14 %21
-OpStore %25 %26
+OpStore %25 %26 NonPrivatePointer
 OpBranch %70
 %70 = OpLabel
 OpControlBarrier %27 %27 %28
@@ -152,11 +153,11 @@ OpSelectionMerge %72 None
 OpBranchConditional %23 %71 %72
 %71 = OpLabel
 %53 = OpAccessChain %24 %14 %21
-%54 = OpLoad %5 %53
+%54 = OpLoad %5 %53 NonPrivatePointer
 %55 = OpShiftLeftLogical %10 %21 %30
 %64 = OpFunctionCall %10 %59 %21 %65
 %67 = OpAccessChain %66 %9 %20 %64
-OpStore %67 %54
+OpStore %67 %54 NonPrivatePointer
 OpBranch %72
 %72 = OpLabel
 OpBranch %73

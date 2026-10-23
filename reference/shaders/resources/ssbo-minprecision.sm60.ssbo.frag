@@ -35,7 +35,8 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability Int16
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %9 %13 %16 %18
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -105,7 +106,7 @@ OpBranch %42
 %37 = OpFAdd %27 %36 %29
 %38 = OpBitcast %5 %37
 %39 = OpAccessChain %23 %13 %25 %22
-OpStore %39 %38
+OpStore %39 %38 NonPrivatePointer
 %41 = OpBitcast %14 %40
 OpStore %18 %41
 OpReturn

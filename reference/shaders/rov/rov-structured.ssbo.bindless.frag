@@ -17,7 +17,7 @@ layout(pixel_interlock_ordered) in;
 #endif
 layout(early_fragment_tests) in;
 
-layout(set = 4, binding = 0, std430) coherent buffer SSBO
+layout(set = 4, binding = 0, std430) buffer SSBO
 {
     uvec4 _m0[];
 } _14[];
@@ -38,8 +38,8 @@ void main()
 {
     uint _36 = (uint(gl_FragCoord.y) * 1000u) + uint(gl_FragCoord.x);
     SPIRV_Cross_beginInvocationInterlock();
-    vec4 _40 = uintBitsToFloat(_14[registers._m4]._m0[_36]);
-    _14[registers._m4]._m0[_36] = uvec4(floatBitsToUint(_40.x + 1.0), floatBitsToUint(_40.y + 2.0), floatBitsToUint(_40.z + 3.0), floatBitsToUint(_40.w + 4.0));
+    vec4 _41 = uintBitsToFloat(_14[registers._m4]._m0[_36]);
+    _14[registers._m4]._m0[_36] = uvec4(floatBitsToUint(_41.x + 1.0), floatBitsToUint(_41.y + 2.0), floatBitsToUint(_41.z + 3.0), floatBitsToUint(_41.w + 4.0));
     SPIRV_Cross_endInvocationInterlock();
 }
 
@@ -49,16 +49,17 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 60
+; Bound: 61
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_EXT_fragment_shader_interlock"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint Fragment %3 "main" %8 %14 %18
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
@@ -82,7 +83,6 @@ OpMemberDecorate %11 0 Offset 0
 OpDecorate %11 Block
 OpDecorate %14 DescriptorSet 4
 OpDecorate %14 Binding 0
-OpDecorate %14 Coherent
 OpDecorate %18 BuiltIn FragCoord
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -108,14 +108,15 @@ OpDecorate %18 BuiltIn FragCoord
 %30 = OpConstant %5 1
 %35 = OpConstant %5 1000
 %37 = OpTypePointer StorageBuffer %9
-%46 = OpConstant %15 1
-%48 = OpConstant %15 2
-%50 = OpConstant %15 3
-%52 = OpConstant %15 4
+%40 = OpConstant %5 5
+%47 = OpConstant %15 1
+%49 = OpConstant %15 2
+%51 = OpConstant %15 3
+%53 = OpConstant %15 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %59
-%59 = OpLabel
+OpBranch %60
+%60 = OpLabel
 %22 = OpAccessChain %21 %8 %23
 %24 = OpLoad %5 %22
 %20 = OpAccessChain %19 %14 %24
@@ -129,23 +130,23 @@ OpBranch %59
 %36 = OpIAdd %5 %34 %32
 %38 = OpAccessChain %37 %20 %27 %36
 OpBeginInvocationInterlockEXT
-%39 = OpLoad %9 %38
-%40 = OpBitcast %16 %39
-%41 = OpCompositeExtract %15 %40 0
-%42 = OpCompositeExtract %15 %40 1
-%43 = OpCompositeExtract %15 %40 2
-%44 = OpCompositeExtract %15 %40 3
-%45 = OpFAdd %15 %41 %46
-%47 = OpFAdd %15 %42 %48
-%49 = OpFAdd %15 %43 %50
-%51 = OpFAdd %15 %44 %52
-%53 = OpBitcast %5 %45
-%54 = OpBitcast %5 %47
-%55 = OpBitcast %5 %49
-%56 = OpBitcast %5 %51
-%57 = OpCompositeConstruct %9 %53 %54 %55 %56
-%58 = OpAccessChain %37 %20 %27 %36
-OpStore %58 %57
+%39 = OpLoad %9 %38 MakePointerVisible|NonPrivatePointer %40
+%41 = OpBitcast %16 %39
+%42 = OpCompositeExtract %15 %41 0
+%43 = OpCompositeExtract %15 %41 1
+%44 = OpCompositeExtract %15 %41 2
+%45 = OpCompositeExtract %15 %41 3
+%46 = OpFAdd %15 %42 %47
+%48 = OpFAdd %15 %43 %49
+%50 = OpFAdd %15 %44 %51
+%52 = OpFAdd %15 %45 %53
+%54 = OpBitcast %5 %46
+%55 = OpBitcast %5 %48
+%56 = OpBitcast %5 %50
+%57 = OpBitcast %5 %52
+%58 = OpCompositeConstruct %9 %54 %55 %56 %57
+%59 = OpAccessChain %37 %20 %27 %36
+OpStore %59 %58 MakePointerAvailable|NonPrivatePointer %40
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

@@ -72,11 +72,12 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 160
+; Bound: 161
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint TessellationControl %3 "main" %10 %13 %18 %22 %26 %28 %30 %33 %36 %39 %42 %45 %48 %67
 OpExecutionMode %3 Triangles
 OpExecutionMode %3 SpacingEqual
@@ -199,28 +200,29 @@ OpDecorate %67 BuiltIn InvocationId
 %146 = OpConstant %6 82
 %148 = OpConstant %6 83
 %151 = OpTypeBool
+%153 = OpConstant %6 4104
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %154
-%154 = OpLabel
+OpBranch %155
+%155 = OpLabel
 %149 = OpFunctionCall %1 %49
 %150 = OpLoad %6 %67
 %152 = OpIEqual %151 %150 %55
-OpControlBarrier %23 %19 %55
-OpSelectionMerge %156 None
-OpBranchConditional %152 %155 %156
-%155 = OpLabel
-%153 = OpFunctionCall %1 %51
-OpBranch %156
+OpControlBarrier %23 %23 %153
+OpSelectionMerge %157 None
+OpBranchConditional %152 %156 %157
 %156 = OpLabel
+%154 = OpFunctionCall %1 %51
 OpBranch %157
 %157 = OpLabel
+OpBranch %158
+%158 = OpLabel
 OpReturn
 OpFunctionEnd
 %49 = OpFunction %1 None %2
 %50 = OpLabel
-OpBranch %158
-%158 = OpLabel
+OpBranch %159
+%159 = OpLabel
 %54 = OpAccessChain %53 %10 %55
 %56 = OpLoad %5 %54
 %57 = OpBitcast %6 %56
@@ -236,8 +238,8 @@ OpReturn
 OpFunctionEnd
 %51 = OpFunction %1 None %2
 %52 = OpLabel
-OpBranch %159
-%159 = OpLabel
+OpBranch %160
+%160 = OpLabel
 %69 = OpAccessChain %65 %18 %55
 %70 = OpLoad %14 %69
 %71 = OpAccessChain %65 %18 %61

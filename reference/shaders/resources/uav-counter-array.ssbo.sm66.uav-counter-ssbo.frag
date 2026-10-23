@@ -30,8 +30,9 @@ void main()
 OpCapability Shader
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %11 %15 %17 %19
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -87,7 +88,7 @@ OpBranch %30
 %21 = OpIAdd %5 %20 %22
 %24 = OpAccessChain %23 %11 %20
 %26 = OpAccessChain %25 %15 %20 %27
-%28 = OpAtomicIAdd %5 %26 %29 %27 %29
+%28 = OpAtomicIAdd %5 %26 %8 %27 %29
 OpStore %19 %28
 OpReturn
 OpFunctionEnd

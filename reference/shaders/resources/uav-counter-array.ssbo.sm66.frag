@@ -29,8 +29,9 @@ OpCapability StorageBufferArrayDynamicIndexing
 OpCapability ImageBuffer
 OpCapability StorageTexelBufferArrayDynamicIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %11 %15 %17 %19
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -84,7 +85,7 @@ OpBranch %32
 %24 = OpAccessChain %23 %11 %20
 %26 = OpAccessChain %25 %15 %20
 %28 = OpImageTexelPointer %27 %26 %29 %29
-%30 = OpAtomicIAdd %5 %28 %31 %29 %31
+%30 = OpAtomicIAdd %5 %28 %8 %29 %31
 OpStore %19 %30
 OpReturn
 OpFunctionEnd

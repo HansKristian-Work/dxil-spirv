@@ -13,7 +13,7 @@ layout(set = 1, binding = 0, std430) restrict readonly buffer _16_19
     uvec4 _m0[];
 } _19[];
 
-layout(set = 4, binding = 0, std430) coherent buffer _21_24
+layout(set = 4, binding = 0, std430) buffer _21_24
 {
     uvec4 _m0[];
 } _24[];
@@ -97,10 +97,11 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %13 %19 %24 %29 %34 %42 %76
 OpExecutionMode %3 LocalSize 256 1 1
 OpName %3 "main"
@@ -140,7 +141,6 @@ OpMemberDecorate %21 0 Offset 0
 OpDecorate %21 Block
 OpDecorate %24 DescriptorSet 4
 OpDecorate %24 Binding 0
-OpDecorate %24 Coherent
 OpDecorate %25 ArrayStride 16
 OpMemberDecorate %26 0 Offset 0
 OpDecorate %26 Block
@@ -219,7 +219,7 @@ OpDecorate %76 BuiltIn LocalInvocationIndex
 %92 = OpTypeBool
 %97 = OpConstant %5 8
 %99 = OpTypePointer StorageBuffer %5
-%102 = OpConstant %5 2120
+%102 = OpConstant %5 26696
 %104 = OpConstant %5 256
 %147 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
@@ -255,7 +255,7 @@ OpBranch %149
 %82 = OpBitcast %5 %78
 %83 = OpCompositeConstruct %14 %79 %80 %81 %82
 %85 = OpAccessChain %84 %58 %86 %77
-OpStore %85 %83
+OpStore %85 %83 NonPrivatePointer
 %88 = OpAccessChain %87 %71 %86 %86
 %89 = OpLoad %36 %88
 %90 = OpBitcast %14 %89
@@ -288,7 +288,7 @@ OpBranchConditional %103 %153 %154
 %110 = OpCompositeExtract %35 %107 2
 %111 = OpCompositeExtract %35 %107 3
 %112 = OpAccessChain %84 %58 %86 %101
-%113 = OpLoad %14 %112
+%113 = OpLoad %14 %112 NonPrivatePointer
 %114 = OpBitcast %36 %113
 %115 = OpCompositeExtract %35 %114 0
 %116 = OpCompositeExtract %35 %114 1
@@ -304,7 +304,7 @@ OpBranchConditional %103 %153 %154
 %126 = OpBitcast %5 %122
 %127 = OpCompositeConstruct %14 %123 %124 %125 %126
 %128 = OpAccessChain %84 %58 %86 %101
-OpStore %128 %127
+OpStore %128 %127 NonPrivatePointer
 OpBranch %154
 %154 = OpLabel
 %95 = OpIAdd %5 %94 %56
@@ -326,7 +326,7 @@ OpBranch %157
 OpBranch %158
 %158 = OpLabel
 %134 = OpAccessChain %84 %52 %86 %77
-%135 = OpLoad %14 %134
+%135 = OpLoad %14 %134 NonPrivatePointer
 %136 = OpBitcast %36 %135
 %137 = OpCompositeExtract %35 %136 0
 %138 = OpCompositeExtract %35 %136 1
@@ -338,7 +338,7 @@ OpBranch %158
 %144 = OpBitcast %5 %140
 %145 = OpCompositeConstruct %14 %141 %142 %143 %144
 %146 = OpAccessChain %84 %44 %86 %77
-OpStore %146 %145
+OpStore %146 %145 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

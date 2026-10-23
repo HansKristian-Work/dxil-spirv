@@ -22,17 +22,17 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     uint _60 = imageAtomicAdd(_8, int(TEXCOORD.x), 1u);
-    uint _64 = imageAtomicAnd(_11, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), 2u);
-    uint _68 = imageAtomicExchange(_14, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), 3u);
-    uint _73 = imageAtomicMax(_17, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), 4u);
-    uint _78 = imageAtomicMin(_20, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), 5u);
+    uint _65 = imageAtomicAnd(_11, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), 2u);
+    uint _69 = imageAtomicExchange(_14, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), 3u);
+    uint _74 = imageAtomicMax(_17, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), 4u);
+    uint _79 = imageAtomicMin(_20, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), 5u);
     uint _82 = imageAtomicOr(_23, int(TEXCOORD.x), 6u);
     uint _86 = imageAtomicXor(_23, int(TEXCOORD.x), 7u);
     int _91 = imageAtomicMin(_27, int(TEXCOORD.x), int(8u));
     int _98 = imageAtomicMax(_30, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(9u));
     uint _106 = imageAtomicAdd(_31, int((TEXCOORD.x * 4u) + 2u), 10u);
     uint _120 = imageAtomicMax(_32, int(ByteAddressMask(TEXCOORD.x, 4u)), 12u);
-    SV_Target = (((((((((_64 + _60) + _68) + _73) + _78) + _82) + _86) + uint(_91)) + uint(_98)) + _106) + _120;
+    SV_Target = (((((((((_65 + _60) + _69) + _74) + _79) + _82) + _86) + uint(_91)) + uint(_98)) + _106) + _120;
 }
 
 
@@ -46,7 +46,8 @@ void main()
 OpCapability Shader
 OpCapability Image1D
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %27 %30 %31 %32 %35 %37
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -118,10 +119,10 @@ OpDecorate %37 Location 0
 %53 = OpConstant %5 1
 %56 = OpConstant %5 2
 %58 = OpTypePointer Image %5
-%61 = OpTypeVector %5 2
-%69 = OpConstant %5 3
-%74 = OpConstant %5 4
-%79 = OpConstant %5 5
+%61 = OpConstant %5 5
+%62 = OpTypeVector %5 2
+%70 = OpConstant %5 3
+%75 = OpConstant %5 4
 %83 = OpConstant %5 6
 %87 = OpConstant %5 7
 %89 = OpTypePointer Image %24
@@ -152,49 +153,49 @@ OpBranch %123
 %55 = OpAccessChain %48 %35 %56
 %57 = OpLoad %5 %55
 %59 = OpImageTexelPointer %58 %8 %51 %50
-%60 = OpAtomicIAdd %5 %59 %53 %50 %53
-%62 = OpCompositeConstruct %61 %51 %54
-%63 = OpImageTexelPointer %58 %11 %62 %50
-%64 = OpAtomicAnd %5 %63 %53 %50 %56
-%65 = OpIAdd %5 %64 %60
-%66 = OpCompositeConstruct %61 %51 %54
-%67 = OpImageTexelPointer %58 %14 %66 %50
-%68 = OpAtomicExchange %5 %67 %53 %50 %69
-%70 = OpIAdd %5 %65 %68
-%71 = OpCompositeConstruct %33 %51 %54 %57
-%72 = OpImageTexelPointer %58 %17 %71 %50
-%73 = OpAtomicUMax %5 %72 %53 %50 %74
-%75 = OpIAdd %5 %70 %73
-%76 = OpCompositeConstruct %33 %51 %54 %57
-%77 = OpImageTexelPointer %58 %20 %76 %50
-%78 = OpAtomicUMin %5 %77 %53 %50 %79
-%80 = OpIAdd %5 %75 %78
+%60 = OpAtomicIAdd %5 %59 %61 %50 %53
+%63 = OpCompositeConstruct %62 %51 %54
+%64 = OpImageTexelPointer %58 %11 %63 %50
+%65 = OpAtomicAnd %5 %64 %61 %50 %56
+%66 = OpIAdd %5 %65 %60
+%67 = OpCompositeConstruct %62 %51 %54
+%68 = OpImageTexelPointer %58 %14 %67 %50
+%69 = OpAtomicExchange %5 %68 %61 %50 %70
+%71 = OpIAdd %5 %66 %69
+%72 = OpCompositeConstruct %33 %51 %54 %57
+%73 = OpImageTexelPointer %58 %17 %72 %50
+%74 = OpAtomicUMax %5 %73 %61 %50 %75
+%76 = OpIAdd %5 %71 %74
+%77 = OpCompositeConstruct %33 %51 %54 %57
+%78 = OpImageTexelPointer %58 %20 %77 %50
+%79 = OpAtomicUMin %5 %78 %61 %50 %61
+%80 = OpIAdd %5 %76 %79
 %81 = OpImageTexelPointer %58 %23 %51 %50
-%82 = OpAtomicOr %5 %81 %53 %50 %83
+%82 = OpAtomicOr %5 %81 %61 %50 %83
 %84 = OpIAdd %5 %80 %82
 %85 = OpImageTexelPointer %58 %23 %51 %50
-%86 = OpAtomicXor %5 %85 %53 %50 %87
+%86 = OpAtomicXor %5 %85 %61 %50 %87
 %88 = OpIAdd %5 %84 %86
 %90 = OpImageTexelPointer %89 %27 %51 %50
 %93 = OpBitcast %24 %92
-%91 = OpAtomicSMin %24 %90 %53 %50 %93
+%91 = OpAtomicSMin %24 %90 %61 %50 %93
 %94 = OpBitcast %5 %91
 %95 = OpIAdd %5 %88 %94
-%96 = OpCompositeConstruct %61 %51 %54
+%96 = OpCompositeConstruct %62 %51 %54
 %97 = OpImageTexelPointer %89 %30 %96 %50
 %100 = OpBitcast %24 %99
-%98 = OpAtomicSMax %24 %97 %53 %50 %100
+%98 = OpAtomicSMax %24 %97 %61 %50 %100
 %101 = OpBitcast %5 %98
 %102 = OpIAdd %5 %95 %101
-%103 = OpIMul %5 %51 %74
+%103 = OpIMul %5 %51 %75
 %104 = OpIAdd %5 %103 %56
 %105 = OpImageTexelPointer %58 %31 %104 %50
-%106 = OpAtomicIAdd %5 %105 %53 %50 %107
+%106 = OpAtomicIAdd %5 %105 %61 %50 %107
 %108 = OpIAdd %5 %102 %106
 %109 = OpShiftLeftLogical %5 %51 %56
-%118 = OpFunctionCall %5 %113 %51 %74
+%118 = OpFunctionCall %5 %113 %51 %75
 %119 = OpImageTexelPointer %58 %32 %118 %50
-%120 = OpAtomicUMax %5 %119 %53 %50 %121
+%120 = OpAtomicUMax %5 %119 %61 %50 %121
 %122 = OpIAdd %5 %108 %120
 OpStore %37 %122
 OpReturn

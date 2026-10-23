@@ -46,7 +46,8 @@ void main()
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %14 %18 %22 %24 %27
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -131,28 +132,28 @@ OpBranch %69
 %35 = OpLoad %5 %33
 %36 = OpLoad %9 %24
 %38 = OpCompositeConstruct %37 %32 %35 %32 %32
-OpImageWrite %28 %36 %38
+OpImageWrite %28 %36 %38 NonPrivateTexel
 %39 = OpBitcast %9 %32
 %40 = OpBitcast %9 %35
 %41 = OpShiftLeftLogical %9 %36 %42
 %51 = OpFunctionCall %9 %46 %36 %52
 %53 = OpCompositeConstruct %10 %39 %40
 %55 = OpAccessChain %54 %14 %31 %51
-OpStore %55 %53
+OpStore %55 %53 NonPrivatePointer
 %56 = OpBitcast %9 %32
 %57 = OpBitcast %9 %35
 %58 = OpCompositeConstruct %10 %56 %57
 %59 = OpAccessChain %54 %18 %31 %36
-OpStore %59 %58
+OpStore %59 %58 NonPrivatePointer
 %60 = OpIMul %9 %36 %61
 %62 = OpIAdd %9 %60 %42
 %63 = OpBitcast %9 %32
 %64 = OpBitcast %9 %35
 %66 = OpAccessChain %65 %22 %31 %62
-OpStore %66 %63
+OpStore %66 %63 NonPrivatePointer
 %68 = OpIAdd %9 %62 %34
 %67 = OpAccessChain %65 %22 %31 %68
-OpStore %67 %64
+OpStore %67 %64 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %46 = OpFunction %9 None %43

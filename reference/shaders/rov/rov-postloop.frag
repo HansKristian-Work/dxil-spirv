@@ -15,21 +15,21 @@ layout(pixel_interlock_ordered) in;
 #endif
 layout(early_fragment_tests) in;
 
-layout(set = 0, binding = 0, r32f) uniform coherent image2D _8;
+layout(set = 0, binding = 0, r32f) uniform image2D _8;
 layout(set = 0, binding = 2, r32f) uniform image2D _9;
 
 void main()
 {
     uint _23 = uint(gl_FragCoord.x);
     uint _24 = uint(gl_FragCoord.y);
-    uint _60 = 0u;
+    uint _61 = 0u;
     uint _26;
     bool _45;
     for (;;)
     {
         vec4 _27 = imageLoad(_9, ivec2(uvec2(_23, _24)));
         imageStore(_9, ivec2(uvec2(_23, _24)), vec4(_27.x + 1.0, _27.y + 2.0, _27.z + 3.0, _27.w + 4.0));
-        _26 = _60 + 1u;
+        _26 = _61 + 1u;
         _45 = _26 == 4u;
         if (_45)
         {
@@ -37,7 +37,7 @@ void main()
         }
         else
         {
-            _60 = _26;
+            _61 = _26;
             continue;
         }
     }
@@ -53,13 +53,14 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 68
+; Bound: 69
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
+OpCapability VulkanMemoryModel
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_fragment_shader_interlock"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %9 %12
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
@@ -68,7 +69,6 @@ OpName %3 "main"
 OpName %12 "SV_Position"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
-OpDecorate %8 Coherent
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 2
 OpDecorate %12 BuiltIn FragCoord
@@ -93,12 +93,13 @@ OpDecorate %12 BuiltIn FragCoord
 %41 = OpConstant %5 4
 %44 = OpTypeBool
 %46 = OpConstant %17 4
-%59 = OpTypePointer Function %17
+%49 = OpConstant %17 5
+%60 = OpTypePointer Function %17
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%60 = OpVariable %59 Function
-OpBranch %61
-%61 = OpLabel
+%61 = OpVariable %60 Function
+OpBranch %62
+%62 = OpLabel
 %13 = OpLoad %6 %9
 %14 = OpLoad %6 %8
 %16 = OpAccessChain %15 %12 %18
@@ -107,12 +108,12 @@ OpBranch %61
 %22 = OpLoad %5 %20
 %23 = OpConvertFToU %17 %19
 %24 = OpConvertFToU %17 %22
-OpStore %60 %18
-OpBranch %62
-%62 = OpLabel
-%25 = OpLoad %17 %60
+OpStore %61 %18
+OpBranch %63
+%63 = OpLabel
+%25 = OpLoad %17 %61
 %29 = OpCompositeConstruct %28 %23 %24
-%27 = OpImageRead %10 %13 %29 None
+%27 = OpImageRead %10 %13 %29 NonPrivateTexel
 %30 = OpCompositeExtract %5 %27 0
 %31 = OpCompositeExtract %5 %27 1
 %32 = OpCompositeExtract %5 %27 2
@@ -123,36 +124,36 @@ OpBranch %62
 %40 = OpFAdd %5 %33 %41
 %42 = OpCompositeConstruct %28 %23 %24
 %43 = OpCompositeConstruct %10 %34 %36 %38 %40
-OpImageWrite %13 %42 %43
+OpImageWrite %13 %42 %43 NonPrivateTexel
 %26 = OpIAdd %17 %25 %21
 %45 = OpIEqual %44 %26 %46
-OpLoopMerge %65 %64 None
-OpBranch %63
-%63 = OpLabel
-OpSelectionMerge %67 None
-OpBranchConditional %45 %65 %64
-%67 = OpLabel
-OpUnreachable
+OpLoopMerge %66 %65 None
+OpBranch %64
 %64 = OpLabel
-OpStore %60 %26
-OpBranch %62
+OpSelectionMerge %68 None
+OpBranchConditional %45 %66 %65
+%68 = OpLabel
+OpUnreachable
 %65 = OpLabel
-OpBranch %66
+OpStore %61 %26
+OpBranch %63
 %66 = OpLabel
+OpBranch %67
+%67 = OpLabel
 %48 = OpCompositeConstruct %28 %23 %24
 OpBeginInvocationInterlockEXT
-%47 = OpImageRead %10 %14 %48 None
-%49 = OpCompositeExtract %5 %47 0
-%50 = OpCompositeExtract %5 %47 1
-%51 = OpCompositeExtract %5 %47 2
-%52 = OpCompositeExtract %5 %47 3
-%53 = OpFAdd %5 %49 %35
-%54 = OpFAdd %5 %50 %37
-%55 = OpFAdd %5 %51 %39
-%56 = OpFAdd %5 %52 %41
-%57 = OpCompositeConstruct %28 %23 %24
-%58 = OpCompositeConstruct %10 %53 %54 %55 %56
-OpImageWrite %14 %57 %58
+%47 = OpImageRead %10 %14 %48 MakeTexelVisible|NonPrivateTexel %49
+%50 = OpCompositeExtract %5 %47 0
+%51 = OpCompositeExtract %5 %47 1
+%52 = OpCompositeExtract %5 %47 2
+%53 = OpCompositeExtract %5 %47 3
+%54 = OpFAdd %5 %50 %35
+%55 = OpFAdd %5 %51 %37
+%56 = OpFAdd %5 %52 %39
+%57 = OpFAdd %5 %53 %41
+%58 = OpCompositeConstruct %28 %23 %24
+%59 = OpCompositeConstruct %10 %54 %55 %56 %57
+OpImageWrite %14 %58 %59 MakeTexelAvailable|NonPrivateTexel %49
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

@@ -237,11 +237,12 @@ OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
 OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %13 %19 %25 %31 %36 %41 %46 %51 %57 %62 %67 %72 %182
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormPreserve 16
@@ -588,7 +589,7 @@ OpBranch %657
 %190 = OpULessThan %189 %185 %187
 %191 = OpSelect %5 %190 %188 %192
 %194 = OpAccessChain %193 %173 %95 %191
-%195 = OpLoad %14 %194
+%195 = OpLoad %14 %194 NonPrivatePointer
 %197 = OpBitcast %196 %195
 %198 = OpFAdd %196 %197 %199
 %200 = OpCompositeExtract %5 %179 0
@@ -598,14 +599,14 @@ OpBranch %657
 %204 = OpSelect %5 %203 %202 %192
 %205 = OpBitcast %14 %198
 %206 = OpAccessChain %193 %173 %95 %204
-OpStore %206 %205
+OpStore %206 %205 NonPrivatePointer
 %207 = OpCompositeExtract %5 %171 0
 %208 = OpCompositeExtract %5 %171 1
 %209 = OpIAdd %5 %185 %207
 %210 = OpULessThan %189 %185 %208
 %211 = OpSelect %5 %210 %209 %212
 %214 = OpAccessChain %213 %164 %95 %211
-%215 = OpLoad %20 %214
+%215 = OpLoad %20 %214 NonPrivatePointer
 %216 = OpCompositeExtract %14 %215 0
 %217 = OpCompositeExtract %14 %215 1
 %218 = OpIAdd %14 %216 %219
@@ -617,7 +618,7 @@ OpStore %206 %205
 %225 = OpSelect %5 %224 %223 %212
 %226 = OpCompositeConstruct %20 %218 %220
 %227 = OpAccessChain %213 %164 %95 %225
-OpStore %227 %226
+OpStore %227 %226 NonPrivatePointer
 %228 = OpIMul %5 %185 %92
 %229 = OpCompositeExtract %5 %160 0
 %230 = OpCompositeExtract %5 %160 1
@@ -625,13 +626,13 @@ OpStore %227 %226
 %232 = OpULessThan %189 %228 %230
 %233 = OpSelect %5 %232 %231 %192
 %234 = OpAccessChain %193 %152 %95 %233
-%235 = OpLoad %14 %234
+%235 = OpLoad %14 %234 NonPrivatePointer
 %237 = OpIAdd %5 %233 %161
 %236 = OpAccessChain %193 %152 %95 %237
-%238 = OpLoad %14 %236
+%238 = OpLoad %14 %236 NonPrivatePointer
 %240 = OpIAdd %5 %233 %156
 %239 = OpAccessChain %193 %152 %95 %240
-%241 = OpLoad %14 %239
+%241 = OpLoad %14 %239 NonPrivatePointer
 %243 = OpCompositeConstruct %242 %235 %238 %241
 %245 = OpBitcast %244 %243
 %246 = OpCompositeExtract %196 %245 0
@@ -650,20 +651,20 @@ OpStore %227 %226
 %260 = OpBitcast %14 %251
 %261 = OpBitcast %14 %252
 %262 = OpAccessChain %193 %152 %95 %258
-OpStore %262 %259
+OpStore %262 %259 NonPrivatePointer
 %264 = OpIAdd %5 %258 %161
 %263 = OpAccessChain %193 %152 %95 %264
-OpStore %263 %260
+OpStore %263 %260 NonPrivatePointer
 %266 = OpIAdd %5 %258 %156
 %265 = OpAccessChain %193 %152 %95 %266
-OpStore %265 %261
+OpStore %265 %261 NonPrivatePointer
 %267 = OpCompositeExtract %5 %149 0
 %268 = OpCompositeExtract %5 %149 1
 %269 = OpIAdd %5 %185 %267
 %270 = OpULessThan %189 %185 %268
 %271 = OpSelect %5 %270 %269 %272
 %274 = OpAccessChain %273 %142 %95 %271
-%275 = OpLoad %26 %274
+%275 = OpLoad %26 %274 NonPrivatePointer
 %276 = OpCompositeExtract %14 %275 0
 %277 = OpCompositeExtract %14 %275 1
 %278 = OpCompositeExtract %14 %275 2
@@ -679,7 +680,7 @@ OpStore %265 %261
 %289 = OpSelect %5 %288 %287 %272
 %290 = OpCompositeConstruct %26 %280 %282 %283 %284
 %291 = OpAccessChain %273 %142 %95 %289
-OpStore %291 %290
+OpStore %291 %290 NonPrivatePointer
 %292 = OpShiftLeftLogical %5 %185 %161
 %301 = OpFunctionCall %5 %296 %185 %156
 %302 = OpShiftRightLogical %9 %140 %162
@@ -689,7 +690,7 @@ OpStore %291 %290
 %306 = OpULessThan %189 %301 %304
 %307 = OpSelect %5 %306 %305 %192
 %308 = OpAccessChain %193 %114 %95 %307
-%309 = OpLoad %14 %308
+%309 = OpLoad %14 %308 NonPrivatePointer
 %310 = OpBitcast %196 %309
 %312 = OpFConvert %311 %310
 %313 = OpShiftLeftLogical %5 %185 %156
@@ -701,7 +702,7 @@ OpStore %291 %290
 %319 = OpULessThan %189 %314 %317
 %320 = OpSelect %5 %319 %318 %212
 %321 = OpAccessChain %213 %119 %95 %320
-%322 = OpLoad %20 %321
+%322 = OpLoad %20 %321 NonPrivatePointer
 %324 = OpBitcast %323 %322
 %325 = OpCompositeExtract %196 %324 0
 %326 = OpCompositeExtract %196 %324 1
@@ -718,13 +719,13 @@ OpStore %291 %290
 %337 = OpULessThan %189 %332 %335
 %338 = OpSelect %5 %337 %336 %192
 %339 = OpAccessChain %193 %114 %95 %338
-%340 = OpLoad %14 %339
+%340 = OpLoad %14 %339 NonPrivatePointer
 %342 = OpIAdd %5 %338 %161
 %341 = OpAccessChain %193 %114 %95 %342
-%343 = OpLoad %14 %341
+%343 = OpLoad %14 %341 NonPrivatePointer
 %345 = OpIAdd %5 %338 %156
 %344 = OpAccessChain %193 %114 %95 %345
-%346 = OpLoad %14 %344
+%346 = OpLoad %14 %344 NonPrivatePointer
 %347 = OpCompositeConstruct %242 %340 %343 %346
 %348 = OpBitcast %244 %347
 %349 = OpCompositeExtract %196 %348 0
@@ -743,7 +744,7 @@ OpStore %291 %290
 %363 = OpULessThan %189 %357 %361
 %364 = OpSelect %5 %363 %362 %272
 %365 = OpAccessChain %273 %124 %95 %364
-%366 = OpLoad %26 %365
+%366 = OpLoad %26 %365 NonPrivatePointer
 %368 = OpBitcast %367 %366
 %369 = OpCompositeExtract %196 %368 0
 %370 = OpCompositeExtract %196 %368 1
@@ -762,7 +763,7 @@ OpStore %291 %290
 %383 = OpULessThan %189 %378 %381
 %384 = OpSelect %5 %383 %382 %192
 %385 = OpAccessChain %193 %114 %95 %384
-%386 = OpLoad %14 %385
+%386 = OpLoad %14 %385 NonPrivatePointer
 %387 = OpConvertUToF %311 %386
 %388 = OpFAdd %311 %377 %387
 %389 = OpFunctionCall %5 %296 %185 %77
@@ -773,7 +774,7 @@ OpStore %291 %290
 %394 = OpULessThan %189 %389 %392
 %395 = OpSelect %5 %394 %393 %212
 %396 = OpAccessChain %213 %119 %95 %395
-%397 = OpLoad %20 %396
+%397 = OpLoad %20 %396 NonPrivatePointer
 %398 = OpCompositeExtract %14 %397 0
 %399 = OpCompositeExtract %14 %397 1
 %400 = OpConvertUToF %311 %398
@@ -788,13 +789,13 @@ OpStore %291 %290
 %409 = OpULessThan %189 %404 %407
 %410 = OpSelect %5 %409 %408 %192
 %411 = OpAccessChain %193 %114 %95 %410
-%412 = OpLoad %14 %411
+%412 = OpLoad %14 %411 NonPrivatePointer
 %414 = OpIAdd %5 %410 %161
 %413 = OpAccessChain %193 %114 %95 %414
-%415 = OpLoad %14 %413
+%415 = OpLoad %14 %413 NonPrivatePointer
 %417 = OpIAdd %5 %410 %156
 %416 = OpAccessChain %193 %114 %95 %417
-%418 = OpLoad %14 %416
+%418 = OpLoad %14 %416 NonPrivatePointer
 %419 = OpCompositeConstruct %242 %412 %415 %418
 %420 = OpCompositeExtract %14 %419 0
 %421 = OpCompositeExtract %14 %419 1
@@ -811,7 +812,7 @@ OpStore %291 %290
 %432 = OpULessThan %189 %427 %430
 %433 = OpSelect %5 %432 %431 %272
 %434 = OpAccessChain %273 %124 %95 %433
-%435 = OpLoad %26 %434
+%435 = OpLoad %26 %434 NonPrivatePointer
 %436 = OpCompositeExtract %14 %435 0
 %437 = OpCompositeExtract %14 %435 1
 %438 = OpCompositeExtract %14 %435 2
@@ -830,7 +831,7 @@ OpStore %291 %290
 %451 = OpSelect %5 %450 %449 %192
 %452 = OpBitcast %14 %199
 %453 = OpAccessChain %193 %97 %95 %451
-OpStore %453 %452
+OpStore %453 %452 NonPrivatePointer
 %454 = OpFunctionCall %5 %296 %185 %77
 %455 = OpShiftRightLogical %9 %112 %172
 %456 = OpCompositeExtract %5 %455 0
@@ -842,7 +843,7 @@ OpStore %453 %452
 %464 = OpBitcast %14 %463
 %465 = OpCompositeConstruct %20 %462 %464
 %466 = OpAccessChain %213 %102 %95 %460
-OpStore %466 %465
+OpStore %466 %465 NonPrivatePointer
 %467 = OpIMul %5 %185 %92
 %468 = OpFunctionCall %5 %296 %467 %156
 %469 = OpShiftRightLogical %9 %112 %162
@@ -855,13 +856,13 @@ OpStore %466 %465
 %477 = OpBitcast %14 %476
 %479 = OpBitcast %14 %478
 %480 = OpAccessChain %193 %97 %95 %474
-OpStore %480 %475
+OpStore %480 %475 NonPrivatePointer
 %482 = OpIAdd %5 %474 %161
 %481 = OpAccessChain %193 %97 %95 %482
-OpStore %481 %477
+OpStore %481 %477 NonPrivatePointer
 %484 = OpIAdd %5 %474 %156
 %483 = OpAccessChain %193 %97 %95 %484
-OpStore %483 %479
+OpStore %483 %479 NonPrivatePointer
 %485 = OpFunctionCall %5 %296 %185 %358
 %486 = OpShiftRightLogical %9 %112 %150
 %487 = OpCompositeExtract %5 %486 0
@@ -875,7 +876,7 @@ OpStore %483 %479
 %499 = OpBitcast %14 %498
 %500 = OpCompositeConstruct %26 %493 %495 %497 %499
 %501 = OpAccessChain %273 %106 %95 %491
-OpStore %501 %500
+OpStore %501 %500 NonPrivatePointer
 %502 = OpFunctionCall %5 %296 %185 %156
 %503 = OpShiftRightLogical %9 %96 %162
 %504 = OpCompositeExtract %5 %503 0
@@ -884,7 +885,7 @@ OpStore %501 %500
 %507 = OpULessThan %189 %502 %505
 %508 = OpSelect %5 %507 %506 %192
 %510 = OpAccessChain %193 %74 %95 %508
-OpStore %510 %509
+OpStore %510 %509 NonPrivatePointer
 %511 = OpFunctionCall %5 %296 %185 %77
 %512 = OpShiftRightLogical %9 %96 %172
 %513 = OpCompositeExtract %5 %512 0
@@ -894,7 +895,7 @@ OpStore %510 %509
 %517 = OpSelect %5 %516 %515 %212
 %518 = OpCompositeConstruct %20 %219 %281
 %519 = OpAccessChain %213 %82 %95 %517
-OpStore %519 %518
+OpStore %519 %518 NonPrivatePointer
 %520 = OpIMul %5 %185 %92
 %521 = OpFunctionCall %5 %296 %520 %156
 %522 = OpShiftRightLogical %9 %96 %162
@@ -904,13 +905,13 @@ OpStore %519 %518
 %526 = OpULessThan %189 %521 %524
 %527 = OpSelect %5 %526 %525 %192
 %530 = OpAccessChain %193 %74 %95 %527
-OpStore %530 %281
+OpStore %530 %281 NonPrivatePointer
 %532 = OpIAdd %5 %527 %161
 %531 = OpAccessChain %193 %74 %95 %532
-OpStore %531 %528
+OpStore %531 %528 NonPrivatePointer
 %534 = OpIAdd %5 %527 %156
 %533 = OpAccessChain %193 %74 %95 %534
-OpStore %533 %529
+OpStore %533 %529 NonPrivatePointer
 %535 = OpFunctionCall %5 %296 %185 %358
 %536 = OpShiftRightLogical %9 %96 %150
 %537 = OpCompositeExtract %5 %536 0
@@ -920,7 +921,7 @@ OpStore %533 %529
 %541 = OpSelect %5 %540 %539 %272
 %546 = OpCompositeConstruct %26 %542 %543 %544 %545
 %547 = OpAccessChain %273 %87 %95 %541
-OpStore %547 %546
+OpStore %547 %546 NonPrivatePointer
 %548 = OpFunctionCall %5 %296 %185 %77
 %549 = OpShiftRightLogical %9 %140 %172
 %550 = OpCompositeExtract %5 %549 0
@@ -929,7 +930,7 @@ OpStore %547 %546
 %553 = OpULessThan %189 %548 %551
 %554 = OpSelect %5 %553 %552 %555
 %557 = OpAccessChain %556 %129 %95 %554
-%558 = OpLoad %5 %557
+%558 = OpLoad %5 %557 NonPrivatePointer
 %559 = OpBitcast %311 %558
 %560 = OpFAdd %311 %444 %559
 %561 = OpIAdd %5 %185 %95
@@ -952,7 +953,7 @@ OpStore %547 %546
 %578 = OpULessThan %189 %573 %576
 %579 = OpSelect %5 %578 %577 %192
 %580 = OpAccessChain %193 %562 %95 %579
-%581 = OpLoad %14 %580
+%581 = OpLoad %14 %580 NonPrivatePointer
 %582 = OpBitcast %196 %581
 %583 = OpFConvert %311 %582
 %584 = OpFAdd %311 %327 %312
@@ -985,7 +986,7 @@ OpStore %547 %546
 %611 = OpBitcast %14 %601
 %612 = OpCompositeConstruct %20 %610 %611
 %613 = OpAccessChain %213 %566 %95 %609
-OpStore %613 %612
+OpStore %613 %612 NonPrivatePointer
 %614 = OpCompositeExtract %5 %179 1
 %615 = OpUDiv %5 %614 %161
 %616 = OpConvertUToF %311 %615
@@ -1023,7 +1024,7 @@ OpStore %613 %612
 %652 = OpSelect %5 %651 %650 %653
 %654 = OpCompositeConstruct %52 %639 %640 %641 %642
 %656 = OpAccessChain %655 %134 %95 %652
-OpStore %656 %654
+OpStore %656 %654 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %296 = OpFunction %5 None %293

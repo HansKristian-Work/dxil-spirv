@@ -296,11 +296,12 @@ OpCapability Shader
 OpCapability ImageBuffer
 OpCapability RayQueryKHR
 OpCapability RayTraversalPrimitiveCullingKHR
+OpCapability VulkanMemoryModel
 OpCapability RayTracingOpacityMicromapKHR
 OpCapability RayTracingOpacityMicromapExecutionModeKHR
 OpExtension "SPV_KHR_opacity_micromap"
 OpExtension "SPV_KHR_ray_query"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %14 %15 %16 %17 %20 %22
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionModeId %3 OpacityMicromapIdKHR %6
@@ -442,28 +443,28 @@ OpBranch %483
 %51 = OpLoad %12 %14
 %52 = OpIMul %11 %23 %53
 %55 = OpCompositeConstruct %54 %49 %49 %49 %49
-OpImageWrite %51 %52 %55
+OpImageWrite %51 %52 %55 NonPrivateTexel
 %56 = OpRayQueryGetIntersectionInstanceCustomIndexKHR %11 %20 %24
 %57 = OpBitwiseOr %11 %50 %58
 %59 = OpLoad %12 %14
 %60 = OpIMul %11 %23 %53
 %61 = OpIAdd %11 %60 %58
 %62 = OpCompositeConstruct %54 %56 %56 %56 %56
-OpImageWrite %59 %61 %62
+OpImageWrite %59 %61 %62 NonPrivateTexel
 %63 = OpRayQueryGetIntersectionGeometryIndexKHR %11 %20 %24
 %64 = OpBitwiseOr %11 %50 %65
 %66 = OpLoad %12 %14
 %67 = OpIMul %11 %23 %53
 %68 = OpIAdd %11 %67 %65
 %69 = OpCompositeConstruct %54 %63 %63 %63 %63
-OpImageWrite %66 %68 %69
+OpImageWrite %66 %68 %69 NonPrivateTexel
 %70 = OpRayQueryGetIntersectionPrimitiveIndexKHR %11 %20 %24
 %71 = OpBitwiseOr %11 %50 %72
 %73 = OpLoad %12 %14
 %74 = OpIMul %11 %23 %53
 %75 = OpIAdd %11 %74 %72
 %76 = OpCompositeConstruct %54 %70 %70 %70 %70
-OpImageWrite %73 %75 %76
+OpImageWrite %73 %75 %76 NonPrivateTexel
 %77 = OpRayQueryGetIntersectionObjectRayOriginKHR %35 %20 %24
 %78 = OpCompositeExtract %28 %77 0
 %79 = OpBitwiseOr %11 %50 %80
@@ -472,7 +473,7 @@ OpImageWrite %73 %75 %76
 %83 = OpIAdd %11 %82 %80
 %84 = OpBitcast %11 %78
 %85 = OpCompositeConstruct %54 %84 %84 %84 %84
-OpImageWrite %81 %83 %85
+OpImageWrite %81 %83 %85 NonPrivateTexel
 %86 = OpRayQueryGetIntersectionObjectRayDirectionKHR %35 %20 %24
 %87 = OpCompositeExtract %28 %86 1
 %88 = OpBitwiseOr %11 %50 %89
@@ -481,14 +482,14 @@ OpImageWrite %81 %83 %85
 %92 = OpIAdd %11 %91 %89
 %93 = OpBitcast %11 %87
 %94 = OpCompositeConstruct %54 %93 %93 %93 %93
-OpImageWrite %90 %92 %94
+OpImageWrite %90 %92 %94 NonPrivateTexel
 %95 = OpRayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetKHR %11 %20 %24
 %96 = OpBitwiseOr %11 %50 %97
 %98 = OpLoad %12 %14
 %99 = OpIMul %11 %23 %53
 %100 = OpIAdd %11 %99 %97
 %101 = OpCompositeConstruct %54 %95 %95 %95 %95
-OpImageWrite %98 %100 %101
+OpImageWrite %98 %100 %101 NonPrivateTexel
 %103 = OpRayQueryGetIntersectionWorldToObjectKHR %102 %20 %24
 %104 = OpCompositeExtract %28 %103 0 0
 %106 = OpCompositeInsert %105 %104 %107 0
@@ -522,16 +523,16 @@ OpImageWrite %98 %100 %101
 %135 = OpCompositeExtract %11 %132 2
 %136 = OpCompositeExtract %11 %132 3
 %137 = OpCompositeConstruct %54 %133 %133 %133 %133
-OpImageWrite %130 %131 %137
+OpImageWrite %130 %131 %137 NonPrivateTexel
 %138 = OpCompositeConstruct %54 %134 %134 %134 %134
 %139 = OpIAdd %11 %131 %58
-OpImageWrite %130 %139 %138
+OpImageWrite %130 %139 %138 NonPrivateTexel
 %140 = OpCompositeConstruct %54 %135 %135 %135 %135
 %141 = OpIAdd %11 %131 %65
-OpImageWrite %130 %141 %140
+OpImageWrite %130 %141 %140 NonPrivateTexel
 %142 = OpCompositeConstruct %54 %136 %136 %136 %136
 %143 = OpIAdd %11 %131 %72
-OpImageWrite %130 %143 %142
+OpImageWrite %130 %143 %142 NonPrivateTexel
 %144 = OpBitwiseOr %11 %129 %58
 %145 = OpLoad %12 %16
 %146 = OpIMul %11 %23 %97
@@ -542,16 +543,16 @@ OpImageWrite %130 %143 %142
 %151 = OpCompositeExtract %11 %148 2
 %152 = OpCompositeExtract %11 %148 3
 %153 = OpCompositeConstruct %54 %149 %149 %149 %149
-OpImageWrite %145 %147 %153
+OpImageWrite %145 %147 %153 NonPrivateTexel
 %154 = OpCompositeConstruct %54 %150 %150 %150 %150
 %155 = OpIAdd %11 %147 %58
-OpImageWrite %145 %155 %154
+OpImageWrite %145 %155 %154 NonPrivateTexel
 %156 = OpCompositeConstruct %54 %151 %151 %151 %151
 %157 = OpIAdd %11 %147 %65
-OpImageWrite %145 %157 %156
+OpImageWrite %145 %157 %156 NonPrivateTexel
 %158 = OpCompositeConstruct %54 %152 %152 %152 %152
 %159 = OpIAdd %11 %147 %72
-OpImageWrite %145 %159 %158
+OpImageWrite %145 %159 %158 NonPrivateTexel
 %160 = OpRayQueryGetIntersectionWorldToObjectKHR %102 %20 %24
 %161 = OpCompositeExtract %28 %160 0 0
 %162 = OpCompositeInsert %35 %161 %163 0
@@ -577,13 +578,13 @@ OpImageWrite %145 %159 %158
 %185 = OpCompositeExtract %11 %183 1
 %186 = OpCompositeExtract %11 %183 2
 %187 = OpCompositeConstruct %54 %184 %184 %184 %184
-OpImageWrite %179 %180 %187
+OpImageWrite %179 %180 %187 NonPrivateTexel
 %188 = OpCompositeConstruct %54 %185 %185 %185 %185
 %189 = OpIAdd %11 %180 %58
-OpImageWrite %179 %189 %188
+OpImageWrite %179 %189 %188 NonPrivateTexel
 %190 = OpCompositeConstruct %54 %186 %186 %186 %186
 %191 = OpIAdd %11 %180 %65
-OpImageWrite %179 %191 %190
+OpImageWrite %179 %191 %190 NonPrivateTexel
 %192 = OpLoad %12 %17
 %193 = OpIMul %11 %23 %181
 %194 = OpIAdd %11 %193 %72
@@ -592,13 +593,13 @@ OpImageWrite %179 %191 %190
 %197 = OpCompositeExtract %11 %195 1
 %198 = OpCompositeExtract %11 %195 2
 %199 = OpCompositeConstruct %54 %196 %196 %196 %196
-OpImageWrite %192 %194 %199
+OpImageWrite %192 %194 %199 NonPrivateTexel
 %200 = OpCompositeConstruct %54 %197 %197 %197 %197
 %201 = OpIAdd %11 %194 %58
-OpImageWrite %192 %201 %200
+OpImageWrite %192 %201 %200 NonPrivateTexel
 %202 = OpCompositeConstruct %54 %198 %198 %198 %198
 %203 = OpIAdd %11 %194 %65
-OpImageWrite %192 %203 %202
+OpImageWrite %192 %203 %202 NonPrivateTexel
 %204 = OpRayQueryGetIntersectionTypeKHR %11 %20 %24
 %205 = OpIEqual %5 %204 %24
 OpLoopMerge %494 %493 None
@@ -638,7 +639,7 @@ OpBranch %490
 %219 = OpIAdd %11 %218 %42
 %220 = OpBitcast %11 %215
 %221 = OpCompositeConstruct %54 %220 %220 %220 %220
-OpImageWrite %217 %219 %221
+OpImageWrite %217 %219 %221 NonPrivateTexel
 %223 = OpRayQueryGetIntersectionBarycentricsKHR %222 %20 %24
 %224 = OpCompositeExtract %28 %223 1
 %225 = OpBitwiseOr %11 %50 %226
@@ -647,7 +648,7 @@ OpImageWrite %217 %219 %221
 %229 = OpIAdd %11 %228 %226
 %230 = OpBitcast %11 %224
 %231 = OpCompositeConstruct %54 %230 %230 %230 %230
-OpImageWrite %227 %229 %231
+OpImageWrite %227 %229 %231 NonPrivateTexel
 %232 = OpRayQueryGetIntersectionFrontFaceKHR %5 %20 %24
 %233 = OpSelect %11 %232 %234 %235
 %236 = OpBitwiseOr %11 %50 %237
@@ -655,7 +656,7 @@ OpImageWrite %227 %229 %231
 %239 = OpIMul %11 %23 %53
 %240 = OpIAdd %11 %239 %237
 %241 = OpCompositeConstruct %54 %233 %233 %233 %233
-OpImageWrite %238 %240 %241
+OpImageWrite %238 %240 %241 NonPrivateTexel
 OpRayQueryConfirmIntersectionKHR %20
 OpStore %474 %214
 OpStore %475 %45
@@ -698,7 +699,7 @@ OpBranch %495
 %251 = OpLoad %12 %14
 %252 = OpIAdd %11 %249 %24
 %253 = OpCompositeConstruct %54 %248 %248 %248 %248
-OpImageWrite %251 %252 %253
+OpImageWrite %251 %252 %253 NonPrivateTexel
 %254 = OpRayQueryGetWorldRayOriginKHR %35 %20
 %255 = OpCompositeExtract %28 %254 0
 %256 = OpBitwiseOr %11 %244 %235
@@ -706,7 +707,7 @@ OpImageWrite %251 %252 %253
 %258 = OpIAdd %11 %244 %235
 %259 = OpBitcast %11 %255
 %260 = OpCompositeConstruct %54 %259 %259 %259 %259
-OpImageWrite %257 %258 %260
+OpImageWrite %257 %258 %260 NonPrivateTexel
 %261 = OpRayQueryGetWorldRayDirectionKHR %35 %20
 %262 = OpCompositeExtract %28 %261 1
 %263 = OpBitwiseOr %11 %244 %264
@@ -714,14 +715,14 @@ OpImageWrite %257 %258 %260
 %266 = OpIAdd %11 %263 %24
 %267 = OpBitcast %11 %262
 %268 = OpCompositeConstruct %54 %267 %267 %267 %267
-OpImageWrite %265 %266 %268
+OpImageWrite %265 %266 %268 NonPrivateTexel
 %269 = OpRayQueryGetRayTMinKHR %28 %20
 %270 = OpBitwiseOr %11 %244 %181
 %271 = OpLoad %12 %15
 %272 = OpIAdd %11 %244 %181
 %273 = OpBitcast %11 %269
 %274 = OpCompositeConstruct %54 %273 %273 %273 %273
-OpImageWrite %271 %272 %274
+OpImageWrite %271 %272 %274 NonPrivateTexel
 %275 = OpRayQueryGetIntersectionTypeKHR %11 %20 %58
 %276 = OpIEqual %5 %275 %24
 OpSelectionMerge %497 None
@@ -732,25 +733,25 @@ OpBranchConditional %276 %497 %496
 %280 = OpLoad %12 %14
 %281 = OpIAdd %11 %244 %279
 %282 = OpCompositeConstruct %54 %277 %277 %277 %277
-OpImageWrite %280 %281 %282
+OpImageWrite %280 %281 %282 NonPrivateTexel
 %283 = OpRayQueryGetIntersectionInstanceCustomIndexKHR %11 %20 %58
 %284 = OpBitwiseOr %11 %244 %285
 %286 = OpLoad %12 %14
 %287 = OpIAdd %11 %284 %24
 %288 = OpCompositeConstruct %54 %283 %283 %283 %283
-OpImageWrite %286 %287 %288
+OpImageWrite %286 %287 %288 NonPrivateTexel
 %289 = OpRayQueryGetIntersectionGeometryIndexKHR %11 %20 %58
 %290 = OpBitwiseOr %11 %244 %291
 %292 = OpLoad %12 %14
 %293 = OpIAdd %11 %244 %291
 %294 = OpCompositeConstruct %54 %289 %289 %289 %289
-OpImageWrite %292 %293 %294
+OpImageWrite %292 %293 %294 NonPrivateTexel
 %295 = OpRayQueryGetIntersectionPrimitiveIndexKHR %11 %20 %58
 %296 = OpBitwiseOr %11 %244 %297
 %298 = OpLoad %12 %14
 %299 = OpIAdd %11 %296 %24
 %300 = OpCompositeConstruct %54 %295 %295 %295 %295
-OpImageWrite %298 %299 %300
+OpImageWrite %298 %299 %300 NonPrivateTexel
 %301 = OpRayQueryGetIntersectionObjectRayOriginKHR %35 %20 %58
 %302 = OpCompositeExtract %28 %301 0
 %303 = OpBitwiseOr %11 %244 %304
@@ -758,7 +759,7 @@ OpImageWrite %298 %299 %300
 %306 = OpIAdd %11 %244 %304
 %307 = OpBitcast %11 %302
 %308 = OpCompositeConstruct %54 %307 %307 %307 %307
-OpImageWrite %305 %306 %308
+OpImageWrite %305 %306 %308 NonPrivateTexel
 %309 = OpRayQueryGetIntersectionObjectRayDirectionKHR %35 %20 %58
 %310 = OpCompositeExtract %28 %309 1
 %311 = OpBitwiseOr %11 %244 %312
@@ -766,13 +767,13 @@ OpImageWrite %305 %306 %308
 %314 = OpIAdd %11 %311 %24
 %315 = OpBitcast %11 %310
 %316 = OpCompositeConstruct %54 %315 %315 %315 %315
-OpImageWrite %313 %314 %316
+OpImageWrite %313 %314 %316 NonPrivateTexel
 %317 = OpRayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetKHR %11 %20 %58
 %318 = OpBitwiseOr %11 %244 %319
 %320 = OpLoad %12 %14
 %321 = OpIAdd %11 %244 %319
 %322 = OpCompositeConstruct %54 %317 %317 %317 %317
-OpImageWrite %320 %321 %322
+OpImageWrite %320 %321 %322 NonPrivateTexel
 %323 = OpRayQueryGetIntersectionWorldToObjectKHR %102 %20 %58
 %324 = OpCompositeExtract %28 %323 0 0
 %325 = OpCompositeInsert %105 %324 %107 0
@@ -808,16 +809,16 @@ OpImageWrite %320 %321 %322
 %357 = OpCompositeExtract %11 %354 2
 %358 = OpCompositeExtract %11 %354 3
 %359 = OpCompositeConstruct %54 %355 %355 %355 %355
-OpImageWrite %350 %353 %359
+OpImageWrite %350 %353 %359 NonPrivateTexel
 %360 = OpCompositeConstruct %54 %356 %356 %356 %356
 %361 = OpIAdd %11 %353 %58
-OpImageWrite %350 %361 %360
+OpImageWrite %350 %361 %360 NonPrivateTexel
 %362 = OpCompositeConstruct %54 %357 %357 %357 %357
 %363 = OpIAdd %11 %353 %65
-OpImageWrite %350 %363 %362
+OpImageWrite %350 %363 %362 NonPrivateTexel
 %364 = OpCompositeConstruct %54 %358 %358 %358 %358
 %365 = OpIAdd %11 %353 %72
-OpImageWrite %350 %365 %364
+OpImageWrite %350 %365 %364 NonPrivateTexel
 %366 = OpIAdd %11 %347 %367
 %368 = OpLoad %12 %16
 %369 = OpIMul %11 %23 %97
@@ -828,16 +829,16 @@ OpImageWrite %350 %365 %364
 %375 = OpCompositeExtract %11 %372 2
 %376 = OpCompositeExtract %11 %372 3
 %377 = OpCompositeConstruct %54 %373 %373 %373 %373
-OpImageWrite %368 %371 %377
+OpImageWrite %368 %371 %377 NonPrivateTexel
 %378 = OpCompositeConstruct %54 %374 %374 %374 %374
 %379 = OpIAdd %11 %371 %58
-OpImageWrite %368 %379 %378
+OpImageWrite %368 %379 %378 NonPrivateTexel
 %380 = OpCompositeConstruct %54 %375 %375 %375 %375
 %381 = OpIAdd %11 %371 %65
-OpImageWrite %368 %381 %380
+OpImageWrite %368 %381 %380 NonPrivateTexel
 %382 = OpCompositeConstruct %54 %376 %376 %376 %376
 %383 = OpIAdd %11 %371 %72
-OpImageWrite %368 %383 %382
+OpImageWrite %368 %383 %382 NonPrivateTexel
 %384 = OpRayQueryGetIntersectionWorldToObjectKHR %102 %20 %58
 %385 = OpCompositeExtract %28 %384 0 0
 %386 = OpCompositeInsert %35 %385 %163 0
@@ -865,13 +866,13 @@ OpImageWrite %368 %383 %382
 %410 = OpCompositeExtract %11 %408 1
 %411 = OpCompositeExtract %11 %408 2
 %412 = OpCompositeConstruct %54 %409 %409 %409 %409
-OpImageWrite %404 %407 %412
+OpImageWrite %404 %407 %412 NonPrivateTexel
 %413 = OpCompositeConstruct %54 %410 %410 %410 %410
 %414 = OpIAdd %11 %407 %58
-OpImageWrite %404 %414 %413
+OpImageWrite %404 %414 %413 NonPrivateTexel
 %415 = OpCompositeConstruct %54 %411 %411 %411 %411
 %416 = OpIAdd %11 %407 %65
-OpImageWrite %404 %416 %415
+OpImageWrite %404 %416 %415 NonPrivateTexel
 %417 = OpIAdd %11 %347 %418
 %419 = OpLoad %12 %17
 %420 = OpIMul %11 %23 %181
@@ -881,20 +882,20 @@ OpImageWrite %404 %416 %415
 %425 = OpCompositeExtract %11 %423 1
 %426 = OpCompositeExtract %11 %423 2
 %427 = OpCompositeConstruct %54 %424 %424 %424 %424
-OpImageWrite %419 %422 %427
+OpImageWrite %419 %422 %427 NonPrivateTexel
 %428 = OpCompositeConstruct %54 %425 %425 %425 %425
 %429 = OpIAdd %11 %422 %58
-OpImageWrite %419 %429 %428
+OpImageWrite %419 %429 %428 NonPrivateTexel
 %430 = OpCompositeConstruct %54 %426 %426 %426 %426
 %431 = OpIAdd %11 %422 %65
-OpImageWrite %419 %431 %430
+OpImageWrite %419 %431 %430 NonPrivateTexel
 %432 = OpRayQueryGetIntersectionTKHR %28 %20 %58
 %433 = OpBitwiseOr %11 %244 %434
 %435 = OpLoad %12 %15
 %436 = OpIAdd %11 %433 %24
 %437 = OpBitcast %11 %432
 %438 = OpCompositeConstruct %54 %437 %437 %437 %437
-OpImageWrite %435 %436 %438
+OpImageWrite %435 %436 %438 NonPrivateTexel
 OpBranch %497
 %497 = OpLabel
 %439 = OpRayQueryGetIntersectionTypeKHR %11 %20 %58
@@ -910,13 +911,13 @@ OpBranchConditional %442 %500 %499
 %443 = OpBitwiseOr %11 %244 %444
 %445 = OpIAdd %11 %443 %24
 %446 = OpCompositeConstruct %54 %247 %247 %247 %247
-OpImageWrite %441 %445 %446
+OpImageWrite %441 %445 %446 NonPrivateTexel
 OpBranch %501
 %500 = OpLabel
 %447 = OpBitwiseOr %11 %244 %448
 %449 = OpIAdd %11 %244 %448
 %450 = OpCompositeConstruct %54 %246 %246 %246 %246
-OpImageWrite %441 %449 %450
+OpImageWrite %441 %449 %450 NonPrivateTexel
 OpBranch %501
 %501 = OpLabel
 OpBranch %503
@@ -924,7 +925,7 @@ OpBranch %503
 %451 = OpBitwiseOr %11 %244 %452
 %453 = OpIAdd %11 %451 %24
 %454 = OpCompositeConstruct %54 %245 %245 %245 %245
-OpImageWrite %441 %453 %454
+OpImageWrite %441 %453 %454 NonPrivateTexel
 %455 = OpRayQueryGetIntersectionBarycentricsKHR %222 %20 %58
 %456 = OpCompositeExtract %28 %455 1
 %457 = OpBitwiseOr %11 %244 %458
@@ -932,13 +933,13 @@ OpImageWrite %441 %453 %454
 %460 = OpIAdd %11 %244 %458
 %461 = OpBitcast %11 %456
 %462 = OpCompositeConstruct %54 %461 %461 %461 %461
-OpImageWrite %459 %460 %462
+OpImageWrite %459 %460 %462 NonPrivateTexel
 %463 = OpRayQueryGetIntersectionFrontFaceKHR %5 %20 %58
 %464 = OpSelect %11 %463 %234 %235
 %465 = OpBitwiseOr %11 %244 %466
 %467 = OpIAdd %11 %465 %24
 %468 = OpCompositeConstruct %54 %464 %464 %464 %464
-OpImageWrite %441 %467 %468
+OpImageWrite %441 %467 %468 NonPrivateTexel
 OpBranch %503
 %503 = OpLabel
 OpBranch %504

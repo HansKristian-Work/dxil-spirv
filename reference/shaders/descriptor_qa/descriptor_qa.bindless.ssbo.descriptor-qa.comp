@@ -290,10 +290,11 @@ OpCapability SampledBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability RuntimeDescriptorArray
 OpCapability UniformTexelBufferArrayDynamicIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %13 %17 %22 %27 %32 %37 %42 %46 %53 %56 %74 %112
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -777,7 +778,7 @@ OpBranchConditional %288 %437 %438
 %300 = OpLoad %33 %294
 %301 = OpBitcast %5 %287
 %302 = OpAccessChain %85 %290 %59 %60
-OpStore %302 %301
+OpStore %302 %301 NonPrivatePointer
 OpBranch %438
 %438 = OpLabel
 %303 = OpUGreaterThan %61 %60 %304
@@ -793,7 +794,7 @@ OpBranchConditional %303 %439 %440
 %307 = OpAccessChain %289 %32 %311
 %313 = OpBitcast %5 %287
 %314 = OpAccessChain %85 %307 %59 %60
-OpStore %314 %313
+OpStore %314 %313 NonPrivatePointer
 OpBranch %440
 %440 = OpLabel
 %315 = OpUGreaterThan %61 %60 %316
@@ -809,7 +810,7 @@ OpBranchConditional %315 %441 %442
 %325 = OpShiftLeftLogical %5 %60 %63
 %326 = OpFunctionCall %5 %262 %60 %87
 %327 = OpAccessChain %85 %318 %59 %326
-OpStore %327 %324
+OpStore %327 %324 NonPrivatePointer
 OpBranch %442
 %442 = OpLabel
 %328 = OpUGreaterThan %61 %60 %329
@@ -827,7 +828,7 @@ OpBranchConditional %328 %443 %444
 %334 = OpAccessChain %317 %42 %338
 %340 = OpFunctionCall %5 %262 %60 %87
 %341 = OpAccessChain %85 %334 %59 %340
-OpStore %341 %331
+OpStore %341 %331 NonPrivatePointer
 OpBranch %444
 %444 = OpLabel
 %342 = OpUGreaterThan %61 %60 %343
@@ -842,7 +843,7 @@ OpBranchConditional %342 %445 %446
 %350 = OpLoad %43 %345
 %351 = OpCompositeConstruct %33 %60 %59
 %352 = OpCompositeConstruct %47 %287 %287 %287 %287
-OpImageWrite %350 %351 %352
+OpImageWrite %350 %351 %352 NonPrivateTexel
 OpBranch %446
 %446 = OpLabel
 %353 = OpUGreaterThan %61 %60 %354
@@ -859,7 +860,7 @@ OpBranchConditional %353 %447 %448
 %363 = OpLoad %43 %357
 %364 = OpCompositeConstruct %33 %59 %60
 %365 = OpCompositeConstruct %47 %287 %287 %287 %287
-OpImageWrite %363 %364 %365
+OpImageWrite %363 %364 %365 NonPrivateTexel
 OpBranch %448
 %448 = OpLabel
 OpBranch %449
@@ -886,28 +887,28 @@ OpFunctionEnd
 %82 = OpFunctionParameter %5
 %84 = OpLabel
 %86 = OpAccessChain %85 %74 %87
-%88 = OpAtomicIAdd %5 %86 %89 %59 %89
+%88 = OpAtomicIAdd %5 %86 %68 %59 %89
 %90 = OpIEqual %61 %88 %59
 OpSelectionMerge %92 None
 OpBranchConditional %90 %91 %92
 %91 = OpLabel
 %93 = OpAccessChain %85 %74 %94
-OpStore %93 %78
+OpStore %93 %78 NonPrivatePointer
 %95 = OpAccessChain %85 %74 %89
-OpStore %95 %77
+OpStore %95 %77 NonPrivatePointer
 %96 = OpAccessChain %85 %74 %63
-OpStore %96 %79
+OpStore %96 %79 NonPrivatePointer
 %97 = OpAccessChain %85 %74 %98
-OpStore %97 %80
+OpStore %97 %80 NonPrivatePointer
 %99 = OpAccessChain %85 %74 %100
-OpStore %99 %81
+OpStore %99 %81 NonPrivatePointer
 %101 = OpAccessChain %85 %74 %68
-OpStore %101 %82
+OpStore %101 %82 NonPrivatePointer
 %105 = OpAccessChain %104 %74 %59
-OpStore %105 %103
-OpMemoryBarrier %89 %106
+OpStore %105 %103 NonPrivatePointer
+OpMemoryBarrier %68 %106
 %107 = OpAccessChain %85 %74 %108
-OpStore %107 %76
+OpStore %107 %76 NonPrivatePointer
 OpBranch %92
 %92 = OpLabel
 OpReturn
@@ -974,7 +975,7 @@ OpSelectionMerge %384 None
 OpBranchConditional %388 %383 %384
 %383 = OpLabel
 %390 = OpBitcast %389 %378
-%391 = OpAtomicIAdd %5 %390 %89 %59 %379
+%391 = OpAtomicIAdd %5 %390 %68 %59 %379
 %392 = OpIAdd %5 %391 %380
 OpBranch %384
 %384 = OpLabel

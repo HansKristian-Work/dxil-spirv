@@ -72,10 +72,11 @@ OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint Fragment %3 "main" %9 %13 %16 %18
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
@@ -184,7 +185,7 @@ OpBranch %77
 %55 = OpBitcast %54 %25
 %56 = OpInBoundsAccessChain %38 %55 %40 %32
 %58 = OpFConvert %33 %51
-OpStore %56 %58 Aligned 4
+OpStore %56 %58 Aligned|NonPrivatePointer 4
 %60 = OpAccessChain %59 %13 %40 %32
 %61 = OpLoad %5 %60
 %62 = OpUConvert %30 %61
@@ -195,7 +196,7 @@ OpStore %56 %58 Aligned 4
 %70 = OpBitcast %69 %22
 %72 = OpInBoundsAccessChain %71 %70 %40 %32
 %74 = OpUConvert %5 %66
-OpStore %72 %74 Aligned 4
+OpStore %72 %74 Aligned|NonPrivatePointer 4
 %76 = OpBitcast %14 %75
 OpStore %18 %76
 OpReturn

@@ -74,8 +74,9 @@ OpCapability Float16
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %13 %19 %23 %27 %31 %34
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormPreserve 16
@@ -186,7 +187,7 @@ OpBranch %152
 %36 = OpAccessChain %35 %34 %37
 %38 = OpLoad %5 %36
 %40 = OpAccessChain %39 %27 %37 %38
-%41 = OpLoad %5 %40
+%41 = OpLoad %5 %40 NonPrivatePointer
 %42 = OpAccessChain %39 %13 %37 %38
 %43 = OpLoad %5 %42
 %44 = OpAccessChain %39 %9 %37 %38
@@ -208,9 +209,9 @@ OpBranch %152
 %63 = OpIMul %5 %60 %62
 %64 = OpIAdd %5 %59 %63
 %65 = OpAccessChain %39 %27 %37 %38
-OpStore %65 %64
+OpStore %65 %64 NonPrivatePointer
 %66 = OpAccessChain %39 %27 %37 %38
-%67 = OpLoad %5 %66
+%67 = OpLoad %5 %66 NonPrivatePointer
 %68 = OpAccessChain %39 %13 %37 %38
 %69 = OpLoad %5 %68
 %70 = OpAccessChain %39 %9 %37 %38
@@ -232,9 +233,9 @@ OpStore %65 %64
 %86 = OpIMul %5 %84 %85
 %87 = OpIAdd %5 %83 %86
 %88 = OpAccessChain %39 %27 %37 %38
-OpStore %88 %87
+OpStore %88 %87 NonPrivatePointer
 %89 = OpAccessChain %39 %31 %37 %38
-%90 = OpLoad %5 %89
+%90 = OpLoad %5 %89 NonPrivatePointer
 %92 = OpBitcast %91 %90
 %94 = OpAccessChain %93 %23 %37 %38
 %95 = OpLoad %15 %94
@@ -260,9 +261,9 @@ OpStore %88 %87
 %120 = OpFAdd %91 %92 %119
 %121 = OpBitcast %5 %120
 %122 = OpAccessChain %39 %31 %37 %38
-OpStore %122 %121
+OpStore %122 %121 NonPrivatePointer
 %123 = OpAccessChain %39 %31 %37 %38
-%124 = OpLoad %5 %123
+%124 = OpLoad %5 %123 NonPrivatePointer
 %125 = OpBitcast %91 %124
 %126 = OpAccessChain %93 %23 %37 %38
 %127 = OpLoad %15 %126
@@ -288,7 +289,7 @@ OpStore %122 %121
 %149 = OpFAdd %91 %125 %148
 %150 = OpBitcast %5 %149
 %151 = OpAccessChain %39 %31 %37 %38
-OpStore %151 %150
+OpStore %151 %150 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

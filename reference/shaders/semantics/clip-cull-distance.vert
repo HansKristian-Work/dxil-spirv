@@ -34,7 +34,8 @@ void main()
 OpCapability Shader
 OpCapability ClipDistance
 OpCapability CullDistance
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Vertex %3 "main" %8 %9 %10 %12 %17 %18
 OpName %3 "main"
 OpName %8 "POS"

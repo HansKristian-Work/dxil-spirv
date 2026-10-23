@@ -86,7 +86,8 @@ OpCapability Shader
 OpCapability SparseResidency
 OpCapability SampledBuffer
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %9 %12 %13 %15 %19
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -173,11 +174,11 @@ OpBranch %128
 %61 = OpLoad %10 %12
 %62 = OpIMul %5 %20 %25
 %63 = OpFunctionCall %5 %29 %62 %35
-%64 = OpImageSparseRead %37 %61 %63
+%64 = OpImageSparseRead %37 %61 %63 NonPrivateTexel
 %65 = OpCompositeExtract %5 %64 0
 %66 = OpCompositeExtract %5 %64 1 0
 %68 = OpIAdd %5 %63 %43
-%67 = OpImageRead %36 %61 %68
+%67 = OpImageRead %36 %61 %68 NonPrivateTexel
 %69 = OpCompositeExtract %5 %67 0
 %71 = OpCompositeConstruct %45 %66 %69
 %70 = OpCompositeConstruct %46 %71 %65
@@ -212,11 +213,11 @@ OpBranch %128
 %101 = OpFAdd %17 %97 %100
 %102 = OpLoad %10 %13
 %103 = OpIMul %5 %20 %25
-%104 = OpImageSparseRead %37 %102 %103
+%104 = OpImageSparseRead %37 %102 %103 NonPrivateTexel
 %105 = OpCompositeExtract %5 %104 0
 %106 = OpCompositeExtract %5 %104 1 0
 %108 = OpIAdd %5 %103 %43
-%107 = OpImageRead %36 %102 %108
+%107 = OpImageRead %36 %102 %108 NonPrivateTexel
 %109 = OpCompositeExtract %5 %107 0
 %111 = OpBitcast %16 %106
 %112 = OpBitcast %16 %109

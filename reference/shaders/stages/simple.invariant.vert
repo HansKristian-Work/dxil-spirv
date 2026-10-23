@@ -27,8 +27,9 @@ void main()
 ; Bound: 54
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 %43 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Vertex %3 "main" %8 %9 %10 %12
 OpName %3 "main"
 OpName %8 "A"

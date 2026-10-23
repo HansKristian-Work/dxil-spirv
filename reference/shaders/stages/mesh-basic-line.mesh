@@ -62,9 +62,10 @@ OpCapability GroupNonUniform
 OpCapability GroupNonUniformBallot
 OpCapability ShaderViewportIndexLayerEXT
 OpCapability MeshShadingEXT
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_mesh_shader"
 OpExtension "SPV_EXT_shader_viewport_index_layer"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint MeshEXT %3 "main" %11 %12 %17 %20 %21 %24 %28 %32 %34 %38 %44
 OpExecutionMode %3 OutputVertices 24
 OpExecutionMode %3 OutputPrimitivesEXT 8
@@ -129,7 +130,7 @@ OpDecorate %44 BuiltIn NumSubgroups
 %38 = OpVariable %37 TaskPayloadWorkgroupEXT
 %40 = OpTypePointer Workgroup %5
 %42 = OpConstant %7 2
-%43 = OpConstant %7 264
+%43 = OpConstant %7 24840
 %44 = OpVariable %33 Input
 %47 = OpConstant %7 1
 %49 = OpConstant %7 3
@@ -146,7 +147,7 @@ OpBranch %93
 %35 = OpLoad %7 %34
 %39 = OpConvertUToF %5 %35
 %41 = OpAccessChain %40 %32 %35
-OpStore %41 %39
+OpStore %41 %39 NonPrivatePointer
 OpControlBarrier %42 %42 %43
 OpSetMeshOutputsEXT %8 %14
 %45 = OpLoad %7 %44
@@ -162,7 +163,7 @@ OpBranchConditional %55 %97 %98
 %97 = OpLabel
 OpReturn
 %98 = OpLabel
-%56 = OpLoad %5 %41
+%56 = OpLoad %5 %41 NonPrivatePointer
 %58 = OpAccessChain %57 %11 %35 %52
 OpStore %58 %56
 %59 = OpAccessChain %57 %11 %35 %47
@@ -173,7 +174,7 @@ OpStore %60 %56
 OpStore %61 %56
 %62 = OpBitwiseXor %7 %35 %47
 %63 = OpAccessChain %40 %32 %62
-%64 = OpLoad %5 %63
+%64 = OpLoad %5 %63 NonPrivatePointer
 %66 = OpInBoundsAccessChain %65 %38 %52
 %67 = OpLoad %5 %66
 %68 = OpFAdd %5 %67 %64
@@ -204,7 +205,7 @@ OpStore %84 %35
 OpStore %85 %35
 %86 = OpBitwiseXor %7 %35 %42
 %87 = OpAccessChain %40 %32 %86
-%88 = OpLoad %5 %87
+%88 = OpLoad %5 %87 NonPrivatePointer
 %89 = OpAccessChain %57 %24 %35 %52
 OpStore %89 %88
 %90 = OpAccessChain %57 %24 %35 %47

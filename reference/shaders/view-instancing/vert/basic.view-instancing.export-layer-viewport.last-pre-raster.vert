@@ -32,8 +32,9 @@ OpCapability Shader
 OpCapability Geometry
 OpCapability MultiViewport
 OpCapability ShaderViewportIndexLayerEXT
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_shader_viewport_index_layer"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Vertex %3 "main" %7 %8 %12 %14 %15 %20
 OpName %3 "main"
 OpName %7 "LAYER"

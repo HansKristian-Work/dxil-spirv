@@ -53,8 +53,9 @@ OpCapability Shader
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability RuntimeDescriptorArray
 OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %10 %16 %21 %28 %30 %32 %34
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -155,7 +156,7 @@ OpBranch %89
 %41 = OpShiftLeftLogical %5 %40 %42
 %51 = OpFunctionCall %5 %46 %40 %52
 %54 = OpAccessChain %53 %10 %38 %51
-%55 = OpLoad %6 %54
+%55 = OpLoad %6 %54 NonPrivatePointer
 %56 = OpCompositeExtract %5 %55 0
 %57 = OpCompositeExtract %5 %55 1
 %59 = OpAccessChain %58 %28 %38 %38
@@ -166,7 +167,7 @@ OpBranch %89
 %67 = OpAccessChain %66 %16 %63
 %68 = OpFunctionCall %5 %46 %40 %52
 %69 = OpAccessChain %53 %67 %38 %68
-%70 = OpLoad %6 %69
+%70 = OpLoad %6 %69 NonPrivatePointer
 %71 = OpCompositeExtract %5 %70 0
 %72 = OpCompositeExtract %5 %70 1
 %73 = OpIAdd %5 %71 %56
@@ -175,7 +176,7 @@ OpBranch %89
 %78 = OpAccessChain %77 %21 %35
 %79 = OpFunctionCall %5 %46 %40 %52
 %80 = OpAccessChain %53 %78 %38 %79
-%81 = OpLoad %6 %80
+%81 = OpLoad %6 %80 NonPrivatePointer
 %82 = OpCompositeExtract %5 %81 0
 %83 = OpCompositeExtract %5 %81 1
 %84 = OpIAdd %5 %73 %82

@@ -48,8 +48,9 @@ void main()
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
+OpCapability VulkanMemoryModel
 %52 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %11 %16
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -222,16 +223,16 @@ OpBranch %169
 %160 = OpIAdd %5 %39 %159
 %161 = OpIMul %5 %20 %22
 %162 = OpCompositeConstruct %23 %91 %91 %91 %91
-OpImageWrite %12 %161 %162
+OpImageWrite %12 %161 %162 NonPrivateTexel
 %163 = OpCompositeConstruct %23 %114 %114 %114 %114
 %164 = OpIAdd %5 %161 %28
-OpImageWrite %12 %164 %163
+OpImageWrite %12 %164 %163 NonPrivateTexel
 %165 = OpCompositeConstruct %23 %137 %137 %137 %137
 %166 = OpIAdd %5 %161 %32
-OpImageWrite %12 %166 %165
+OpImageWrite %12 %166 %165 NonPrivateTexel
 %167 = OpCompositeConstruct %23 %160 %160 %160 %160
 %168 = OpIAdd %5 %161 %36
-OpImageWrite %12 %168 %167
+OpImageWrite %12 %168 %167 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

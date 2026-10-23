@@ -28,7 +28,8 @@ void main()
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformVote
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %12
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -74,7 +75,7 @@ OpBranchConditional %20 %38 %39
 %22 = OpShiftLeftLogical %5 %16 %23
 %32 = OpFunctionCall %5 %27 %16 %33
 %36 = OpCompositeConstruct %35 %34 %34 %34 %34
-OpImageWrite %9 %32 %36
+OpImageWrite %9 %32 %36 NonPrivateTexel
 OpBranch %39
 %39 = OpLabel
 OpBranch %40

@@ -109,13 +109,14 @@ OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability FloatControls2
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_float_controls2"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint Fragment %3 "main" %8 %13 %18 %22 %26 %30 %34 %38 %42 %46 %50 %54 %58 %62 %65 %68 %71 %74
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
@@ -396,28 +397,28 @@ OpBranch %403
 %173 = OpCompositeConstruct %172 %170 %171
 %175 = OpCompositeConstruct %174 %168 %169 %168 %169
 %176 = OpFConvert %66 %175
-OpImageWrite %115 %173 %176
+OpImageWrite %115 %173 %176 NonPrivateTexel
 %178 = OpConvertFToS %177 %164
 %179 = OpConvertFToS %177 %166
 %180 = OpCompositeConstruct %172 %170 %171
 %182 = OpCompositeConstruct %181 %178 %179 %178 %179
 %183 = OpSConvert %69 %182
-OpImageWrite %110 %180 %183
+OpImageWrite %110 %180 %183 NonPrivateTexel
 %184 = OpConvertFToU %177 %164
 %185 = OpConvertFToU %177 %166
 %186 = OpCompositeConstruct %172 %170 %171
 %187 = OpCompositeConstruct %181 %184 %185 %184 %185
 %188 = OpUConvert %72 %187
-OpImageWrite %103 %186 %188
+OpImageWrite %103 %186 %188 NonPrivateTexel
 %190 = OpCompositeConstruct %174 %189 %189 %189 %189
 %191 = OpFConvert %66 %190
-OpImageWrite %96 %170 %191
+OpImageWrite %96 %170 %191 NonPrivateTexel
 %193 = OpCompositeConstruct %181 %192 %192 %192 %192
 %194 = OpSConvert %69 %193
-OpImageWrite %89 %170 %194
+OpImageWrite %89 %170 %194 NonPrivateTexel
 %196 = OpCompositeConstruct %181 %195 %195 %195 %195
 %197 = OpUConvert %72 %196
-OpImageWrite %83 %170 %197
+OpImageWrite %83 %170 %197 NonPrivateTexel
 %199 = OpSampledImage %198 %151 %161
 %202 = OpCompositeConstruct %63 %164 %166
 %201 = OpImageSampleImplicitLod %66 %199 %202 None

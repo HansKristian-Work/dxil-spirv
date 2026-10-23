@@ -57,9 +57,10 @@ OpCapability Shader
 OpCapability Float64
 OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %11 %16 %21 %26 %30
 OpExecutionMode %3 LocalSize 128 1 1
 OpExecutionMode %3 DenormPreserve 64
@@ -173,7 +174,7 @@ OpBranch %124
 %66 = OpIMul %27 %34 %67
 %68 = OpCompositeConstruct %6 %62 %63 %64
 %69 = OpAccessChain %48 %36 %33 %66
-OpStore %69 %68
+OpStore %69 %68 NonPrivatePointer
 %70 = OpFSub %5 %51 %59
 %71 = OpFSub %5 %52 %60
 %72 = OpFSub %5 %53 %61
@@ -182,7 +183,7 @@ OpStore %69 %68
 %75 = OpIAdd %27 %74 %39
 %76 = OpCompositeConstruct %6 %70 %71 %72
 %77 = OpAccessChain %48 %36 %33 %75
-OpStore %77 %76
+OpStore %77 %76 NonPrivatePointer
 %78 = OpFMul %5 %59 %51
 %79 = OpFMul %5 %60 %52
 %80 = OpFMul %5 %61 %53
@@ -191,7 +192,7 @@ OpStore %77 %76
 %83 = OpIAdd %27 %82 %42
 %84 = OpCompositeConstruct %6 %78 %79 %80
 %85 = OpAccessChain %48 %36 %33 %83
-OpStore %85 %84
+OpStore %85 %84 NonPrivatePointer
 %86 = OpFDiv %5 %51 %59
 %87 = OpFDiv %5 %52 %60
 %88 = OpFDiv %5 %53 %61
@@ -200,7 +201,7 @@ OpStore %85 %84
 %91 = OpIAdd %27 %90 %45
 %92 = OpCompositeConstruct %6 %86 %87 %88
 %93 = OpAccessChain %48 %36 %33 %91
-OpStore %93 %92
+OpStore %93 %92 NonPrivatePointer
 %94 = OpIMul %27 %34 %95
 %96 = OpIMul %27 %34 %45
 %105 = OpFunctionCall %27 %100 %96 %106
@@ -215,13 +216,13 @@ OpStore %93 %92
 %117 = OpShiftLeftLogical %27 %34 %45
 %118 = OpFunctionCall %27 %100 %34 %106
 %119 = OpAccessChain %107 %41 %33 %118
-OpStore %119 %115
+OpStore %119 %115 NonPrivatePointer
 %121 = OpIAdd %27 %118 %39
 %120 = OpAccessChain %107 %41 %33 %121
-OpStore %120 %116
+OpStore %120 %116 NonPrivatePointer
 %123 = OpIAdd %27 %118 %42
 %122 = OpAccessChain %107 %41 %33 %123
-OpStore %122 %53
+OpStore %122 %53 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %100 = OpFunction %27 None %97
