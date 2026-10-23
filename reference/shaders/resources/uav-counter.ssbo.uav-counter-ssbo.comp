@@ -24,7 +24,7 @@ layout(set = 7, binding = 1, std430) buffer _17_19
 void main()
 {
     uint _24 = atomicAdd(_12.counter, 1u);
-    uint _26 = atomicAdd(_19.counter, 1u);
+    uint _27 = atomicAdd(_19.counter, 1u);
 }
 
 
@@ -33,10 +33,11 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 28
+; Bound: 29
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %12 %16 %19
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -87,15 +88,16 @@ OpDecorate %19 Binding 1
 %19 = OpVariable %18 StorageBuffer
 %20 = OpTypePointer StorageBuffer %5
 %22 = OpConstant %5 0
-%25 = OpConstant %5 1
+%25 = OpConstant %5 5
+%26 = OpConstant %5 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %27
-%27 = OpLabel
+OpBranch %28
+%28 = OpLabel
 %21 = OpAccessChain %20 %19 %22
 %23 = OpAccessChain %20 %12 %22
-%24 = OpAtomicIAdd %5 %23 %25 %22 %25
-%26 = OpAtomicIAdd %5 %21 %25 %22 %25
+%24 = OpAtomicIAdd %5 %23 %25 %22 %26
+%27 = OpAtomicIAdd %5 %21 %25 %22 %26
 OpReturn
 OpFunctionEnd
 #endif

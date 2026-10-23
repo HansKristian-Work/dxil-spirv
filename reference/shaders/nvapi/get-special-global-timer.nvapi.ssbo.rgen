@@ -36,10 +36,11 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
 OpExtension "SPV_KHR_shader_clock"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint RayGenerationKHR %3 "main" %9
 OpName %3 "main"
 OpName %7 "BufSSBO"
@@ -68,11 +69,11 @@ OpBranch %21
 %12 = OpReadClockKHR %11 %13
 %14 = OpCompositeExtract %5 %12 0
 %17 = OpAccessChain %16 %9 %15 %15
-OpStore %17 %14
+OpStore %17 %14 NonPrivatePointer
 %18 = OpReadClockKHR %11 %13
 %19 = OpCompositeExtract %5 %18 1
 %20 = OpAccessChain %16 %9 %15 %13
-OpStore %20 %19
+OpStore %20 %19 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

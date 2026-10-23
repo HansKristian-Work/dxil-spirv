@@ -43,7 +43,8 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Geometry %3 "main" %11 %12 %14 %15 %18 %21 %65
 OpExecutionMode %3 Invocations 1
 OpExecutionMode %3 OutputVertices 1

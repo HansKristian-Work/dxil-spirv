@@ -14,6 +14,7 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability ShaderInvocationReorderNV
 OpCapability RayTracingClusterAccelerationStructureNV
@@ -22,7 +23,7 @@ OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 OpExtension "SPV_NV_cluster_acceleration_structure"
 OpExtension "SPV_NV_shader_invocation_reorder"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint RayGenerationKHR %3 "main" %13 %17 %21 %25 %30 %33 %34 %35 %38 %39 %40
 OpName %3 "main"
 OpName %11 "SBTBlock"
@@ -183,7 +184,7 @@ OpHitObjectTraceRayNV %90 %86 %87 %45 %67 %68 %69 %88 %77 %89 %78 %33
 %92 = OpInBoundsAccessChain %91 %33 %45
 %93 = OpLoad %5 %92
 %95 = OpAccessChain %94 %25 %45 %45
-OpStore %95 %93
+OpStore %95 %93 NonPrivatePointer
 OpReorderThreadWithHintNV %67 %68
 OpReorderThreadWithHitObjectNV %90 %45 %45
 %96 = OpLoad %15 %17
@@ -192,53 +193,53 @@ OpStore %97 %93
 OpHitObjectExecuteShaderNV %90 %34
 %98 = OpLoad %5 %97
 %99 = OpAccessChain %94 %25 %45 %67
-OpStore %99 %98
+OpStore %99 %98 NonPrivatePointer
 %101 = OpHitObjectIsEmptyNV %100 %90
 %102 = OpSelect %5 %101 %67 %45
 %103 = OpINotEqual %100 %102 %45
 %104 = OpSelect %5 %103 %67 %45
 %105 = OpAccessChain %94 %25 %45 %68
-OpStore %105 %104
+OpStore %105 %104 NonPrivatePointer
 %106 = OpHitObjectIsMissNV %100 %90
 %107 = OpSelect %5 %106 %67 %45
 %108 = OpINotEqual %100 %107 %45
 %109 = OpSelect %5 %108 %67 %45
 %110 = OpAccessChain %94 %25 %45 %69
-OpStore %110 %109
+OpStore %110 %109 NonPrivatePointer
 %111 = OpHitObjectIsHitNV %100 %90
 %112 = OpSelect %5 %111 %67 %45
 %113 = OpINotEqual %100 %112 %45
 %114 = OpSelect %5 %113 %67 %45
 %115 = OpAccessChain %94 %25 %45 %70
-OpStore %115 %114
+OpStore %115 %114 NonPrivatePointer
 %116 = OpHitObjectGetClusterIdNV %5 %90
 %117 = OpAccessChain %94 %25 %45 %6
-OpStore %117 %116
+OpStore %117 %116 NonPrivatePointer
 %118 = OpHitObjectGetInstanceIdNV %5 %90
 %119 = OpAccessChain %94 %25 %45 %8
-OpStore %119 %118
+OpStore %119 %118 NonPrivatePointer
 %120 = OpHitObjectGetInstanceCustomIndexNV %5 %90
 %122 = OpAccessChain %94 %25 %45 %121
-OpStore %122 %120
+OpStore %122 %120 NonPrivatePointer
 %123 = OpHitObjectGetPrimitiveIndexNV %5 %90
 %125 = OpAccessChain %94 %25 %45 %124
-OpStore %125 %123
+OpStore %125 %123 NonPrivatePointer
 %126 = OpHitObjectGetGeometryIndexNV %5 %90
 %128 = OpAccessChain %94 %25 %45 %127
-OpStore %128 %126
+OpStore %128 %126 NonPrivatePointer
 %129 = OpHitObjectGetHitKindNV %5 %90
 %131 = OpAccessChain %94 %25 %45 %130
-OpStore %131 %129
+OpStore %131 %129 NonPrivatePointer
 %132 = OpHitObjectGetShaderBindingTableRecordIndexNV %5 %90
 %134 = OpAccessChain %94 %25 %45 %133
-OpStore %134 %132
+OpStore %134 %132 NonPrivatePointer
 %140 = OpHitObjectGetShaderRecordBufferHandleNV %10 %90
 %141 = OpBitcast %138 %140
 %142 = OpShiftRightLogical %5 %135 %68
 %143 = OpInBoundsAccessChain %139 %141 %45 %142
 %144 = OpLoad %5 %143 Aligned 4
 %146 = OpAccessChain %94 %25 %45 %145
-OpStore %146 %144
+OpStore %146 %144 NonPrivatePointer
 %147 = OpHitObjectGetRayTMinNV %26 %90
 %148 = OpBitcast %5 %147
 %149 = OpHitObjectGetRayTMaxNV %26 %90
@@ -267,39 +268,39 @@ OpStore %146 %144
 %172 = OpBitcast %26 %164
 %173 = OpBitcast %5 %165
 %174 = OpAccessChain %94 %21 %45 %45
-OpStore %174 %173
+OpStore %174 %173 NonPrivatePointer
 %175 = OpBitcast %5 %166
 %176 = OpAccessChain %94 %21 %45 %67
-OpStore %176 %175
+OpStore %176 %175 NonPrivatePointer
 %177 = OpBitcast %5 %167
 %178 = OpAccessChain %94 %21 %45 %68
-OpStore %178 %177
+OpStore %178 %177 NonPrivatePointer
 %179 = OpBitcast %5 %168
 %180 = OpAccessChain %94 %21 %45 %69
-OpStore %180 %179
+OpStore %180 %179 NonPrivatePointer
 %181 = OpBitcast %5 %169
 %182 = OpAccessChain %94 %21 %45 %70
-OpStore %182 %181
+OpStore %182 %181 NonPrivatePointer
 %183 = OpBitcast %5 %170
 %184 = OpAccessChain %94 %21 %45 %6
-OpStore %184 %183
+OpStore %184 %183 NonPrivatePointer
 %185 = OpBitcast %5 %171
 %186 = OpAccessChain %94 %21 %45 %8
-OpStore %186 %185
+OpStore %186 %185 NonPrivatePointer
 %187 = OpBitcast %5 %172
 %188 = OpAccessChain %94 %21 %45 %121
-OpStore %188 %187
+OpStore %188 %187 NonPrivatePointer
 OpHitObjectGetAttributesNV %90 %30
 %190 = OpInBoundsAccessChain %189 %30 %45
 %191 = OpLoad %27 %190
 %192 = OpCompositeExtract %26 %191 0
 %193 = OpBitcast %5 %192
 %194 = OpAccessChain %94 %21 %45 %124
-OpStore %194 %193
+OpStore %194 %193 NonPrivatePointer
 %195 = OpCompositeExtract %26 %191 1
 %196 = OpBitcast %5 %195
 %197 = OpAccessChain %94 %21 %45 %127
-OpStore %197 %196
+OpStore %197 %196 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 

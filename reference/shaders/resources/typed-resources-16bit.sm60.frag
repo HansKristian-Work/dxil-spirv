@@ -108,9 +108,10 @@ OpCapability Int16
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
+OpCapability VulkanMemoryModel
 OpCapability FloatControls2
 OpExtension "SPV_KHR_float_controls2"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %12 %16 %19 %22 %25 %28 %31 %34 %37 %40 %43 %46 %47 %50 %53 %56 %59
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionModeId %3 FPFastMathDefault %5 %315
@@ -355,27 +356,27 @@ OpBranch %316
 %84 = OpConvertFToS %13 %80
 %86 = OpCompositeConstruct %85 %83 %84
 %87 = OpCompositeConstruct %51 %81 %82 %81 %82
-OpImageWrite %65 %86 %87
+OpImageWrite %65 %86 %87 NonPrivateTexel
 %89 = OpConvertFToS %88 %77
 %90 = OpConvertFToS %88 %80
 %91 = OpCompositeConstruct %85 %83 %84
 %93 = OpCompositeConstruct %92 %89 %90 %89 %90
 %94 = OpSConvert %54 %93
-OpImageWrite %64 %91 %94
+OpImageWrite %64 %91 %94 NonPrivateTexel
 %95 = OpConvertFToU %88 %77
 %96 = OpConvertFToU %88 %80
 %97 = OpCompositeConstruct %85 %83 %84
 %98 = OpCompositeConstruct %92 %95 %96 %95 %96
 %99 = OpUConvert %57 %98
-OpImageWrite %63 %97 %99
+OpImageWrite %63 %97 %99 NonPrivateTexel
 %101 = OpCompositeConstruct %51 %100 %100 %100 %100
-OpImageWrite %62 %83 %101
+OpImageWrite %62 %83 %101 NonPrivateTexel
 %103 = OpCompositeConstruct %92 %102 %102 %102 %102
 %104 = OpSConvert %54 %103
-OpImageWrite %61 %83 %104
+OpImageWrite %61 %83 %104 NonPrivateTexel
 %106 = OpCompositeConstruct %92 %105 %105 %105 %105
 %107 = OpUConvert %57 %106
-OpImageWrite %60 %83 %107
+OpImageWrite %60 %83 %107 NonPrivateTexel
 %109 = OpSampledImage %108 %71 %73
 %112 = OpCompositeConstruct %48 %77 %80
 %111 = OpImageSampleImplicitLod %51 %109 %112 None

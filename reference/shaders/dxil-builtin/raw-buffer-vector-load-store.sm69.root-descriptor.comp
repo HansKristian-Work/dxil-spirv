@@ -107,9 +107,10 @@ void main()
 ; Bound: 162
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %12
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -286,20 +287,20 @@ OpBranch %161
 %108 = OpFunctionCall %5 %26 %16 %32
 %112 = OpBitcast %111 %107
 %113 = OpInBoundsAccessChain %38 %112 %15 %108
-OpStore %113 %40 Aligned 4
+OpStore %113 %40 Aligned|NonPrivatePointer 4
 %115 = OpAccessChain %19 %9 %18
 %116 = OpLoad %6 %115
 %117 = OpFunctionCall %5 %26 %16 %32
 %118 = OpBitcast %111 %116
 %119 = OpInBoundsAccessChain %38 %118 %15 %117
-OpStore %119 %105 Aligned 4
+OpStore %119 %105 Aligned|NonPrivatePointer 4
 %120 = OpAccessChain %19 %9 %18
 %121 = OpLoad %6 %120
 %122 = OpIAdd %5 %16 %46
 %123 = OpFunctionCall %5 %26 %122 %48
 %127 = OpBitcast %126 %121
 %128 = OpInBoundsAccessChain %54 %127 %15 %123
-OpStore %128 %56 Aligned 8
+OpStore %128 %56 Aligned|NonPrivatePointer 8
 %129 = OpAccessChain %19 %9 %18
 %130 = OpLoad %6 %129
 %133 = OpCompositeExtract %5 %130 0
@@ -311,14 +312,14 @@ OpStore %128 %56 Aligned 8
 %139 = OpCompositeConstruct %6 %136 %138
 %140 = OpBitcast %132 %139
 %141 = OpInBoundsAccessChain %73 %140 %15
-OpStore %141 %75 Aligned 4
+OpStore %141 %75 Aligned|NonPrivatePointer 4
 %142 = OpAccessChain %19 %9 %18
 %143 = OpLoad %6 %142
 %144 = OpIAdd %5 %16 %80
 %145 = OpFunctionCall %5 %26 %144 %82
 %149 = OpBitcast %148 %143
 %150 = OpInBoundsAccessChain %88 %149 %15 %145
-OpStore %150 %90 Aligned 16
+OpStore %150 %90 Aligned|NonPrivatePointer 16
 %151 = OpCompositeInsert %83 %105 %152 0
 %153 = OpVectorShuffle %83 %151 %152 0 0 0 0
 %154 = OpFAdd %83 %153 %98
@@ -328,7 +329,7 @@ OpStore %150 %90 Aligned 16
 %158 = OpFunctionCall %5 %26 %157 %82
 %159 = OpBitcast %148 %156
 %160 = OpInBoundsAccessChain %88 %159 %15 %158
-OpStore %160 %154 Aligned 16
+OpStore %160 %154 Aligned|NonPrivatePointer 16
 OpReturn
 OpFunctionEnd
 %26 = OpFunction %5 None %23

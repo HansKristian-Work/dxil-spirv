@@ -15,7 +15,7 @@ layout(pixel_interlock_ordered) in;
 #endif
 layout(early_fragment_tests) in;
 
-layout(set = 0, binding = 0, std430) coherent buffer SSBO
+layout(set = 0, binding = 0, std430) buffer SSBO
 {
     uvec4 _m0[];
 } _10;
@@ -40,12 +40,13 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 56
+; Bound: 57
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_fragment_shader_interlock"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %10 %14
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
@@ -61,7 +62,6 @@ OpMemberDecorate %8 0 Offset 0
 OpDecorate %8 Block
 OpDecorate %10 DescriptorSet 0
 OpDecorate %10 Binding 0
-OpDecorate %10 Coherent
 OpDecorate %14 BuiltIn FragCoord
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -84,12 +84,13 @@ OpDecorate %14 BuiltIn FragCoord
 %35 = OpConstant %5 4294967295
 %38 = OpConstant %5 16
 %39 = OpTypePointer StorageBuffer %6
-%48 = OpConstant %5 2
-%50 = OpConstant %5 3
+%42 = OpConstant %5 5
+%49 = OpConstant %5 2
+%51 = OpConstant %5 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %55
-%55 = OpLabel
+OpBranch %56
+%56 = OpLabel
 %16 = OpAccessChain %15 %14 %17
 %18 = OpLoad %11 %16
 %19 = OpAccessChain %15 %14 %20
@@ -102,19 +103,19 @@ OpBranch %55
 %37 = OpFunctionCall %5 %32 %26 %38
 %40 = OpAccessChain %39 %10 %17 %37
 OpBeginInvocationInterlockEXT
-%41 = OpLoad %6 %40
-%42 = OpCompositeExtract %5 %41 0
-%43 = OpCompositeExtract %5 %41 1
-%44 = OpCompositeExtract %5 %41 2
-%45 = OpCompositeExtract %5 %41 3
-%46 = OpIAdd %5 %42 %20
-%47 = OpIAdd %5 %43 %48
-%49 = OpIAdd %5 %44 %50
-%51 = OpIAdd %5 %45 %28
-%52 = OpFunctionCall %5 %32 %26 %38
-%53 = OpCompositeConstruct %6 %46 %47 %49 %51
-%54 = OpAccessChain %39 %10 %17 %52
-OpStore %54 %53
+%41 = OpLoad %6 %40 MakePointerVisible|NonPrivatePointer %42
+%43 = OpCompositeExtract %5 %41 0
+%44 = OpCompositeExtract %5 %41 1
+%45 = OpCompositeExtract %5 %41 2
+%46 = OpCompositeExtract %5 %41 3
+%47 = OpIAdd %5 %43 %20
+%48 = OpIAdd %5 %44 %49
+%50 = OpIAdd %5 %45 %51
+%52 = OpIAdd %5 %46 %28
+%53 = OpFunctionCall %5 %32 %26 %38
+%54 = OpCompositeConstruct %6 %47 %48 %50 %52
+%55 = OpAccessChain %39 %10 %17 %53
+OpStore %55 %54 MakePointerAvailable|NonPrivatePointer %42
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

@@ -4,11 +4,12 @@
 ; Bound: 67
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability RawAccessChainsNV
 OpCapability LongVectorEXT
 OpExtension "SPV_EXT_long_vector"
 OpExtension "SPV_NV_raw_access_chains"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %13 %17 %21 %24
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -89,25 +90,25 @@ OpBranch %66
 %26 = OpAccessChain %25 %24 %27
 %28 = OpLoad %5 %26
 %32 = OpRawAccessChainNV %31 %9 %33 %28 %27 RobustnessPerElementNV
-%34 = OpLoad %30 %32 Aligned 4
+%34 = OpLoad %30 %32 Aligned|NonPrivatePointer 4
 %35 = OpFAdd %30 %34 %37
 %38 = OpRawAccessChainNV %31 %9 %33 %28 %27 RobustnessPerElementNV
-OpStore %38 %35 Aligned 4
+OpStore %38 %35 Aligned|NonPrivatePointer 4
 %41 = OpRawAccessChainNV %40 %13 %42 %28 %27 RobustnessPerElementNV
-%43 = OpLoad %39 %41 Aligned 8
+%43 = OpLoad %39 %41 Aligned|NonPrivatePointer 8
 %44 = OpFAdd %39 %43 %46
 %47 = OpRawAccessChainNV %40 %13 %42 %28 %27 RobustnessPerElementNV
-OpStore %47 %44 Aligned 8
+OpStore %47 %44 Aligned|NonPrivatePointer 8
 %50 = OpRawAccessChainNV %49 %17 %51 %28 %27 RobustnessPerElementNV
-%52 = OpLoad %48 %50 Aligned 4
+%52 = OpLoad %48 %50 Aligned|NonPrivatePointer 4
 %53 = OpFAdd %48 %52 %55
 %56 = OpRawAccessChainNV %49 %17 %51 %28 %27 RobustnessPerElementNV
-OpStore %56 %53 Aligned 4
+OpStore %56 %53 Aligned|NonPrivatePointer 4
 %59 = OpRawAccessChainNV %58 %21 %60 %28 %27 RobustnessPerElementNV
-%61 = OpLoad %57 %59 Aligned 16
+%61 = OpLoad %57 %59 Aligned|NonPrivatePointer 16
 %62 = OpFAdd %57 %61 %64
 %65 = OpRawAccessChainNV %58 %21 %60 %28 %27 RobustnessPerElementNV
-OpStore %65 %62 Aligned 16
+OpStore %65 %62 Aligned|NonPrivatePointer 16
 OpReturn
 OpFunctionEnd
 

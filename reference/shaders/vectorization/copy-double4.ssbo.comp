@@ -27,8 +27,9 @@ void main()
 OpCapability Shader
 OpCapability Float64
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %14 %18
 OpExecutionMode %3 LocalSize 2 1 1
 OpExecutionMode %3 DenormPreserve 64
@@ -74,14 +75,14 @@ OpBranch %32
 %20 = OpAccessChain %19 %18 %21
 %22 = OpLoad %15 %20
 %24 = OpAccessChain %23 %10 %21 %22
-%25 = OpLoad %6 %24
+%25 = OpLoad %6 %24 NonPrivatePointer
 %26 = OpCompositeExtract %5 %25 0
 %27 = OpCompositeExtract %5 %25 1
 %28 = OpCompositeExtract %5 %25 2
 %29 = OpCompositeExtract %5 %25 3
 %30 = OpCompositeConstruct %6 %26 %27 %28 %29
 %31 = OpAccessChain %23 %14 %21 %22
-OpStore %31 %30
+OpStore %31 %30 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

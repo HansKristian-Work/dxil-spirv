@@ -33,8 +33,9 @@ OpCapability Shader
 OpCapability Geometry
 OpCapability Tessellation
 OpCapability ShaderViewportIndexLayerEXT
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_shader_viewport_index_layer"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint TessellationEvaluation %3 "main" %11 %13 %16 %17 %19 %22 %30 %37
 OpExecutionMode %3 Triangles
 OpName %3 "main"

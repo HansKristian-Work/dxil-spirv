@@ -36,9 +36,10 @@ OpCapability Shader
 OpCapability RayQueryKHR
 OpCapability RayTraversalPrimitiveCullingKHR
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_query"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %16 %21 %24
 OpExecutionMode %3 LocalSize 8 8 1
 OpName %3 "main"

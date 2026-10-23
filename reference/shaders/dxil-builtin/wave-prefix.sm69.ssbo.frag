@@ -98,10 +98,11 @@ OpCapability Int16
 OpCapability GroupNonUniformArithmetic
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %10 %15 %20 %26 %28
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
@@ -216,7 +217,7 @@ OpBranch %138
 %44 = OpShiftLeftLogical %5 %29 %34
 %45 = OpIMul %5 %29 %46
 %48 = OpAccessChain %47 %10 %41 %45
-OpStore %48 %38
+OpStore %48 %38 NonPrivatePointer
 %50 = OpIsHelperInvocationEXT %30
 %52 = OpSelect %6 %50 %51 %37
 %49 = OpGroupNonUniformIMul %6 %39 ExclusiveScan %52
@@ -224,7 +225,7 @@ OpStore %48 %38
 %54 = OpIMul %5 %29 %46
 %55 = OpIAdd %5 %54 %34
 %56 = OpAccessChain %47 %10 %41 %55
-OpStore %56 %49
+OpStore %56 %49 NonPrivatePointer
 %57 = OpIAdd %5 %29 %46
 %58 = OpCompositeInsert %11 %29 %59 0
 %60 = OpCompositeInsert %11 %33 %58 1
@@ -234,14 +235,14 @@ OpStore %56 %49
 %62 = OpGroupNonUniformIAdd %11 %39 ExclusiveScan %65
 %66 = OpIMul %5 %29 %46
 %68 = OpAccessChain %67 %15 %41 %66
-OpStore %68 %62
+OpStore %68 %62 NonPrivatePointer
 %70 = OpIsHelperInvocationEXT %30
 %72 = OpSelect %11 %70 %71 %61
 %69 = OpGroupNonUniformIMul %11 %39 ExclusiveScan %72
 %73 = OpIMul %5 %29 %46
 %74 = OpIAdd %5 %73 %34
 %75 = OpAccessChain %67 %15 %41 %74
-OpStore %75 %69
+OpStore %75 %69 NonPrivatePointer
 %77 = OpConvertUToF %76 %29
 %78 = OpConvertUToF %76 %33
 %79 = OpConvertUToF %76 %57
@@ -257,7 +258,7 @@ OpStore %75 %69
 %93 = OpIMul %5 %29 %46
 %94 = OpBitcast %16 %88
 %96 = OpAccessChain %95 %20 %41 %93
-OpStore %96 %94
+OpStore %96 %94 NonPrivatePointer
 %98 = OpIsHelperInvocationEXT %30
 %101 = OpSelect %82 %98 %100 %87
 %97 = OpGroupNonUniformFMul %82 %39 ExclusiveScan %101
@@ -265,7 +266,7 @@ OpStore %96 %94
 %103 = OpIAdd %5 %102 %34
 %104 = OpBitcast %16 %97
 %105 = OpAccessChain %95 %20 %41 %103
-OpStore %105 %104
+OpStore %105 %104 NonPrivatePointer
 %107 = OpConvertUToF %106 %29
 %108 = OpConvertUToF %106 %33
 %109 = OpConvertUToF %106 %57
@@ -280,7 +281,7 @@ OpStore %105 %104
 %122 = OpIMul %5 %29 %46
 %123 = OpBitcast %22 %117
 %125 = OpAccessChain %124 %26 %41 %122
-OpStore %125 %123
+OpStore %125 %123 NonPrivatePointer
 %127 = OpIsHelperInvocationEXT %30
 %130 = OpSelect %111 %127 %129 %116
 %126 = OpGroupNonUniformFMul %111 %39 ExclusiveScan %130
@@ -288,7 +289,7 @@ OpStore %125 %123
 %132 = OpIAdd %5 %131 %34
 %133 = OpBitcast %22 %126
 %134 = OpAccessChain %124 %26 %41 %132
-OpStore %134 %133
+OpStore %134 %133 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

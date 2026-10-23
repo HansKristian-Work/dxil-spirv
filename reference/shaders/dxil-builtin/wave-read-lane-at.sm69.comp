@@ -42,7 +42,8 @@ OpCapability GroupNonUniform
 OpCapability GroupNonUniformBallot
 OpCapability GroupNonUniformShuffle
 OpCapability GroupNonUniformQuad
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %11 %26 %36
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -136,13 +137,13 @@ OpBranch %90
 %82 = OpCompositeExtract %5 %68 1
 %83 = OpCompositeExtract %5 %68 2
 %85 = OpCompositeConstruct %84 %81 %81 %81 %81
-OpImageWrite %71 %80 %85
+OpImageWrite %71 %80 %85 NonPrivateTexel
 %86 = OpCompositeConstruct %84 %82 %82 %82 %82
 %87 = OpIAdd %5 %80 %19
-OpImageWrite %71 %87 %86
+OpImageWrite %71 %87 %86 NonPrivateTexel
 %88 = OpCompositeConstruct %84 %83 %83 %83 %83
 %89 = OpIAdd %5 %80 %23
-OpImageWrite %71 %89 %88
+OpImageWrite %71 %89 %88 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %76 = OpFunction %5 None %73

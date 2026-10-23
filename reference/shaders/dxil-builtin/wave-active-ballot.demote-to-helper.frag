@@ -25,9 +25,10 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformBallot
+OpCapability VulkanMemoryModel
 OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %7 %10
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

@@ -21,9 +21,10 @@ void main()
 OpCapability Shader
 OpCapability Float64
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
 %15 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %7 %11
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 64

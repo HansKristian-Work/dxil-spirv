@@ -36,7 +36,8 @@ OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformArithmetic
 OpCapability GroupNonUniformBallot
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %9 %10 %16
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -92,44 +93,44 @@ OpBranch %75
 %29 = OpIMul %5 %20 %30
 %39 = OpFunctionCall %5 %34 %29 %40
 %41 = OpCompositeConstruct %24 %27 %27 %27 %27
-OpImageWrite %13 %39 %41
+OpImageWrite %13 %39 %41 NonPrivateTexel
 %42 = OpGroupNonUniformIAdd %5 %26 ExclusiveScan %20
 %43 = OpIMul %5 %20 %30
 %44 = OpFunctionCall %5 %34 %43 %40
 %45 = OpCompositeConstruct %24 %42 %42 %42 %42
-OpImageWrite %13 %44 %45
+OpImageWrite %13 %44 %45 NonPrivateTexel
 %46 = OpGroupNonUniformIMul %5 %26 ExclusiveScan %20
 %47 = OpBitwiseOr %5 %28 %40
 %48 = OpIMul %5 %20 %30
 %49 = OpIAdd %5 %48 %50
 %51 = OpFunctionCall %5 %34 %49 %40
 %52 = OpCompositeConstruct %24 %46 %46 %46 %46
-OpImageWrite %13 %51 %52
+OpImageWrite %13 %51 %52 NonPrivateTexel
 %53 = OpGroupNonUniformIAdd %5 %26 ExclusiveScan %20
 %54 = OpIMul %5 %20 %30
 %55 = OpFunctionCall %5 %34 %54 %40
 %56 = OpCompositeConstruct %24 %53 %53 %53 %53
-OpImageWrite %12 %55 %56
+OpImageWrite %12 %55 %56 NonPrivateTexel
 %57 = OpGroupNonUniformIMul %5 %26 ExclusiveScan %20
 %58 = OpIMul %5 %20 %30
 %59 = OpIAdd %5 %58 %50
 %60 = OpFunctionCall %5 %34 %59 %40
 %61 = OpCompositeConstruct %24 %57 %57 %57 %57
-OpImageWrite %12 %60 %61
+OpImageWrite %12 %60 %61 NonPrivateTexel
 %63 = OpConvertUToF %62 %20
 %64 = OpGroupNonUniformFAdd %62 %26 ExclusiveScan %63
 %65 = OpConvertFToU %5 %64
 %66 = OpIMul %5 %20 %30
 %67 = OpFunctionCall %5 %34 %66 %40
 %68 = OpCompositeConstruct %24 %65 %65 %65 %65
-OpImageWrite %11 %67 %68
+OpImageWrite %11 %67 %68 NonPrivateTexel
 %69 = OpGroupNonUniformFMul %62 %26 ExclusiveScan %63
 %70 = OpConvertFToU %5 %69
 %71 = OpIMul %5 %20 %30
 %72 = OpIAdd %5 %71 %50
 %73 = OpFunctionCall %5 %34 %72 %40
 %74 = OpCompositeConstruct %24 %70 %70 %70 %70
-OpImageWrite %11 %73 %74
+OpImageWrite %11 %73 %74 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %34 = OpFunction %5 None %31

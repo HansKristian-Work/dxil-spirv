@@ -3,7 +3,7 @@
 #extension GL_EXT_samplerless_texture_functions : require
 
 layout(set = 0, binding = 0) uniform usamplerBuffer _9[];
-layout(set = 0, binding = 0, r32ui) uniform coherent writeonly uimageBuffer _13[];
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _13[];
 
 layout(location = 0) flat in uint INDEX;
 layout(location = 0, component = 1) flat in ivec3 UV;
@@ -32,14 +32,15 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 71
+; Bound: 72
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %9 %13 %15 %19 %23
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -50,7 +51,6 @@ OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
 OpDecorate %13 DescriptorSet 0
 OpDecorate %13 Binding 0
-OpDecorate %13 Coherent
 OpDecorate %15 Flat
 OpDecorate %15 Location 0
 OpDecorate %19 Flat
@@ -86,11 +86,12 @@ OpDecorate %23 Location 0
 %42 = OpConstant %5 2
 %43 = OpTypeVector %5 4
 %52 = OpTypeVector %5 3
-%66 = OpTypePointer Output %20
+%62 = OpConstant %5 5
+%67 = OpTypePointer Output %20
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %70
-%70 = OpLabel
+OpBranch %71
+%71 = OpLabel
 %25 = OpAccessChain %24 %19 %26
 %27 = OpLoad %16 %25
 %28 = OpBitcast %5 %27
@@ -121,19 +122,19 @@ OpBranch %70
 %59 = OpBitcast %20 %56
 %60 = OpShiftRightLogical %5 %32 %42
 %61 = OpCompositeConstruct %43 %54 %54 %54 %54
-OpImageWrite %40 %60 %61
-%62 = OpCompositeConstruct %43 %55 %55 %55 %55
-%63 = OpIAdd %5 %60 %30
-OpImageWrite %40 %63 %62
-%64 = OpCompositeConstruct %43 %56 %56 %56 %56
-%65 = OpIAdd %5 %60 %42
-OpImageWrite %40 %65 %64
-%67 = OpAccessChain %66 %23 %26
-OpStore %67 %57
-%68 = OpAccessChain %66 %23 %30
-OpStore %68 %58
-%69 = OpAccessChain %66 %23 %42
-OpStore %69 %59
+OpImageWrite %40 %60 %61 MakeTexelAvailable|NonPrivateTexel %62
+%63 = OpCompositeConstruct %43 %55 %55 %55 %55
+%64 = OpIAdd %5 %60 %30
+OpImageWrite %40 %64 %63 MakeTexelAvailable|NonPrivateTexel %62
+%65 = OpCompositeConstruct %43 %56 %56 %56 %56
+%66 = OpIAdd %5 %60 %42
+OpImageWrite %40 %66 %65 MakeTexelAvailable|NonPrivateTexel %62
+%68 = OpAccessChain %67 %23 %26
+OpStore %68 %57
+%69 = OpAccessChain %67 %23 %30
+OpStore %69 %58
+%70 = OpAccessChain %67 %23 %42
+OpStore %70 %59
 OpReturn
 OpFunctionEnd
 #endif

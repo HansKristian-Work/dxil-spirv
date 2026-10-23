@@ -50,7 +50,8 @@ OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability GroupNonUniform
 OpCapability GroupNonUniformBallot
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %11 %16
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -130,16 +131,16 @@ OpBranch %83
 %71 = OpBitwiseOr %5 %54 %67
 %72 = OpIMul %5 %20 %73
 %74 = OpCompositeConstruct %21 %68 %68 %68 %68
-OpImageWrite %12 %72 %74
+OpImageWrite %12 %72 %74 NonPrivateTexel
 %75 = OpCompositeConstruct %21 %69 %69 %69 %69
 %76 = OpIAdd %5 %72 %77
-OpImageWrite %12 %76 %75
+OpImageWrite %12 %76 %75 NonPrivateTexel
 %78 = OpCompositeConstruct %21 %70 %70 %70 %70
 %79 = OpIAdd %5 %72 %80
-OpImageWrite %12 %79 %78
+OpImageWrite %12 %79 %78 NonPrivateTexel
 %81 = OpCompositeConstruct %21 %71 %71 %71 %71
 %82 = OpIAdd %5 %72 %33
-OpImageWrite %12 %82 %81
+OpImageWrite %12 %82 %81 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %27 = OpFunction %21 None %25

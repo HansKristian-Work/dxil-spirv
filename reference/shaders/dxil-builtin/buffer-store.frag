@@ -38,7 +38,8 @@ void main()
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %12 %13 %14 %16 %19
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -106,34 +107,34 @@ OpBranch %68
 %30 = OpLoad %5 %28
 %31 = OpLoad %9 %16
 %33 = OpCompositeConstruct %32 %27 %30 %27 %27
-OpImageWrite %23 %31 %33
+OpImageWrite %23 %31 %33 NonPrivateTexel
 %34 = OpBitcast %9 %27
 %35 = OpBitcast %9 %30
 %36 = OpShiftLeftLogical %9 %31 %37
 %38 = OpIMul %9 %31 %39
 %48 = OpFunctionCall %9 %43 %38 %49
 %51 = OpCompositeConstruct %50 %34 %34 %34 %34
-OpImageWrite %22 %48 %51
+OpImageWrite %22 %48 %51 NonPrivateTexel
 %52 = OpCompositeConstruct %50 %35 %35 %35 %35
 %53 = OpIAdd %9 %48 %29
-OpImageWrite %22 %53 %52
+OpImageWrite %22 %53 %52 NonPrivateTexel
 %54 = OpIMul %9 %31 %39
 %55 = OpBitcast %9 %27
 %56 = OpBitcast %9 %30
 %57 = OpCompositeConstruct %50 %55 %55 %55 %55
-OpImageWrite %21 %54 %57
+OpImageWrite %21 %54 %57 NonPrivateTexel
 %58 = OpCompositeConstruct %50 %56 %56 %56 %56
 %59 = OpIAdd %9 %54 %29
-OpImageWrite %21 %59 %58
+OpImageWrite %21 %59 %58 NonPrivateTexel
 %60 = OpIMul %9 %31 %61
 %62 = OpIAdd %9 %60 %37
 %63 = OpBitcast %9 %27
 %64 = OpBitcast %9 %30
 %65 = OpCompositeConstruct %50 %63 %63 %63 %63
-OpImageWrite %20 %62 %65
+OpImageWrite %20 %62 %65 NonPrivateTexel
 %66 = OpCompositeConstruct %50 %64 %64 %64 %64
 %67 = OpIAdd %9 %62 %29
-OpImageWrite %20 %67 %66
+OpImageWrite %20 %67 %66 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %43 = OpFunction %9 None %40

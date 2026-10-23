@@ -26,7 +26,8 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26 %28 %30
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

@@ -28,10 +28,10 @@ void main()
 {
     uint64_t _18 = uint64_t(gl_GlobalInvocationID.x);
     uint64_t _29 = atomicAdd(PhysicalPointerUint64Array(registers._m2).value[0u], _18);
-    uint64_t _35 = atomicAnd(PhysicalPointerUint64Array(registers._m2).value[1u], _18);
-    uint64_t _40 = atomicOr(PhysicalPointerUint64Array(registers._m2).value[2u], _18);
-    uint64_t _46 = atomicXor(PhysicalPointerUint64Array(registers._m2).value[3u], _18);
-    uint64_t _52 = atomicMin(PhysicalPointerUint64Array(registers._m2).value[4u], _18);
+    uint64_t _36 = atomicAnd(PhysicalPointerUint64Array(registers._m2).value[1u], _18);
+    uint64_t _41 = atomicOr(PhysicalPointerUint64Array(registers._m2).value[2u], _18);
+    uint64_t _47 = atomicXor(PhysicalPointerUint64Array(registers._m2).value[3u], _18);
+    uint64_t _53 = atomicMin(PhysicalPointerUint64Array(registers._m2).value[4u], _18);
     uint64_t _58 = atomicMax(PhysicalPointerUint64Array(registers._m2).value[5u], _18);
     uint64_t _64 = atomicExchange(PhysicalPointerUint64Array(registers._m2).value[6u], _18);
     uint64_t _70 = atomicCompSwap(PhysicalPointerUint64Array(registers._m2).value[7u], 10ul, _64);
@@ -49,9 +49,10 @@ void main()
 OpCapability Shader
 OpCapability Int64
 OpCapability Int64Atomics
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %12
 OpExecutionMode %3 LocalSize 128 1 1
 OpName %3 "main"
@@ -87,10 +88,10 @@ OpDecorate %24 Block
 %24 = OpTypeStruct %23
 %25 = OpTypePointer PhysicalStorageBuffer %24
 %27 = OpTypePointer PhysicalStorageBuffer %17
-%30 = OpConstant %5 1
-%43 = OpConstant %5 3
-%49 = OpConstant %5 4
-%55 = OpConstant %5 5
+%30 = OpConstant %5 5
+%33 = OpConstant %5 1
+%44 = OpConstant %5 3
+%50 = OpConstant %5 4
 %61 = OpConstant %5 6
 %67 = OpConstant %5 7
 %71 = OpConstant %17 10
@@ -110,28 +111,28 @@ OpBranch %79
 %29 = OpAtomicIAdd %17 %28 %30 %15 %18
 %31 = OpAccessChain %19 %9 %21
 %32 = OpLoad %6 %31
-%33 = OpBitcast %25 %32
-%34 = OpAccessChain %27 %33 %15 %30
-%35 = OpAtomicAnd %17 %34 %30 %15 %18
-%36 = OpAccessChain %19 %9 %21
-%37 = OpLoad %6 %36
-%38 = OpBitcast %25 %37
-%39 = OpAccessChain %27 %38 %15 %21
-%40 = OpAtomicOr %17 %39 %30 %15 %18
-%41 = OpAccessChain %19 %9 %21
-%42 = OpLoad %6 %41
-%44 = OpBitcast %25 %42
-%45 = OpAccessChain %27 %44 %15 %43
-%46 = OpAtomicXor %17 %45 %30 %15 %18
-%47 = OpAccessChain %19 %9 %21
-%48 = OpLoad %6 %47
-%50 = OpBitcast %25 %48
-%51 = OpAccessChain %27 %50 %15 %49
-%52 = OpAtomicUMin %17 %51 %30 %15 %18
-%53 = OpAccessChain %19 %9 %21
-%54 = OpLoad %6 %53
-%56 = OpBitcast %25 %54
-%57 = OpAccessChain %27 %56 %15 %55
+%34 = OpBitcast %25 %32
+%35 = OpAccessChain %27 %34 %15 %33
+%36 = OpAtomicAnd %17 %35 %30 %15 %18
+%37 = OpAccessChain %19 %9 %21
+%38 = OpLoad %6 %37
+%39 = OpBitcast %25 %38
+%40 = OpAccessChain %27 %39 %15 %21
+%41 = OpAtomicOr %17 %40 %30 %15 %18
+%42 = OpAccessChain %19 %9 %21
+%43 = OpLoad %6 %42
+%45 = OpBitcast %25 %43
+%46 = OpAccessChain %27 %45 %15 %44
+%47 = OpAtomicXor %17 %46 %30 %15 %18
+%48 = OpAccessChain %19 %9 %21
+%49 = OpLoad %6 %48
+%51 = OpBitcast %25 %49
+%52 = OpAccessChain %27 %51 %15 %50
+%53 = OpAtomicUMin %17 %52 %30 %15 %18
+%54 = OpAccessChain %19 %9 %21
+%55 = OpLoad %6 %54
+%56 = OpBitcast %25 %55
+%57 = OpAccessChain %27 %56 %15 %30
 %58 = OpAtomicUMax %17 %57 %30 %15 %18
 %59 = OpAccessChain %19 %9 %21
 %60 = OpLoad %6 %59

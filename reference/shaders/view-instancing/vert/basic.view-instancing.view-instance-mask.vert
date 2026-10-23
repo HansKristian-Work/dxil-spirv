@@ -23,7 +23,8 @@ void main()
 ; Bound: 29
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Vertex %3 "main" %8 %12
 OpName %3 "main"
 OpName %8 "SV_Position"

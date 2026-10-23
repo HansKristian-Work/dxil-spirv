@@ -108,7 +108,8 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -186,7 +187,7 @@ OpBranch %82
 %32 = OpShiftLeftLogical %5 %30 %33
 %34 = OpIMul %5 %30 %35
 %44 = OpFunctionCall %5 %39 %34 %45
-%47 = OpImageRead %46 %9 %44
+%47 = OpImageRead %46 %9 %44 NonPrivateTexel
 %48 = OpCompositeExtract %5 %47 0
 %49 = OpIEqual %20 %48 %50
 OpLoopMerge %88 %85 None
@@ -198,7 +199,7 @@ OpBranchConditional %49 %87 %84
 %51 = OpBitwiseXor %5 %30 %23
 %52 = OpShiftLeftLogical %5 %51 %18
 %53 = OpFunctionCall %5 %39 %51 %45
-%54 = OpImageRead %46 %9 %53
+%54 = OpImageRead %46 %9 %53 NonPrivateTexel
 %55 = OpCompositeExtract %5 %54 0
 %29 = OpIAdd %5 %55 %28
 %31 = OpIAdd %5 %30 %15
@@ -227,7 +228,7 @@ OpBranchConditional %72 %89 %90
 OpStore %65 %76
 OpBranch %91
 %90 = OpLabel
-%57 = OpImageRead %46 %9 %18
+%57 = OpImageRead %46 %9 %18 NonPrivateTexel
 %58 = OpCompositeExtract %5 %57 0
 %59 = OpIAdd %5 %58 %28
 OpStore %65 %59
@@ -260,7 +261,7 @@ OpBranch %98
 %98 = OpLabel
 %61 = OpLoad %5 %64
 %62 = OpCompositeConstruct %46 %61 %61 %61 %61
-OpImageWrite %9 %22 %62
+OpImageWrite %9 %22 %62 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %39 = OpFunction %5 None %36

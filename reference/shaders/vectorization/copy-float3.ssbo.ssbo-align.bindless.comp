@@ -60,10 +60,11 @@ void main()
 OpCapability Shader
 OpCapability GroupNonUniformBallot
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %13 %18 %23 %51
 OpExecutionMode %3 LocalSize 128 1 1
 OpName %3 "main"
@@ -169,13 +170,13 @@ OpBranch %93
 %60 = OpULessThan %59 %55 %57
 %61 = OpSelect %5 %60 %58 %62
 %64 = OpAccessChain %63 %42 %36 %61
-%65 = OpLoad %5 %64
+%65 = OpLoad %5 %64 NonPrivatePointer
 %67 = OpIAdd %5 %61 %31
 %66 = OpAccessChain %63 %42 %36 %67
-%68 = OpLoad %5 %66
+%68 = OpLoad %5 %66 NonPrivatePointer
 %70 = OpIAdd %5 %61 %39
 %69 = OpAccessChain %63 %42 %36 %70
-%71 = OpLoad %5 %69
+%71 = OpLoad %5 %69 NonPrivatePointer
 %72 = OpCompositeConstruct %49 %65 %68 %71
 %75 = OpBitcast %74 %72
 %76 = OpCompositeExtract %73 %75 0
@@ -191,13 +192,13 @@ OpBranch %93
 %86 = OpBitcast %5 %77
 %87 = OpBitcast %5 %78
 %88 = OpAccessChain %63 %25 %36 %84
-OpStore %88 %85
+OpStore %88 %85 NonPrivatePointer
 %90 = OpIAdd %5 %84 %31
 %89 = OpAccessChain %63 %25 %36 %90
-OpStore %89 %86
+OpStore %89 %86 NonPrivatePointer
 %92 = OpIAdd %5 %84 %39
 %91 = OpAccessChain %63 %25 %36 %92
-OpStore %91 %87
+OpStore %91 %87 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

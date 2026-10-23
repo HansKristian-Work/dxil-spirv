@@ -29,7 +29,7 @@ layout(push_constant, std430) uniform RootConstants
     uint _m7;
 } registers;
 
-layout(set = 3, binding = 0, r32f) uniform coherent image1D _13[];
+layout(set = 3, binding = 0, r32f) uniform image1D _13[];
 
 void main()
 {
@@ -46,18 +46,19 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 51
+; Bound: 52
 ; Schema: 0
 OpCapability Shader
 OpCapability Image1D
 OpCapability StorageImageWriteWithoutFormat
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_EXT_fragment_shader_interlock"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint Fragment %3 "main" %8 %13 %16
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
@@ -77,7 +78,6 @@ OpMemberDecorate %6 6 Offset 24
 OpMemberDecorate %6 7 Offset 28
 OpDecorate %13 DescriptorSet 3
 OpDecorate %13 Binding 0
-OpDecorate %13 Coherent
 OpDecorate %16 BuiltIn FragCoord
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -100,14 +100,15 @@ OpDecorate %16 BuiltIn FragCoord
 %26 = OpConstant %5 0
 %29 = OpConstant %5 1
 %34 = OpConstant %5 1000
-%42 = OpConstant %9 1
-%44 = OpConstant %9 2
-%46 = OpConstant %9 3
-%48 = OpConstant %9 4
+%37 = OpConstant %5 5
+%43 = OpConstant %9 1
+%45 = OpConstant %9 2
+%47 = OpConstant %9 3
+%49 = OpConstant %9 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %50
-%50 = OpLabel
+OpBranch %51
+%51 = OpLabel
 %20 = OpAccessChain %19 %8 %21
 %22 = OpLoad %5 %20
 %18 = OpAccessChain %17 %13 %22
@@ -121,17 +122,17 @@ OpBranch %50
 %33 = OpIMul %5 %32 %34
 %35 = OpIAdd %5 %33 %31
 OpBeginInvocationInterlockEXT
-%36 = OpImageRead %14 %23 %35 None
-%37 = OpCompositeExtract %9 %36 0
-%38 = OpCompositeExtract %9 %36 1
-%39 = OpCompositeExtract %9 %36 2
-%40 = OpCompositeExtract %9 %36 3
-%41 = OpFAdd %9 %37 %42
-%43 = OpFAdd %9 %38 %44
-%45 = OpFAdd %9 %39 %46
-%47 = OpFAdd %9 %40 %48
-%49 = OpCompositeConstruct %14 %41 %43 %45 %47
-OpImageWrite %23 %35 %49
+%36 = OpImageRead %14 %23 %35 MakeTexelVisible|NonPrivateTexel %37
+%38 = OpCompositeExtract %9 %36 0
+%39 = OpCompositeExtract %9 %36 1
+%40 = OpCompositeExtract %9 %36 2
+%41 = OpCompositeExtract %9 %36 3
+%42 = OpFAdd %9 %38 %43
+%44 = OpFAdd %9 %39 %45
+%46 = OpFAdd %9 %40 %47
+%48 = OpFAdd %9 %41 %49
+%50 = OpCompositeConstruct %14 %42 %44 %46 %48
+OpImageWrite %23 %35 %50 MakeTexelAvailable|NonPrivateTexel %37
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

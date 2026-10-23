@@ -24,8 +24,9 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability FragmentBarycentricKHR
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_fragment_shader_barycentric"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %11 %16 %19 %20 %22 %24
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

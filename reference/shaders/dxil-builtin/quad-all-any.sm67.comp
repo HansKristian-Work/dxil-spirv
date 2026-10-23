@@ -33,8 +33,9 @@ OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformQuad
 OpCapability ComputeDerivativeGroupQuadsKHR
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_compute_shader_derivatives"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %9 %12
 OpExecutionMode %3 DerivativeGroupQuadsKHR
 OpExecutionMode %3 LocalSize 8 8 1
@@ -73,12 +74,12 @@ OpBranch %64
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %17 = OpLoad %6 %8
-%19 = OpImageRead %18 %17 %16
+%19 = OpImageRead %18 %17 %16 NonPrivateTexel
 %20 = OpCompositeExtract %5 %19 0
 %22 = OpINotEqual %21 %20 %15
 %37 = OpFunctionCall %21 %25 %22
 %38 = OpLoad %6 %8
-%39 = OpImageRead %18 %38 %16
+%39 = OpImageRead %18 %38 %16 NonPrivateTexel
 %40 = OpCompositeExtract %5 %39 0
 %41 = OpINotEqual %21 %40 %15
 %52 = OpFunctionCall %21 %43 %41
@@ -87,14 +88,14 @@ OpBranch %64
 %55 = OpLoad %6 %9
 %56 = OpIMul %5 %16 %32
 %57 = OpCompositeConstruct %18 %53 %53 %53 %53
-OpImageWrite %55 %56 %57
+OpImageWrite %55 %56 %57 NonPrivateTexel
 %58 = OpSelect %5 %52 %30 %15
 %59 = OpBitwiseOr %5 %54 %30
 %60 = OpLoad %6 %9
 %61 = OpIMul %5 %16 %32
 %62 = OpIAdd %5 %61 %30
 %63 = OpCompositeConstruct %18 %58 %58 %58 %58
-OpImageWrite %60 %62 %63
+OpImageWrite %60 %62 %63 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %25 = OpFunction %21 None %23

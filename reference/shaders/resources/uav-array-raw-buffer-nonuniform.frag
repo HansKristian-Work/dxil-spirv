@@ -35,8 +35,9 @@ OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
 OpCapability StorageTexelBufferArrayDynamicIndexing
 OpCapability StorageTexelBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %9 %11 %15
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -87,16 +88,16 @@ OpBranch %63
 %23 = OpLoad %6 %22
 %24 = OpIMul %5 %16 %18
 %33 = OpFunctionCall %5 %28 %24 %18
-%35 = OpImageRead %34 %23 %33
+%35 = OpImageRead %34 %23 %33 NonPrivateTexel
 %36 = OpCompositeExtract %5 %35 0
 %38 = OpIAdd %5 %33 %39
-%37 = OpImageRead %34 %23 %38
+%37 = OpImageRead %34 %23 %38 NonPrivateTexel
 %40 = OpCompositeExtract %5 %37 0
 %42 = OpIAdd %5 %33 %43
-%41 = OpImageRead %34 %23 %42
+%41 = OpImageRead %34 %23 %42 NonPrivateTexel
 %44 = OpCompositeExtract %5 %41 0
 %46 = OpIAdd %5 %33 %47
-%45 = OpImageRead %34 %23 %46
+%45 = OpImageRead %34 %23 %46 NonPrivateTexel
 %48 = OpCompositeExtract %5 %45 0
 %49 = OpCompositeConstruct %34 %36 %40 %44 %48
 %50 = OpCompositeExtract %5 %49 0

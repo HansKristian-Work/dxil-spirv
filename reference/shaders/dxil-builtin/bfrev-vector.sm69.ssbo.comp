@@ -42,7 +42,8 @@ OpCapability Shader
 OpCapability Int64
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %16 %22
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -93,20 +94,20 @@ OpDecorate %22 Binding 2
 OpBranch %39
 %39 = OpLabel
 %25 = OpAccessChain %24 %10 %23 %23
-%26 = OpLoad %6 %25
+%26 = OpLoad %6 %25 NonPrivatePointer
 %27 = OpBitReverse %6 %26
 %28 = OpAccessChain %24 %10 %23 %23
-OpStore %28 %27
+OpStore %28 %27 NonPrivatePointer
 %30 = OpAccessChain %29 %16 %23 %23
-%31 = OpLoad %12 %30
+%31 = OpLoad %12 %30 NonPrivatePointer
 %32 = OpBitReverse %12 %31
 %33 = OpAccessChain %29 %16 %23 %23
-OpStore %33 %32
+OpStore %33 %32 NonPrivatePointer
 %35 = OpAccessChain %34 %22 %23 %23
-%36 = OpLoad %18 %35
+%36 = OpLoad %18 %35 NonPrivatePointer
 %37 = OpBitReverse %18 %36
 %38 = OpAccessChain %34 %22 %23 %23
-OpStore %38 %37
+OpStore %38 %37 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

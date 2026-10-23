@@ -34,7 +34,8 @@ void main()
 ; Bound: 57
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %14 %17
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -98,19 +99,19 @@ OpBranch %56
 %40 = OpConvertFToS %6 %39
 %41 = OpFunctionCall %5 %27 %21 %33
 %42 = OpAccessChain %34 %14 %20 %41
-OpStore %42 %40
+OpStore %42 %40 NonPrivatePointer
 %43 = OpConvertSToF %38 %40
 %44 = OpIAdd %5 %22 %45
 %46 = OpIAdd %5 %21 %33
 %47 = OpFunctionCall %5 %27 %46 %33
 %48 = OpBitcast %6 %43
 %49 = OpAccessChain %34 %14 %20 %47
-OpStore %49 %48
+OpStore %49 %48 NonPrivatePointer
 %50 = OpIAdd %5 %22 %51
 %52 = OpIAdd %5 %21 %53
 %54 = OpFunctionCall %5 %27 %52 %33
 %55 = OpAccessChain %34 %14 %20 %54
-OpStore %55 %40
+OpStore %55 %40 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %27 = OpFunction %5 None %24

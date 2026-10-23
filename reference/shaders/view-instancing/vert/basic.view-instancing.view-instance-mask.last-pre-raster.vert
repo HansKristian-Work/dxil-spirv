@@ -37,8 +37,9 @@ void main()
 OpCapability Shader
 OpCapability Geometry
 OpCapability ShaderViewportIndexLayerEXT
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_shader_viewport_index_layer"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Vertex %3 "main" %8 %12 %15 %34
 OpName %3 "main"
 OpName %8 "SV_Position"

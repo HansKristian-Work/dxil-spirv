@@ -58,9 +58,9 @@ void main()
     uint _25 = gl_GlobalInvocationID.x + 2u;
     uvec2 _40 = _17.counters[registers._m4 + _25];
     uint _60 = RobustPhysicalAtomicCounter(_40, 1u, 0u);
-    uint _62 = (gl_GlobalInvocationID.x ^ 1u) + 2u;
-    uvec2 _72 = _17.counters[registers._m4 + _62];
-    uint _73 = RobustPhysicalAtomicCounter(_72, 1u, 0u);
+    uint _63 = (gl_GlobalInvocationID.x ^ 1u) + 2u;
+    uvec2 _73 = _17.counters[registers._m4 + _63];
+    uint _74 = RobustPhysicalAtomicCounter(_73, 1u, 0u);
 }
 
 
@@ -69,17 +69,18 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 75
+; Bound: 76
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
 OpCapability StorageTexelBufferArrayDynamicIndexing
 OpCapability StorageTexelBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %12 %17 %20
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -119,8 +120,8 @@ OpDecorate %17 AliasedPointer
 OpDecorate %20 BuiltIn GlobalInvocationId
 OpDecorate %33 NonUniform
 OpDecorate %34 NonUniform
-OpDecorate %66 NonUniform
 OpDecorate %67 NonUniform
+OpDecorate %68 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -151,11 +152,12 @@ OpDecorate %67 NonUniform
 %50 = OpTypeVector %49 2
 %51 = OpConstantNull %13
 %54 = OpTypePointer PhysicalStorageBuffer %5
-%57 = OpConstant %5 1
+%57 = OpConstant %5 5
+%61 = OpConstant %5 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %74
-%74 = OpLabel
+OpBranch %75
+%75 = OpLabel
 %22 = OpAccessChain %21 %20 %23
 %24 = OpLoad %5 %22
 %25 = OpIAdd %5 %24 %26
@@ -169,20 +171,20 @@ OpBranch %74
 %39 = OpIAdd %5 %38 %25
 %36 = OpAccessChain %35 %17 %23 %39
 %40 = OpLoad %13 %36
-%60 = OpFunctionCall %5 %45 %40 %57 %23
-%61 = OpBitwiseXor %5 %24 %57
-%62 = OpIAdd %5 %61 %26
-%64 = OpAccessChain %29 %8 %31
-%65 = OpLoad %5 %64
-%66 = OpIAdd %5 %65 %62
-%63 = OpAccessChain %27 %12 %66
-%67 = OpLoad %9 %63
-%69 = OpAccessChain %29 %8 %31
-%70 = OpLoad %5 %69
-%71 = OpIAdd %5 %70 %62
-%68 = OpAccessChain %35 %17 %23 %71
-%72 = OpLoad %13 %68
-%73 = OpFunctionCall %5 %45 %72 %57 %23
+%60 = OpFunctionCall %5 %45 %40 %61 %23
+%62 = OpBitwiseXor %5 %24 %61
+%63 = OpIAdd %5 %62 %26
+%65 = OpAccessChain %29 %8 %31
+%66 = OpLoad %5 %65
+%67 = OpIAdd %5 %66 %63
+%64 = OpAccessChain %27 %12 %67
+%68 = OpLoad %9 %64
+%70 = OpAccessChain %29 %8 %31
+%71 = OpLoad %5 %70
+%72 = OpIAdd %5 %71 %63
+%69 = OpAccessChain %35 %17 %23 %72
+%73 = OpLoad %13 %69
+%74 = OpFunctionCall %5 %45 %73 %61 %23
 OpReturn
 OpFunctionEnd
 %45 = OpFunction %5 None %41

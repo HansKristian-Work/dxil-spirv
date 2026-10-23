@@ -52,7 +52,8 @@ void main()
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %12 %13 %14 %17 %20 %21 %22 %24 %27
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -141,7 +142,7 @@ OpBranch %149
 %38 = OpImageFetch %37 %35 %36
 %39 = OpCompositeExtract %5 %38 0
 %40 = OpCompositeExtract %5 %38 1
-%41 = OpImageRead %37 %31 %36
+%41 = OpImageRead %37 %31 %36 NonPrivateTexel
 %42 = OpCompositeExtract %5 %41 0
 %43 = OpCompositeExtract %5 %41 1
 %44 = OpFAdd %5 %42 %39
@@ -163,10 +164,10 @@ OpBranch %149
 %74 = OpFAdd %5 %45 %72
 %75 = OpIMul %9 %36 %49
 %76 = OpFunctionCall %9 %53 %75 %59
-%77 = OpImageRead %60 %30 %76
+%77 = OpImageRead %60 %30 %76 NonPrivateTexel
 %78 = OpCompositeExtract %9 %77 0
 %80 = OpIAdd %9 %76 %65
-%79 = OpImageRead %60 %30 %80
+%79 = OpImageRead %60 %30 %80 NonPrivateTexel
 %81 = OpCompositeExtract %9 %79 0
 %82 = OpCompositeConstruct %67 %78 %81
 %83 = OpCompositeExtract %9 %82 0
@@ -188,10 +189,10 @@ OpBranch %149
 %99 = OpFAdd %5 %87 %97
 %100 = OpFAdd %5 %88 %98
 %101 = OpIMul %9 %36 %49
-%102 = OpImageRead %60 %29 %101
+%102 = OpImageRead %60 %29 %101 NonPrivateTexel
 %103 = OpCompositeExtract %9 %102 0
 %105 = OpIAdd %9 %101 %65
-%104 = OpImageRead %60 %29 %105
+%104 = OpImageRead %60 %29 %105 NonPrivateTexel
 %106 = OpCompositeExtract %9 %104 0
 %107 = OpCompositeConstruct %67 %103 %106
 %108 = OpBitcast %25 %107
@@ -215,10 +216,10 @@ OpBranch %149
 %130 = OpIMul %9 %36 %114
 %131 = OpIAdd %9 %130 %47
 %134 = OpIAdd %9 %131 %65
-%133 = OpImageRead %60 %28 %134
+%133 = OpImageRead %60 %28 %134 NonPrivateTexel
 %135 = OpCompositeExtract %9 %133 0
 %137 = OpIAdd %9 %131 %49
-%136 = OpImageRead %60 %28 %137
+%136 = OpImageRead %60 %28 %137 NonPrivateTexel
 %138 = OpCompositeExtract %9 %136 0
 %139 = OpCompositeConstruct %122 %132 %135 %138
 %140 = OpBitcast %124 %139

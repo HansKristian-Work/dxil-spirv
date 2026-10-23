@@ -39,9 +39,10 @@ void main()
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformVote
+OpCapability VulkanMemoryModel
 OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %10
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -112,7 +113,7 @@ OpBranchConditional %38 %57 %58
 %41 = OpLoad %6 %8
 %50 = OpFunctionCall %5 %45 %11 %51
 %53 = OpCompositeConstruct %52 %18 %18 %18 %18
-OpImageWrite %41 %50 %53
+OpImageWrite %41 %50 %53 NonPrivateTexel
 OpBranch %58
 %58 = OpLabel
 OpBranch %59

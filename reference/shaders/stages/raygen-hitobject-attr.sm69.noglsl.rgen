@@ -15,11 +15,12 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability ShaderInvocationReorderEXT
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_EXT_shader_invocation_reorder"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %16 %20
 OpName %3 "main"
 OpName %8 "AS"
@@ -222,7 +223,7 @@ OpBranch %175
 %165 = OpCompositeExtract %9 %160 3
 %167 = OpCompositeConstruct %166 %23 %23
 %168 = OpCompositeConstruct %13 %162 %163 %164 %165
-OpImageWrite %161 %167 %168
+OpImageWrite %161 %167 %168 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 

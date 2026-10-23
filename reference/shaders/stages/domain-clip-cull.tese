@@ -28,7 +28,8 @@ void main()
 OpCapability Shader
 OpCapability Tessellation
 OpCapability ClipDistance
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint TessellationEvaluation %3 "main" %11 %14 %17 %21 %22 %24 %27
 OpExecutionMode %3 Triangles
 OpName %3 "main"

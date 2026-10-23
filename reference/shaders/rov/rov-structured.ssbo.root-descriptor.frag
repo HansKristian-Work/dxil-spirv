@@ -19,7 +19,7 @@ layout(early_fragment_tests) in;
 
 layout(buffer_reference) buffer PhysicalPointerFloat4CoherentArray;
 
-layout(buffer_reference, buffer_reference_align = 16, std430) coherent buffer PhysicalPointerFloat4CoherentArray
+layout(buffer_reference, buffer_reference_align = 16, std430) buffer PhysicalPointerFloat4CoherentArray
 {
     vec4 value[];
 };
@@ -46,14 +46,15 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 53
+; Bound: 54
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_fragment_shader_interlock"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint Fragment %3 "main" %9 %13
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
@@ -73,7 +74,6 @@ OpDecorate %13 BuiltIn FragCoord
 OpDecorate %30 ArrayStride 16
 OpMemberDecorate %31 0 Offset 0
 OpDecorate %31 Block
-OpMemberDecorate %31 0 Coherent
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -95,14 +95,15 @@ OpMemberDecorate %31 0 Coherent
 %31 = OpTypeStruct %30
 %32 = OpTypePointer PhysicalStorageBuffer %31
 %34 = OpTypePointer PhysicalStorageBuffer %11
-%42 = OpConstant %10 1
-%44 = OpConstant %10 2
-%46 = OpConstant %10 3
-%48 = OpConstant %10 4
+%37 = OpConstant %5 5
+%43 = OpConstant %10 1
+%45 = OpConstant %10 2
+%47 = OpConstant %10 3
+%49 = OpConstant %10 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %52
-%52 = OpLabel
+OpBranch %53
+%53 = OpLabel
 %15 = OpAccessChain %14 %9 %16
 %17 = OpLoad %6 %15
 %19 = OpAccessChain %18 %13 %20
@@ -116,19 +117,19 @@ OpBranch %52
 %33 = OpBitcast %32 %17
 %35 = OpInBoundsAccessChain %34 %33 %20 %29
 OpBeginInvocationInterlockEXT
-%36 = OpLoad %11 %35 Aligned 16
-%37 = OpCompositeExtract %10 %36 0
-%38 = OpCompositeExtract %10 %36 1
-%39 = OpCompositeExtract %10 %36 2
-%40 = OpCompositeExtract %10 %36 3
-%41 = OpFAdd %10 %37 %42
-%43 = OpFAdd %10 %38 %44
-%45 = OpFAdd %10 %39 %46
-%47 = OpFAdd %10 %40 %48
-%49 = OpBitcast %32 %17
-%50 = OpInBoundsAccessChain %34 %49 %20 %29
-%51 = OpCompositeConstruct %11 %41 %43 %45 %47
-OpStore %50 %51 Aligned 16
+%36 = OpLoad %11 %35 Aligned|MakePointerVisible|NonPrivatePointer 16 %37
+%38 = OpCompositeExtract %10 %36 0
+%39 = OpCompositeExtract %10 %36 1
+%40 = OpCompositeExtract %10 %36 2
+%41 = OpCompositeExtract %10 %36 3
+%42 = OpFAdd %10 %38 %43
+%44 = OpFAdd %10 %39 %45
+%46 = OpFAdd %10 %40 %47
+%48 = OpFAdd %10 %41 %49
+%50 = OpBitcast %32 %17
+%51 = OpInBoundsAccessChain %34 %50 %20 %29
+%52 = OpCompositeConstruct %11 %42 %44 %46 %48
+OpStore %51 %52 Aligned|MakePointerAvailable|NonPrivatePointer 16 %37
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

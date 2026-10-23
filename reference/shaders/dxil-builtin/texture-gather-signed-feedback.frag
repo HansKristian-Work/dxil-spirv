@@ -70,7 +70,8 @@ void main()
 OpCapability Shader
 OpCapability SparseResidency
 OpCapability SampledCubeArray
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %24 %27
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

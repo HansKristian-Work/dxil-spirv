@@ -68,7 +68,8 @@ void main()
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %14 %18 %23 %26 %30 %34 %38 %40 %43
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -193,7 +194,7 @@ OpBranch %125
 %48 = OpImageFetch %47 %45 %46
 %49 = OpCompositeExtract %5 %48 0
 %50 = OpCompositeExtract %5 %48 1
-%51 = OpImageRead %47 %44 %46
+%51 = OpImageRead %47 %44 %46 NonPrivateTexel
 %52 = OpCompositeExtract %5 %51 0
 %53 = OpCompositeExtract %5 %51 1
 %54 = OpFAdd %5 %52 %49
@@ -210,7 +211,7 @@ OpBranch %125
 %77 = OpFAdd %5 %55 %75
 %78 = OpFunctionCall %9 %61 %46 %67
 %79 = OpAccessChain %68 %30 %70 %78
-%80 = OpLoad %10 %79
+%80 = OpLoad %10 %79 NonPrivatePointer
 %81 = OpCompositeExtract %9 %80 0
 %82 = OpCompositeExtract %9 %80 1
 %83 = OpBitcast %5 %81
@@ -225,7 +226,7 @@ OpBranch %125
 %92 = OpFAdd %5 %85 %90
 %93 = OpFAdd %5 %86 %91
 %94 = OpAccessChain %68 %34 %70 %46
-%95 = OpLoad %10 %94
+%95 = OpLoad %10 %94 NonPrivatePointer
 %96 = OpBitcast %41 %95
 %97 = OpCompositeExtract %5 %96 0
 %98 = OpCompositeExtract %5 %96 1
@@ -242,7 +243,7 @@ OpBranch %125
 %112 = OpIMul %9 %46 %102
 %114 = OpIAdd %9 %112 %113
 %115 = OpAccessChain %103 %38 %70 %114
-%116 = OpLoad %19 %115
+%116 = OpLoad %19 %115 NonPrivatePointer
 %117 = OpBitcast %106 %116
 %118 = OpCompositeExtract %5 %117 1
 %119 = OpCompositeExtract %5 %117 2

@@ -27,8 +27,8 @@ void main()
 {
     uint _21 = gl_GlobalInvocationID.x << 4u;
     uint _39 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[ByteAddressMask(gl_GlobalInvocationID.x * 4u, 4u)], 1u);
-    uint _47 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[ByteAddressMask((gl_GlobalInvocationID.x * 4u) + 1u, 4u)], 2u);
-    uint _52 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[(_21 | 2u) >> 2u], 3u);
+    uint _48 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[ByteAddressMask((gl_GlobalInvocationID.x * 4u) + 1u, 4u)], 2u);
+    uint _53 = atomicAdd(PhysicalPointerUintArray(registers._m2).value[(_21 | 2u) >> 2u], 3u);
 }
 
 
@@ -37,12 +37,13 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 55
+; Bound: 56
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %16
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -83,12 +84,13 @@ OpDecorate %34 Block
 %34 = OpTypeStruct %33
 %35 = OpTypePointer PhysicalStorageBuffer %34
 %37 = OpTypePointer PhysicalStorageBuffer %5
-%40 = OpConstant %5 1
-%53 = OpConstant %5 3
+%40 = OpConstant %5 5
+%41 = OpConstant %5 1
+%54 = OpConstant %5 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %54
-%54 = OpLabel
+OpBranch %55
+%55 = OpLabel
 %11 = OpAccessChain %10 %9 %12
 %13 = OpLoad %6 %11
 %18 = OpAccessChain %17 %16 %19
@@ -98,19 +100,19 @@ OpBranch %54
 %32 = OpFunctionCall %5 %27 %23 %22
 %36 = OpBitcast %35 %13
 %38 = OpAccessChain %37 %36 %19 %32
-%39 = OpAtomicIAdd %5 %38 %40 %19 %40
-%41 = OpBitwiseOr %5 %21 %22
-%42 = OpIMul %5 %20 %22
-%43 = OpIAdd %5 %42 %40
-%44 = OpFunctionCall %5 %27 %43 %22
-%45 = OpBitcast %35 %13
-%46 = OpAccessChain %37 %45 %19 %44
-%47 = OpAtomicIAdd %5 %46 %40 %19 %12
-%48 = OpBitwiseOr %5 %21 %12
-%49 = OpShiftRightLogical %5 %48 %12
-%50 = OpBitcast %35 %13
-%51 = OpAccessChain %37 %50 %19 %49
-%52 = OpAtomicIAdd %5 %51 %40 %19 %53
+%39 = OpAtomicIAdd %5 %38 %40 %19 %41
+%42 = OpBitwiseOr %5 %21 %22
+%43 = OpIMul %5 %20 %22
+%44 = OpIAdd %5 %43 %41
+%45 = OpFunctionCall %5 %27 %44 %22
+%46 = OpBitcast %35 %13
+%47 = OpAccessChain %37 %46 %19 %45
+%48 = OpAtomicIAdd %5 %47 %40 %19 %12
+%49 = OpBitwiseOr %5 %21 %12
+%50 = OpShiftRightLogical %5 %49 %12
+%51 = OpBitcast %35 %13
+%52 = OpAccessChain %37 %51 %19 %50
+%53 = OpAtomicIAdd %5 %52 %40 %19 %54
 OpReturn
 OpFunctionEnd
 %27 = OpFunction %5 None %24

@@ -26,7 +26,8 @@ OpCapability Shader
 OpCapability GroupNonUniform
 OpCapability GroupNonUniformShuffle
 OpCapability GroupNonUniformQuad
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %7 %10 %13 %19
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

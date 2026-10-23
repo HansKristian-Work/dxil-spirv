@@ -68,7 +68,8 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -137,13 +138,13 @@ OpSelectionMerge %54 None
 OpBranchConditional %35 %53 %54
 %53 = OpLabel
 %39 = OpCompositeConstruct %38 %37 %37 %37 %37
-OpImageWrite %9 %31 %39
+OpImageWrite %9 %31 %39 NonPrivateTexel
 OpBranch %54
 %54 = OpLabel
 OpBranch %56
 %55 = OpLabel
 %41 = OpCompositeConstruct %38 %40 %40 %40 %40
-OpImageWrite %9 %29 %41
+OpImageWrite %9 %29 %41 NonPrivateTexel
 OpBranch %56
 %56 = OpLabel
 %28 = OpIAdd %5 %27 %23

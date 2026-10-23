@@ -171,11 +171,12 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint MissKHR %3 "main" %8 %16 %21 %25 %32 %36 %39
 OpName %3 "main"
 OpName %6 "RootConstants"
@@ -453,7 +454,7 @@ OpBranch %404
 %110 = OpAccessChain %109 %25 %117
 %118 = OpLoad %22 %110
 %120 = OpCompositeConstruct %13 %45 %45
-%119 = OpImageRead %26 %118 %120 None
+%119 = OpImageRead %26 %118 %120 NonPrivateTexel
 %121 = OpCompositeExtract %17 %119 0
 %122 = OpCompositeExtract %17 %119 1
 %123 = OpCompositeExtract %17 %119 2
@@ -655,7 +656,7 @@ OpBranch %404
 %365 = OpLoad %13 %364
 %369 = OpBitcast %368 %365
 %371 = OpInBoundsAccessChain %370 %369 %45 %58
-%372 = OpLoad %17 %371 Aligned 4
+%372 = OpLoad %17 %371 Aligned|NonPrivatePointer 4
 %373 = OpFAdd %17 %372 %360
 %374 = OpFAdd %17 %372 %361
 %375 = OpFAdd %17 %372 %362
@@ -665,7 +666,7 @@ OpBranch %404
 %379 = OpFunctionCall %5 %281 %58 %179
 %383 = OpBitcast %382 %378
 %384 = OpInBoundsAccessChain %291 %383 %45 %379
-%385 = OpLoad %5 %384 Aligned 4
+%385 = OpLoad %5 %384 Aligned|NonPrivatePointer 4
 %386 = OpBitcast %17 %385
 %387 = OpFAdd %17 %386 %373
 %388 = OpFAdd %17 %386 %374
@@ -678,13 +679,13 @@ OpBranch %404
 OpStore %74 %395
 %396 = OpBitcast %368 %365
 %397 = OpInBoundsAccessChain %370 %396 %45 %58
-OpStore %397 %387 Aligned 4
+OpStore %397 %387 Aligned|NonPrivatePointer 4
 %399 = OpAccessChain %40 %16 %9
 %400 = OpLoad %13 %399
 %401 = OpFunctionCall %5 %281 %58 %179
 %402 = OpBitcast %368 %400
 %403 = OpInBoundsAccessChain %370 %402 %45 %401
-OpStore %403 %388 Aligned 4
+OpStore %403 %388 Aligned|NonPrivatePointer 4
 OpReturn
 OpFunctionEnd
 %281 = OpFunction %5 None %278

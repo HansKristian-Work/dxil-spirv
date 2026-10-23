@@ -386,9 +386,10 @@ OpCapability GroupNonUniform
 OpCapability GroupNonUniformVote
 OpCapability GroupNonUniformArithmetic
 OpCapability GroupNonUniformBallot
+OpCapability VulkanMemoryModel
 OpCapability LongVectorEXT
 OpExtension "SPV_EXT_long_vector"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %14 %17
 OpExecutionMode %3 LocalSize 18 1 1
 OpName %3 "main"
@@ -746,7 +747,7 @@ OpBranch %334
 %334 = OpLabel
 %245 = OpLoad %6 %249
 %247 = OpAccessChain %25 %14 %20 %21
-OpStore %247 %245
+OpStore %247 %245 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %108 = OpFunction %105 None %106

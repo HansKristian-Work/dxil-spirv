@@ -54,8 +54,9 @@ OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %9 %13 %17 %21 %24 %26
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
@@ -148,7 +149,7 @@ OpBranch %61
 %47 = OpFConvert %35 %46
 %48 = OpBitcast %5 %47
 %49 = OpAccessChain %31 %17 %33 %30
-OpStore %49 %48
+OpStore %49 %48 NonPrivatePointer
 %50 = OpAccessChain %31 %13 %33 %30
 %51 = OpLoad %5 %50
 %52 = OpUConvert %28 %51
@@ -158,7 +159,7 @@ OpStore %49 %48
 %56 = OpIAdd %28 %55 %52
 %57 = OpUConvert %5 %56
 %58 = OpAccessChain %31 %21 %33 %30
-OpStore %58 %57
+OpStore %58 %57 NonPrivatePointer
 %60 = OpBitcast %22 %59
 OpStore %26 %60
 OpReturn

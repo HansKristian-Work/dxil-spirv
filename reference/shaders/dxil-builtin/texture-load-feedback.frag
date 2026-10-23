@@ -135,7 +135,8 @@ OpCapability Shader
 OpCapability SparseResidency
 OpCapability Sampled1D
 OpCapability Image1D
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26 %29 %32 %35 %38 %41 %45 %48
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -382,7 +383,7 @@ OpBranch %297
 %202 = OpSelect %5 %199 %91 %92
 %203 = OpFAdd %5 %200 %202
 %204 = OpFAdd %5 %201 %202
-%205 = OpImageSparseRead %75 %53 %64 None
+%205 = OpImageSparseRead %75 %53 %64 NonPrivateTexel
 %206 = OpCompositeExtract %42 %205 0
 %207 = OpCompositeExtract %74 %205 1
 %208 = OpCompositeExtract %5 %207 0
@@ -400,7 +401,7 @@ OpBranch %297
 %220 = OpFAdd %5 %217 %219
 %221 = OpFAdd %5 %218 %219
 %223 = OpCompositeConstruct %96 %64 %67
-%222 = OpImageSparseRead %75 %52 %223 None
+%222 = OpImageSparseRead %75 %52 %223 NonPrivateTexel
 %224 = OpCompositeExtract %42 %222 0
 %225 = OpCompositeExtract %74 %222 1
 %226 = OpCompositeExtract %5 %225 0
@@ -418,7 +419,7 @@ OpBranch %297
 %238 = OpFAdd %5 %235 %237
 %239 = OpFAdd %5 %236 %237
 %241 = OpCompositeConstruct %96 %64 %67
-%240 = OpImageSparseRead %75 %51 %241 None
+%240 = OpImageSparseRead %75 %51 %241 NonPrivateTexel
 %242 = OpCompositeExtract %42 %240 0
 %243 = OpCompositeExtract %74 %240 1
 %244 = OpCompositeExtract %5 %243 0
@@ -436,7 +437,7 @@ OpBranch %297
 %256 = OpFAdd %5 %253 %255
 %257 = OpFAdd %5 %254 %255
 %259 = OpCompositeConstruct %133 %64 %67 %70
-%258 = OpImageSparseRead %75 %50 %259 None
+%258 = OpImageSparseRead %75 %50 %259 NonPrivateTexel
 %260 = OpCompositeExtract %42 %258 0
 %261 = OpCompositeExtract %74 %258 1
 %262 = OpCompositeExtract %5 %261 0
@@ -454,7 +455,7 @@ OpBranch %297
 %274 = OpFAdd %5 %271 %273
 %275 = OpFAdd %5 %272 %273
 %277 = OpCompositeConstruct %133 %64 %67 %70
-%276 = OpImageSparseRead %75 %49 %277 None
+%276 = OpImageSparseRead %75 %49 %277 NonPrivateTexel
 %278 = OpCompositeExtract %42 %276 0
 %279 = OpCompositeExtract %74 %276 1
 %280 = OpCompositeExtract %5 %279 0

@@ -52,9 +52,10 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint RayGenerationKHR %3 "main" %10 %15 %18 %22
 OpName %3 "main"
 OpName %8 "RTASHeap"
@@ -134,7 +135,7 @@ OpTraceRayKHR %30 %23 %33 %23 %23 %23 %50 %35 %51 %39 %18
 %58 = OpFAdd %11 %54 %49
 %59 = OpCompositeConstruct %6 %23 %23
 %60 = OpCompositeConstruct %19 %55 %56 %57 %58
-OpImageWrite %34 %59 %60
+OpImageWrite %34 %59 %60 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

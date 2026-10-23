@@ -73,11 +73,12 @@ OpCapability GroupNonUniformBallot
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %13 %19 %24 %51
 OpExecutionMode %3 LocalSize 2 1 1
 OpExecutionMode %3 DenormPreserve 16
@@ -186,13 +187,13 @@ OpBranch %95
 %60 = OpULessThan %59 %55 %57
 %61 = OpSelect %5 %60 %58 %62
 %64 = OpAccessChain %63 %42 %37 %61
-%65 = OpLoad %14 %64
+%65 = OpLoad %14 %64 NonPrivatePointer
 %67 = OpIAdd %5 %61 %32
 %66 = OpAccessChain %63 %42 %37 %67
-%68 = OpLoad %14 %66
+%68 = OpLoad %14 %66 NonPrivatePointer
 %70 = OpIAdd %5 %61 %71
 %69 = OpAccessChain %63 %42 %37 %70
-%72 = OpLoad %14 %69
+%72 = OpLoad %14 %69 NonPrivatePointer
 %74 = OpCompositeConstruct %73 %65 %68 %72
 %77 = OpBitcast %76 %74
 %78 = OpCompositeExtract %75 %77 0
@@ -208,13 +209,13 @@ OpBranch %95
 %88 = OpBitcast %14 %79
 %89 = OpBitcast %14 %80
 %90 = OpAccessChain %63 %26 %37 %86
-OpStore %90 %87
+OpStore %90 %87 NonPrivatePointer
 %92 = OpIAdd %5 %86 %32
 %91 = OpAccessChain %63 %26 %37 %92
-OpStore %91 %88
+OpStore %91 %88 NonPrivatePointer
 %94 = OpIAdd %5 %86 %71
 %93 = OpAccessChain %63 %26 %37 %94
-OpStore %93 %89
+OpStore %93 %89 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

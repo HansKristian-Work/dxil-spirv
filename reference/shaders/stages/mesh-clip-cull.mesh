@@ -61,8 +61,9 @@ OpCapability CullDistance
 OpCapability GroupNonUniform
 OpCapability GroupNonUniformBallot
 OpCapability MeshShadingEXT
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_mesh_shader"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint MeshEXT %3 "main" %11 %16 %17 %22 %24 %28 %29
 OpExecutionMode %3 OutputVertices 24
 OpExecutionMode %3 OutputPrimitivesEXT 8

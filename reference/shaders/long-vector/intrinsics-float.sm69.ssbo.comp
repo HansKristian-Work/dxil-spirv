@@ -794,13 +794,14 @@ OpCapability Float64
 OpCapability DerivativeControl
 OpCapability GroupNonUniformQuad
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability ComputeDerivativeGroupLinearKHR
 OpCapability LongVectorEXT
 OpExtension "SPV_EXT_long_vector"
 OpExtension "SPV_KHR_compute_shader_derivatives"
 OpExtension "SPV_KHR_float_controls"
 %422 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %14 %17
 OpExecutionMode %3 DerivativeGroupLinearKHR
 OpExecutionMode %3 LocalSize 64 1 1
@@ -2396,7 +2397,7 @@ OpBranch %1267
 %956 = OpLoad %29 %960
 %957 = OpBitcast %6 %956
 %958 = OpAccessChain %25 %14 %20 %21
-OpStore %958 %957
+OpStore %958 %957 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %50 = OpFunction %45 None %48

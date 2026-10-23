@@ -107,7 +107,8 @@ OpCapability Shader
 OpCapability Int64
 OpCapability Int16
 OpCapability SparseResidency
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %9 %10 %14 %19 %25 %28
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -277,21 +278,21 @@ OpBranch %137
 %120 = OpUConvert %5 %54
 %121 = OpCompositeConstruct %15 %117 %118 %119 %120
 %123 = OpAccessChain %122 %19 %37 %37
-OpStore %123 %121
+OpStore %123 %121 NonPrivatePointer
 %124 = OpCompositeConstruct %15 %72 %73 %74 %75
 %125 = OpAccessChain %122 %19 %37 %58
-OpStore %125 %124
+OpStore %125 %124 NonPrivatePointer
 %126 = OpCompositeConstruct %21 %110 %111 %112 %113
 %128 = OpAccessChain %127 %25 %37 %58
-OpStore %128 %126
+OpStore %128 %126 NonPrivatePointer
 %131 = OpAccessChain %130 %14 %37 %129
-OpStore %131 %59
+OpStore %131 %59 NonPrivatePointer
 %133 = OpIAdd %5 %129 %58
 %132 = OpAccessChain %130 %14 %37 %133
-OpStore %132 %78
+OpStore %132 %78 NonPrivatePointer
 %135 = OpIAdd %5 %129 %136
 %134 = OpAccessChain %130 %14 %37 %135
-OpStore %134 %116
+OpStore %134 %116 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

@@ -317,7 +317,7 @@ static bool emit_nvapi_extn_op_fp16x2_atomic(Converter::Impl &impl)
 
 		auto *atomic_op = impl.allocate(op, f16vec2_type);
 		atomic_op->add_id(ptr->id);
-		atomic_op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->add_id(builder.getAtomicDeviceScopeId());
 		atomic_op->add_id(builder.makeUintConstant(0));
 		atomic_op->add_id(cast_f16vec2_op->id);
 		impl.add(atomic_op);
@@ -435,7 +435,7 @@ static bool emit_nvapi_extn_op_fp32_atomic(Converter::Impl &impl)
 
 		auto *atomic_op = impl.allocate(spv::OpAtomicFAddEXT, f32_type);
 		atomic_op->add_id(ptr->id);
-		atomic_op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->add_id(builder.getAtomicDeviceScopeId());
 		atomic_op->add_id(builder.makeUintConstant(0));
 		atomic_op->add_id(cast_f32_op->id);
 		impl.add(atomic_op);
@@ -602,7 +602,7 @@ static bool emit_nvapi_extn_op_uint64_atomic(Converter::Impl &impl)
 
 		auto *atomic_op = impl.allocate(op, uint64_type);
 		atomic_op->add_id(ptr->id);
-		atomic_op->add_id(builder.makeUintConstant(spv::ScopeDevice));
+		atomic_op->add_id(builder.getAtomicDeviceScopeId());
 		atomic_op->add_id(builder.makeUintConstant(0));
 
 		if (op == spv::OpAtomicCompareExchange)

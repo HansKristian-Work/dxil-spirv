@@ -7,49 +7,49 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    float _67;
     float _68;
     float _69;
     float _70;
+    float _71;
     if (V.x < 10u)
     {
-        uint _74 = V.x;
+        uint _75 = V.x;
         uint _33;
-        bool _38;
+        bool _39;
         for (;;)
         {
-            _33 = _74;
+            _33 = _75;
             uint _37 = imageAtomicAdd(_8, int(0u), _33);
-            _38 = V.y == 0u;
-            if (!_38)
+            _39 = V.y == 0u;
+            if (!_39)
             {
-                uint _39 = _33 & 3u;
+                uint _40 = _33 & 3u;
+                uint _43;
+                bool _78;
+                uint _73 = _40;
+                uint _74 = 0u;
                 uint _42;
-                bool _77;
-                uint _72 = _39;
-                uint _73 = 0u;
-                uint _41;
-                bool _43;
+                bool _44;
                 for (;;)
                 {
-                    _41 = _73;
-                    _43 = _72 == 0u;
-                    _77 = false;
-                    if (!_43)
+                    _42 = _74;
+                    _44 = _73 == 0u;
+                    _78 = false;
+                    if (!_44)
                     {
-                        _77 = true;
+                        _78 = true;
                         break;
                     }
                     if (!((_33 & 7u) == 0u))
                     {
                         break;
                     }
-                    uint _62 = imageAtomicAdd(_8, int(0u), _33);
-                    _42 = _41 + 1u;
-                    if (_42 < V.y)
+                    uint _63 = imageAtomicAdd(_8, int(0u), _33);
+                    _43 = _42 + 1u;
+                    if (_43 < V.y)
                     {
-                        _72 = 0u;
-                        _73 = _42;
+                        _73 = 0u;
+                        _74 = _43;
                         continue;
                     }
                     else
@@ -57,31 +57,31 @@ void main()
                         break;
                     }
                 }
-                if (_77)
+                if (_78)
                 {
                     break;
                 }
             }
-            uint _65 = imageAtomicAdd(_8, int(0u), _33);
-            _74 = _33 + 1u;
+            uint _66 = imageAtomicAdd(_8, int(0u), _33);
+            _75 = _33 + 1u;
             continue;
         }
-        _67 = float(_33);
-        _68 = float(V.y);
-        _69 = float(V.z);
-        _70 = float(V.w);
+        _68 = float(_33);
+        _69 = float(V.y);
+        _70 = float(V.z);
+        _71 = float(V.w);
     }
     else
     {
-        _67 = 0.0;
         _68 = 0.0;
         _69 = 0.0;
         _70 = 0.0;
+        _71 = 0.0;
     }
-    SV_Target.x = _67;
-    SV_Target.y = _68;
-    SV_Target.z = _69;
-    SV_Target.w = _70;
+    SV_Target.x = _68;
+    SV_Target.y = _69;
+    SV_Target.z = _70;
+    SV_Target.w = _71;
 }
 
 
@@ -90,11 +90,12 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 100
+; Bound: 101
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %15
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -126,26 +127,27 @@ OpDecorate %15 Location 0
 %30 = OpTypeBool
 %32 = OpConstant %5 10
 %35 = OpTypePointer Image %5
-%49 = OpConstant %12 0
-%53 = OpTypePointer Output %12
-%59 = OpConstant %5 7
-%66 = OpTypePointer Function %12
-%71 = OpTypePointer Function %5
-%75 = OpConstantTrue %30
-%76 = OpTypePointer Function %30
-%78 = OpConstantFalse %30
+%38 = OpConstant %5 5
+%50 = OpConstant %12 0
+%54 = OpTypePointer Output %12
+%60 = OpConstant %5 7
+%67 = OpTypePointer Function %12
+%72 = OpTypePointer Function %5
+%76 = OpConstantTrue %30
+%77 = OpTypePointer Function %30
+%79 = OpConstantFalse %30
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%67 = OpVariable %66 Function
-%68 = OpVariable %66 Function
-%69 = OpVariable %66 Function
-%70 = OpVariable %66 Function
-%72 = OpVariable %71 Function
-%73 = OpVariable %71 Function
-%74 = OpVariable %71 Function
-%77 = OpVariable %76 Function
-OpBranch %80
-%80 = OpLabel
+%68 = OpVariable %67 Function
+%69 = OpVariable %67 Function
+%70 = OpVariable %67 Function
+%71 = OpVariable %67 Function
+%73 = OpVariable %72 Function
+%74 = OpVariable %72 Function
+%75 = OpVariable %72 Function
+%78 = OpVariable %77 Function
+OpBranch %81
+%81 = OpLabel
 %16 = OpLoad %6 %8
 %18 = OpAccessChain %17 %11 %19
 %20 = OpLoad %5 %18
@@ -156,102 +158,102 @@ OpBranch %80
 %27 = OpAccessChain %17 %11 %28
 %29 = OpLoad %5 %27
 %31 = OpULessThan %30 %20 %32
-OpSelectionMerge %95 None
-OpBranchConditional %31 %82 %81
-%81 = OpLabel
-OpStore %67 %49
-OpStore %68 %49
-OpStore %69 %49
-OpStore %70 %49
-OpBranch %95
+OpSelectionMerge %96 None
+OpBranchConditional %31 %83 %82
 %82 = OpLabel
-OpStore %74 %20
-OpBranch %83
+OpStore %68 %50
+OpStore %69 %50
+OpStore %70 %50
+OpStore %71 %50
+OpBranch %96
 %83 = OpLabel
-%33 = OpLoad %5 %74
-%36 = OpImageTexelPointer %35 %8 %19 %19
-%37 = OpAtomicIAdd %5 %36 %22 %19 %33
-%38 = OpIEqual %30 %23 %19
-OpLoopMerge %94 %98 None
+OpStore %75 %20
 OpBranch %84
 %84 = OpLabel
-OpSelectionMerge %97 None
-OpBranchConditional %38 %97 %85
+%33 = OpLoad %5 %75
+%36 = OpImageTexelPointer %35 %8 %19 %19
+%37 = OpAtomicIAdd %5 %36 %38 %19 %33
+%39 = OpIEqual %30 %23 %19
+OpLoopMerge %95 %99 None
+OpBranch %85
 %85 = OpLabel
-%39 = OpBitwiseAnd %5 %33 %28
-OpStore %72 %39
-OpStore %73 %19
-OpBranch %86
+OpSelectionMerge %98 None
+OpBranchConditional %39 %98 %86
 %86 = OpLabel
-%41 = OpLoad %5 %73
-%40 = OpLoad %5 %72
-%43 = OpIEqual %30 %40 %19
-OpStore %77 %78
-OpLoopMerge %92 %91 None
+%40 = OpBitwiseAnd %5 %33 %28
+OpStore %73 %40
+OpStore %74 %19
 OpBranch %87
 %87 = OpLabel
-OpSelectionMerge %89 None
-OpBranchConditional %43 %89 %88
+%42 = OpLoad %5 %74
+%41 = OpLoad %5 %73
+%44 = OpIEqual %30 %41 %19
+OpStore %78 %79
+OpLoopMerge %93 %92 None
+OpBranch %88
 %88 = OpLabel
-OpStore %77 %75
-OpBranch %92
-%89 = OpLabel
-%58 = OpBitwiseAnd %5 %33 %59
-%60 = OpIEqual %30 %58 %19
 OpSelectionMerge %90 None
-OpBranchConditional %60 %90 %92
+OpBranchConditional %44 %90 %89
+%89 = OpLabel
+OpStore %78 %76
+OpBranch %93
 %90 = OpLabel
-%61 = OpImageTexelPointer %35 %8 %19 %19
-%62 = OpAtomicIAdd %5 %61 %22 %19 %33
-%42 = OpIAdd %5 %41 %22
-%63 = OpULessThan %30 %42 %23
-OpSelectionMerge %99 None
-OpBranchConditional %63 %91 %92
-%99 = OpLabel
-OpUnreachable
+%59 = OpBitwiseAnd %5 %33 %60
+%61 = OpIEqual %30 %59 %19
+OpSelectionMerge %91 None
+OpBranchConditional %61 %91 %93
 %91 = OpLabel
-OpStore %72 %19
-OpStore %73 %42
-OpBranch %86
+%62 = OpImageTexelPointer %35 %8 %19 %19
+%63 = OpAtomicIAdd %5 %62 %38 %19 %33
+%43 = OpIAdd %5 %42 %22
+%64 = OpULessThan %30 %43 %23
+OpSelectionMerge %100 None
+OpBranchConditional %64 %92 %93
+%100 = OpLabel
+OpUnreachable
 %92 = OpLabel
-%79 = OpLoad %30 %77
-OpSelectionMerge %93 None
-OpBranchConditional %79 %94 %93
+OpStore %73 %19
+OpStore %74 %43
+OpBranch %87
 %93 = OpLabel
-OpBranch %97
+%80 = OpLoad %30 %78
+OpSelectionMerge %94 None
+OpBranchConditional %80 %95 %94
 %94 = OpLabel
-%44 = OpConvertUToF %12 %33
-%45 = OpConvertUToF %12 %23
-%46 = OpConvertUToF %12 %26
-%47 = OpConvertUToF %12 %29
-OpStore %67 %44
+OpBranch %98
+%95 = OpLabel
+%45 = OpConvertUToF %12 %33
+%46 = OpConvertUToF %12 %23
+%47 = OpConvertUToF %12 %26
+%48 = OpConvertUToF %12 %29
 OpStore %68 %45
 OpStore %69 %46
 OpStore %70 %47
-OpBranch %95
-%95 = OpLabel
+OpStore %71 %48
 OpBranch %96
 %96 = OpLabel
+OpBranch %97
+%97 = OpLabel
+%53 = OpLoad %12 %71
 %52 = OpLoad %12 %70
 %51 = OpLoad %12 %69
-%50 = OpLoad %12 %68
-%48 = OpLoad %12 %67
-%54 = OpAccessChain %53 %15 %19
-OpStore %54 %48
-%55 = OpAccessChain %53 %15 %22
-OpStore %55 %50
-%56 = OpAccessChain %53 %15 %25
+%49 = OpLoad %12 %68
+%55 = OpAccessChain %54 %15 %19
+OpStore %55 %49
+%56 = OpAccessChain %54 %15 %22
 OpStore %56 %51
-%57 = OpAccessChain %53 %15 %28
+%57 = OpAccessChain %54 %15 %25
 OpStore %57 %52
+%58 = OpAccessChain %54 %15 %28
+OpStore %58 %53
 OpReturn
-%97 = OpLabel
-OpBranch %98
 %98 = OpLabel
-%64 = OpImageTexelPointer %35 %8 %19 %19
-%65 = OpAtomicIAdd %5 %64 %22 %19 %33
+OpBranch %99
+%99 = OpLabel
+%65 = OpImageTexelPointer %35 %8 %19 %19
+%66 = OpAtomicIAdd %5 %65 %38 %19 %33
 %34 = OpIAdd %5 %33 %22
-OpStore %74 %34
-OpBranch %83
+OpStore %75 %34
+OpBranch %84
 OpFunctionEnd
 #endif

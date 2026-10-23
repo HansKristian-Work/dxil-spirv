@@ -8947,8 +8947,9 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 	if (!module_is_dxbc_spirv(module) && !options.legacy_structurizer)
 	{
-		// New code, just finally go with SPIR-V 1.6 by default.
+		// New code, just finally go with SPIR-V 1.6 + VkMM by default.
 		spirv_module.set_override_spirv_version(0x10600);
+		execution_mode_meta.memory_model = spv::MemoryModelVulkan;
 	}
 
 	if (execution_model_lib_target && execution_model == spv::ExecutionModelGLCompute)

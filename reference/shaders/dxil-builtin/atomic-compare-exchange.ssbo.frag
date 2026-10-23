@@ -30,17 +30,17 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     uint _64 = imageAtomicCompSwap(_8, int(TEXCOORD.x), 20u, 30u);
-    uint _70 = imageAtomicCompSwap(_11, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), 20u, 30u);
-    uint _74 = imageAtomicCompSwap(_14, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), 20u, 30u);
-    uint _78 = imageAtomicCompSwap(_17, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), 20u, 30u);
-    uint _82 = imageAtomicCompSwap(_20, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), 20u, 30u);
-    uint _85 = imageAtomicCompSwap(_23, int(TEXCOORD.x), 20u, 30u);
-    uint _88 = imageAtomicCompSwap(_23, int(TEXCOORD.x), 20u, 30u);
-    int _92 = imageAtomicCompSwap(_27, int(TEXCOORD.x), int(20u), int(30u));
-    int _99 = imageAtomicCompSwap(_30, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(20u), int(30u));
-    uint _109 = atomicCompSwap(_34._m0[(TEXCOORD.x * 4u) + 2u], 20u, 30u);
-    uint _122 = atomicCompSwap(_38._m0[ByteAddressMask(TEXCOORD.x, 4u)], 20u, 30u);
-    SV_Target = (((((((((_70 + _64) + _74) + _78) + _82) + _85) + _88) + uint(_92)) + uint(_99)) + _109) + _122;
+    uint _71 = imageAtomicCompSwap(_11, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), 20u, 30u);
+    uint _75 = imageAtomicCompSwap(_14, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), 20u, 30u);
+    uint _79 = imageAtomicCompSwap(_17, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), 20u, 30u);
+    uint _83 = imageAtomicCompSwap(_20, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), 20u, 30u);
+    uint _86 = imageAtomicCompSwap(_23, int(TEXCOORD.x), 20u, 30u);
+    uint _89 = imageAtomicCompSwap(_23, int(TEXCOORD.x), 20u, 30u);
+    int _93 = imageAtomicCompSwap(_27, int(TEXCOORD.x), int(20u), int(30u));
+    int _100 = imageAtomicCompSwap(_30, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(20u), int(30u));
+    uint _110 = atomicCompSwap(_34._m0[(TEXCOORD.x * 4u) + 2u], 20u, 30u);
+    uint _123 = atomicCompSwap(_38._m0[ByteAddressMask(TEXCOORD.x, 4u)], 20u, 30u);
+    SV_Target = (((((((((_71 + _64) + _75) + _79) + _83) + _86) + _89) + uint(_93)) + uint(_100)) + _110) + _123;
 }
 
 
@@ -49,12 +49,13 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 125
+; Bound: 126
 ; Schema: 0
 OpCapability Shader
 OpCapability Image1D
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %27 %30 %34 %38 %41 %43
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -62,9 +63,9 @@ OpName %32 "SSBO"
 OpName %36 "SSBO"
 OpName %41 "TEXCOORD"
 OpName %43 "SV_Target"
-OpName %115 "ByteAddressMask"
-OpName %113 "index"
-OpName %114 "stride"
+OpName %116 "ByteAddressMask"
+OpName %114 "index"
+OpName %115 "stride"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %11 DescriptorSet 0
@@ -142,16 +143,17 @@ OpDecorate %43 Location 0
 %62 = OpTypePointer Image %5
 %65 = OpConstant %5 20
 %66 = OpConstant %5 30
-%67 = OpTypeVector %5 2
-%90 = OpTypePointer Image %24
-%105 = OpConstant %5 4
-%107 = OpTypePointer StorageBuffer %5
-%112 = OpTypeFunction %5 %5 %5
-%118 = OpConstant %5 4294967295
+%67 = OpConstant %5 5
+%68 = OpTypeVector %5 2
+%91 = OpTypePointer Image %24
+%106 = OpConstant %5 4
+%108 = OpTypePointer StorageBuffer %5
+%113 = OpTypeFunction %5 %5 %5
+%119 = OpConstant %5 4294967295
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %124
-%124 = OpLabel
+OpBranch %125
+%125 = OpLabel
 %44 = OpLoad %28 %30
 %45 = OpLoad %25 %27
 %46 = OpLoad %21 %23
@@ -167,61 +169,61 @@ OpBranch %124
 %59 = OpAccessChain %52 %41 %60
 %61 = OpLoad %5 %59
 %63 = OpImageTexelPointer %62 %8 %55 %54
-%64 = OpAtomicCompareExchange %5 %63 %57 %54 %54 %66 %65
-%68 = OpCompositeConstruct %67 %55 %58
-%69 = OpImageTexelPointer %62 %11 %68 %54
-%70 = OpAtomicCompareExchange %5 %69 %57 %54 %54 %66 %65
-%71 = OpIAdd %5 %70 %64
-%72 = OpCompositeConstruct %67 %55 %58
-%73 = OpImageTexelPointer %62 %14 %72 %54
-%74 = OpAtomicCompareExchange %5 %73 %57 %54 %54 %66 %65
-%75 = OpIAdd %5 %71 %74
-%76 = OpCompositeConstruct %39 %55 %58 %61
-%77 = OpImageTexelPointer %62 %17 %76 %54
-%78 = OpAtomicCompareExchange %5 %77 %57 %54 %54 %66 %65
-%79 = OpIAdd %5 %75 %78
-%80 = OpCompositeConstruct %39 %55 %58 %61
-%81 = OpImageTexelPointer %62 %20 %80 %54
-%82 = OpAtomicCompareExchange %5 %81 %57 %54 %54 %66 %65
-%83 = OpIAdd %5 %79 %82
-%84 = OpImageTexelPointer %62 %23 %55 %54
-%85 = OpAtomicCompareExchange %5 %84 %57 %54 %54 %66 %65
-%86 = OpIAdd %5 %83 %85
-%87 = OpImageTexelPointer %62 %23 %55 %54
-%88 = OpAtomicCompareExchange %5 %87 %57 %54 %54 %66 %65
-%89 = OpIAdd %5 %86 %88
-%91 = OpImageTexelPointer %90 %27 %55 %54
-%93 = OpBitcast %24 %65
-%94 = OpBitcast %24 %66
-%92 = OpAtomicCompareExchange %24 %91 %57 %54 %54 %94 %93
-%95 = OpBitcast %5 %92
-%96 = OpIAdd %5 %89 %95
-%97 = OpCompositeConstruct %67 %55 %58
-%98 = OpImageTexelPointer %90 %30 %97 %54
-%100 = OpBitcast %24 %65
-%101 = OpBitcast %24 %66
-%99 = OpAtomicCompareExchange %24 %98 %57 %54 %54 %101 %100
-%102 = OpBitcast %5 %99
-%103 = OpIAdd %5 %96 %102
-%104 = OpIMul %5 %55 %105
-%106 = OpIAdd %5 %104 %60
-%108 = OpAccessChain %107 %34 %54 %106
-%109 = OpAtomicCompareExchange %5 %108 %57 %54 %54 %66 %65
-%110 = OpIAdd %5 %103 %109
-%111 = OpShiftLeftLogical %5 %55 %60
-%120 = OpFunctionCall %5 %115 %55 %105
-%121 = OpAccessChain %107 %38 %54 %120
-%122 = OpAtomicCompareExchange %5 %121 %57 %54 %54 %66 %65
-%123 = OpIAdd %5 %110 %122
-OpStore %43 %123
+%64 = OpAtomicCompareExchange %5 %63 %67 %54 %54 %66 %65
+%69 = OpCompositeConstruct %68 %55 %58
+%70 = OpImageTexelPointer %62 %11 %69 %54
+%71 = OpAtomicCompareExchange %5 %70 %67 %54 %54 %66 %65
+%72 = OpIAdd %5 %71 %64
+%73 = OpCompositeConstruct %68 %55 %58
+%74 = OpImageTexelPointer %62 %14 %73 %54
+%75 = OpAtomicCompareExchange %5 %74 %67 %54 %54 %66 %65
+%76 = OpIAdd %5 %72 %75
+%77 = OpCompositeConstruct %39 %55 %58 %61
+%78 = OpImageTexelPointer %62 %17 %77 %54
+%79 = OpAtomicCompareExchange %5 %78 %67 %54 %54 %66 %65
+%80 = OpIAdd %5 %76 %79
+%81 = OpCompositeConstruct %39 %55 %58 %61
+%82 = OpImageTexelPointer %62 %20 %81 %54
+%83 = OpAtomicCompareExchange %5 %82 %67 %54 %54 %66 %65
+%84 = OpIAdd %5 %80 %83
+%85 = OpImageTexelPointer %62 %23 %55 %54
+%86 = OpAtomicCompareExchange %5 %85 %67 %54 %54 %66 %65
+%87 = OpIAdd %5 %84 %86
+%88 = OpImageTexelPointer %62 %23 %55 %54
+%89 = OpAtomicCompareExchange %5 %88 %67 %54 %54 %66 %65
+%90 = OpIAdd %5 %87 %89
+%92 = OpImageTexelPointer %91 %27 %55 %54
+%94 = OpBitcast %24 %65
+%95 = OpBitcast %24 %66
+%93 = OpAtomicCompareExchange %24 %92 %67 %54 %54 %95 %94
+%96 = OpBitcast %5 %93
+%97 = OpIAdd %5 %90 %96
+%98 = OpCompositeConstruct %68 %55 %58
+%99 = OpImageTexelPointer %91 %30 %98 %54
+%101 = OpBitcast %24 %65
+%102 = OpBitcast %24 %66
+%100 = OpAtomicCompareExchange %24 %99 %67 %54 %54 %102 %101
+%103 = OpBitcast %5 %100
+%104 = OpIAdd %5 %97 %103
+%105 = OpIMul %5 %55 %106
+%107 = OpIAdd %5 %105 %60
+%109 = OpAccessChain %108 %34 %54 %107
+%110 = OpAtomicCompareExchange %5 %109 %67 %54 %54 %66 %65
+%111 = OpIAdd %5 %104 %110
+%112 = OpShiftLeftLogical %5 %55 %60
+%121 = OpFunctionCall %5 %116 %55 %106
+%122 = OpAccessChain %108 %38 %54 %121
+%123 = OpAtomicCompareExchange %5 %122 %67 %54 %54 %66 %65
+%124 = OpIAdd %5 %111 %123
+OpStore %43 %124
 OpReturn
 OpFunctionEnd
-%115 = OpFunction %5 None %112
-%113 = OpFunctionParameter %5
+%116 = OpFunction %5 None %113
 %114 = OpFunctionParameter %5
-%116 = OpLabel
-%117 = OpUDiv %5 %118 %114
-%119 = OpBitwiseAnd %5 %113 %117
-OpReturnValue %119
+%115 = OpFunctionParameter %5
+%117 = OpLabel
+%118 = OpUDiv %5 %119 %115
+%120 = OpBitwiseAnd %5 %114 %118
+OpReturnValue %120
 OpFunctionEnd
 #endif

@@ -57,7 +57,8 @@ void main()
 OpCapability Shader
 OpCapability Int64
 OpCapability Int64Atomics
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %14 %18 %21 %24
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -139,7 +140,7 @@ OpBranch %74
 %43 = OpShiftLeftLogical %5 %28 %32
 %52 = OpFunctionCall %5 %47 %28 %53
 %55 = OpAccessChain %54 %9 %27 %52
-OpStore %55 %39
+OpStore %55 %39 NonPrivatePointer
 %57 = OpAccessChain %56 %21 %28
 %58 = OpAtomicCompareExchange %10 %57 %32 %27 %27 %59 %60
 %61 = OpIEqual %35 %58 %60
@@ -151,7 +152,7 @@ OpStore %55 %39
 %68 = OpShiftLeftLogical %5 %28 %69
 %70 = OpFunctionCall %5 %47 %28 %71
 %73 = OpAccessChain %72 %14 %27 %70
-OpStore %73 %64
+OpStore %73 %64 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %47 = OpFunction %5 None %44

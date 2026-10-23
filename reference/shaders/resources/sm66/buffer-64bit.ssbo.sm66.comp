@@ -95,8 +95,9 @@ void main()
 OpCapability Shader
 OpCapability Int64
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %11 %16 %21 %26 %30
 OpExecutionMode %3 LocalSize 128 1 1
 OpName %3 "main"
@@ -220,7 +221,7 @@ OpBranch %175
 %66 = OpIMul %27 %34 %67
 %68 = OpCompositeConstruct %6 %62 %63 %64
 %69 = OpAccessChain %48 %36 %33 %66
-OpStore %69 %68
+OpStore %69 %68 NonPrivatePointer
 %70 = OpISub %5 %51 %59
 %71 = OpISub %5 %52 %60
 %72 = OpISub %5 %53 %61
@@ -229,7 +230,7 @@ OpStore %69 %68
 %75 = OpIAdd %27 %74 %39
 %76 = OpCompositeConstruct %6 %70 %71 %72
 %77 = OpAccessChain %48 %36 %33 %75
-OpStore %77 %76
+OpStore %77 %76 NonPrivatePointer
 %78 = OpIMul %5 %59 %51
 %79 = OpIMul %5 %60 %52
 %80 = OpIMul %5 %61 %53
@@ -238,7 +239,7 @@ OpStore %77 %76
 %83 = OpIAdd %27 %82 %42
 %84 = OpCompositeConstruct %6 %78 %79 %80
 %85 = OpAccessChain %48 %36 %33 %83
-OpStore %85 %84
+OpStore %85 %84 NonPrivatePointer
 %99 = OpFunctionCall %5 %89 %51 %59
 %100 = OpFunctionCall %5 %89 %52 %60
 %101 = OpFunctionCall %5 %89 %53 %61
@@ -247,7 +248,7 @@ OpStore %85 %84
 %104 = OpIAdd %27 %103 %45
 %105 = OpCompositeConstruct %6 %99 %100 %101
 %106 = OpAccessChain %48 %36 %33 %104
-OpStore %106 %105
+OpStore %106 %105 NonPrivatePointer
 %107 = OpBitwiseAnd %5 %59 %108
 %109 = OpBitwiseAnd %5 %60 %108
 %110 = OpBitwiseAnd %5 %61 %108
@@ -259,7 +260,7 @@ OpStore %106 %105
 %117 = OpIAdd %27 %116 %115
 %118 = OpCompositeConstruct %6 %111 %112 %113
 %119 = OpAccessChain %48 %36 %33 %117
-OpStore %119 %118
+OpStore %119 %118 NonPrivatePointer
 %120 = OpShiftRightLogical %5 %51 %107
 %121 = OpShiftRightLogical %5 %52 %109
 %122 = OpShiftRightLogical %5 %53 %110
@@ -268,7 +269,7 @@ OpStore %119 %118
 %126 = OpIAdd %27 %125 %124
 %127 = OpCompositeConstruct %6 %120 %121 %122
 %128 = OpAccessChain %48 %36 %33 %126
-OpStore %128 %127
+OpStore %128 %127 NonPrivatePointer
 %129 = OpShiftRightArithmetic %5 %51 %107
 %130 = OpShiftRightArithmetic %5 %52 %109
 %131 = OpShiftRightArithmetic %5 %53 %110
@@ -277,7 +278,7 @@ OpStore %128 %127
 %135 = OpIAdd %27 %134 %133
 %136 = OpCompositeConstruct %6 %129 %130 %131
 %137 = OpAccessChain %48 %36 %33 %135
-OpStore %137 %136
+OpStore %137 %136 NonPrivatePointer
 %138 = OpBitwiseAnd %5 %59 %51
 %139 = OpBitwiseAnd %5 %60 %52
 %140 = OpBitwiseAnd %5 %61 %53
@@ -286,7 +287,7 @@ OpStore %137 %136
 %144 = OpIAdd %27 %143 %142
 %145 = OpCompositeConstruct %6 %138 %139 %140
 %146 = OpAccessChain %48 %36 %33 %144
-OpStore %146 %145
+OpStore %146 %145 NonPrivatePointer
 %147 = OpIMul %27 %34 %148
 %149 = OpIMul %27 %34 %45
 %158 = OpFunctionCall %27 %153 %149 %67
@@ -300,13 +301,13 @@ OpStore %146 %145
 %168 = OpCompositeExtract %5 %166 1
 %169 = OpFunctionCall %27 %153 %34 %67
 %170 = OpAccessChain %159 %41 %33 %169
-OpStore %170 %167
+OpStore %170 %167 NonPrivatePointer
 %172 = OpIAdd %27 %169 %39
 %171 = OpAccessChain %159 %41 %33 %172
-OpStore %171 %168
+OpStore %171 %168 NonPrivatePointer
 %174 = OpIAdd %27 %169 %42
 %173 = OpAccessChain %159 %41 %33 %174
-OpStore %173 %53
+OpStore %173 %53 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %89 = OpFunction %5 None %86

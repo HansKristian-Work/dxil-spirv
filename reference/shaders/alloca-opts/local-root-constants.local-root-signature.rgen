@@ -67,11 +67,12 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint RayGenerationKHR %3 "main" %13 %17 %67
 OpName %3 "main"
 OpName %11 "SBTBlock"
@@ -201,7 +202,7 @@ OpStore %52 %51
 %86 = OpLoad %15 %17
 %87 = OpCompositeConstruct %10 %70 %72
 %88 = OpCompositeConstruct %42 %85 %85 %85 %85
-OpImageWrite %86 %87 %88
+OpImageWrite %86 %87 %88 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

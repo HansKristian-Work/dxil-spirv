@@ -6,7 +6,7 @@ layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
     uint _m0[];
 } _10[];
 
-layout(set = 0, binding = 0, std430) coherent buffer _12_15
+layout(set = 0, binding = 0, std430) buffer _12_15
 {
     uint _m0[];
 } _15[];
@@ -38,12 +38,13 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 71
+; Bound: 72
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %10 %15 %17 %21 %25
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -64,7 +65,6 @@ OpMemberDecorate %12 0 Offset 0
 OpDecorate %12 Block
 OpDecorate %15 DescriptorSet 0
 OpDecorate %15 Binding 0
-OpDecorate %15 Coherent
 OpDecorate %17 Flat
 OpDecorate %17 Location 0
 OpDecorate %21 Flat
@@ -102,11 +102,12 @@ OpDecorate %25 Location 0
 %42 = OpConstant %5 2
 %43 = OpTypePointer StorageBuffer %5
 %52 = OpTypeVector %5 3
-%66 = OpTypePointer Output %22
+%62 = OpConstant %5 5
+%67 = OpTypePointer Output %22
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %70
-%70 = OpLabel
+OpBranch %71
+%71 = OpLabel
 %27 = OpAccessChain %26 %21 %28
 %29 = OpLoad %18 %27
 %30 = OpBitcast %5 %29
@@ -135,19 +136,19 @@ OpBranch %70
 %59 = OpBitcast %22 %56
 %60 = OpShiftRightLogical %5 %34 %42
 %61 = OpAccessChain %43 %40 %28 %60
-OpStore %61 %54
-%63 = OpIAdd %5 %60 %32
-%62 = OpAccessChain %43 %40 %28 %63
-OpStore %62 %55
-%65 = OpIAdd %5 %60 %42
-%64 = OpAccessChain %43 %40 %28 %65
-OpStore %64 %56
-%67 = OpAccessChain %66 %25 %28
-OpStore %67 %57
-%68 = OpAccessChain %66 %25 %32
-OpStore %68 %58
-%69 = OpAccessChain %66 %25 %42
-OpStore %69 %59
+OpStore %61 %54 MakePointerAvailable|NonPrivatePointer %62
+%64 = OpIAdd %5 %60 %32
+%63 = OpAccessChain %43 %40 %28 %64
+OpStore %63 %55 MakePointerAvailable|NonPrivatePointer %62
+%66 = OpIAdd %5 %60 %42
+%65 = OpAccessChain %43 %40 %28 %66
+OpStore %65 %56 MakePointerAvailable|NonPrivatePointer %62
+%68 = OpAccessChain %67 %25 %28
+OpStore %68 %57
+%69 = OpAccessChain %67 %25 %32
+OpStore %69 %58
+%70 = OpAccessChain %67 %25 %42
+OpStore %70 %59
 OpReturn
 OpFunctionEnd
 #endif

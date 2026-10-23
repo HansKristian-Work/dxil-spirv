@@ -1984,7 +1984,9 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 
 	auto addr_space = DXIL::AddressSpace(instruction->getOperand(1)->getType()->getPointerAddressSpace());
+	auto storage = impl.get_effective_storage_class(instruction->getOperand(1), spv::StorageClassFunction);
 	bool non_private = addr_space != DXIL::AddressSpace::Thread &&
+	                   storage != spv::StorageClassTaskPayloadWorkgroupEXT &&
 	                   impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
 	bool auto_visibility = false;
 

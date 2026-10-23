@@ -52,11 +52,12 @@ OpCapability Float16
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability FloatControls2
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_float_controls2"
 %31 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %14 %18 %21
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormPreserve 16
@@ -126,7 +127,7 @@ OpBranch %88
 %23 = OpAccessChain %22 %21 %24
 %25 = OpLoad %5 %23
 %27 = OpAccessChain %26 %9 %24 %25
-%28 = OpLoad %5 %27
+%28 = OpLoad %5 %27 NonPrivatePointer
 %29 = OpBitwiseAnd %5 %28 %30
 %34 = OpExtInst %33 %31 UnpackHalf2x16 %29
 %35 = OpCompositeExtract %32 %34 0
@@ -140,7 +141,7 @@ OpBranch %88
 %47 = OpIMul %5 %25 %48
 %49 = OpBitcast %10 %44
 %51 = OpAccessChain %50 %14 %24 %47
-OpStore %51 %49
+OpStore %51 %49 NonPrivatePointer
 %52 = OpBitcast %40 %28
 %53 = OpCompositeExtract %10 %52 1
 %54 = OpBitcast %43 %53
@@ -149,20 +150,20 @@ OpStore %51 %49
 %57 = OpIAdd %5 %56 %46
 %58 = OpBitcast %10 %54
 %59 = OpAccessChain %50 %14 %24 %57
-OpStore %59 %58
+OpStore %59 %58 NonPrivatePointer
 %60 = OpBitcast %40 %28
 %61 = OpCompositeExtract %10 %60 0
 %62 = OpUConvert %5 %61
 %63 = OpIMul %5 %25 %48
 %64 = OpAccessChain %26 %18 %24 %63
-OpStore %64 %62
+OpStore %64 %62 NonPrivatePointer
 %65 = OpBitcast %40 %28
 %66 = OpCompositeExtract %10 %65 1
 %67 = OpUConvert %5 %66
 %68 = OpIMul %5 %25 %48
 %69 = OpIAdd %5 %68 %46
 %70 = OpAccessChain %26 %18 %24 %69
-OpStore %70 %67
+OpStore %70 %67 NonPrivatePointer
 %71 = OpFConvert %32 %44
 %72 = OpBitcast %10 %44
 %73 = OpUConvert %5 %72
@@ -170,7 +171,7 @@ OpStore %70 %67
 %76 = OpIMul %5 %25 %48
 %77 = OpIAdd %5 %76 %75
 %78 = OpAccessChain %26 %18 %24 %77
-OpStore %78 %73
+OpStore %78 %73 NonPrivatePointer
 %79 = OpFConvert %32 %54
 %80 = OpBitcast %10 %54
 %81 = OpUConvert %5 %80
@@ -178,7 +179,7 @@ OpStore %78 %73
 %84 = OpIMul %5 %25 %48
 %85 = OpIAdd %5 %84 %83
 %86 = OpAccessChain %26 %18 %24 %85
-OpStore %86 %81
+OpStore %86 %81 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

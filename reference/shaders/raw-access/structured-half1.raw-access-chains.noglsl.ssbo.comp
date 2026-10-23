@@ -6,10 +6,11 @@
 OpCapability Shader
 OpCapability Float16
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability RawAccessChainsNV
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_NV_raw_access_chains"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %12
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormPreserve 16
@@ -44,10 +45,10 @@ OpBranch %25
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %19 = OpRawAccessChainNV %18 %9 %20 %16 %15 RobustnessPerElementNV
-%21 = OpLoad %17 %19 Aligned 2
+%21 = OpLoad %17 %19 Aligned|NonPrivatePointer 2
 %22 = OpFAdd %17 %21 %23
 %24 = OpRawAccessChainNV %18 %9 %20 %16 %15 RobustnessPerElementNV
-OpStore %24 %22 Aligned 2
+OpStore %24 %22 Aligned|NonPrivatePointer 2
 OpReturn
 OpFunctionEnd
 

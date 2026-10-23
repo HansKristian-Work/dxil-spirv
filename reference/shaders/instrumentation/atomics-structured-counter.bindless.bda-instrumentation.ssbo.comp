@@ -56,29 +56,29 @@ uint AllocateInvocationID()
     return _40;
 }
 
-uint RobustPhysicalAtomicCounter(uvec2 _73, uint _74, uint _75)
+uint RobustPhysicalAtomicCounter(uvec2 _74, uint _75, uint _76)
 {
-    uint _89;
-    if (any(notEqual(_73, uvec2(0u))))
+    uint _90;
+    if (any(notEqual(_74, uvec2(0u))))
     {
-        uint _87 = atomicAdd(uintPointer(_73).value, _74);
-        _89 = _87 + _75;
+        uint _88 = atomicAdd(uintPointer(_74).value, _75);
+        _90 = _88 + _76;
     }
     else
     {
-        _89 = 0u;
+        _90 = 0u;
     }
-    return _89;
+    return _90;
 }
 
 void main()
 {
-    uint _42 = AllocateInvocationID();
-    InvocationID = _42;
-    uvec2 _60 = _27.counters[registers._m4];
-    uint _68 = atomicAdd(_23[registers._m4]._m0[gl_GlobalInvocationID.x], 1u);
-    uint _70 = atomicCompSwap(_23[registers._m4]._m0[gl_GlobalInvocationID.x], 1u, 2u);
-    uint _90 = RobustPhysicalAtomicCounter(_60, 1u, 0u);
+    uint _43 = AllocateInvocationID();
+    InvocationID = _43;
+    uvec2 _61 = _27.counters[registers._m4];
+    uint _69 = atomicAdd(_23[registers._m4]._m0[gl_GlobalInvocationID.x], 1u);
+    uint _71 = atomicCompSwap(_23[registers._m4]._m0[gl_GlobalInvocationID.x], 1u, 2u);
+    uint _91 = RobustPhysicalAtomicCounter(_61, 1u, 0u);
 }
 
 
@@ -87,17 +87,18 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 92
+; Bound: 93
 ; Schema: 0
 OpCapability Shader
 OpCapability SignedZeroInfNanPreserve
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint GLCompute %3 "main" %8 %16 %18 %23 %27 %31 %63
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %16 %18 %23 %27 %31 %64
 OpExecutionMode %3 LocalSize 1 1 1
 OpExecutionMode %3 SignedZeroInfNanPreserve 32
 OpName %3 "main"
@@ -115,7 +116,7 @@ OpName %29 "BloomBufferInvocationSSBO"
 OpMemberName %29 0 "atomics"
 OpName %31 "BloomBufferInvocation"
 OpName %33 "AllocateInvocationID"
-OpName %76 "RobustPhysicalAtomicCounter"
+OpName %77 "RobustPhysicalAtomicCounter"
 OpDecorate %6 Block
 OpMemberDecorate %6 0 Offset 0
 OpMemberDecorate %6 1 Offset 4
@@ -149,7 +150,7 @@ OpMemberDecorate %29 0 Offset 0
 OpDecorate %29 Block
 OpDecorate %31 DescriptorSet 0
 OpDecorate %31 Binding 2
-OpDecorate %63 BuiltIn GlobalInvocationId
+OpDecorate %64 BuiltIn GlobalInvocationId
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -182,48 +183,49 @@ OpDecorate %63 BuiltIn GlobalInvocationId
 %32 = OpTypeFunction %5
 %37 = OpTypePointer StorageBuffer %5
 %39 = OpConstant %5 0
-%41 = OpConstant %5 1103633207
-%43 = OpTypePointer StorageBuffer %20
-%45 = OpTypePointer PushConstant %5
-%47 = OpConstant %5 4
-%49 = OpTypePointer StorageBuffer %9
-%54 = OpConstant %5 16
-%61 = OpTypeVector %5 3
-%62 = OpTypePointer Input %61
-%63 = OpVariable %62 Input
-%64 = OpTypePointer Input %5
-%71 = OpConstant %5 2
-%72 = OpTypeFunction %5 %9 %5 %5
-%80 = OpTypeBool
-%81 = OpTypeVector %80 2
-%82 = OpConstantNull %9
-%85 = OpTypePointer PhysicalStorageBuffer %5
+%41 = OpConstant %5 5
+%42 = OpConstant %5 1103633207
+%44 = OpTypePointer StorageBuffer %20
+%46 = OpTypePointer PushConstant %5
+%48 = OpConstant %5 4
+%50 = OpTypePointer StorageBuffer %9
+%55 = OpConstant %5 16
+%62 = OpTypeVector %5 3
+%63 = OpTypePointer Input %62
+%64 = OpVariable %63 Input
+%65 = OpTypePointer Input %5
+%72 = OpConstant %5 2
+%73 = OpTypeFunction %5 %9 %5 %5
+%81 = OpTypeBool
+%82 = OpTypeVector %81 2
+%83 = OpConstantNull %9
+%86 = OpTypePointer PhysicalStorageBuffer %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %91
-%91 = OpLabel
-%42 = OpFunctionCall %5 %33
-OpStore %18 %42
-%46 = OpAccessChain %45 %8 %47
-%48 = OpLoad %5 %46
-%50 = OpAccessChain %49 %16 %39 %48 %39 %39
-%51 = OpLoad %9 %50
-%52 = OpCompositeExtract %5 %51 1
-%53 = OpShiftRightLogical %5 %52 %54
-%44 = OpAccessChain %43 %23 %48
-%55 = OpArrayLength %5 %44 0
-%56 = OpIMul %5 %55 %47
-%58 = OpAccessChain %45 %8 %47
-%59 = OpLoad %5 %58
-%57 = OpAccessChain %49 %27 %39 %59
-%60 = OpLoad %9 %57
-%65 = OpAccessChain %64 %63 %39
-%66 = OpLoad %5 %65
-%67 = OpAccessChain %37 %44 %39 %66
-%68 = OpAtomicIAdd %5 %67 %10 %39 %10
-%69 = OpAccessChain %37 %44 %39 %66
-%70 = OpAtomicCompareExchange %5 %69 %10 %39 %39 %71 %10
-%90 = OpFunctionCall %5 %76 %60 %10 %39
+OpBranch %92
+%92 = OpLabel
+%43 = OpFunctionCall %5 %33
+OpStore %18 %43
+%47 = OpAccessChain %46 %8 %48
+%49 = OpLoad %5 %47
+%51 = OpAccessChain %50 %16 %39 %49 %39 %39
+%52 = OpLoad %9 %51
+%53 = OpCompositeExtract %5 %52 1
+%54 = OpShiftRightLogical %5 %53 %55
+%45 = OpAccessChain %44 %23 %49
+%56 = OpArrayLength %5 %45 0
+%57 = OpIMul %5 %56 %48
+%59 = OpAccessChain %46 %8 %48
+%60 = OpLoad %5 %59
+%58 = OpAccessChain %50 %27 %39 %60
+%61 = OpLoad %9 %58
+%66 = OpAccessChain %65 %64 %39
+%67 = OpLoad %5 %66
+%68 = OpAccessChain %37 %45 %39 %67
+%69 = OpAtomicIAdd %5 %68 %41 %39 %10
+%70 = OpAccessChain %37 %45 %39 %67
+%71 = OpAtomicCompareExchange %5 %70 %41 %39 %39 %72 %10
+%91 = OpFunctionCall %5 %77 %61 %10 %39
 OpReturn
 OpFunctionEnd
 %33 = OpFunction %5 None %32
@@ -231,25 +233,25 @@ OpFunctionEnd
 %35 = OpArrayLength %5 %31 0
 %36 = OpISub %5 %35 %10
 %38 = OpAccessChain %37 %31 %39 %36
-%40 = OpAtomicIAdd %5 %38 %10 %39 %41
+%40 = OpAtomicIAdd %5 %38 %41 %39 %42
 OpReturnValue %40
 OpFunctionEnd
-%76 = OpFunction %5 None %72
-%73 = OpFunctionParameter %9
-%74 = OpFunctionParameter %5
+%77 = OpFunction %5 None %73
+%74 = OpFunctionParameter %9
 %75 = OpFunctionParameter %5
-%77 = OpLabel
-%83 = OpINotEqual %81 %73 %82
-%84 = OpAny %80 %83
-OpSelectionMerge %79 None
-OpBranchConditional %84 %78 %79
+%76 = OpFunctionParameter %5
 %78 = OpLabel
-%86 = OpBitcast %85 %73
-%87 = OpAtomicIAdd %5 %86 %10 %39 %74
-%88 = OpIAdd %5 %87 %75
-OpBranch %79
+%84 = OpINotEqual %82 %74 %83
+%85 = OpAny %81 %84
+OpSelectionMerge %80 None
+OpBranchConditional %85 %79 %80
 %79 = OpLabel
-%89 = OpPhi %5 %39 %77 %88 %78
-OpReturnValue %89
+%87 = OpBitcast %86 %74
+%88 = OpAtomicIAdd %5 %87 %41 %39 %75
+%89 = OpIAdd %5 %88 %76
+OpBranch %80
+%80 = OpLabel
+%90 = OpPhi %5 %39 %78 %89 %79
+OpReturnValue %90
 OpFunctionEnd
 #endif

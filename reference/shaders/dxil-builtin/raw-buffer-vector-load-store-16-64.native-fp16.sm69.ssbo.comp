@@ -103,8 +103,9 @@ OpCapability Int64
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %15 %20 %25 %31 %35 %39 %43 %47 %51 %54
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormPreserve 16
@@ -326,7 +327,7 @@ OpBranch %163
 %134 = OpLoad %27 %133
 %135 = OpFunctionCall %5 %64 %58 %70
 %136 = OpAccessChain %71 %39 %57 %135
-OpStore %136 %73
+OpStore %136 %73 NonPrivatePointer
 %137 = OpIMul %5 %58 %79
 %138 = OpIAdd %5 %137 %81
 %139 = OpFunctionCall %5 %64 %138 %60
@@ -334,32 +335,32 @@ OpStore %136 %73
 %141 = OpCompositeExtract %6 %94 1
 %142 = OpCompositeExtract %6 %94 2
 %143 = OpAccessChain %83 %35 %57 %139
-OpStore %143 %140
+OpStore %143 %140 NonPrivatePointer
 %145 = OpIAdd %5 %139 %88
 %144 = OpAccessChain %83 %35 %57 %145
-OpStore %144 %141
+OpStore %144 %141 NonPrivatePointer
 %147 = OpIAdd %5 %139 %60
 %146 = OpAccessChain %83 %35 %57 %147
-OpStore %146 %142
+OpStore %146 %142 NonPrivatePointer
 %148 = OpIAdd %5 %58 %99
 %149 = OpFunctionCall %5 %64 %148 %101
 %150 = OpBitcast %16 %107
 %151 = OpAccessChain %102 %43 %57 %149
-OpStore %151 %150
+OpStore %151 %150 NonPrivatePointer
 %152 = OpIMul %5 %58 %79
 %153 = OpIAdd %5 %152 %114
 %154 = OpFunctionCall %5 %64 %153 %101
 %155 = OpCompositeExtract %21 %123 0
 %156 = OpCompositeExtract %21 %123 1
 %157 = OpAccessChain %116 %47 %57 %154
-OpStore %157 %155
+OpStore %157 %155 NonPrivatePointer
 %159 = OpIAdd %5 %154 %88
 %158 = OpAccessChain %116 %47 %57 %159
-OpStore %158 %156
+OpStore %158 %156 NonPrivatePointer
 %160 = OpIAdd %5 %58 %129
 %161 = OpFunctionCall %5 %64 %160 %131
 %162 = OpAccessChain %132 %51 %57 %161
-OpStore %162 %134
+OpStore %162 %134 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %64 = OpFunction %5 None %61

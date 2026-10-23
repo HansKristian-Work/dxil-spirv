@@ -4,7 +4,7 @@
 
 layout(set = 0, binding = 0) uniform usamplerBuffer _9[];
 layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _13[];
-layout(set = 0, binding = 0, r32ui) uniform coherent uimageBuffer _16[];
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _16[];
 
 layout(location = 0) flat in uint INDEX;
 layout(location = 1) flat in ivec4 UV;
@@ -83,8 +83,9 @@ OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %9 %13 %16 %18 %22 %26
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -97,7 +98,6 @@ OpDecorate %13 DescriptorSet 0
 OpDecorate %13 Binding 0
 OpDecorate %16 DescriptorSet 0
 OpDecorate %16 Binding 0
-OpDecorate %16 Coherent
 OpDecorate %18 Flat
 OpDecorate %18 Location 0
 OpDecorate %22 Flat
@@ -253,15 +253,15 @@ OpBranch %278
 %143 = OpFAdd %23 %123 %139
 %144 = OpFAdd %23 %124 %140
 %145 = OpFAdd %23 %141 %122
-%146 = OpImageRead %90 %61 %31
+%146 = OpImageRead %90 %61 %31 NonPrivateTexel
 %147 = OpCompositeExtract %5 %146 0
 %148 = OpBitcast %23 %147
 %149 = OpFAdd %23 %143 %148
 %150 = OpIMul %5 %35 %37
-%151 = OpImageRead %90 %65 %150
+%151 = OpImageRead %90 %65 %150 NonPrivateTexel
 %152 = OpCompositeExtract %5 %151 0
 %154 = OpIAdd %5 %150 %33
-%153 = OpImageRead %90 %65 %154
+%153 = OpImageRead %90 %65 %154 NonPrivateTexel
 %155 = OpCompositeExtract %5 %153 0
 %156 = OpCompositeConstruct %100 %152 %155
 %157 = OpBitcast %102 %156
@@ -270,13 +270,13 @@ OpBranch %278
 %160 = OpFAdd %23 %149 %158
 %161 = OpFAdd %23 %144 %159
 %162 = OpIMul %5 %39 %41
-%163 = OpImageRead %90 %69 %162
+%163 = OpImageRead %90 %69 %162 NonPrivateTexel
 %164 = OpCompositeExtract %5 %163 0
 %166 = OpIAdd %5 %162 %33
-%165 = OpImageRead %90 %69 %166
+%165 = OpImageRead %90 %69 %166 NonPrivateTexel
 %167 = OpCompositeExtract %5 %165 0
 %169 = OpIAdd %5 %162 %37
-%168 = OpImageRead %90 %69 %169
+%168 = OpImageRead %90 %69 %169 NonPrivateTexel
 %170 = OpCompositeExtract %5 %168 0
 %171 = OpCompositeConstruct %116 %164 %167 %170
 %172 = OpBitcast %118 %171
@@ -287,16 +287,16 @@ OpBranch %278
 %177 = OpFAdd %23 %161 %174
 %178 = OpFAdd %23 %145 %175
 %179 = OpIMul %5 %43 %58
-%180 = OpImageRead %90 %73 %179
+%180 = OpImageRead %90 %73 %179 NonPrivateTexel
 %181 = OpCompositeExtract %5 %180 0
 %183 = OpIAdd %5 %179 %33
-%182 = OpImageRead %90 %73 %183
+%182 = OpImageRead %90 %73 %183 NonPrivateTexel
 %184 = OpCompositeExtract %5 %182 0
 %186 = OpIAdd %5 %179 %37
-%185 = OpImageRead %90 %73 %186
+%185 = OpImageRead %90 %73 %186 NonPrivateTexel
 %187 = OpCompositeExtract %5 %185 0
 %189 = OpIAdd %5 %179 %41
-%188 = OpImageRead %90 %73 %189
+%188 = OpImageRead %90 %73 %189 NonPrivateTexel
 %190 = OpCompositeExtract %5 %188 0
 %191 = OpCompositeConstruct %90 %181 %184 %187 %190
 %192 = OpBitcast %24 %191
@@ -308,15 +308,15 @@ OpBranch %278
 %198 = OpFAdd %23 %177 %194
 %199 = OpFAdd %23 %178 %195
 %200 = OpFAdd %23 %196 %142
-%201 = OpImageRead %90 %77 %31
+%201 = OpImageRead %90 %77 %31 MakeTexelVisible|NonPrivateTexel %63
 %202 = OpCompositeExtract %5 %201 0
 %203 = OpBitcast %23 %202
 %204 = OpFAdd %23 %197 %203
 %205 = OpIMul %5 %35 %37
-%206 = OpImageRead %90 %81 %205
+%206 = OpImageRead %90 %81 %205 MakeTexelVisible|NonPrivateTexel %63
 %207 = OpCompositeExtract %5 %206 0
 %209 = OpIAdd %5 %205 %33
-%208 = OpImageRead %90 %81 %209
+%208 = OpImageRead %90 %81 %209 MakeTexelVisible|NonPrivateTexel %63
 %210 = OpCompositeExtract %5 %208 0
 %211 = OpCompositeConstruct %100 %207 %210
 %212 = OpBitcast %102 %211
@@ -325,13 +325,13 @@ OpBranch %278
 %215 = OpFAdd %23 %204 %213
 %216 = OpFAdd %23 %198 %214
 %217 = OpIMul %5 %39 %41
-%218 = OpImageRead %90 %85 %217
+%218 = OpImageRead %90 %85 %217 MakeTexelVisible|NonPrivateTexel %63
 %219 = OpCompositeExtract %5 %218 0
 %221 = OpIAdd %5 %217 %33
-%220 = OpImageRead %90 %85 %221
+%220 = OpImageRead %90 %85 %221 MakeTexelVisible|NonPrivateTexel %63
 %222 = OpCompositeExtract %5 %220 0
 %224 = OpIAdd %5 %217 %37
-%223 = OpImageRead %90 %85 %224
+%223 = OpImageRead %90 %85 %224 MakeTexelVisible|NonPrivateTexel %63
 %225 = OpCompositeExtract %5 %223 0
 %226 = OpCompositeConstruct %116 %219 %222 %225
 %227 = OpBitcast %118 %226
@@ -342,16 +342,16 @@ OpBranch %278
 %232 = OpFAdd %23 %216 %229
 %233 = OpFAdd %23 %199 %230
 %234 = OpIMul %5 %43 %58
-%235 = OpImageRead %90 %89 %234
+%235 = OpImageRead %90 %89 %234 MakeTexelVisible|NonPrivateTexel %63
 %236 = OpCompositeExtract %5 %235 0
 %238 = OpIAdd %5 %234 %33
-%237 = OpImageRead %90 %89 %238
+%237 = OpImageRead %90 %89 %238 MakeTexelVisible|NonPrivateTexel %63
 %239 = OpCompositeExtract %5 %237 0
 %241 = OpIAdd %5 %234 %37
-%240 = OpImageRead %90 %89 %241
+%240 = OpImageRead %90 %89 %241 MakeTexelVisible|NonPrivateTexel %63
 %242 = OpCompositeExtract %5 %240 0
 %244 = OpIAdd %5 %234 %41
-%243 = OpImageRead %90 %89 %244
+%243 = OpImageRead %90 %89 %244 MakeTexelVisible|NonPrivateTexel %63
 %245 = OpCompositeExtract %5 %243 0
 %246 = OpCompositeConstruct %90 %236 %239 %242 %245
 %247 = OpBitcast %24 %246
@@ -367,22 +367,22 @@ OpBranch %278
 %258 = OpBitcast %5 %257
 %259 = OpBitcast %5 %257
 %260 = OpCompositeConstruct %90 %258 %258 %258 %258
-OpImageWrite %65 %256 %260
+OpImageWrite %65 %256 %260 NonPrivateTexel
 %261 = OpCompositeConstruct %90 %259 %259 %259 %259
 %262 = OpIAdd %5 %256 %33
-OpImageWrite %65 %262 %261
+OpImageWrite %65 %262 %261 NonPrivateTexel
 %263 = OpIMul %5 %35 %41
 %265 = OpBitcast %5 %264
 %266 = OpBitcast %5 %264
 %267 = OpBitcast %5 %264
 %268 = OpCompositeConstruct %90 %265 %265 %265 %265
-OpImageWrite %85 %263 %268
+OpImageWrite %85 %263 %268 MakeTexelAvailable|NonPrivateTexel %63
 %269 = OpCompositeConstruct %90 %266 %266 %266 %266
 %270 = OpIAdd %5 %263 %33
-OpImageWrite %85 %270 %269
+OpImageWrite %85 %270 %269 MakeTexelAvailable|NonPrivateTexel %63
 %271 = OpCompositeConstruct %90 %267 %267 %267 %267
 %272 = OpIAdd %5 %263 %37
-OpImageWrite %85 %272 %271
+OpImageWrite %85 %272 %271 MakeTexelAvailable|NonPrivateTexel %63
 %274 = OpAccessChain %273 %26 %29
 OpStore %274 %252
 %275 = OpAccessChain %273 %26 %33

@@ -3,8 +3,8 @@
 
 layout(set = 0, binding = 0, r32f) uniform readonly image2D _9[];
 layout(set = 1, binding = 0) uniform writeonly uimageBuffer _14[];
-layout(set = 2, binding = 0, r32i) uniform coherent iimage2D _19[];
-layout(set = 3, binding = 0, r32ui) uniform coherent uimage1D _23[];
+layout(set = 2, binding = 0, r32i) uniform iimage2D _19[];
+layout(set = 3, binding = 0, r32ui) uniform uimage1D _23[];
 
 layout(location = 0) flat in uint INDEX;
 layout(location = 0, component = 1) flat in ivec3 UV;
@@ -20,10 +20,10 @@ void main()
     uint _61 = INDEX + 0u;
     ivec4 _66 = imageLoad(_19[_61], ivec2(uvec2(_40, _44)));
     imageStore(_19[_61], ivec2(uvec2(_40, _44)), ivec4(uvec4(_36)));
-    uint _80 = imageAtomicAdd(_23[INDEX + 0u], int(_36), _40);
+    uint _81 = imageAtomicAdd(_23[INDEX + 0u], int(_36), _40);
     SV_Target.x = _51.x;
     SV_Target.y = float(int(uvec4(_66).x));
-    SV_Target.z = float(_80);
+    SV_Target.z = float(_81);
 }
 
 
@@ -32,7 +32,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 87
+; Bound: 88
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageArrayDynamicIndexing
@@ -41,8 +41,9 @@ OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability RuntimeDescriptorArray
 OpCapability StorageTexelBufferArrayDynamicIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %9 %14 %19 %23 %25 %28 %31
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -57,10 +58,8 @@ OpDecorate %14 Binding 0
 OpDecorate %14 NonReadable
 OpDecorate %19 DescriptorSet 2
 OpDecorate %19 Binding 0
-OpDecorate %19 Coherent
 OpDecorate %23 DescriptorSet 3
 OpDecorate %23 Binding 0
-OpDecorate %23 Coherent
 OpDecorate %25 Flat
 OpDecorate %25 Location 0
 OpDecorate %28 Flat
@@ -107,13 +106,14 @@ OpDecorate %31 Location 0
 %59 = OpTypeVector %10 4
 %62 = OpTypePointer UniformConstant %16
 %65 = OpTypeVector %15 4
-%75 = OpTypePointer UniformConstant %20
-%78 = OpTypePointer Image %10
-%82 = OpTypePointer Output %5
+%68 = OpConstant %10 5
+%76 = OpTypePointer UniformConstant %20
+%79 = OpTypePointer Image %10
+%83 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %86
-%86 = OpLabel
+OpBranch %87
+%87 = OpLabel
 %33 = OpAccessChain %32 %28 %34
 %35 = OpLoad %15 %33
 %36 = OpBitcast %10 %35
@@ -128,37 +128,37 @@ OpBranch %86
 %48 = OpAccessChain %47 %9 %46
 %49 = OpLoad %6 %48
 %53 = OpCompositeConstruct %52 %36 %40
-%51 = OpImageRead %50 %49 %53 None
+%51 = OpImageRead %50 %49 %53 NonPrivateTexel
 %54 = OpCompositeExtract %5 %51 0
 %55 = OpIAdd %10 %45 %34
 %57 = OpAccessChain %56 %14 %55
 %58 = OpLoad %11 %57
 %60 = OpCompositeConstruct %59 %40 %40 %40 %40
-OpImageWrite %58 %36 %60
+OpImageWrite %58 %36 %60 NonPrivateTexel
 %61 = OpIAdd %10 %45 %34
 %63 = OpAccessChain %62 %19 %61
 %64 = OpLoad %16 %63
 %67 = OpCompositeConstruct %52 %40 %44
-%66 = OpImageRead %65 %64 %67 None
-%68 = OpBitcast %59 %66
-%69 = OpCompositeExtract %10 %68 0
-%70 = OpConvertSToF %5 %69
-%71 = OpCompositeConstruct %52 %40 %44
-%72 = OpCompositeConstruct %59 %36 %36 %36 %36
-%73 = OpBitcast %65 %72
-OpImageWrite %64 %71 %73
-%74 = OpIAdd %10 %45 %34
-%76 = OpAccessChain %75 %23 %74
-%77 = OpLoad %20 %76
-%79 = OpImageTexelPointer %78 %76 %36 %34
-%80 = OpAtomicIAdd %10 %79 %38 %34 %40
-%81 = OpConvertUToF %5 %80
-%83 = OpAccessChain %82 %31 %34
-OpStore %83 %54
-%84 = OpAccessChain %82 %31 %38
-OpStore %84 %70
-%85 = OpAccessChain %82 %31 %42
-OpStore %85 %81
+%66 = OpImageRead %65 %64 %67 MakeTexelVisible|NonPrivateTexel %68
+%69 = OpBitcast %59 %66
+%70 = OpCompositeExtract %10 %69 0
+%71 = OpConvertSToF %5 %70
+%72 = OpCompositeConstruct %52 %40 %44
+%73 = OpCompositeConstruct %59 %36 %36 %36 %36
+%74 = OpBitcast %65 %73
+OpImageWrite %64 %72 %74 MakeTexelAvailable|NonPrivateTexel %68
+%75 = OpIAdd %10 %45 %34
+%77 = OpAccessChain %76 %23 %75
+%78 = OpLoad %20 %77
+%80 = OpImageTexelPointer %79 %77 %36 %34
+%81 = OpAtomicIAdd %10 %80 %68 %34 %40
+%82 = OpConvertUToF %5 %81
+%84 = OpAccessChain %83 %31 %34
+OpStore %84 %54
+%85 = OpAccessChain %83 %31 %38
+OpStore %85 %71
+%86 = OpAccessChain %83 %31 %42
+OpStore %86 %82
 OpReturn
 OpFunctionEnd
 #endif

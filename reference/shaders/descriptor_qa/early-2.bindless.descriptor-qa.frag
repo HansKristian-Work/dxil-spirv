@@ -101,12 +101,13 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint Fragment %3 "main" %8 %13 %17 %20 %23 %44 %84
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -218,11 +219,11 @@ OpDecorate %84 NonWritable
 %45 = OpTypeFunction %1 %5 %5 %5 %5 %5 %5 %5
 %55 = OpTypePointer StorageBuffer %5
 %57 = OpConstant %5 4
-%63 = OpConstant %5 3
-%66 = OpConstant %5 2
-%68 = OpConstant %5 6
-%70 = OpConstant %5 7
-%72 = OpConstant %5 5
+%59 = OpConstant %5 5
+%64 = OpConstant %5 3
+%67 = OpConstant %5 2
+%69 = OpConstant %5 6
+%71 = OpConstant %5 7
 %73 = OpConstant %5 3735928559
 %74 = OpConstantComposite %40 %73 %26
 %75 = OpTypePointer StorageBuffer %40
@@ -263,7 +264,7 @@ OpBranch %150
 %39 = OpFunctionCall %5 %89 %38 %29 %29
 %35 = OpAccessChain %34 %13 %39
 %128 = OpLoad %10 %35
-%131 = OpAccessChain %36 %8 %66
+%131 = OpAccessChain %36 %8 %67
 %132 = OpLoad %5 %131
 %130 = OpAccessChain %129 %17 %132
 %133 = OpLoad %14 %130
@@ -278,9 +279,9 @@ OpBranch %150
 OpStore %143 %138
 %144 = OpAccessChain %142 %23 %29
 OpStore %144 %139
-%145 = OpAccessChain %142 %23 %66
+%145 = OpAccessChain %142 %23 %67
 OpStore %145 %140
-%146 = OpAccessChain %142 %23 %63
+%146 = OpAccessChain %142 %23 %64
 OpStore %146 %141
 OpReturn
 OpFunctionEnd
@@ -294,30 +295,30 @@ OpFunctionEnd
 %52 = OpFunctionParameter %5
 %54 = OpLabel
 %56 = OpAccessChain %55 %44 %57
-%58 = OpAtomicIAdd %5 %56 %29 %26 %29
-%59 = OpIEqual %31 %58 %26
-OpSelectionMerge %61 None
-OpBranchConditional %59 %60 %61
-%60 = OpLabel
-%62 = OpAccessChain %55 %44 %63
-OpStore %62 %48
-%64 = OpAccessChain %55 %44 %29
-OpStore %64 %47
-%65 = OpAccessChain %55 %44 %66
-OpStore %65 %49
-%67 = OpAccessChain %55 %44 %68
-OpStore %67 %50
-%69 = OpAccessChain %55 %44 %70
-OpStore %69 %51
-%71 = OpAccessChain %55 %44 %72
-OpStore %71 %52
-%76 = OpAccessChain %75 %44 %26
-OpStore %76 %74
-OpMemoryBarrier %29 %77
-%78 = OpAccessChain %55 %44 %79
-OpStore %78 %46
-OpBranch %61
+%58 = OpAtomicIAdd %5 %56 %59 %26 %29
+%60 = OpIEqual %31 %58 %26
+OpSelectionMerge %62 None
+OpBranchConditional %60 %61 %62
 %61 = OpLabel
+%63 = OpAccessChain %55 %44 %64
+OpStore %63 %48 NonPrivatePointer
+%65 = OpAccessChain %55 %44 %29
+OpStore %65 %47 NonPrivatePointer
+%66 = OpAccessChain %55 %44 %67
+OpStore %66 %49 NonPrivatePointer
+%68 = OpAccessChain %55 %44 %69
+OpStore %68 %50 NonPrivatePointer
+%70 = OpAccessChain %55 %44 %71
+OpStore %70 %51 NonPrivatePointer
+%72 = OpAccessChain %55 %44 %59
+OpStore %72 %52 NonPrivatePointer
+%76 = OpAccessChain %75 %44 %26
+OpStore %76 %74 NonPrivatePointer
+OpMemoryBarrier %59 %77
+%78 = OpAccessChain %55 %44 %79
+OpStore %78 %46 NonPrivatePointer
+OpBranch %62
+%62 = OpLabel
 OpReturn
 OpFunctionEnd
 %89 = OpFunction %5 None %85
@@ -331,12 +332,12 @@ OpFunctionEnd
 %94 = OpLoad %5 %93
 %95 = OpAccessChain %55 %44 %96
 %97 = OpLoad %5 %95
-%99 = OpAccessChain %98 %84 %66 %86
+%99 = OpAccessChain %98 %84 %67 %86
 %100 = OpLoad %80 %99
 %101 = OpCompositeExtract %5 %100 0
 %102 = OpCompositeExtract %5 %100 1
 %103 = OpCompositeExtract %5 %100 2
-%104 = OpShiftRightLogical %5 %101 %72
+%104 = OpShiftRightLogical %5 %101 %59
 %105 = OpBitwiseAnd %5 %101 %106
 %107 = OpAccessChain %55 %44 %108 %104
 %109 = OpLoad %5 %107
@@ -347,7 +348,7 @@ OpFunctionEnd
 %114 = OpIEqual %31 %113 %87
 %115 = OpUGreaterThanEqual %31 %86 %92
 %116 = OpSelect %5 %115 %29 %26
-%117 = OpSelect %5 %114 %26 %66
+%117 = OpSelect %5 %114 %26 %67
 %118 = OpSelect %5 %112 %26 %57
 %119 = OpUGreaterThanEqual %31 %97 %102
 %120 = OpSelect %5 %119 %26 %79
