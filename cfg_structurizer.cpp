@@ -8686,11 +8686,13 @@ bool CFGStructurizer::structurize(unsigned pass)
 		switch_mode = process_switch_blocks(pass);
 	}
 
-	// After a trivial modify, we must be able to complete the process in one iteration.
-	if (switch_mode == SwitchProgressMode::SimpleModify)
+	// After a trivial modify, iterate until done or bounded limit.
+	unsigned simple_modify_count = 0;
+	while (switch_mode == SwitchProgressMode::SimpleModify)
 	{
 		recompute_cfg();
-		if (process_switch_blocks(pass) != SwitchProgressMode::Done)
+		switch_mode = process_switch_blocks(pass);
+		if (++simple_modify_count > 64)
 		{
 			LOGE("Fatal, detected infinite loop.\n");
 			abort();
