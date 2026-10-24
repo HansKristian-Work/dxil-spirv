@@ -3789,15 +3789,25 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 		// but the other path might be an escaping edge, which needs to be considered.
 		if (dominates_a && !dominates_b && !merge_a_has_header)
 		{
-			// A is obvious candidate. B is a direct break/continue construct target most likely.
-			merge_to_succ(node, 0);
-			trivial_merge_index = 0;
+			bool b_branches_to_a = has_element(node->succ[1]->succ, node->succ[0]);
+			bool a_branches_to_b = has_element(node->succ[0]->succ, node->succ[1]);
+			if ((!a_branches_to_b || merge_b_has_header) && (!b_branches_to_a || merge_b_has_header))
+			{
+				// A is obvious candidate. B is a direct break/continue construct target most likely.
+				merge_to_succ(node, 0);
+				trivial_merge_index = 0;
+			}
 		}
 		else if (dominates_b && !dominates_a && !merge_b_has_header)
 		{
-			// B is obvious candidate. A is a direct break/continue construct target most likely.
-			merge_to_succ(node, 1);
-			trivial_merge_index = 1;
+			bool a_branches_to_b = has_element(node->succ[0]->succ, node->succ[1]);
+			bool b_branches_to_a = has_element(node->succ[1]->succ, node->succ[0]);
+			if ((!b_branches_to_a || merge_a_has_header) && (!a_branches_to_b || merge_a_has_header))
+			{
+				// B is obvious candidate. A is a direct break/continue construct target most likely.
+				merge_to_succ(node, 1);
+				trivial_merge_index = 1;
+			}
 		}
 		else if (dominates_a && dominates_b && !merge_a_has_header && merge_b_has_header)
 		{
