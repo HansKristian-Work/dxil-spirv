@@ -7121,6 +7121,10 @@ CFGStructurizer::LoopAnalysis CFGStructurizer::analyze_loop(CFGNode *node) const
 		}
 	}
 
+	// If the only merge candidates we have are continue exits, treat them as true dominated exits.
+	if (result.dominated_exit.empty() && !result.dominated_continue_exit.empty())
+		std::swap(result.dominated_exit, result.dominated_continue_exit);
+
 	// If the only merge candidates we have are inner dominated, treat them as true dominated exits.
 	if (result.dominated_exit.empty() && !result.inner_dominated_exit.empty())
 		std::swap(result.dominated_exit, result.inner_dominated_exit);
