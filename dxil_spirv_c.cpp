@@ -82,7 +82,8 @@ struct Remapper : ResourceRemappingInterface
 		else
 		{
 			vk_binding.descriptor_type = static_cast<VulkanDescriptorType>(c_vk_binding.descriptor_type);
-			vk_binding.force_scalar_alignment = false;
+			// Only relevant for SRV/UAV raw buffers. CBV is always aligned.
+			vk_binding.force_scalar_alignment = vk_binding.descriptor_type == VulkanDescriptorType::BufferDeviceAddress;
 		}
 	}
 

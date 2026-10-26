@@ -30,7 +30,7 @@ layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPoin
     vector<float, 7> value;
 };
 
-layout(buffer_reference, buffer_reference_align = 16, std430) buffer PhysicalPointerFloat8Array
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat8Array
 {
     vector<float, 8> value[];
 };
@@ -253,12 +253,12 @@ OpStore %110 %99 Aligned 4
 %124 = OpFunctionCall %5 %118 %16 %125
 %130 = OpBitcast %129 %114
 %132 = OpInBoundsAccessChain %131 %130 %15 %124
-%133 = OpLoad %126 %132 Aligned 16
+%133 = OpLoad %126 %132 Aligned 4
 %134 = OpFAdd %126 %133 %136
 %137 = OpFunctionCall %5 %118 %16 %125
 %138 = OpBitcast %129 %114
 %139 = OpInBoundsAccessChain %131 %138 %15 %137
-OpStore %139 %134 Aligned 16
+OpStore %139 %134 Aligned 4
 OpReturn
 OpFunctionEnd
 %118 = OpFunction %5 None %115
