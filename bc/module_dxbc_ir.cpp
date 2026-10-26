@@ -3992,7 +3992,7 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 	options.arithmeticOptions.lowerF32toF16 = true;
 	options.arithmeticOptions.lowerConvertFtoI = false;
 	options.arithmeticOptions.lowerGsVertexCountIn = true;
-	options.arithmeticOptions.hasNvUnsignedItoFBug = true;
+	options.arithmeticOptions.hasNvUnsignedItoFBug = false;
 
 	options.min16Options.enableFloat16 = true;
 	options.min16Options.enableInt16 = true;
