@@ -208,7 +208,11 @@ static bool validate_fuzzing_result(Device &device, FuzzState &state)
 			continue;
 		}
 
-		if (state.simulated[i] != structured[i])
+		if (state.simulated[i] != structured[i]
+#ifdef TEST_UNSTRUCTURED
+			|| state.simulated[i] != unstructured[i]
+#endif
+			)
 		{
 			LOGE("Fuzzing failed at word %zu, expected %u, got %u.\n", i, state.simulated[i], structured[i]);
 
@@ -227,8 +231,8 @@ static bool validate_fuzzing_result(Device &device, FuzzState &state)
 				auto ours = decode_feedback(structured[start_index + j]);
 				auto sim = decode_feedback(state.simulated[start_index + j]);
 #ifdef TEST_UNSTRUCTURED
-				auto ref = decode_feedback(unstructured[start_index + j]);
-				LOGI("Feedback[%u] = ref [%s] | ours [%s] | sim [%s]\n", j, ref.c_str(), ours.c_str(), sim.c_str());
+				auto mesa = decode_feedback(unstructured[start_index + j]);
+				LOGI("Feedback[%u] = mesa [%s] | ours [%s] | sim [%s]\n", j, mesa.c_str(), ours.c_str(), sim.c_str());
 #else
 				LOGI("Feedback[%u] = ours [%s] | sim [%s]\n", j, ours.c_str(), sim.c_str());
 #endif
