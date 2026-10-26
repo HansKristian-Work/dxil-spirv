@@ -508,7 +508,7 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
                                             unsigned operand_offset,
                                             spv::Id index_offset_id,
                                             const llvm::Type *data_type,
-                                            uint32_t vecsize)
+                                            uint32_t vecsize, bool external_alignment_signal)
 {
 	auto &builder = impl.builder();
 	spv::Id image_id = impl.get_id_for_value(instruction->getOperand(1));
@@ -520,7 +520,8 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 
 	// If we have conservative vectorization, we cannot infer higher alignment than reality.
 	// Otherwise, implementation must assume that scalar base pointer is possible.
-	bool block_vectorization = impl.options.conservative_ssbo_vectorization && meta.force_scalar_alignment;
+	bool block_vectorization = impl.options.conservative_ssbo_vectorization && meta.force_scalar_alignment &&
+	                           !external_alignment_signal;
 
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
@@ -702,7 +703,7 @@ static spv::Id build_vectorized_physical_load_store_access(Converter::Impl &impl
 
 	if (can_vectorize)
 	{
-		auto access = build_buffer_access(impl, instruction, 0, 0, element_type, vecsize);
+		auto access = build_buffer_access(impl, instruction, 0, 0, element_type, vecsize, true);
 		return access.index_id;
 	}
 	else
@@ -1051,7 +1052,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 	bool is_typed = meta.kind == DXIL::ResourceKind::TypedBuffer;
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
 	                                  element_type,
-	                                  vecsize);
+	                                  vecsize, false);
 
 	auto width = get_buffer_access_bits_per_component(impl, meta.storage, element_type);
 	RawType raw_type = element_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
@@ -1706,7 +1707,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 
 	auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id,
 	                                  element_type,
-	                                  meta.storage != spv::StorageClassUniformConstant ? vecsize : 1u);
+	                                  meta.storage != spv::StorageClassUniformConstant ? vecsize : 1u, false);
 
 	RawType raw_type = element_type->getTypeID() == llvm::Type::TypeID::DoubleTyID ?
 	                   RawType::Float : RawType::Integer;
@@ -1918,7 +1919,7 @@ bool emit_atomic_binop_instruction(Converter::Impl &impl, const llvm::CallInst *
 	if (meta.kind == DXIL::ResourceKind::StructuredBuffer || meta.kind == DXIL::ResourceKind::RawBuffer ||
 	    meta.kind == DXIL::ResourceKind::TypedBuffer)
 	{
-		auto access = build_buffer_access(impl, instruction, 1, meta.index_offset_id, instruction->getType(), 1);
+		auto access = build_buffer_access(impl, instruction, 1, meta.index_offset_id, instruction->getType(), 1, false);
 		coords[0] = access.index_id;
 		num_coords = 1;
 		num_coords_full = 1;
@@ -2042,7 +2043,7 @@ bool emit_atomic_cmpxchg_instruction(Converter::Impl &impl, const llvm::CallInst
 	    meta.kind == DXIL::ResourceKind::RawBuffer ||
 	    meta.kind == DXIL::ResourceKind::TypedBuffer)
 	{
-		auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id, instruction->getType(), 1);
+		auto access = build_buffer_access(impl, instruction, 0, meta.index_offset_id, instruction->getType(), 1, false);
 		coords[0] = access.index_id;
 		num_coords = 1;
 		num_coords_full = 1;
