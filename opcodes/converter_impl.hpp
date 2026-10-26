@@ -858,6 +858,7 @@ struct Converter::Impl
 		bool mixed_dot_product_fp16_fp16_fp32 = false;
 		bool supports_float_controls2 = false;
 		bool conservative_ssbo_vectorization = false;
+		bool widen_unsigned_itof = true;
 
 		struct
 		{
@@ -1058,6 +1059,7 @@ struct Converter::Impl
 	struct
 	{
 		bool skip_non_uniform_promotion = false;
+		bool widen_unsigned_itof = false;
 	} backend;
 
 	// For descriptor QA, we need to rewrite how resource handles are emitted.

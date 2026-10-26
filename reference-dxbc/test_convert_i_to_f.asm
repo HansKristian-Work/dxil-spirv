@@ -2,11 +2,12 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 36
+; Bound: 40
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
                OpCapability Float64
+               OpCapability Int64
                OpCapability SignedZeroInfNanPreserve
                OpCapability VulkanMemoryModel
                OpExtension "SPV_KHR_float_controls"
@@ -40,33 +41,37 @@ SPIR-V:
 %_ptr_Output_float = OpTypePointer Output %float
   %SV_TARGET = OpVariable %_ptr_Output_float Output
 %SV_TARGET_1 = OpVariable %_ptr_Output_float Output
+      %ulong = OpTypeInt 64 0
        %half = OpTypeFloat 16
      %double = OpTypeFloat 64
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %34
+                 OpBranch %38
 
-         %34 = OpLabel
+         %38 = OpLabel
          %15 =   OpLoad %uint %UINPUT
          %16 =   OpLoad %int %SINPUT
          %17 =   OpBitcast %uint %16
-         %18 =   OpConvertUToF %float %15
-         %19 =   OpConvertSToF %float %17
-         %21 =   OpConvertUToF %half %15
-         %22 =   OpFConvert %float %21
-         %23 =   OpFAdd %float %18 %22
-         %24 =   OpConvertSToF %half %17
-         %25 =   OpFConvert %float %24
-         %26 =   OpFAdd %float %19 %25
-         %28 =   OpConvertUToF %double %15
-         %29 =   OpFConvert %float %28
-         %30 =   OpFAdd %float %23 %29
-         %31 =   OpConvertSToF %double %17
-         %32 =   OpFConvert %float %31
-         %33 =   OpFAdd %float %26 %32
-                 OpStore %SV_TARGET %30
-                 OpStore %SV_TARGET_1 %33
+         %19 =   OpUConvert %ulong %15
+         %20 =   OpConvertUToF %float %19
+         %21 =   OpConvertSToF %float %17
+         %22 =   OpUConvert %ulong %15
+         %23 =   OpConvertUToF %half %22
+         %25 =   OpFConvert %float %23
+         %26 =   OpFAdd %float %20 %25
+         %27 =   OpConvertSToF %half %17
+         %28 =   OpFConvert %float %27
+         %29 =   OpFAdd %float %21 %28
+         %30 =   OpUConvert %ulong %15
+         %31 =   OpConvertUToF %double %30
+         %33 =   OpFConvert %float %31
+         %34 =   OpFAdd %float %26 %33
+         %35 =   OpConvertSToF %double %17
+         %36 =   OpFConvert %float %35
+         %37 =   OpFAdd %float %29 %36
+                 OpStore %SV_TARGET %34
+                 OpStore %SV_TARGET_1 %37
                  OpReturn
                OpFunctionEnd
 

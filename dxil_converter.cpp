@@ -9055,6 +9055,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	if (module_is_dxbc_spirv(module))
 	{
 		backend.skip_non_uniform_promotion = true;
+		backend.widen_unsigned_itof = options.widen_unsigned_itof;
 		// This is new code, might as well exercise it.
 		execution_mode_meta.memory_model = spv::MemoryModelVulkan;
 	}
@@ -9889,6 +9890,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &c = static_cast<const OptionConservativeSSBOVectorization &>(cap);
 		options.conservative_ssbo_vectorization = c.enabled;
+		break;
+	}
+
+	case Option::WidenUnsignedItoF:
+	{
+		auto &c = static_cast<const OptionWidenUnsignedItoF &>(cap);
+		options.widen_unsigned_itof = c.enabled;
 		break;
 	}
 

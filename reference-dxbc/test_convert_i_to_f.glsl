@@ -1,5 +1,10 @@
 GLSL:
 #version 460
+#if defined(GL_ARB_gpu_shader_int64)
+#extension GL_ARB_gpu_shader_int64 : require
+#else
+#error No extension available for 64-bit integers.
+#endif
 #if defined(GL_AMD_gpu_shader_half_float)
 #extension GL_AMD_gpu_shader_half_float : require
 #elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
@@ -17,7 +22,7 @@ layout(location = 1) out float SV_TARGET_1;
 void main()
 {
     uint _17 = uint(SINPUT);
-    SV_TARGET = (float(UINPUT) + float(float16_t(UINPUT))) + float(double(UINPUT));
+    SV_TARGET = (float(uint64_t(UINPUT)) + float(float16_t(uint64_t(UINPUT)))) + float(double(uint64_t(UINPUT)));
     SV_TARGET_1 = (float(int(_17)) + float(float16_t(int(_17)))) + float(double(int(_17)));
 }
 

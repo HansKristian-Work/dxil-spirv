@@ -172,6 +172,7 @@ static void print_help()
 	     "\t[--descriptor-qa <set> <binding base> <shader hash>]\n"
 	     "\t[--instruction-instrumentation <type> <set> <binding base> <shader hash>]\n"
 	     "\t[--shader-abort]\n"
+	     "\t[--no-widen-unsigned-itof]\n"
 	     "\t[--min-precision-native-16bit]\n"
 	     "\t[--raw-llvm]\n"
 	     "\t[--use-reflection-names]\n"
@@ -284,6 +285,7 @@ struct Arguments
 
 	bool instruction_instrumentation = false;
 	bool shader_abort = false;
+	bool widen_unsigned_itof = true;
 	uint32_t instruction_instrumentation_set = 0;
 	uint32_t instruction_instrumentation_binding = 0;
 	dxil_spv_instruction_instrumentation_type instruction_instrumentation_type = {};
@@ -840,6 +842,7 @@ int main(int argc, char **argv)
 		args.shader_hash = uint64_t(strtoull(parser.next_string(), nullptr, 16));
 	});
 	cbs.add("--shader-abort", [&](CLIParser &) { args.shader_abort = true; });
+	cbs.add("--no-widen-unsigned-itof", [&](CLIParser &) { args.widen_unsigned_itof = false; });
 	cbs.add("--min-precision-native-16bit", [&](CLIParser &) { args.min_precision_native_16bit = true; });
 	cbs.add("--raw-llvm", [&](CLIParser &) { args.raw_llvm = true; });
 	cbs.add("--use-reflection-names", [&](CLIParser &) { args.use_reflection_names = true; });
@@ -1148,6 +1151,12 @@ int main(int argc, char **argv)
 			{ DXIL_SPV_OPTION_SHADER_ABORT }, args.shader_abort ? DXIL_SPV_TRUE : DXIL_SPV_FALSE,
 		};
 		dxil_spv_converter_add_option(converter, &shader_abort.base);
+	}
+
+	{
+		const dxil_spv_option_widen_unsigned_itof widen = { { DXIL_SPV_OPTION_WIDEN_UNSIGNED_ITOF },
+		                                                    args.widen_unsigned_itof ? DXIL_SPV_TRUE : DXIL_SPV_FALSE };
+		dxil_spv_converter_add_option(converter, &widen.base);
 	}
 
 	{

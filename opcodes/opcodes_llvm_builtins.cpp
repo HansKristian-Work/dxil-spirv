@@ -1214,6 +1214,34 @@ static spv::Id emit_special_non_native_packing_bitcast(Converter::Impl &, const 
 }
 
 template <typename InstructionType>
+static spv::Id emit_widened_unsigned_itof(Converter::Impl &impl, const InstructionType *instruction)
+{
+	// NVIDIA has been observed to treat the input of UToF as signed in DXBC shaders.
+	// Going through the next wider integer type avoids it.
+	if (!impl.backend.widen_unsigned_itof || llvm::isa<llvm::ConstantExpr>(instruction))
+		return 0;
+
+	auto *input = instruction->getOperand(0);
+	unsigned input_bits = input->getType()->getScalarType()->getIntegerBitWidth();
+	if (input_bits != 16 && input_bits != 32)
+		return 0;
+
+	auto &builder = impl.builder();
+	spv::Id wide_type = builder.makeUintType(input_bits * 2);
+	if (auto *vec = llvm::dyn_cast<llvm::VectorType>(input->getType()))
+		wide_type = builder.makeVectorType(wide_type, vec->getVectorSize());
+
+	auto *widen = impl.allocate(spv::OpUConvert, wide_type);
+	widen->add_id(build_naturally_extended_value(impl, input, false));
+	impl.add(widen);
+
+	auto *op = impl.allocate(spv::OpConvertUToF, instruction);
+	op->add_id(widen->id);
+	impl.add(op);
+	return op->id;
+}
+
+template <typename InstructionType>
 static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const InstructionType *instruction)
 {
 	bool can_relax_precision = false;
@@ -1330,6 +1358,8 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 	case llvm::Instruction::CastOps::UIToFP:
 		if (instruction->getOperand(0)->getType()->getScalarType()->getIntegerBitWidth() == 1)
 			return emit_boolean_convert_instruction(impl, instruction, false);
+		if (spv::Id id = emit_widened_unsigned_itof(impl, instruction))
+			return id;
 		opcode = spv::OpConvertUToF;
 		break;
 

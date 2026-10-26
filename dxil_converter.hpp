@@ -279,6 +279,7 @@ enum class Option : uint32_t
 	FloatControls2 = 54,
 	ShaderAbort = 55,
 	ConservativeSSBOVectorization = 56,
+	WidenUnsignedItoF = 57,
 	Count
 };
 
@@ -949,6 +950,16 @@ struct OptionConservativeSSBOVectorization : OptionBase
 	}
 
 	bool enabled = false;
+};
+
+struct OptionWidenUnsignedItoF : OptionBase
+{
+	OptionWidenUnsignedItoF()
+		: OptionBase(Option::WidenUnsignedItoF)
+	{
+	}
+
+	bool enabled = true;
 };
 
 struct DescriptorTableEntry
