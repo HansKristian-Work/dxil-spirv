@@ -17,7 +17,7 @@ layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer Ph
     vec4 value[4096];
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) coherent buffer PhysicalPointerFloat4CoherentArray
+layout(buffer_reference, buffer_reference_align = 16, std430) coherent buffer PhysicalPointerFloat4CoherentArray
 {
     vec4 value[];
 };
@@ -139,7 +139,7 @@ OpBranch %60
 %57 = OpBitcast %56 %13
 %58 = OpInBoundsAccessChain %32 %57 %18 %25
 %59 = OpCompositeConstruct %27 %50 %51 %52 %53
-OpStore %58 %59 Aligned 4
+OpStore %58 %59 Aligned 16
 OpReturn
 OpFunctionEnd
 #endif

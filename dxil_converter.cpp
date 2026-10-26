@@ -2154,7 +2154,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
 			ref.vkmm = vkmm;
-			ref.force_scalar_alignment = true;
+			ref.force_scalar_alignment = force_scalar_alignment;
 
 			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("UAV", ref.push_constant_member, 8, true);

@@ -46,7 +46,7 @@ layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPoin
     float value[];
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat2Array
+layout(buffer_reference, buffer_reference_align = 8, std430) buffer PhysicalPointerFloat2Array
 {
     vec2 value[];
 };
@@ -56,7 +56,7 @@ layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPoin
     vec3 value;
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerFloat4Array
+layout(buffer_reference, buffer_reference_align = 16, std430) buffer PhysicalPointerFloat4Array
 {
     vec4 value[];
 };
@@ -299,7 +299,7 @@ OpStore %120 %106 Aligned 4
 %124 = OpFunctionCall %5 %26 %123 %49
 %128 = OpBitcast %127 %122
 %129 = OpInBoundsAccessChain %55 %128 %15 %124
-OpStore %129 %57 Aligned 4
+OpStore %129 %57 Aligned 8
 %130 = OpAccessChain %19 %9 %18
 %131 = OpLoad %6 %130
 %134 = OpCompositeExtract %5 %131 0
@@ -318,7 +318,7 @@ OpStore %142 %76 Aligned 4
 %146 = OpFunctionCall %5 %26 %145 %83
 %150 = OpBitcast %149 %144
 %151 = OpInBoundsAccessChain %89 %150 %15 %146
-OpStore %151 %91 Aligned 4
+OpStore %151 %91 Aligned 16
 %152 = OpCompositeInsert %84 %106 %153 0
 %154 = OpVectorShuffle %84 %152 %153 0 0 0 0
 %155 = OpFAdd %84 %154 %99
@@ -328,7 +328,7 @@ OpStore %151 %91 Aligned 4
 %159 = OpFunctionCall %5 %26 %158 %83
 %160 = OpBitcast %149 %157
 %161 = OpInBoundsAccessChain %89 %160 %15 %159
-OpStore %161 %155 Aligned 4
+OpStore %161 %155 Aligned 16
 OpReturn
 OpFunctionEnd
 %26 = OpFunction %5 None %23
