@@ -128,6 +128,7 @@ struct VulkanBinding
 	} bindless;
 
 	VulkanDescriptorType descriptor_type;
+	bool force_scalar_alignment;
 };
 
 struct D3DUAVBinding

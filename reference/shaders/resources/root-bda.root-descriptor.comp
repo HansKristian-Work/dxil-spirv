@@ -29,7 +29,7 @@ struct AddCarry
 float16_t _82;
 uint _133;
 
-layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
 {
     vec4 value[];
 };
@@ -250,7 +250,7 @@ OpBranch %135
 %28 = OpLoad %5 %27
 %34 = OpBitcast %33 %19
 %36 = OpInBoundsAccessChain %35 %34 %21 %28
-%37 = OpLoad %30 %36 Aligned 4
+%37 = OpLoad %30 %36 Aligned 16
 %38 = OpCompositeExtract %29 %37 0
 %39 = OpCompositeExtract %29 %37 1
 %40 = OpCompositeExtract %29 %37 2

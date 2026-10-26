@@ -1567,6 +1567,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.storage = spv::StorageClassPhysicalStorageBuffer;
 			meta.physical_pointer_meta.nonwritable = true;
 			meta.kind = reference.resource_kind;
+			meta.force_scalar_alignment = reference.force_scalar_alignment;
 		}
 		else
 		{
@@ -1640,6 +1641,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.aliased = reference.aliased;
 			meta.physical_pointer_meta.nonwritable = true;
 			meta.instrumentation = instrumentation;
+			meta.force_scalar_alignment = reference.force_scalar_alignment;
 
 			// The base array variable does not know what the stride is, promote that state here.
 			if (reference.bindless)
@@ -1687,6 +1689,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.kind = reference.resource_kind;
 			meta.rov = reference.rov;
 			meta.vkmm = reference.vkmm;
+			meta.force_scalar_alignment = reference.force_scalar_alignment;
 		}
 		else
 		{
@@ -1761,6 +1764,7 @@ static bool emit_create_handle(Converter::Impl &impl, const llvm::CallInst *inst
 			meta.vkmm = reference.vkmm;
 			meta.physical_pointer_meta.coherent = reference.coherent;
 			meta.instrumentation = instrumentation;
+			meta.force_scalar_alignment = reference.force_scalar_alignment;
 
 			// Image atomics requires the pointer to image and not OpTypeImage directly.
 			meta.var_id = resource_ptr_id;

@@ -459,6 +459,7 @@ struct Converter::Impl
 		bool root_descriptor = false;
 		bool coherent = false;
 		bool rov = false;
+		bool force_scalar_alignment = false;
 		DXIL::ResourceKind resource_kind = DXIL::ResourceKind::Invalid;
 		int local_root_signature_entry = -1;
 		ReferenceVkMemoryModel vkmm;
@@ -539,6 +540,7 @@ struct Converter::Impl
 		bool aliased;
 		bool non_uniform;
 		bool rov;
+		bool force_scalar_alignment;
 		ReferenceVkMemoryModel vkmm;
 
 		spv::StorageClass storage;

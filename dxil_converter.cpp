@@ -1335,6 +1335,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		}
 
 		auto &access_meta = srv_access_tracking[index];
+		bool force_scalar_alignment = vulkan_binding.buffer_binding.force_scalar_alignment;
 
 		AliasedAccess aliased_access;
 		if (!analyze_aliased_access(access_meta,
@@ -1432,6 +1433,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 				ref.bindless = true;
 				ref.local_root_signature_entry = local_root_signature_entry;
 				ref.resource_kind = resource_kind;
+				ref.force_scalar_alignment = force_scalar_alignment;
 			}
 			else
 			{
@@ -1449,6 +1451,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 				ref.stride = stride;
 				ref.local_root_signature_entry = local_root_signature_entry;
 				ref.resource_kind = resource_kind;
+				ref.force_scalar_alignment = force_scalar_alignment;
 
 				if (range_size != 1)
 				{
@@ -1473,6 +1476,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.push_constant_member = vulkan_binding.buffer_binding.root_constant_index;
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
+			// This is out of spec, but games rely on this.
+			// At least there is no robustness requirement here. Only affects NV to our knowledge.
+			ref.force_scalar_alignment = force_scalar_alignment;
 
 			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("SRV", ref.push_constant_member, 8, true);
@@ -1517,6 +1523,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.bindless = true;
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
+			ref.force_scalar_alignment = force_scalar_alignment;
 
 			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("ResourceTable", vulkan_binding.buffer_binding.root_constant_index, 4, false);
@@ -1627,6 +1634,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			ref.base_resource_is_array = range_size != 1;
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
+			ref.force_scalar_alignment = force_scalar_alignment;
 
 			// Counteract any offsets.
 			if (range_size != 1 && !var_meta.is_lib_variable)
@@ -1641,6 +1649,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 				meta.var_id = ref.var_id;
 				meta.storage = storage;
 				meta.component_type = actual_component_type;
+				ref.force_scalar_alignment = force_scalar_alignment;
 
 				if (aliased_access.override_primary_component_types)
 				{
@@ -1659,6 +1668,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 				meta.stride = stride;
 				meta.var_id = var.var_id;
 				meta.storage = storage;
+				ref.force_scalar_alignment = force_scalar_alignment;
 			}
 		}
 	}
@@ -1922,6 +1932,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			}
 		}
 
+		bool force_scalar_alignment = vulkan_binding.buffer_binding.force_scalar_alignment;
+
 		AliasedAccess aliased_access;
 		if (!analyze_aliased_access(access_meta,
 		                            need_resource_remapping ?
@@ -2073,6 +2085,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				ref.local_root_signature_entry = local_root_signature_entry;
 				ref.resource_kind = resource_kind;
 				ref.vkmm = vkmm;
+				ref.force_scalar_alignment = force_scalar_alignment;
 
 				if (has_counter)
 				{
@@ -2114,6 +2127,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				ref.local_root_signature_entry = local_root_signature_entry;
 				ref.resource_kind = resource_kind;
 				ref.vkmm = vkmm;
+				ref.force_scalar_alignment = force_scalar_alignment;
 
 				if (range_size != 1)
 				{
@@ -2140,6 +2154,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.stride = stride;
 			ref.resource_kind = resource_kind;
 			ref.vkmm = vkmm;
+			ref.force_scalar_alignment = true;
 
 			if (options.extended_non_semantic_info)
 				emit_root_parameter_index_from_push_index("UAV", ref.push_constant_member, 8, true);
@@ -2283,6 +2298,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			ref.base_resource_is_array = range_size != 1;
 			ref.resource_kind = resource_kind;
 			ref.vkmm = vkmm;
+			ref.force_scalar_alignment = force_scalar_alignment;
 
 			// Counteract any offsets.
 			if (range_size != 1 && !var_meta.is_lib_variable)
@@ -2368,6 +2384,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				meta.storage = storage;
 				meta.component_type = actual_component_type;
 				meta.vkmm = vkmm;
+				ref.force_scalar_alignment = force_scalar_alignment;
 
 				if (aliased_access.override_primary_component_types)
 				{
@@ -2387,6 +2404,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				meta.component_type = raw_width_to_component_type(var.declaration.type, var.declaration.width);
 				meta.raw_component_vecsize = var.declaration.vecsize;
 				meta.vkmm = vkmm;
+				ref.force_scalar_alignment = force_scalar_alignment;
 			}
 		}
 	}

@@ -73,7 +73,17 @@ struct Remapper : ResourceRemappingInterface
 		vk_binding.root_constant_index = c_vk_binding.root_constant_index;
 		vk_binding.bindless.use_heap = bool(c_vk_binding.bindless.use_heap);
 		vk_binding.bindless.heap_root_offset = c_vk_binding.bindless.heap_root_offset;
-		vk_binding.descriptor_type = static_cast<VulkanDescriptorType>(c_vk_binding.descriptor_type);
+
+		if (c_vk_binding.descriptor_type == DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO_SCALAR_ALIGNED)
+		{
+			vk_binding.descriptor_type = VulkanDescriptorType::SSBO;
+			vk_binding.force_scalar_alignment = true;
+		}
+		else
+		{
+			vk_binding.descriptor_type = static_cast<VulkanDescriptorType>(c_vk_binding.descriptor_type);
+			vk_binding.force_scalar_alignment = false;
+		}
 	}
 
 	bool remap_srv(const D3DBinding &binding, VulkanSRVBinding &vk_binding) override

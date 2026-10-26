@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 75
+#define DXIL_SPV_API_VERSION_MINOR 76
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
@@ -197,6 +197,12 @@ typedef enum dxil_spv_vulkan_descriptor_type
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_UBO = 4,
 	/* Special magic for tilers. Does not map to anything directly in D3D12 API. */
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_INPUT_ATTACHMENT = 5,
+	/* Special case workaround when mapping root SRV/UAV to a plain SSBO.
+	 * D3D12 spec requires proper alignment, but games ignore that and native drivers
+	 * seem to assume just scalar alignment anyway.
+	 * Need to flag scalar alignment for NV_raw_access_chains, or no vectorization
+	 * if we unnaturally lower the alignment and keep using SSBO. */
+	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO_SCALAR_ALIGNED = 6,
 	DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_INT_MAX = 0x7fffffff
 } dxil_spv_vulkan_descriptor_type;
 

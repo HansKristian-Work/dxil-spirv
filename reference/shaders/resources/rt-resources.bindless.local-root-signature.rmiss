@@ -34,7 +34,7 @@ layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer Ph
     vec4 value[4096];
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
 {
     vec4 value[];
 };
@@ -44,7 +44,7 @@ layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer Phy
     uint value[];
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerUint2NonWriteArray
+layout(buffer_reference, buffer_reference_align = 8, std430) readonly buffer PhysicalPointerUint2NonWriteArray
 {
     uvec2 value[];
 };
@@ -54,7 +54,7 @@ layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer Phy
     uvec3 value;
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerUint4NonWriteArray
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerUint4NonWriteArray
 {
     uvec4 value[];
 };
@@ -579,7 +579,7 @@ OpBranch %405
 %260 = OpLoad %13 %259
 %264 = OpBitcast %263 %260
 %265 = OpInBoundsAccessChain %195 %264 %45 %58
-%266 = OpLoad %26 %265 Aligned 4
+%266 = OpLoad %26 %265 Aligned 16
 %267 = OpCompositeExtract %17 %266 0
 %268 = OpCompositeExtract %17 %266 1
 %269 = OpCompositeExtract %17 %266 2
@@ -604,7 +604,7 @@ OpBranch %405
 %301 = OpFunctionCall %5 %281 %58 %112
 %305 = OpBitcast %304 %277
 %307 = OpInBoundsAccessChain %306 %305 %45 %301
-%308 = OpLoad %13 %307 Aligned 4
+%308 = OpLoad %13 %307 Aligned 8
 %309 = OpCompositeExtract %5 %308 0
 %310 = OpCompositeExtract %5 %308 1
 %311 = OpBitcast %17 %309
@@ -638,7 +638,7 @@ OpBranch %405
 %344 = OpFunctionCall %5 %281 %58 %345
 %349 = OpBitcast %348 %277
 %351 = OpInBoundsAccessChain %350 %349 %45 %344
-%352 = OpLoad %167 %351 Aligned 4
+%352 = OpLoad %167 %351 Aligned 16
 %353 = OpCompositeExtract %5 %352 0
 %354 = OpCompositeExtract %5 %352 1
 %355 = OpCompositeExtract %5 %352 2

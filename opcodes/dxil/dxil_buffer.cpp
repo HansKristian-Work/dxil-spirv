@@ -518,10 +518,17 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 	unsigned raw_vecsize = 1;
 	unsigned addr_shift_log2 = raw_buffer_data_type_to_addr_shift_log2(impl, data_type);
 
+	// If we have conservative vectorization, we cannot infer higher alignment than reality.
+	// Otherwise, implementation must assume that scalar base pointer is possible.
+	bool block_vectorization = impl.options.conservative_ssbo_vectorization && meta.force_scalar_alignment;
+
 	if (meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
-		// For raw buffers, the index is in bytes.
-		raw_vecsize = raw_access_byte_address_vectorize(impl, data_type, instruction->getOperand(2 + operand_offset), vecsize);
+		if (!block_vectorization)
+		{
+			// For raw buffers, the index is in bytes.
+			raw_vecsize = raw_access_byte_address_vectorize(impl, data_type, instruction->getOperand(2 + operand_offset), vecsize);
+		}
 
 		// If we emulate with texel buffers we will never observe the u32 wrapping, so insert that manually.
 		// We are not required to implement the wrapping per component as our test coverage demonstrates,
@@ -536,12 +543,15 @@ static BufferAccessInfo build_buffer_access(Converter::Impl &impl, const llvm::C
 	}
 	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
-		raw_vecsize = raw_access_structured_vectorize(
-			impl, data_type,
-			instruction->getOperand(2 + operand_offset),
-		    meta.stride,
-			instruction->getOperand(3 + operand_offset),
-			vecsize);
+		if (!block_vectorization)
+		{
+			raw_vecsize = raw_access_structured_vectorize(
+				impl, data_type,
+				instruction->getOperand(2 + operand_offset),
+				meta.stride,
+				instruction->getOperand(3 + operand_offset),
+				vecsize);
+		}
 
 		index_id = build_structured_index(
 			impl,
@@ -737,7 +747,7 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 	}
 
 	// Handle misaligned SRV/UAV root descriptors
-	if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
+	if (meta.force_scalar_alignment)
 		alignment = scalar_alignment;
 
 	spv::Id u64_ptr_id;
@@ -906,6 +916,9 @@ static RawAccessChain emit_raw_access_chain(Converter::Impl &impl, const Convert
 			}
 		}
 	}
+
+	if (meta.force_scalar_alignment)
+		raw.alignment = 1;
 
 	raw.alignment *= scalar_size;
 	raw.component_type_id = raw_component_type_id;
@@ -1368,7 +1381,7 @@ static bool emit_physical_buffer_store_instruction(Converter::Impl &impl, const 
 	}
 
 	// Handle misaligned SRV/UAV root descriptors
-	if (meta.kind == DXIL::ResourceKind::RawBuffer || meta.kind == DXIL::ResourceKind::StructuredBuffer)
+	if (meta.force_scalar_alignment)
 		alignment = scalar_alignment;
 
 	spv::Id u64_ptr_id;

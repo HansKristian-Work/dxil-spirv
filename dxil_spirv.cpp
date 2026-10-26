@@ -160,6 +160,7 @@ static void print_help()
 	     "\t[--bindless-cbv-as-ssbo]\n"
 	     "\t[--ssbo-uav]\n"
 	     "\t[--ssbo-srv]\n"
+	     "\t[--ssbo-scalar]\n"
 	     "\t[--ssbo-rtas]\n"
 	     "\t[--input-attachments]\n"
 	     "\t[--ssbo-alignment <align>]\n"
@@ -347,6 +348,7 @@ struct Remapper
 
 	bool ssbo_uav = false;
 	bool ssbo_srv = false;
+	bool ssbo_scalar = false;
 	bool ssbo_rtas = false;
 	bool input_attachments = false;
 };
@@ -437,7 +439,10 @@ static dxil_spv_bool remap_srv(void *userdata, const dxil_spv_d3d_binding *bindi
 			if (binding->kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
 			    binding->kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER)
 			{
-				vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
+				if (remapper->ssbo_scalar)
+					vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO_SCALAR_ALIGNED;
+				else
+					vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
 			}
 		}
 
@@ -520,7 +525,10 @@ static dxil_spv_bool remap_uav(void *userdata, const dxil_spv_uav_d3d_binding *b
 			if (binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_STRUCTURED_BUFFER ||
 			    binding->d3d_binding.kind == DXIL_SPV_RESOURCE_KIND_RAW_BUFFER)
 			{
-				vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
+				if (remapper->ssbo_scalar)
+					vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO_SCALAR_ALIGNED;
+				else
+					vk_binding->buffer_binding.descriptor_type = DXIL_SPV_VULKAN_DESCRIPTOR_TYPE_SSBO;
 			}
 		}
 
@@ -813,6 +821,7 @@ int main(int argc, char **argv)
 	cbs.add("--bindless-cbv-as-ssbo", [&](CLIParser &) { args.bindless_cbv_as_ssbo = true; });
 	cbs.add("--ssbo-uav", [&](CLIParser &) { remapper.ssbo_uav = true; });
 	cbs.add("--ssbo-srv", [&](CLIParser &) { remapper.ssbo_srv = true; });
+	cbs.add("--ssbo-scalar", [&](CLIParser &) { remapper.ssbo_scalar = true; });
 	cbs.add("--ssbo-rtas", [&](CLIParser &) { remapper.ssbo_rtas = true; });
 	cbs.add("--input-attachments", [&](CLIParser &) { remapper.input_attachments = true; });
 	cbs.add("--ssbo-alignment", [&](CLIParser &parser) { args.ssbo_alignment = parser.next_uint(); });

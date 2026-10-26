@@ -26,7 +26,7 @@ layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer Phy
     float value[];
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat2NonWriteArray
+layout(buffer_reference, buffer_reference_align = 8, std430) readonly buffer PhysicalPointerFloat2NonWriteArray
 {
     vec2 value[];
 };
@@ -36,7 +36,7 @@ layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer Phy
     vec3 value;
 };
 
-layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
+layout(buffer_reference, buffer_reference_align = 16, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
 {
     vec4 value[];
 };
@@ -249,7 +249,7 @@ OpBranch %162
 %48 = OpFunctionCall %5 %26 %46 %49
 %54 = OpBitcast %53 %22
 %56 = OpInBoundsAccessChain %55 %54 %15 %48
-%57 = OpLoad %50 %56 Aligned 4
+%57 = OpLoad %50 %56 Aligned 8
 %58 = OpIMul %5 %16 %59
 %60 = OpIAdd %5 %58 %61
 %65 = OpCompositeExtract %5 %22 0
@@ -268,13 +268,13 @@ OpBranch %162
 %82 = OpFunctionCall %5 %26 %80 %83
 %88 = OpBitcast %87 %22
 %90 = OpInBoundsAccessChain %89 %88 %15 %82
-%91 = OpLoad %84 %90 Aligned 4
+%91 = OpLoad %84 %90 Aligned 16
 %92 = OpIAdd %5 %77 %93
 %94 = OpIAdd %5 %16 %95
 %96 = OpFunctionCall %5 %26 %94 %83
 %97 = OpBitcast %87 %22
 %98 = OpInBoundsAccessChain %89 %97 %15 %96
-%99 = OpLoad %84 %98 Aligned 4
+%99 = OpLoad %84 %98 Aligned 16
 %100 = OpIMul %5 %16 %33
 %101 = OpIAdd %5 %100 %102
 %103 = OpFunctionCall %5 %26 %101 %33

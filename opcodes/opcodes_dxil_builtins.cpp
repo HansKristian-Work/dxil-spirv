@@ -611,6 +611,11 @@ static void update_raw_access_tracking_for_byte_address(
     {
         auto vec = raw_access_byte_address_vectorize(impl, type, byte_offset, vecsize);
         update_raw_access_tracking(tracking, type, vec);
+
+		// It's possible that we may have to fallback to scalar types anyway
+		// and we don't have all the information just yet to know for sure.
+		if (vec > 1 && impl.options.conservative_ssbo_vectorization)
+			update_raw_access_tracking(tracking, type, 1);
     }
 }
 
@@ -627,6 +632,11 @@ static void update_raw_access_tracking_for_structured(
     {
         auto vec = raw_access_structured_vectorize(impl, type, index, stride, byte_offset, vecsize);
         update_raw_access_tracking(tracking, type, vec);
+
+		// It's possible that we may have to fallback to scalar types anyway
+		// and we don't have all the information just yet to know for sure.
+		if (vec > 1 && impl.options.conservative_ssbo_vectorization)
+			update_raw_access_tracking(tracking, type, 1);
     }
 }
 
