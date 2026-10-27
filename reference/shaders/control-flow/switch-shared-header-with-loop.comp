@@ -7,40 +7,44 @@ void main()
 {
     if (!(gl_GlobalInvocationID.y == 0u))
     {
-        uint _24 = 0u;
+        uint _23;
+        uint _43 = 0u;
+        uint _22;
+        bool _44;
         for (;;)
         {
-            switch (gl_GlobalInvocationID.x)
+            _22 = _43;
+            _44 = gl_GlobalInvocationID.x == 0u;
+            if (_44)
             {
-                case 0u:
-                {
-                    imageStore(_8, int(0u), uvec4(imageLoad(_8, int(0u)).x));
-                    break;
-                }
-                case 1u:
+                imageStore(_8, int(0u), uvec4(imageLoad(_8, int(0u)).x));
+            }
+            else
+            {
+                if (gl_GlobalInvocationID.x == 1u)
                 {
                     imageStore(_8, int(40u), uvec4(imageLoad(_8, int(40u)).x));
-                    break;
                 }
-                case 5u:
+                else
                 {
-                    imageStore(_8, int(60u), uvec4(imageLoad(_8, int(60u)).x));
-                    break;
-                }
-                default:
-                {
-                    imageStore(_8, int(100u), uvec4(imageLoad(_8, int(100u)).x));
-                    break;
+                    if (gl_GlobalInvocationID.x == 5u)
+                    {
+                        imageStore(_8, int(60u), uvec4(imageLoad(_8, int(60u)).x));
+                    }
+                    else
+                    {
+                        imageStore(_8, int(100u), uvec4(imageLoad(_8, int(100u)).x));
+                    }
                 }
             }
-            uint _25 = _24 + 1u;
-            if (_25 == gl_GlobalInvocationID.y)
+            _23 = _22 + 1u;
+            if (_23 == gl_GlobalInvocationID.y)
             {
                 break;
             }
             else
             {
-                _24 = _25;
+                _43 = _23;
                 continue;
             }
         }
@@ -52,14 +56,15 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 55
+; Bound: 66
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %12
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
@@ -78,66 +83,89 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %15 = OpConstant %5 0
 %18 = OpConstant %5 1
 %20 = OpTypeBool
-%22 = OpTypeVector %5 4
-%26 = OpConstant %5 100
-%33 = OpConstant %5 40
-%37 = OpConstant %5 60
+%24 = OpConstant %5 60
+%25 = OpTypeVector %5 4
+%29 = OpConstant %5 40
+%36 = OpConstant %5 100
+%42 = OpTypePointer Function %5
+%47 = OpConstant %5 5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %42
-%42 = OpLabel
+%43 = OpVariable %42 Function
+OpBranch %48
+%48 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %17 = OpAccessChain %13 %12 %18
 %19 = OpLoad %5 %17
 %21 = OpIEqual %20 %19 %15
-OpSelectionMerge %53 None
-OpBranchConditional %21 %53 %43
-%43 = OpLabel
-OpBranch %44
-%44 = OpLabel
-%24 = OpPhi %5 %15 %43 %25 %51
-OpLoopMerge %52 %51 None
-OpBranch %45
-%45 = OpLabel
-OpSelectionMerge %50 None
-OpSwitch %16 %49 0 %48 1 %47 5 %46
+OpSelectionMerge %63 None
+OpBranchConditional %21 %63 %49
 %49 = OpLabel
-%27 = OpImageRead %22 %9 %26
-%28 = OpCompositeExtract %5 %27 0
-%29 = OpCompositeConstruct %22 %28 %28 %28 %28
-OpImageWrite %9 %26 %29
-OpBranch %50
-%48 = OpLabel
-%30 = OpImageRead %22 %9 %15
-%31 = OpCompositeExtract %5 %30 0
-%32 = OpCompositeConstruct %22 %31 %31 %31 %31
-OpImageWrite %9 %15 %32
-OpBranch %50
-%47 = OpLabel
-%34 = OpImageRead %22 %9 %33
-%35 = OpCompositeExtract %5 %34 0
-%36 = OpCompositeConstruct %22 %35 %35 %35 %35
-OpImageWrite %9 %33 %36
-OpBranch %50
-%46 = OpLabel
-%38 = OpImageRead %22 %9 %37
-%39 = OpCompositeExtract %5 %38 0
-%40 = OpCompositeConstruct %22 %39 %39 %39 %39
-OpImageWrite %9 %37 %40
+OpStore %43 %15
 OpBranch %50
 %50 = OpLabel
+%22 = OpLoad %5 %43
+%44 = OpIEqual %20 %16 %15
+OpLoopMerge %62 %61 None
 OpBranch %51
 %51 = OpLabel
-%25 = OpIAdd %5 %24 %18
-%41 = OpIEqual %20 %25 %19
-OpBranchConditional %41 %52 %44
+OpSelectionMerge %60 None
+OpBranchConditional %44 %59 %52
 %52 = OpLabel
-OpBranch %53
+%45 = OpIEqual %20 %16 %18
+OpSelectionMerge %58 None
+OpBranchConditional %45 %57 %53
 %53 = OpLabel
-%23 = OpCompositeConstruct %22 %15 %15 %15 %15
-OpImageWrite %9 %18 %23
+%46 = OpIEqual %20 %16 %47
+OpSelectionMerge %56 None
+OpBranchConditional %46 %55 %54
+%54 = OpLabel
+%37 = OpImageRead %25 %9 %36 NonPrivateTexel
+%38 = OpCompositeExtract %5 %37 0
+%39 = OpCompositeConstruct %25 %38 %38 %38 %38
+OpImageWrite %9 %36 %39 NonPrivateTexel
+OpBranch %56
+%55 = OpLabel
+%26 = OpImageRead %25 %9 %24 NonPrivateTexel
+%27 = OpCompositeExtract %5 %26 0
+%28 = OpCompositeConstruct %25 %27 %27 %27 %27
+OpImageWrite %9 %24 %28 NonPrivateTexel
+OpBranch %56
+%56 = OpLabel
+OpBranch %58
+%57 = OpLabel
+%30 = OpImageRead %25 %9 %29 NonPrivateTexel
+%31 = OpCompositeExtract %5 %30 0
+%32 = OpCompositeConstruct %25 %31 %31 %31 %31
+OpImageWrite %9 %29 %32 NonPrivateTexel
+OpBranch %58
+%58 = OpLabel
+OpBranch %60
+%59 = OpLabel
+%33 = OpImageRead %25 %9 %15 NonPrivateTexel
+%34 = OpCompositeExtract %5 %33 0
+%35 = OpCompositeConstruct %25 %34 %34 %34 %34
+OpImageWrite %9 %15 %35 NonPrivateTexel
+OpBranch %60
+%60 = OpLabel
+%23 = OpIAdd %5 %22 %18
+%40 = OpIEqual %20 %23 %19
+OpSelectionMerge %65 None
+OpBranchConditional %40 %62 %61
+%65 = OpLabel
+OpUnreachable
+%61 = OpLabel
+OpStore %43 %23
+OpBranch %50
+%62 = OpLabel
+OpBranch %63
+%63 = OpLabel
+OpBranch %64
+%64 = OpLabel
+%41 = OpCompositeConstruct %25 %15 %15 %15 %15
+OpImageWrite %9 %18 %41 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

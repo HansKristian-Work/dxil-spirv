@@ -36,36 +36,37 @@ void main()
 {
     uint _28 = registers._m4 + 3u;
     uint _36 = uint(int(gl_FragCoord.x));
-    uint _49 = ByteAddressMask(_36 * 2u, 4u);
-    uvec2 _57 = uvec2(imageLoad(_12[_28], int(_49)).x, imageLoad(_12[_28], int(_49 + 1u)).x);
-    uint _77 = registers._m4 + (uvec4(registers._m4, registers._m5, registers._m6, registers._m7).x + 4u);
-    uint _80 = ByteAddressMask(_36 * 2u, 4u);
-    uvec2 _86 = uvec2(imageLoad(_12[_77], int(_80)).x, imageLoad(_12[_77], int(_80 + 1u)).x);
-    uint _96 = registers._m4 + (INDEX + 100u);
-    uint _99 = ByteAddressMask(_36 * 2u, 4u);
-    uvec2 _105 = uvec2(imageLoad(_12[nonuniformEXT(_96)], int(_99)).x, imageLoad(_12[nonuniformEXT(_96)], int(_99 + 1u)).x);
-    SV_Target.x = (_86.x + _57.x) + _105.x;
-    SV_Target.y = (_86.y + _57.y) + _105.y;
+    uint _48 = ByteAddressMask(_36 * 2u, 4u);
+    uvec2 _56 = uvec2(imageLoad(_12[_28], int(_48)).x, imageLoad(_12[_28], int(_48 + 1u)).x);
+    uint _76 = registers._m4 + (uvec4(registers._m4, registers._m5, registers._m6, registers._m7).x + 4u);
+    uint _79 = ByteAddressMask(_36 * 2u, 4u);
+    uvec2 _85 = uvec2(imageLoad(_12[_76], int(_79)).x, imageLoad(_12[_76], int(_79 + 1u)).x);
+    uint _95 = registers._m4 + (INDEX + 100u);
+    uint _98 = ByteAddressMask(_36 * 2u, 4u);
+    uvec2 _104 = uvec2(imageLoad(_12[nonuniformEXT(_95)], int(_98)).x, imageLoad(_12[nonuniformEXT(_95)], int(_98 + 1u)).x);
+    SV_Target.x = (_85.x + _56.x) + _104.x;
+    SV_Target.y = (_85.y + _56.y) + _104.y;
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 115
+; Bound: 113
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
 OpCapability StorageTexelBufferArrayDynamicIndexing
 OpCapability StorageTexelBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint Fragment %3 "main" %16 %18 %21
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint Fragment %3 "main" %8 %12 %16 %18 %21
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %6 "RootConstants"
@@ -100,8 +101,8 @@ OpDecorate %16 BuiltIn FragCoord
 OpDecorate %18 Flat
 OpDecorate %18 Location 1
 OpDecorate %21 Location 0
+OpDecorate %95 NonUniform
 OpDecorate %96 NonUniform
-OpDecorate %97 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -130,17 +131,17 @@ OpDecorate %97 NonUniform
 %39 = OpConstant %5 2
 %40 = OpTypeFunction %5 %5 %5
 %46 = OpConstant %5 4294967295
-%50 = OpTypeVector %5 4
-%55 = OpConstant %5 1
-%63 = OpConstant %5 5
-%66 = OpConstant %5 6
-%69 = OpConstant %5 7
-%92 = OpConstant %5 100
-%110 = OpTypePointer Output %5
+%49 = OpTypeVector %5 4
+%54 = OpConstant %5 1
+%62 = OpConstant %5 5
+%65 = OpConstant %5 6
+%68 = OpConstant %5 7
+%91 = OpConstant %5 100
+%109 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %113
-%113 = OpLabel
+OpBranch %112
+%112 = OpLabel
 %25 = OpAccessChain %24 %8 %26
 %27 = OpLoad %5 %25
 %28 = OpIAdd %5 %27 %29
@@ -152,65 +153,65 @@ OpBranch %113
 %36 = OpConvertFToS %5 %35
 %37 = OpShiftLeftLogical %5 %36 %29
 %38 = OpIMul %5 %36 %39
-%49 = OpFunctionCall %5 %43 %38 %26
-%51 = OpImageRead %50 %30 %49
-%52 = OpCompositeExtract %5 %51 0
-%54 = OpIAdd %5 %49 %55
-%53 = OpImageRead %50 %30 %54
-%56 = OpCompositeExtract %5 %53 0
-%57 = OpCompositeConstruct %19 %52 %56
-%58 = OpCompositeExtract %5 %57 0
-%59 = OpCompositeExtract %5 %57 1
-%60 = OpAccessChain %24 %8 %26
-%61 = OpLoad %5 %60
-%62 = OpAccessChain %24 %8 %63
-%64 = OpLoad %5 %62
-%65 = OpAccessChain %24 %8 %66
-%67 = OpLoad %5 %65
-%68 = OpAccessChain %24 %8 %69
-%70 = OpLoad %5 %68
-%71 = OpCompositeConstruct %50 %61 %64 %67 %70
-%72 = OpCompositeExtract %5 %71 0
-%73 = OpIAdd %5 %72 %26
-%75 = OpAccessChain %24 %8 %26
-%76 = OpLoad %5 %75
-%77 = OpIAdd %5 %76 %73
-%74 = OpAccessChain %22 %12 %77
-%78 = OpLoad %9 %74
-%79 = OpIMul %5 %36 %39
-%80 = OpFunctionCall %5 %43 %79 %26
-%81 = OpImageRead %50 %78 %80
-%82 = OpCompositeExtract %5 %81 0
-%84 = OpIAdd %5 %80 %55
-%83 = OpImageRead %50 %78 %84
-%85 = OpCompositeExtract %5 %83 0
-%86 = OpCompositeConstruct %19 %82 %85
-%87 = OpCompositeExtract %5 %86 0
-%88 = OpCompositeExtract %5 %86 1
+%48 = OpFunctionCall %5 %43 %38 %26
+%50 = OpImageRead %49 %30 %48 NonPrivateTexel
+%51 = OpCompositeExtract %5 %50 0
+%53 = OpIAdd %5 %48 %54
+%52 = OpImageRead %49 %30 %53 NonPrivateTexel
+%55 = OpCompositeExtract %5 %52 0
+%56 = OpCompositeConstruct %19 %51 %55
+%57 = OpCompositeExtract %5 %56 0
+%58 = OpCompositeExtract %5 %56 1
+%59 = OpAccessChain %24 %8 %26
+%60 = OpLoad %5 %59
+%61 = OpAccessChain %24 %8 %62
+%63 = OpLoad %5 %61
+%64 = OpAccessChain %24 %8 %65
+%66 = OpLoad %5 %64
+%67 = OpAccessChain %24 %8 %68
+%69 = OpLoad %5 %67
+%70 = OpCompositeConstruct %49 %60 %63 %66 %69
+%71 = OpCompositeExtract %5 %70 0
+%72 = OpIAdd %5 %71 %26
+%74 = OpAccessChain %24 %8 %26
+%75 = OpLoad %5 %74
+%76 = OpIAdd %5 %75 %72
+%73 = OpAccessChain %22 %12 %76
+%77 = OpLoad %9 %73
+%78 = OpIMul %5 %36 %39
+%79 = OpFunctionCall %5 %43 %78 %26
+%80 = OpImageRead %49 %77 %79 NonPrivateTexel
+%81 = OpCompositeExtract %5 %80 0
+%83 = OpIAdd %5 %79 %54
+%82 = OpImageRead %49 %77 %83 NonPrivateTexel
+%84 = OpCompositeExtract %5 %82 0
+%85 = OpCompositeConstruct %19 %81 %84
+%86 = OpCompositeExtract %5 %85 0
+%87 = OpCompositeExtract %5 %85 1
+%88 = OpIAdd %5 %86 %57
 %89 = OpIAdd %5 %87 %58
-%90 = OpIAdd %5 %88 %59
-%91 = OpIAdd %5 %31 %92
-%94 = OpAccessChain %24 %8 %26
-%95 = OpLoad %5 %94
-%96 = OpIAdd %5 %95 %91
-%93 = OpAccessChain %22 %12 %96
-%97 = OpLoad %9 %93
-%98 = OpIMul %5 %36 %39
-%99 = OpFunctionCall %5 %43 %98 %26
-%100 = OpImageRead %50 %97 %99
-%101 = OpCompositeExtract %5 %100 0
-%103 = OpIAdd %5 %99 %55
-%102 = OpImageRead %50 %97 %103
-%104 = OpCompositeExtract %5 %102 0
-%105 = OpCompositeConstruct %19 %101 %104
-%106 = OpCompositeExtract %5 %105 0
-%107 = OpCompositeExtract %5 %105 1
+%90 = OpIAdd %5 %31 %91
+%93 = OpAccessChain %24 %8 %26
+%94 = OpLoad %5 %93
+%95 = OpIAdd %5 %94 %90
+%92 = OpAccessChain %22 %12 %95
+%96 = OpLoad %9 %92
+%97 = OpIMul %5 %36 %39
+%98 = OpFunctionCall %5 %43 %97 %26
+%99 = OpImageRead %49 %96 %98 NonPrivateTexel
+%100 = OpCompositeExtract %5 %99 0
+%102 = OpIAdd %5 %98 %54
+%101 = OpImageRead %49 %96 %102 NonPrivateTexel
+%103 = OpCompositeExtract %5 %101 0
+%104 = OpCompositeConstruct %19 %100 %103
+%105 = OpCompositeExtract %5 %104 0
+%106 = OpCompositeExtract %5 %104 1
+%107 = OpIAdd %5 %88 %105
 %108 = OpIAdd %5 %89 %106
-%109 = OpIAdd %5 %90 %107
-%111 = OpAccessChain %110 %21 %34
+%110 = OpAccessChain %109 %21 %34
+OpStore %110 %107
+%111 = OpAccessChain %109 %21 %54
 OpStore %111 %108
-%112 = OpAccessChain %110 %21 %55
-OpStore %112 %109
 OpReturn
 OpFunctionEnd
 %43 = OpFunction %5 None %40

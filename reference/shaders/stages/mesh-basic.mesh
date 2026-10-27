@@ -52,9 +52,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.4
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 101
+; Bound: 100
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
@@ -62,9 +62,10 @@ OpCapability GroupNonUniform
 OpCapability GroupNonUniformBallot
 OpCapability ShaderViewportIndexLayerEXT
 OpCapability MeshShadingEXT
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_mesh_shader"
 OpExtension "SPV_EXT_shader_viewport_index_layer"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint MeshEXT %3 "main" %11 %12 %17 %20 %21 %24 %28 %32 %34 %38 %44
 OpExecutionMode %3 OutputVertices 24
 OpExecutionMode %3 OutputPrimitivesEXT 8
@@ -129,7 +130,7 @@ OpDecorate %44 BuiltIn NumSubgroups
 %38 = OpVariable %37 TaskPayloadWorkgroupEXT
 %40 = OpTypePointer Workgroup %5
 %42 = OpConstant %7 2
-%43 = OpConstant %7 264
+%43 = OpConstant %7 24840
 %44 = OpVariable %33 Input
 %47 = OpConstant %7 1
 %49 = OpConstant %7 3
@@ -146,7 +147,7 @@ OpBranch %94
 %35 = OpLoad %7 %34
 %39 = OpConvertUToF %5 %35
 %41 = OpAccessChain %40 %32 %35
-OpStore %41 %39
+OpStore %41 %39 NonPrivatePointer
 OpControlBarrier %42 %42 %43
 OpSetMeshOutputsEXT %8 %14
 %45 = OpLoad %7 %44
@@ -157,12 +158,12 @@ OpSetMeshOutputsEXT %8 %14
 %53 = OpIEqual %13 %50 %52
 %54 = OpLogicalOr %13 %51 %53
 %55 = OpLogicalAnd %13 %46 %54
-OpSelectionMerge %98 None
-OpBranchConditional %55 %97 %98
-%97 = OpLabel
-OpReturn
+OpSelectionMerge %99 None
+OpBranchConditional %55 %98 %99
 %98 = OpLabel
-%56 = OpLoad %5 %41
+OpReturn
+%99 = OpLabel
+%56 = OpLoad %5 %41 NonPrivatePointer
 %58 = OpAccessChain %57 %11 %35 %52
 OpStore %58 %56
 %59 = OpAccessChain %57 %11 %35 %47
@@ -173,7 +174,7 @@ OpStore %60 %56
 OpStore %61 %56
 %62 = OpBitwiseXor %7 %35 %47
 %63 = OpAccessChain %40 %32 %62
-%64 = OpLoad %5 %63
+%64 = OpLoad %5 %63 NonPrivatePointer
 %66 = OpInBoundsAccessChain %65 %38 %52
 %67 = OpLoad %5 %66
 %68 = OpFAdd %5 %67 %64
@@ -205,7 +206,7 @@ OpStore %85 %35
 OpStore %86 %35
 %87 = OpBitwiseXor %7 %35 %42
 %88 = OpAccessChain %40 %32 %87
-%89 = OpLoad %5 %88
+%89 = OpLoad %5 %88 NonPrivatePointer
 %90 = OpAccessChain %57 %24 %35 %52
 OpStore %90 %89
 %91 = OpAccessChain %57 %24 %35 %47
@@ -216,6 +217,8 @@ OpStore %92 %89
 OpStore %93 %89
 OpBranch %96
 %96 = OpLabel
+OpBranch %97
+%97 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

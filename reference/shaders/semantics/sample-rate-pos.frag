@@ -14,13 +14,14 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 34
+; Bound: 33
 ; Schema: 0
 OpCapability Shader
 OpCapability SampleRateShading
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %10
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

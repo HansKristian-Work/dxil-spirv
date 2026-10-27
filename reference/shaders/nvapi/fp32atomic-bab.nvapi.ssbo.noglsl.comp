@@ -1,15 +1,16 @@
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 45
+; Bound: 44
 ; Schema: 0
 OpCapability Shader
 OpCapability UntypedPointersKHR
+OpCapability VulkanMemoryModel
 OpCapability AtomicFloat32AddEXT
 OpExtension "SPV_EXT_shader_atomic_float_add"
 OpExtension "SPV_KHR_untyped_pointers"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %17
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %9 %13 %17
 OpExecutionMode %3 LocalSize 32 1 1
 OpName %3 "main"
 OpName %7 "SSBO"
@@ -53,7 +54,7 @@ OpMemberDecorate %29 0 Offset 0
 %29 = OpTypeStruct %28
 %31 = OpConstant %5 4
 %32 = OpTypeUntypedPointerKHR StorageBuffer
-%36 = OpConstant %5 1
+%36 = OpConstant %5 5
 %39 = OpConstant %5 100
 %41 = OpTypePointer StorageBuffer %5
 %3 = OpFunction %1 None %2
@@ -73,7 +74,7 @@ OpBranch %43
 %38 = OpBitcast %22 %37
 %40 = OpBitcast %5 %38
 %42 = OpAccessChain %41 %13 %20 %39
-OpStore %42 %40
+OpStore %42 %40 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 

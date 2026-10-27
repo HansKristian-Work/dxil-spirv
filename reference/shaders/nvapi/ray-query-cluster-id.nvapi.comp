@@ -16,24 +16,18 @@ void main()
     bool _37 = rayQueryProceedEXT(_21);
     if (_37)
     {
-        for (;;)
+        bool _47;
+        do
         {
-            uint _42 = rayQueryGetRayFlagsEXT(_21);
-            uint _43 = rayQueryGetIntersectionClusterIdNV(_21, bool(0u));
-            imageStore(_12, int(gl_LocalInvocationIndex * 2u), uvec4(_43));
+            uint _38 = rayQueryGetRayFlagsEXT(_21);
+            uint _39 = rayQueryGetIntersectionClusterIdNV(_21, bool(0u));
+            imageStore(_12, int(gl_LocalInvocationIndex * 2u), uvec4(_39));
             rayQueryTerminateEXT(_21);
-            bool _49 = rayQueryProceedEXT(_21);
-            if (_49)
-            {
-            }
-            else
-            {
-                break;
-            }
-        }
+            _47 = rayQueryProceedEXT(_21);
+        } while (_47);
     }
-    uint _38 = rayQueryGetIntersectionTypeEXT(_21, bool(1u));
-    if (!(_38 == 0u))
+    uint _48 = rayQueryGetIntersectionTypeEXT(_21, bool(1u));
+    if (!(_48 == 0u))
     {
         uint _50 = rayQueryGetRayFlagsEXT(_21);
         uint _51 = rayQueryGetIntersectionClusterIdNV(_21, bool(1u));
@@ -45,7 +39,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.4
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 65
 ; Schema: 0
@@ -53,10 +47,11 @@ OpCapability Shader
 OpCapability ImageBuffer
 OpCapability RayQueryKHR
 OpCapability RayTraversalPrimitiveCullingKHR
+OpCapability VulkanMemoryModel
 OpCapability RayTracingClusterAccelerationStructureNV
 OpExtension "SPV_KHR_ray_query"
 OpExtension "SPV_NV_cluster_acceleration_structure"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %8 %12 %17 %21
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -94,10 +89,10 @@ OpDecorate %17 BuiltIn LocalInvocationIndex
 %33 = OpConstant %24 4
 %35 = OpConstant %24 8
 %36 = OpTypeBool
-%39 = OpConstant %9 1
-%41 = OpConstant %9 0
-%46 = OpConstant %9 2
-%47 = OpTypeVector %9 4
+%40 = OpConstant %9 0
+%42 = OpConstant %9 1
+%44 = OpConstant %9 2
+%45 = OpTypeVector %9 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %57
@@ -112,36 +107,38 @@ OpRayQueryInitializeKHR %21 %15 %22 %23 %32 %33 %34 %35
 OpSelectionMerge %61 None
 OpBranchConditional %37 %58 %61
 %58 = OpLabel
+%38 = OpRayQueryGetRayFlagsKHR %9 %21
+%39 = OpRayQueryGetIntersectionClusterIdNV %9 %21 %40
+%41 = OpShiftLeftLogical %9 %18 %42
+%43 = OpIMul %9 %18 %44
+%46 = OpCompositeConstruct %45 %39 %39 %39 %39
+OpImageWrite %13 %43 %46 NonPrivateTexel
+OpRayQueryTerminateKHR %21
+%47 = OpRayQueryProceedKHR %36 %21
+OpLoopMerge %60 %59 None
 OpBranch %59
 %59 = OpLabel
-%42 = OpRayQueryGetRayFlagsKHR %9 %21
-%43 = OpRayQueryGetIntersectionClusterIdNV %9 %21 %41
-%44 = OpShiftLeftLogical %9 %18 %39
-%45 = OpIMul %9 %18 %46
-%48 = OpCompositeConstruct %47 %43 %43 %43 %43
-OpImageWrite %13 %45 %48
-OpRayQueryTerminateKHR %21
-%49 = OpRayQueryProceedKHR %36 %21
-OpLoopMerge %60 %59 None
-OpBranchConditional %49 %59 %60
+OpBranchConditional %47 %58 %60
 %60 = OpLabel
 OpBranch %61
 %61 = OpLabel
-%38 = OpRayQueryGetIntersectionTypeKHR %9 %21 %39
-%40 = OpIEqual %36 %38 %41
+%48 = OpRayQueryGetIntersectionTypeKHR %9 %21 %42
+%49 = OpIEqual %36 %48 %40
 OpSelectionMerge %63 None
-OpBranchConditional %40 %63 %62
+OpBranchConditional %49 %63 %62
 %62 = OpLabel
 %50 = OpRayQueryGetRayFlagsKHR %9 %21
-%51 = OpRayQueryGetIntersectionClusterIdNV %9 %21 %39
-%52 = OpShiftLeftLogical %9 %18 %39
-%53 = OpBitwiseOr %9 %52 %39
-%54 = OpIMul %9 %18 %46
-%55 = OpIAdd %9 %54 %39
-%56 = OpCompositeConstruct %47 %51 %51 %51 %51
-OpImageWrite %13 %55 %56
+%51 = OpRayQueryGetIntersectionClusterIdNV %9 %21 %42
+%52 = OpShiftLeftLogical %9 %18 %42
+%53 = OpBitwiseOr %9 %52 %42
+%54 = OpIMul %9 %18 %44
+%55 = OpIAdd %9 %54 %42
+%56 = OpCompositeConstruct %45 %51 %51 %51 %51
+OpImageWrite %13 %55 %56 NonPrivateTexel
 OpBranch %63
 %63 = OpLabel
+OpBranch %64
+%64 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

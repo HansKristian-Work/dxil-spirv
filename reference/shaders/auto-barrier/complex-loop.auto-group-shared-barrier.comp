@@ -8,10 +8,13 @@ shared uint _12[32];
 
 void main()
 {
-    uint _34;
-    uint _17 = 0u;
+    uint _19;
+    uint _46;
+    uint _47 = 0u;
+    uint _17;
     for (;;)
     {
+        _17 = _47;
         subgroupMemoryBarrierShared();
         subgroupBarrier();
         _12[gl_LocalInvocationIndex] = 40u;
@@ -19,32 +22,37 @@ void main()
         subgroupBarrier();
         imageStore(_8, int(gl_LocalInvocationIndex), uvec4(_12[gl_LocalInvocationIndex ^ 31u]));
         imageStore(_8, int(gl_LocalInvocationIndex), uvec4(_12[gl_LocalInvocationIndex ^ 15u]));
-        _34 = 0u;
+        _46 = 0u;
+        uint _35;
+        bool _42;
         for (;;)
         {
+            uint _34 = _46;
             subgroupMemoryBarrierShared();
             subgroupBarrier();
             uint _36 = atomicAdd(_12[gl_LocalInvocationIndex], 1u);
             uint _39 = atomicOr(_12[gl_LocalInvocationIndex], _36);
             uint _40 = atomicXor(_12[gl_LocalInvocationIndex], _39);
-            uint _35 = _34 + 1u;
-            if (_35 == 4u)
+            _35 = _34 + 1u;
+            _42 = _35 == 4u;
+            if (_42)
             {
                 break;
             }
             else
             {
-                _34 = _35;
+                _46 = _35;
+                continue;
             }
         }
-        uint _19 = _17 + 1u;
+        _19 = _17 + 1u;
         if (_19 == 4u)
         {
             break;
         }
         else
         {
-            _17 = _19;
+            _47 = _19;
             continue;
         }
     }
@@ -58,14 +66,15 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 54
+; Bound: 61
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %15
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12 %15
 OpExecutionMode %3 LocalSize 32 1 1
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
@@ -94,50 +103,69 @@ OpDecorate %15 BuiltIn LocalInvocationIndex
 %38 = OpConstant %5 1
 %41 = OpTypeBool
 %43 = OpConstant %5 4
-%51 = OpConstant %5 3
-%52 = OpConstant %5 264
+%45 = OpTypePointer Function %5
+%57 = OpConstant %5 3
+%58 = OpConstant %5 24840
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %45
-%45 = OpLabel
+%46 = OpVariable %45 Function
+%47 = OpVariable %45 Function
+OpBranch %48
+%48 = OpLabel
 %13 = OpLoad %6 %8
 %16 = OpLoad %5 %15
-OpBranch %46
-%46 = OpLabel
-%17 = OpPhi %5 %18 %45 %19 %49
-OpControlBarrier %51 %51 %52
+OpStore %47 %18
+OpBranch %49
+%49 = OpLabel
+%17 = OpLoad %5 %47
+OpControlBarrier %57 %57 %58
 %21 = OpAccessChain %20 %12 %16
-OpStore %21 %22
+OpStore %21 %22 NonPrivatePointer
 %23 = OpBitwiseXor %5 %16 %24
 %25 = OpAccessChain %20 %12 %23
-OpControlBarrier %51 %51 %52
-%26 = OpLoad %5 %25
+OpControlBarrier %57 %57 %58
+%26 = OpLoad %5 %25 NonPrivatePointer
 %28 = OpCompositeConstruct %27 %26 %26 %26 %26
-OpImageWrite %13 %16 %28
+OpImageWrite %13 %16 %28 NonPrivateTexel
 %29 = OpBitwiseXor %5 %16 %30
 %31 = OpAccessChain %20 %12 %29
-%32 = OpLoad %5 %31
+%32 = OpLoad %5 %31 NonPrivatePointer
 %33 = OpCompositeConstruct %27 %32 %32 %32 %32
-OpImageWrite %13 %16 %33
-OpLoopMerge %50 %49 None
-OpBranch %47
-%47 = OpLabel
-%34 = OpPhi %5 %18 %46 %35 %47
-OpControlBarrier %51 %51 %52
+OpImageWrite %13 %16 %33 NonPrivateTexel
+OpStore %46 %18
+OpLoopMerge %55 %54 None
+OpBranch %50
+%50 = OpLabel
+%34 = OpLoad %5 %46
+OpControlBarrier %57 %57 %58
 %36 = OpAtomicIAdd %5 %21 %37 %18 %38
 %39 = OpAtomicOr %5 %21 %37 %18 %36
 %40 = OpAtomicXor %5 %21 %37 %18 %39
 %35 = OpIAdd %5 %34 %38
 %42 = OpIEqual %41 %35 %43
-OpLoopMerge %48 %47 None
-OpBranchConditional %42 %48 %47
-%48 = OpLabel
-OpBranch %49
-%49 = OpLabel
+OpLoopMerge %53 %52 None
+OpBranch %51
+%51 = OpLabel
+OpSelectionMerge %59 None
+OpBranchConditional %42 %53 %52
+%59 = OpLabel
+OpUnreachable
+%52 = OpLabel
+OpStore %46 %35
+OpBranch %50
+%53 = OpLabel
 %19 = OpIAdd %5 %17 %38
 %44 = OpIEqual %41 %19 %43
-OpBranchConditional %44 %50 %46
-%50 = OpLabel
+OpSelectionMerge %60 None
+OpBranchConditional %44 %55 %54
+%60 = OpLabel
+OpUnreachable
+%54 = OpLabel
+OpStore %47 %19
+OpBranch %49
+%55 = OpLabel
+OpBranch %56
+%56 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

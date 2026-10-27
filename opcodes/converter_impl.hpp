@@ -171,6 +171,7 @@ public:
 	bool wmma_rdna3_workaround = false;
 	bool wmma_conv_hack = false;
 	bool simulate_min16float_min_spec = false;
+	bool experimental_unstructured_control_flow = false;
 
 private:
 	GlobalConfiguration();
@@ -263,11 +264,11 @@ struct Converter::Impl
 	spv::Id get_id_for_undef_constant(const llvm::UndefValue *undef);
 	void emit_patch_output_lowering(CFGNode *node);
 
-	Vector<llvm::BasicBlock *> build_function_bb_visit_order_legacy(llvm::Function *func, CFGNodePool &pool);
-	Vector<llvm::BasicBlock *> build_function_bb_visit_order_analysis(llvm::Function *func);
-	void build_function_bb_visit_order_inner_analysis(Vector<llvm::BasicBlock *> &bbs,
-	                                                  UnorderedSet<llvm::BasicBlock *> &visited,
-	                                                  llvm::BasicBlock *bb);
+	Vector<llvm::BasicBlock *> build_function_bb_visit_order(llvm::Function *func);
+	Vector<llvm::BasicBlock *> build_function_bb_visit_order_and_register(llvm::Function *func, CFGNodePool &pool);
+	void build_function_bb_visit_order(Vector<llvm::BasicBlock *> &bbs,
+	                                   UnorderedSet<llvm::BasicBlock *> &visited,
+	                                   llvm::BasicBlock *bb);
 	void build_function_bb_visit_register(llvm::BasicBlock *bb, CFGNodePool &pool, String tag);
 
 	bool emit_stage_input_variables();
@@ -305,7 +306,7 @@ struct Converter::Impl
 	bool emit_execution_modes_fp_denorm_rounding();
 	bool emit_execution_modes_thread_wave_properties(const llvm::MDNode *num_threads);
 
-	bool analyze_instructions(llvm::Function *func);
+	bool analyze_instructions(llvm::Function *func, const Vector<llvm::BasicBlock *> &visit_order);
 	void analyze_instructions_post_execution_modes();
 	void mark_used_values(const llvm::Instruction *instruction);
 	void mark_used_value(const llvm::Value *value);
@@ -791,6 +792,7 @@ struct Converter::Impl
 		bool nv_cooperative_matrix2_conversions = false;
 		bool ssbo_wraps_32bit_before_robustness = false;
 		bool raw_access_chain_wraps_32bit_before_robustness = false;
+		bool legacy_structurizer = false;
 		struct
 		{
 			bool enabled = false;

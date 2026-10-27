@@ -214,7 +214,7 @@ static spv::Id build_hash_call(SPIRVModule &module)
 	extract->addImmediateOperand(0);
 	ret_id = extract->getResultId();
 
-	builder.makeReturn(false, ret_id);
+	builder.makeReturnValue(ret_id);
 	builder.setBuildPoint(current_build_point);
 	return func->getId();
 }
@@ -368,7 +368,7 @@ spv::Id build_allocate_invocation_id_function(SPIRVModule &module, uint32_t desc
 	atomic_add->addIdOperand(builder.makeUintConstant(0));
 	atomic_add->addIdOperand(builder.makeUintConstant(1103633207u));
 
-	builder.makeReturn(false, atomic_add->getResultId());
+	builder.makeReturnValue(atomic_add->getResultId());
 	builder.setBuildPoint(current_build_point);
 	return func->getId();
 }
@@ -402,13 +402,13 @@ spv::Id build_validate_bda_load_store_function(SPIRVModule &module, uint32_t des
 	builder.addName(func->getParamId(5), "in_bounds");
 	builder.setBuildPoint(entry);
 
-	auto *early_return_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *body = new spv::Block(builder.getUniqueId(), *func);
+	auto *early_return_block = func->newBlock(builder.getUniqueId());
+	auto *body = func->newBlock(builder.getUniqueId());
 
 	builder.createSelectionMerge(body, 0);
 	builder.createConditionalBranch(func->getParamId(5), body, early_return_block);
 	builder.setBuildPoint(early_return_block);
-	builder.makeReturn(false, builder.makeBoolConstant(true));
+	builder.makeReturnValue(builder.makeBoolConstant(true));
 	builder.setBuildPoint(body);
 
 	spv::Id addr_id = build_u64_add_u32(builder, func->getParamId(0), func->getParamId(1));
@@ -691,7 +691,7 @@ spv::Id build_validate_bda_load_store_function(SPIRVModule &module, uint32_t des
 	ret->addIdOperand(inv_hazard->getResultId());
 	ret->addIdOperand(has_complete_self_lock);
 
-	builder.makeReturn(false, ret->getResultId());
+	builder.makeReturnValue(ret->getResultId());
 	builder.setBuildPoint(current_build_point);
 	return func->getId();
 }
@@ -700,8 +700,8 @@ void emit_instrumentation_hash(SPIRVModule &module, const InstructionInstrumenta
                                spv::Function *func, spv::Id value_id, spv::Id instruction_id)
 {
 	auto &builder = module.get_builder();
-	auto *write_payload_path = new spv::Block(builder.getUniqueId(), *func);
-	auto *merge_payload_path = new spv::Block(builder.getUniqueId(), *func);
+	auto *write_payload_path = func->newBlock(builder.getUniqueId());
+	auto *merge_payload_path = func->newBlock(builder.getUniqueId());
 
 	spv::Id u32_type = builder.makeUintType(32);
 	spv::Id bool_type = builder.makeBoolType();
@@ -918,8 +918,8 @@ spv::Id build_assume_true_call_function(SPIRVModule &module, const InstructionIn
 	if (has_code_id)
 		builder.addName(func->getParamId(2), "code");
 
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *fail_block = new spv::Block(builder.getUniqueId(), *func);
+	auto *fail_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 
 	builder.setBuildPoint(entry);
 
@@ -963,7 +963,7 @@ spv::Id build_assume_true_call_function(SPIRVModule &module, const InstructionIn
 	}
 
 	builder.setBuildPoint(merge_block);
-	builder.makeReturn(false);
+	builder.makeReturn();
 	builder.setBuildPoint(current_build_point);
 	return func->getId();
 }
@@ -983,8 +983,8 @@ spv::Id build_nan_inf_instrument_call_function(
 	                                       "NanInfInstrumentation",
 	                                       { type_id, u32_type }, {}, &entry);
 
-	auto *merge_block = new spv::Block(builder.getUniqueId(), *func);
-	auto *first_nan_inf_path = new spv::Block(builder.getUniqueId(), *func);
+	auto *merge_block = func->newBlock(builder.getUniqueId());
+	auto *first_nan_inf_path = func->newBlock(builder.getUniqueId());
 
 	builder.addName(func->getParamId(0), "value");
 	builder.addName(func->getParamId(1), "inst");
@@ -1039,7 +1039,7 @@ spv::Id build_nan_inf_instrument_call_function(
 	}
 
 	builder.setBuildPoint(merge_block);
-	builder.makeReturn(false);
+	builder.makeReturn();
 	builder.setBuildPoint(current_build_point);
 	return func->getId();
 }

@@ -114,9 +114,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 400
+; Bound: 399
 ; Schema: 0
 OpCapability Shader
 OpCapability Int16
@@ -124,13 +124,14 @@ OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability FloatControls2
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls2"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint Fragment %3 "main" %65 %68 %71 %74
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint Fragment %3 "main" %8 %13 %18 %22 %26 %30 %34 %38 %42 %46 %50 %54 %58 %62 %65 %68 %71 %74
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionModeId %3 FPFastMathDefault %9 %397
 OpName %3 "main"
@@ -465,27 +466,27 @@ OpBranch %398
 %170 = OpConvertFToS %5 %166
 %172 = OpCompositeConstruct %171 %169 %170
 %173 = OpCompositeConstruct %66 %167 %168 %167 %168
-OpImageWrite %115 %172 %173
+OpImageWrite %115 %172 %173 NonPrivateTexel
 %175 = OpConvertFToS %174 %164
 %176 = OpConvertFToS %174 %166
 %177 = OpCompositeConstruct %171 %169 %170
 %179 = OpCompositeConstruct %178 %175 %176 %175 %176
 %180 = OpSConvert %69 %179
-OpImageWrite %110 %177 %180
+OpImageWrite %110 %177 %180 NonPrivateTexel
 %181 = OpConvertFToU %174 %164
 %182 = OpConvertFToU %174 %166
 %183 = OpCompositeConstruct %171 %169 %170
 %184 = OpCompositeConstruct %178 %181 %182 %181 %182
 %185 = OpUConvert %72 %184
-OpImageWrite %103 %183 %185
+OpImageWrite %103 %183 %185 NonPrivateTexel
 %187 = OpCompositeConstruct %66 %186 %186 %186 %186
-OpImageWrite %96 %169 %187
+OpImageWrite %96 %169 %187 NonPrivateTexel
 %189 = OpCompositeConstruct %178 %188 %188 %188 %188
 %190 = OpSConvert %69 %189
-OpImageWrite %89 %169 %190
+OpImageWrite %89 %169 %190 NonPrivateTexel
 %192 = OpCompositeConstruct %178 %191 %191 %191 %191
 %193 = OpUConvert %72 %192
-OpImageWrite %83 %169 %193
+OpImageWrite %83 %169 %193 NonPrivateTexel
 %195 = OpSampledImage %194 %151 %161
 %198 = OpCompositeConstruct %63 %164 %166
 %197 = OpImageSampleImplicitLod %66 %195 %198 None

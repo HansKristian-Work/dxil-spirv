@@ -47,20 +47,21 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 107
+; Bound: 106
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
 OpCapability StorageTexelBufferArrayDynamicIndexing
 OpCapability StorageTexelBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint Fragment %3 "main" %16 %18 %21
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint Fragment %3 "main" %8 %12 %16 %18 %21
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %6 "RootConstants"
@@ -143,7 +144,7 @@ OpBranch %105
 %33 = OpAccessChain %32 %16 %34
 %35 = OpLoad %13 %33
 %36 = OpConvertFToS %5 %35
-%38 = OpImageRead %37 %30 %36
+%38 = OpImageRead %37 %30 %36 NonPrivateTexel
 %39 = OpCompositeExtract %5 %38 0
 %40 = OpBitcast %13 %39
 %41 = OpAccessChain %24 %8 %26
@@ -163,10 +164,10 @@ OpBranch %105
 %55 = OpAccessChain %22 %12 %58
 %59 = OpLoad %9 %55
 %60 = OpIMul %5 %36 %61
-%62 = OpImageRead %37 %59 %60
+%62 = OpImageRead %37 %59 %60 NonPrivateTexel
 %63 = OpCompositeExtract %5 %62 0
 %65 = OpIAdd %5 %60 %66
-%64 = OpImageRead %37 %59 %65
+%64 = OpImageRead %37 %59 %65 NonPrivateTexel
 %67 = OpCompositeExtract %5 %64 0
 %69 = OpCompositeConstruct %68 %63 %67
 %71 = OpBitcast %70 %69
@@ -181,13 +182,13 @@ OpBranch %105
 %78 = OpAccessChain %22 %12 %81
 %82 = OpLoad %9 %78
 %83 = OpIMul %5 %36 %29
-%84 = OpImageRead %37 %82 %83
+%84 = OpImageRead %37 %82 %83 NonPrivateTexel
 %85 = OpCompositeExtract %5 %84 0
 %87 = OpIAdd %5 %83 %66
-%86 = OpImageRead %37 %82 %87
+%86 = OpImageRead %37 %82 %87 NonPrivateTexel
 %88 = OpCompositeExtract %5 %86 0
 %90 = OpIAdd %5 %83 %61
-%89 = OpImageRead %37 %82 %90
+%89 = OpImageRead %37 %82 %90 NonPrivateTexel
 %91 = OpCompositeExtract %5 %89 0
 %93 = OpCompositeConstruct %92 %85 %88 %91
 %94 = OpBitcast %19 %93

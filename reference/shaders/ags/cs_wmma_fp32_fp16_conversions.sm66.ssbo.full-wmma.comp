@@ -105,6 +105,8 @@ OpBranchConditional %36 %41 %42
 OpStore %39 %34 NonPrivatePointer
 OpBranch %42
 %42 = OpLabel
+OpBranch %43
+%43 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

@@ -16,11 +16,12 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability ShaderInvocationReorderEXT
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_EXT_shader_invocation_reorder"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint RayGenerationKHR %3 "main" %8 %11 %12 %15
 OpName %3 "main"
 OpName %8 "Buf"
@@ -57,10 +58,10 @@ OpDecorate %15 BuiltIn LaunchIdKHR
 %35 = OpTypeVector %20 3
 %40 = OpConstant %5 268435455
 %41 = OpConstant %5 65535
-%48 = OpTypePointer RayPayloadKHR %5
-%50 = OpConstant %5 50
-%55 = OpTypeVector %5 4
-%57 = OpConstant %5 4
+%45 = OpConstant %5 4
+%51 = OpTypePointer RayPayloadKHR %5
+%53 = OpConstant %5 50
+%58 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %30 = OpVariable %29 Function
@@ -74,13 +75,13 @@ OpBranch %60
 %27 = OpIEqual %26 %24 %18
 OpSelectionMerge %63 None
 OpBranchConditional %27 %62 %61
-%62 = OpLabel
-OpHitObjectRecordEmptyEXT %30
-OpBranch %63
 %61 = OpLabel
 %36 = OpCompositeConstruct %35 %21 %32 %33
 %37 = OpCompositeConstruct %35 %32 %21 %34
 OpHitObjectRecordMissEXT %30 %31 %25 %36 %21 %37 %22
+OpBranch %63
+%62 = OpLabel
+OpHitObjectRecordEmptyEXT %30
 OpBranch %63
 %63 = OpLabel
 %38 = OpHitObjectIsHitEXT %26 %30
@@ -92,26 +93,28 @@ OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %42
 OpSelectionMerge %65 None
 OpBranchConditional %44 %65 %64
 %64 = OpLabel
-%58 = OpCompositeConstruct %35 %21 %32 %33
-%59 = OpCompositeConstruct %35 %32 %21 %34
-OpHitObjectRecordMissEXT %30 %57 %25 %58 %21 %59 %22
+%46 = OpCompositeConstruct %35 %21 %32 %33
+%47 = OpCompositeConstruct %35 %32 %21 %34
+OpHitObjectRecordMissEXT %30 %45 %25 %46 %21 %47 %22
 OpBranch %65
 %65 = OpLabel
-%45 = OpHitObjectIsHitEXT %26 %30
-%46 = OpSelect %5 %45 %40 %41
-%47 = OpBitwiseAnd %5 %25 %46
-OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %47
-%49 = OpInBoundsAccessChain %48 %12 %18
-OpStore %49 %50
+OpBranch %66
+%66 = OpLabel
+%48 = OpHitObjectIsHitEXT %26 %30
+%49 = OpSelect %5 %48 %40 %41
+%50 = OpBitwiseAnd %5 %25 %49
+OpHitObjectSetShaderBindingTableRecordIndexEXT %30 %50
+%52 = OpInBoundsAccessChain %51 %12 %18
+OpStore %52 %53
 OpHitObjectExecuteShaderEXT %30 %12
-%51 = OpLoad %5 %49
-%52 = OpInBoundsAccessChain %48 %11 %18
-OpStore %52 %51
+%54 = OpLoad %5 %52
+%55 = OpInBoundsAccessChain %51 %11 %18
+OpStore %55 %54
 OpHitObjectExecuteShaderEXT %30 %11
-%53 = OpLoad %5 %52
-%54 = OpLoad %6 %8
-%56 = OpCompositeConstruct %55 %53 %53 %53 %53
-OpImageWrite %54 %19 %56
+%56 = OpLoad %5 %55
+%57 = OpLoad %6 %8
+%59 = OpCompositeConstruct %58 %56 %56 %56 %56
+OpImageWrite %57 %19 %59 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 

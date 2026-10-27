@@ -32,9 +32,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 58
+; Bound: 57
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -42,9 +42,10 @@ OpCapability Int16
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %16 %18
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %9 %12 %13 %16 %18
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
@@ -111,7 +112,7 @@ OpBranch %56
 %42 = OpFConvert %30 %41
 %43 = OpBitcast %5 %42
 %44 = OpCompositeConstruct %27 %43 %43 %43 %43
-OpImageWrite %20 %26 %44
+OpImageWrite %20 %26 %44 NonPrivateTexel
 %45 = OpImageFetch %27 %21 %26
 %46 = OpCompositeExtract %5 %45 0
 %47 = OpUConvert %24 %46
@@ -121,7 +122,7 @@ OpImageWrite %20 %26 %44
 %51 = OpIAdd %24 %50 %47
 %52 = OpUConvert %5 %51
 %53 = OpCompositeConstruct %27 %52 %52 %52 %52
-OpImageWrite %19 %26 %53
+OpImageWrite %19 %26 %53 NonPrivateTexel
 %55 = OpBitcast %14 %54
 OpStore %18 %55
 OpReturn

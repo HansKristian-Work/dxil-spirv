@@ -56,14 +56,15 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 90
+; Bound: 89
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability LongVectorEXT
 OpExtension "SPV_EXT_long_vector"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %12
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -153,41 +154,41 @@ OpBranch %88
 %22 = OpLoad %6 %20
 %28 = OpBitcast %27 %22
 %30 = OpInBoundsAccessChain %29 %28 %15 %16
-%31 = OpLoad %24 %30 Aligned 4
+%31 = OpLoad %24 %30 Aligned|NonPrivatePointer 4
 %32 = OpFAdd %24 %31 %34
 %35 = OpBitcast %27 %22
 %36 = OpInBoundsAccessChain %29 %35 %15 %16
-OpStore %36 %32 Aligned 4
+OpStore %36 %32 Aligned|NonPrivatePointer 4
 %37 = OpIMul %5 %16 %38
 %39 = OpAccessChain %19 %9 %21
 %40 = OpLoad %6 %39
 %45 = OpBitcast %44 %40
 %47 = OpInBoundsAccessChain %46 %45 %15 %16
-%48 = OpLoad %41 %47 Aligned 4
+%48 = OpLoad %41 %47 Aligned|NonPrivatePointer 4
 %49 = OpFAdd %41 %48 %51
 %52 = OpBitcast %44 %40
 %53 = OpInBoundsAccessChain %46 %52 %15 %16
-OpStore %53 %49 Aligned 4
+OpStore %53 %49 Aligned|NonPrivatePointer 4
 %54 = OpIMul %5 %16 %55
 %56 = OpAccessChain %19 %9 %21
 %57 = OpLoad %6 %56
 %62 = OpBitcast %61 %57
 %64 = OpInBoundsAccessChain %63 %62 %15 %16
-%65 = OpLoad %58 %64 Aligned 4
+%65 = OpLoad %58 %64 Aligned|NonPrivatePointer 4
 %66 = OpFAdd %58 %65 %68
 %69 = OpBitcast %61 %57
 %70 = OpInBoundsAccessChain %63 %69 %15 %16
-OpStore %70 %66 Aligned 4
+OpStore %70 %66 Aligned|NonPrivatePointer 4
 %71 = OpShiftLeftLogical %5 %16 %72
 %73 = OpAccessChain %19 %9 %21
 %74 = OpLoad %6 %73
 %79 = OpBitcast %78 %74
 %81 = OpInBoundsAccessChain %80 %79 %15 %16
-%82 = OpLoad %75 %81 Aligned 4
+%82 = OpLoad %75 %81 Aligned|NonPrivatePointer 4
 %83 = OpFAdd %75 %82 %85
 %86 = OpBitcast %78 %74
 %87 = OpInBoundsAccessChain %80 %86 %15 %16
-OpStore %87 %83 Aligned 4
+OpStore %87 %83 Aligned|NonPrivatePointer 4
 OpReturn
 OpFunctionEnd
 #endif

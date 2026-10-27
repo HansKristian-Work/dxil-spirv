@@ -1,95 +1,88 @@
 #version 460
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-uint _41;
-
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
 void main()
 {
+    uint _21;
+    uint _38;
+    bool _41;
+    uint _39 = 0u;
     uint _20;
-    uint _30;
     for (;;)
     {
-        _20 = 0u;
+        _20 = _39;
+        _38 = 0u;
+        uint _23;
+        bool _44;
         uint _22;
-        bool ladder_phi_7;
-        uint frontier_phi_6_pred_pred;
+        bool _25;
         for (;;)
         {
-            _22 = 0u;
-            bool ladder_phi_6_pred;
-            bool _25;
-            for (;;)
+            _22 = _38;
+            _25 = gl_GlobalInvocationID.z < 10u;
+            _44 = false;
+            if (_25)
             {
-                _25 = gl_GlobalInvocationID.z < 10u;
-                if (_25)
-                {
-                    ladder_phi_6_pred = true;
-                    frontier_phi_6_pred_pred = 70u;
-                    break;
-                }
-                else
-                {
-                    uint _23 = _22 + 1u;
-                    if (int(_23) < int(20u))
-                    {
-                        _22 = _23;
-                        continue;
-                    }
-                    else
-                    {
-                        ladder_phi_6_pred = false;
-                        frontier_phi_6_pred_pred = _41;
-                        break;
-                    }
-                }
-            }
-            if (ladder_phi_6_pred)
-            {
-                ladder_phi_7 = true;
+                _44 = true;
+                _41 = false;
                 break;
             }
-            uint _21 = _20 + 1u;
-            if (int(_21) < int(10u))
+            _23 = _22 + 1u;
+            if (int(_23) < int(20u))
             {
-                _20 = _21;
+                _38 = _23;
                 continue;
             }
             else
             {
-                ladder_phi_7 = false;
                 break;
             }
         }
-        if (ladder_phi_7)
+        if (_44)
         {
-            _30 = frontier_phi_6_pred_pred;
             break;
         }
-        _30 = 80u;
-        break;
+        _21 = _20 + 1u;
+        if (int(_21) < int(10u))
+        {
+            _39 = _21;
+            continue;
+        }
+        else
+        {
+            _41 = true;
+            break;
+        }
     }
-    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(_30));
+    uint _37;
+    if (_41)
+    {
+        _37 = 80u;
+    }
+    else
+    {
+        _37 = 70u;
+    }
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(_37));
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 59
+; Bound: 65
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %12
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
-OpName %36 "ladder_phi_6.pred"
-OpName %39 "ladder_phi_7"
-OpName %40 "frontier_phi_6.pred.pred"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %8 NonReadable
@@ -110,70 +103,90 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %26 = OpConstant %5 10
 %27 = OpConstant %5 1
 %29 = OpConstant %5 20
-%31 = OpConstant %5 70
-%32 = OpConstant %5 80
-%33 = OpTypeVector %5 4
-%37 = OpConstantFalse %24
-%38 = OpConstantTrue %24
+%32 = OpConstant %5 70
+%33 = OpConstant %5 80
+%34 = OpTypeVector %5 4
+%36 = OpTypePointer Function %5
+%40 = OpTypePointer Function %24
+%43 = OpConstantTrue %24
+%45 = OpConstantFalse %24
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%41 = OpUndef %5
-OpBranch %42
-%42 = OpLabel
+%37 = OpVariable %36 Function
+%38 = OpVariable %36 Function
+%39 = OpVariable %36 Function
+%41 = OpVariable %40 Function
+%44 = OpVariable %40 Function
+OpBranch %47
+%47 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %17 = OpAccessChain %13 %12 %18
 %19 = OpLoad %5 %17
-OpBranch %43
-%43 = OpLabel
-OpLoopMerge %54 %55 None
-OpBranch %44
-%44 = OpLabel
-%20 = OpPhi %5 %15 %43 %21 %51
-OpLoopMerge %52 %51 None
-OpBranch %45
-%45 = OpLabel
-%22 = OpPhi %5 %15 %44 %23 %47
-%25 = OpULessThan %24 %19 %26
-OpLoopMerge %49 %47 None
-OpBranch %56
-%56 = OpLabel
-OpSelectionMerge %57 None
-OpBranchConditional %25 %48 %46
+OpStore %39 %15
+OpBranch %48
 %48 = OpLabel
+%20 = OpLoad %5 %39
+OpStore %38 %15
+OpLoopMerge %58 %56 None
 OpBranch %49
-%46 = OpLabel
-OpBranch %47
-%57 = OpLabel
-OpUnreachable
-%47 = OpLabel
+%49 = OpLabel
+%22 = OpLoad %5 %38
+%25 = OpULessThan %24 %19 %26
+OpStore %44 %45
+OpLoopMerge %54 %52 None
+OpBranch %50
+%50 = OpLabel
+OpSelectionMerge %51 None
+OpBranchConditional %25 %53 %51
+%51 = OpLabel
 %23 = OpIAdd %5 %22 %27
 %28 = OpSLessThan %24 %23 %29
-OpBranchConditional %28 %45 %49
-%49 = OpLabel
-%36 = OpPhi %24 %37 %47 %38 %48
-%40 = OpPhi %5 %41 %47 %31 %48
-OpSelectionMerge %50 None
-OpBranchConditional %36 %52 %50
-%50 = OpLabel
-OpBranch %51
-%51 = OpLabel
-%21 = OpIAdd %5 %20 %27
-%35 = OpSLessThan %24 %21 %26
-OpBranchConditional %35 %44 %52
+OpSelectionMerge %63 None
+OpBranchConditional %28 %52 %54
+%63 = OpLabel
+OpUnreachable
 %52 = OpLabel
-%39 = OpPhi %24 %37 %51 %38 %49
-OpSelectionMerge %53 None
-OpBranchConditional %39 %54 %53
+OpStore %38 %23
+OpBranch %49
 %53 = OpLabel
+OpStore %44 %43
+OpStore %41 %45
 OpBranch %54
-%55 = OpLabel
-OpBranch %43
 %54 = OpLabel
-%30 = OpPhi %5 %32 %53 %40 %52
-%34 = OpCompositeConstruct %33 %30 %30 %30 %30
-OpImageWrite %9 %16 %34
+%46 = OpLoad %24 %44
+OpSelectionMerge %55 None
+OpBranchConditional %46 %58 %55
+%55 = OpLabel
+%21 = OpIAdd %5 %20 %27
+%30 = OpSLessThan %24 %21 %26
+OpSelectionMerge %64 None
+OpBranchConditional %30 %56 %57
+%64 = OpLabel
+OpUnreachable
+%56 = OpLabel
+OpStore %39 %21
+OpBranch %48
+%57 = OpLabel
+OpStore %41 %43
+OpBranch %58
+%58 = OpLabel
+%42 = OpLoad %24 %41
+OpSelectionMerge %61 None
+OpBranchConditional %42 %59 %60
+%59 = OpLabel
+OpStore %37 %33
+OpBranch %61
+%60 = OpLabel
+OpStore %37 %32
+OpBranch %61
+%61 = OpLabel
+OpBranch %62
+%62 = OpLabel
+%31 = OpLoad %5 %37
+%35 = OpCompositeConstruct %34 %31 %31 %31 %31
+OpImageWrite %9 %16 %35 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

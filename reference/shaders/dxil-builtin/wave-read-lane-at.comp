@@ -15,10 +15,10 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     uint _27 = (gl_SubgroupSize + 4294967295u) & gl_GlobalInvocationID.x;
-    uint _111 = ByteAddressMask(gl_GlobalInvocationID.x * 3u, 4u);
-    imageStore(_8, int(_111), uvec4((((((((subgroupBroadcast(gl_GlobalInvocationID.x, 11u) + subgroupShuffle(gl_GlobalInvocationID.x, _27)) + subgroupQuadSwapHorizontal(gl_GlobalInvocationID.x)) + subgroupQuadSwapVertical(gl_GlobalInvocationID.x)) + subgroupQuadSwapDiagonal(gl_GlobalInvocationID.x)) + subgroupShuffleXor(gl_GlobalInvocationID.x, 4u)) + subgroupShuffleXor(gl_GlobalInvocationID.x, 8u)) + subgroupShuffleXor(gl_GlobalInvocationID.x, 16u)) + subgroupShuffleXor(gl_GlobalInvocationID.x, 32u)));
-    imageStore(_8, int(_111 + 1u), uvec4((((((((subgroupBroadcast(gl_GlobalInvocationID.y, 11u) + subgroupShuffle(gl_GlobalInvocationID.y, _27)) + subgroupQuadSwapHorizontal(gl_GlobalInvocationID.y)) + subgroupQuadSwapVertical(gl_GlobalInvocationID.y)) + subgroupQuadSwapDiagonal(gl_GlobalInvocationID.y)) + subgroupShuffleXor(gl_GlobalInvocationID.y, 4u)) + subgroupShuffleXor(gl_GlobalInvocationID.y, 8u)) + subgroupShuffleXor(gl_GlobalInvocationID.y, 16u)) + subgroupShuffleXor(gl_GlobalInvocationID.y, 32u)));
-    imageStore(_8, int(_111 + 2u), uvec4((((((((subgroupBroadcast(gl_GlobalInvocationID.z, 11u) + subgroupShuffle(gl_GlobalInvocationID.z, _27)) + subgroupQuadSwapHorizontal(gl_GlobalInvocationID.z)) + subgroupQuadSwapVertical(gl_GlobalInvocationID.z)) + subgroupQuadSwapDiagonal(gl_GlobalInvocationID.z)) + subgroupShuffleXor(gl_GlobalInvocationID.z, 4u)) + subgroupShuffleXor(gl_GlobalInvocationID.z, 8u)) + subgroupShuffleXor(gl_GlobalInvocationID.z, 16u)) + subgroupShuffleXor(gl_GlobalInvocationID.z, 32u)));
+    uint _110 = ByteAddressMask(gl_GlobalInvocationID.x * 3u, 4u);
+    imageStore(_8, int(_110), uvec4((((((((subgroupBroadcast(gl_GlobalInvocationID.x, 11u) + subgroupShuffle(gl_GlobalInvocationID.x, _27)) + subgroupQuadSwapHorizontal(gl_GlobalInvocationID.x)) + subgroupQuadSwapVertical(gl_GlobalInvocationID.x)) + subgroupQuadSwapDiagonal(gl_GlobalInvocationID.x)) + subgroupShuffleXor(gl_GlobalInvocationID.x, 4u)) + subgroupShuffleXor(gl_GlobalInvocationID.x, 8u)) + subgroupShuffleXor(gl_GlobalInvocationID.x, 16u)) + subgroupShuffleXor(gl_GlobalInvocationID.x, 32u)));
+    imageStore(_8, int(_110 + 1u), uvec4((((((((subgroupBroadcast(gl_GlobalInvocationID.y, 11u) + subgroupShuffle(gl_GlobalInvocationID.y, _27)) + subgroupQuadSwapHorizontal(gl_GlobalInvocationID.y)) + subgroupQuadSwapVertical(gl_GlobalInvocationID.y)) + subgroupQuadSwapDiagonal(gl_GlobalInvocationID.y)) + subgroupShuffleXor(gl_GlobalInvocationID.y, 4u)) + subgroupShuffleXor(gl_GlobalInvocationID.y, 8u)) + subgroupShuffleXor(gl_GlobalInvocationID.y, 16u)) + subgroupShuffleXor(gl_GlobalInvocationID.y, 32u)));
+    imageStore(_8, int(_110 + 2u), uvec4((((((((subgroupBroadcast(gl_GlobalInvocationID.z, 11u) + subgroupShuffle(gl_GlobalInvocationID.z, _27)) + subgroupQuadSwapHorizontal(gl_GlobalInvocationID.z)) + subgroupQuadSwapVertical(gl_GlobalInvocationID.z)) + subgroupQuadSwapDiagonal(gl_GlobalInvocationID.z)) + subgroupShuffleXor(gl_GlobalInvocationID.z, 4u)) + subgroupShuffleXor(gl_GlobalInvocationID.z, 8u)) + subgroupShuffleXor(gl_GlobalInvocationID.z, 16u)) + subgroupShuffleXor(gl_GlobalInvocationID.z, 32u)));
 }
 
 
@@ -26,9 +26,9 @@ void main()
 // SPIR-V disassembly
 // HeuristicWaveSize(32)
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 120
+; Bound: 118
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -36,8 +36,9 @@ OpCapability GroupNonUniform
 OpCapability GroupNonUniformBallot
 OpCapability GroupNonUniformShuffle
 OpCapability GroupNonUniformQuad
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %12 %23 %39
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12 %23 %39
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpName %106 "ByteAddressMask"
@@ -73,11 +74,11 @@ OpDecorate %39 BuiltIn SubgroupLocalInvocationId
 %93 = OpConstant %5 32
 %101 = OpConstant %5 12
 %103 = OpTypeFunction %5 %5 %5
-%112 = OpTypeVector %5 4
+%111 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %118
-%118 = OpLabel
+OpBranch %117
+%117 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
@@ -155,15 +156,15 @@ OpBranch %118
 %99 = OpIAdd %5 %90 %96
 %100 = OpIMul %5 %16 %101
 %102 = OpIMul %5 %16 %29
-%111 = OpFunctionCall %5 %106 %102 %66
-%113 = OpCompositeConstruct %112 %97 %97 %97 %97
-OpImageWrite %9 %111 %113
-%114 = OpCompositeConstruct %112 %98 %98 %98 %98
-%115 = OpIAdd %5 %111 %18
-OpImageWrite %9 %115 %114
-%116 = OpCompositeConstruct %112 %99 %99 %99 %99
-%117 = OpIAdd %5 %111 %21
-OpImageWrite %9 %117 %116
+%110 = OpFunctionCall %5 %106 %102 %66
+%112 = OpCompositeConstruct %111 %97 %97 %97 %97
+OpImageWrite %9 %110 %112 NonPrivateTexel
+%113 = OpCompositeConstruct %111 %98 %98 %98 %98
+%114 = OpIAdd %5 %110 %18
+OpImageWrite %9 %114 %113 NonPrivateTexel
+%115 = OpCompositeConstruct %111 %99 %99 %99 %99
+%116 = OpIAdd %5 %110 %21
+OpImageWrite %9 %116 %115 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %106 = OpFunction %5 None %103

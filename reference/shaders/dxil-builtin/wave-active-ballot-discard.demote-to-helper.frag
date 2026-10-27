@@ -23,15 +23,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 38
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformBallot
+OpCapability VulkanMemoryModel
 OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %7 %10
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -68,6 +69,8 @@ OpBranchConditional %13 %35 %36
 OpDemoteToHelperInvocation
 OpBranch %36
 %36 = OpLabel
+OpBranch %37
+%37 = OpLabel
 %15 = OpULessThan %12 %11 %16
 %17 = OpIsHelperInvocationEXT %12
 %18 = OpLogicalNot %12 %17

@@ -52,14 +52,15 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 83
+; Bound: 82
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability LongVectorEXT
 OpExtension "SPV_EXT_long_vector"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint GLCompute %3 "main" %9 %14 %19 %22
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -151,34 +152,34 @@ OpBranch %81
 %30 = OpLoad %6 %28
 %36 = OpBitcast %35 %30
 %38 = OpInBoundsAccessChain %37 %36 %25 %26
-%39 = OpLoad %32 %38 Aligned 4
+%39 = OpLoad %32 %38 Aligned|NonPrivatePointer 4
 %40 = OpFAdd %32 %39 %42
 %43 = OpBitcast %35 %30
 %44 = OpInBoundsAccessChain %37 %43 %25 %26
-OpStore %44 %40 Aligned 4
+OpStore %44 %40 Aligned|NonPrivatePointer 4
 %45 = OpAccessChain %27 %9 %46
 %47 = OpLoad %6 %45
 %52 = OpBitcast %51 %47
 %54 = OpInBoundsAccessChain %53 %52 %25 %26
-%55 = OpLoad %48 %54 Aligned 4
+%55 = OpLoad %48 %54 Aligned|NonPrivatePointer 4
 %56 = OpFAdd %48 %55 %58
 %59 = OpBitcast %51 %47
 %60 = OpInBoundsAccessChain %53 %59 %25 %26
-OpStore %60 %56 Aligned 4
+OpStore %60 %56 Aligned|NonPrivatePointer 4
 %62 = OpAccessChain %61 %14 %25 %26
-%63 = OpLoad %10 %62
+%63 = OpLoad %10 %62 NonPrivatePointer
 %65 = OpBitcast %64 %63
 %66 = OpFAdd %64 %65 %68
 %69 = OpBitcast %10 %66
 %70 = OpAccessChain %61 %14 %25 %26
-OpStore %70 %69
+OpStore %70 %69 NonPrivatePointer
 %72 = OpAccessChain %71 %19 %25 %26
-%73 = OpLoad %15 %72
+%73 = OpLoad %15 %72 NonPrivatePointer
 %75 = OpBitcast %74 %73
 %76 = OpFAdd %74 %75 %78
 %79 = OpBitcast %15 %76
 %80 = OpAccessChain %71 %19 %25 %26
-OpStore %80 %79
+OpStore %80 %79 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

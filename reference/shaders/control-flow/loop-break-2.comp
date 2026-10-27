@@ -10,67 +10,79 @@ uint ByteAddressMask(uint index, uint stride)
 
 void main()
 {
-    uint _20;
+    uint _49;
     if (gl_GlobalInvocationID.z == 0u)
     {
-        _20 = 0u;
+        _49 = 0u;
     }
     else
     {
-        uint frontier_phi_6;
-        uint _25 = 0u;
-        uint _26 = 0u;
-        uint _41;
-        bool _42;
+        uint _21;
+        uint _23;
+        bool _53;
+        uint _57;
+        uint _50 = 0u;
+        uint _51 = 0u;
+        uint _20;
+        uint _22;
+        uint _37;
+        bool _38;
         for (;;)
         {
-            _41 = imageLoad(_8, int(ByteAddressMask(_26, 4u))).x;
-            _42 = _41 == 30u;
-            if (_42)
+            _22 = _51;
+            _20 = _50;
+            _37 = imageLoad(_8, int(ByteAddressMask(_22, 4u))).x;
+            _38 = _37 == 30u;
+            if (_38)
             {
-                frontier_phi_6 = imageLoad(_8, int(25u)).x + _25;
+                _53 = false;
                 break;
+            }
+            _21 = _37 + _20;
+            _23 = _22 + 1u;
+            _57 = _21;
+            if (_23 < gl_GlobalInvocationID.z)
+            {
+                _50 = _21;
+                _51 = _23;
+                continue;
             }
             else
             {
-                uint _22 = _41 + _25;
-                uint _27 = _26 + 1u;
-                if (_27 < gl_GlobalInvocationID.z)
-                {
-                    _25 = _22;
-                    _26 = _27;
-                    continue;
-                }
-                else
-                {
-                    frontier_phi_6 = _22;
-                    break;
-                }
+                _53 = true;
+                break;
             }
         }
-        _20 = frontier_phi_6;
+        if (_53)
+        {
+            _49 = _57;
+        }
+        else
+        {
+            _49 = imageLoad(_8, int(25u)).x + _20;
+        }
     }
-    imageStore(_8, int(0u), uvec4(_20));
+    imageStore(_8, int(0u), uvec4(_49));
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 61
+; Bound: 75
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %12
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
-OpName %32 "ByteAddressMask"
-OpName %30 "index"
-OpName %31 "stride"
-OpName %49 "frontier_phi_6"
+OpName %28 "ByteAddressMask"
+OpName %26 "index"
+OpName %27 "stride"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %12 BuiltIn GlobalInvocationId
@@ -87,67 +99,101 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %15 = OpConstant %5 2
 %17 = OpTypeBool
 %19 = OpConstant %5 0
-%23 = OpTypeVector %5 4
-%29 = OpTypeFunction %5 %5 %5
-%35 = OpConstant %5 4294967295
-%39 = OpConstant %5 4
-%43 = OpConstant %5 30
-%44 = OpConstant %5 25
-%47 = OpConstant %5 1
+%25 = OpTypeFunction %5 %5 %5
+%31 = OpConstant %5 4294967295
+%34 = OpConstant %5 4
+%35 = OpTypeVector %5 4
+%39 = OpConstant %5 30
+%40 = OpConstant %5 1
+%42 = OpConstant %5 25
+%48 = OpTypePointer Function %5
+%52 = OpTypePointer Function %17
+%55 = OpConstantFalse %17
+%56 = OpConstantTrue %17
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %50
-%50 = OpLabel
+%49 = OpVariable %48 Function
+%50 = OpVariable %48 Function
+%51 = OpVariable %48 Function
+%53 = OpVariable %52 Function
+%57 = OpVariable %48 Function
+OpBranch %59
+%59 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %18 = OpIEqual %17 %16 %19
-OpSelectionMerge %57 None
-OpBranchConditional %18 %57 %51
-%51 = OpLabel
-OpBranch %52
-%52 = OpLabel
-%25 = OpPhi %5 %19 %51 %22 %54
-%26 = OpPhi %5 %19 %51 %27 %54
-%28 = OpShiftLeftLogical %5 %26 %15
-%38 = OpFunctionCall %5 %32 %26 %39
-%40 = OpImageRead %23 %9 %38
-%41 = OpCompositeExtract %5 %40 0
-%42 = OpIEqual %17 %41 %43
-OpLoopMerge %56 %54 None
-OpBranch %58
-%58 = OpLabel
-OpSelectionMerge %59 None
-OpBranchConditional %42 %55 %53
-%55 = OpLabel
-%45 = OpImageRead %23 %9 %44
-%46 = OpCompositeExtract %5 %45 0
-%21 = OpIAdd %5 %46 %25
-OpBranch %56
-%53 = OpLabel
-OpBranch %54
-%59 = OpLabel
+OpSelectionMerge %72 None
+OpBranchConditional %18 %71 %60
+%60 = OpLabel
+OpStore %50 %19
+OpStore %51 %19
+OpBranch %61
+%61 = OpLabel
+%22 = OpLoad %5 %51
+%20 = OpLoad %5 %50
+%24 = OpShiftLeftLogical %5 %22 %15
+%33 = OpFunctionCall %5 %28 %22 %34
+%36 = OpImageRead %35 %9 %33 NonPrivateTexel
+%37 = OpCompositeExtract %5 %36 0
+%38 = OpIEqual %17 %37 %39
+OpLoopMerge %67 %64 None
+OpBranch %62
+%62 = OpLabel
+OpSelectionMerge %63 None
+OpBranchConditional %38 %66 %63
+%63 = OpLabel
+%21 = OpIAdd %5 %37 %20
+%23 = OpIAdd %5 %22 %40
+%41 = OpULessThan %17 %23 %16
+OpStore %57 %21
+OpSelectionMerge %74 None
+OpBranchConditional %41 %64 %65
+%74 = OpLabel
 OpUnreachable
-%54 = OpLabel
-%22 = OpIAdd %5 %41 %25
-%27 = OpIAdd %5 %26 %47
-%48 = OpULessThan %17 %27 %16
-OpBranchConditional %48 %52 %56
-%56 = OpLabel
-%49 = OpPhi %5 %22 %54 %21 %55
-OpBranch %57
-%57 = OpLabel
-%20 = OpPhi %5 %19 %50 %49 %56
-%24 = OpCompositeConstruct %23 %20 %20 %20 %20
-OpImageWrite %9 %19 %24
+%64 = OpLabel
+OpStore %50 %21
+OpStore %51 %23
+OpBranch %61
+%65 = OpLabel
+OpStore %53 %56
+OpBranch %67
+%66 = OpLabel
+OpStore %53 %55
+OpBranch %67
+%67 = OpLabel
+%54 = OpLoad %17 %53
+OpSelectionMerge %70 None
+OpBranchConditional %54 %68 %69
+%68 = OpLabel
+%58 = OpLoad %5 %57
+OpStore %49 %58
+OpBranch %70
+%69 = OpLabel
+%43 = OpImageRead %35 %9 %42 NonPrivateTexel
+%44 = OpCompositeExtract %5 %43 0
+%45 = OpIAdd %5 %44 %20
+OpStore %49 %45
+OpBranch %70
+%70 = OpLabel
+OpBranch %72
+%71 = OpLabel
+OpStore %49 %19
+OpBranch %72
+%72 = OpLabel
+OpBranch %73
+%73 = OpLabel
+%46 = OpLoad %5 %49
+%47 = OpCompositeConstruct %35 %46 %46 %46 %46
+OpImageWrite %9 %19 %47 NonPrivateTexel
 OpReturn
 OpFunctionEnd
-%32 = OpFunction %5 None %29
-%30 = OpFunctionParameter %5
-%31 = OpFunctionParameter %5
-%33 = OpLabel
-%34 = OpUDiv %5 %35 %31
-%36 = OpBitwiseAnd %5 %30 %34
-OpReturnValue %36
+%28 = OpFunction %5 None %25
+%26 = OpFunctionParameter %5
+%27 = OpFunctionParameter %5
+%29 = OpLabel
+%30 = OpUDiv %5 %31 %27
+%32 = OpBitwiseAnd %5 %26 %30
+OpReturnValue %32
 OpFunctionEnd
 #endif

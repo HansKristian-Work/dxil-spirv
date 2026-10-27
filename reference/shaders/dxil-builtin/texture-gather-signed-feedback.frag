@@ -27,28 +27,28 @@ layout(location = 0) out ivec4 SV_Target;
 
 void main()
 {
-    uint _166;
-    ivec4 _167;
-    _166 = sparseTextureGatherOffsetARB(isampler2D(_8, _20), vec2(TEXCOORD.x, TEXCOORD.y), ivec2(0, 1), _167);
-    SparseTexel _54 = SparseTexel(_166, _167);
+    uint _165;
+    ivec4 _166;
+    _165 = sparseTextureGatherOffsetARB(isampler2D(_8, _20), vec2(TEXCOORD.x, TEXCOORD.y), ivec2(0, 1), _166);
+    SparseTexel _54 = SparseTexel(_165, _166);
     uvec4 _60 = uvec4(_54._m1);
     _65 _66 = _65(_60.x, _60.y, _60.z, _60.w, _54._m0);
-    uint _168;
-    ivec4 _169;
-    _168 = sparseTextureGatherOffsetARB(isampler2DArray(_11, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), ivec2(0, 1), _169, int(1u));
-    SparseTexel _79 = SparseTexel(_168, _169);
+    uint _167;
+    ivec4 _168;
+    _167 = sparseTextureGatherOffsetARB(isampler2DArray(_11, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), ivec2(0, 1), _168, int(1u));
+    SparseTexel _79 = SparseTexel(_167, _168);
     uvec4 _82 = uvec4(_79._m1);
     _65 _87 = _65(_82.x, _82.y, _82.z, _82.w, _79._m0);
-    uint _170;
-    ivec4 _171;
-    _170 = sparseTextureGatherARB(isamplerCube(_14, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), _171, int(2u));
-    SparseTexel _98 = SparseTexel(_170, _171);
+    uint _169;
+    ivec4 _170;
+    _169 = sparseTextureGatherARB(isamplerCube(_14, _20), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), _170, int(2u));
+    SparseTexel _98 = SparseTexel(_169, _170);
     uvec4 _101 = uvec4(_98._m1);
     _65 _106 = _65(_101.x, _101.y, _101.z, _101.w, _98._m0);
-    uint _172;
-    ivec4 _173;
-    _172 = sparseTextureGatherARB(isamplerCubeArray(_17, _20), vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w), _173, int(3u));
-    SparseTexel _117 = SparseTexel(_172, _173);
+    uint _171;
+    ivec4 _172;
+    _171 = sparseTextureGatherARB(isamplerCubeArray(_17, _20), vec4(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z, TEXCOORD.w), _172, int(3u));
+    SparseTexel _117 = SparseTexel(_171, _172);
     uvec4 _120 = uvec4(_117._m1);
     _65 _125 = _65(_120.x, _120.y, _120.z, _120.w, _117._m0);
     uint _132 = uint(sparseTexelsResidentARB(int(_125._m4)));
@@ -63,15 +63,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 166
+; Bound: 165
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency
 OpCapability SampledCubeArray
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %24 %27
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %24 %27
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %24 "TEXCOORD"

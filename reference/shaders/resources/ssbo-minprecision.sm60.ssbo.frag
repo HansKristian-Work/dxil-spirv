@@ -29,14 +29,15 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 44
+; Bound: 43
 ; Schema: 0
 OpCapability Shader
 OpCapability Int16
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %16 %18
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %9 %13 %16 %18
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %7 "SSBO"
@@ -105,7 +106,7 @@ OpBranch %42
 %37 = OpFAdd %27 %36 %29
 %38 = OpBitcast %5 %37
 %39 = OpAccessChain %23 %13 %25 %22
-OpStore %39 %38
+OpStore %39 %38 NonPrivatePointer
 %41 = OpBitcast %14 %40
 OpStore %18 %41
 OpReturn

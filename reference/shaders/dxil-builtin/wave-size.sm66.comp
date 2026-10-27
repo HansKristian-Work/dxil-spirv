@@ -13,14 +13,15 @@ void main()
 // SPIR-V disassembly
 // WaveSize(128)
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 24
+; Bound: 23
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %11
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %11
 OpExecutionMode %3 LocalSize 128 1 1
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
@@ -50,7 +51,7 @@ OpBranch %22
 %16 = OpLoad %6 %8
 %19 = OpBitcast %5 %18
 %21 = OpCompositeConstruct %20 %19 %19 %19 %19
-OpImageWrite %16 %15 %21
+OpImageWrite %16 %15 %21 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

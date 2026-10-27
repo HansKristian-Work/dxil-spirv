@@ -47,16 +47,17 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 87
+; Bound: 86
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint Fragment %3 "main" %13
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint Fragment %3 "main" %9 %13
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %7 "RootConstants"

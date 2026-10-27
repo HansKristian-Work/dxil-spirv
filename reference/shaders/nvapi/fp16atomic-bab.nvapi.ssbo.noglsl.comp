@@ -1,20 +1,21 @@
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 65
+; Bound: 64
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
 OpCapability UntypedPointersKHR
+OpCapability VulkanMemoryModel
 OpCapability AtomicFloat16VectorNV
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_untyped_pointers"
 OpExtension "SPV_NV_shader_atomic_fp16_vector"
 %15 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %9 %13
 OpExecutionMode %3 LocalSize 32 1 1
 OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
@@ -68,7 +69,7 @@ OpMemberDecorate %55 0 Offset 0
 %34 = OpConstant %5 4
 %35 = OpTypeUntypedPointerKHR StorageBuffer
 %37 = OpConstant %5 0
-%40 = OpConstant %5 1
+%40 = OpConstant %5 5
 %42 = OpConstant %5 100
 %43 = OpTypePointer StorageBuffer %5
 %45 = OpTypeRuntimeArray %29
@@ -93,21 +94,21 @@ OpBranch %63
 %39 = OpAtomicFAddEXT %29 %36 %40 %37 %38
 %41 = OpBitcast %5 %39
 %44 = OpAccessChain %43 %13 %37 %42
-OpStore %44 %41
+OpStore %44 %41 NonPrivatePointer
 %47 = OpUDiv %5 %30 %34
 %48 = OpUntypedAccessChainKHR %35 %46 %9 %37 %47
 %49 = OpBitcast %29 %27
 %50 = OpAtomicFMinEXT %29 %48 %40 %37 %49
 %51 = OpBitcast %5 %50
 %53 = OpAccessChain %43 %13 %37 %52
-OpStore %53 %51
+OpStore %53 %51 NonPrivatePointer
 %56 = OpUDiv %5 %30 %34
 %57 = OpUntypedAccessChainKHR %35 %55 %9 %37 %56
 %58 = OpBitcast %29 %27
 %59 = OpAtomicFMaxEXT %29 %57 %40 %37 %58
 %60 = OpBitcast %5 %59
 %62 = OpAccessChain %43 %13 %37 %61
-OpStore %62 %60
+OpStore %62 %60 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 

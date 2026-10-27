@@ -38,7 +38,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 44
 ; Schema: 0
@@ -46,11 +46,12 @@ OpCapability Shader
 OpCapability StorageImageArrayDynamicIndexing
 OpCapability RuntimeDescriptorArray
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint Fragment %3 "main" %14 %17 %19
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint Fragment %3 "main" %8 %12 %14 %17 %19
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %6 "RootConstants"
@@ -111,10 +112,11 @@ OpDecorate %40 NonUniform
 %33 = OpConstant %5 3
 %37 = OpTypeVector %5 2
 %39 = OpTypePointer Image %5
+%42 = OpConstant %5 5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %42
-%42 = OpLabel
+OpBranch %43
+%43 = OpLabel
 %20 = OpAccessChain %13 %17 %21
 %22 = OpLoad %5 %20
 %23 = OpAccessChain %13 %17 %24
@@ -128,7 +130,7 @@ OpBranch %42
 %36 = OpLoad %9 %30
 %38 = OpCompositeConstruct %37 %22 %25
 %40 = OpImageTexelPointer %39 %30 %38 %21
-%41 = OpAtomicIAdd %5 %40 %24 %21 %33
+%41 = OpAtomicIAdd %5 %40 %42 %21 %33
 OpStore %19 %41
 OpReturn
 OpFunctionEnd

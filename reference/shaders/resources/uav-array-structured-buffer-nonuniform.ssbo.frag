@@ -22,17 +22,18 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 41
+; Bound: 40
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageBufferArrayDynamicIndexing
 OpCapability RuntimeDescriptorArray
 OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %13 %17
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %11 %13 %17
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "SSBO"
@@ -80,7 +81,7 @@ OpBranch %39
 %19 = OpIAdd %5 %18 %20
 %22 = OpAccessChain %21 %11 %19
 %24 = OpAccessChain %23 %22 %20 %18
-%25 = OpLoad %6 %24
+%25 = OpLoad %6 %24 NonPrivatePointer
 %26 = OpBitcast %15 %25
 %27 = OpCompositeExtract %14 %26 0
 %28 = OpCompositeExtract %14 %26 1

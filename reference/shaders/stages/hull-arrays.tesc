@@ -37,13 +37,14 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 87
+; Bound: 86
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint TessellationControl %3 "main" %12 %16 %20 %23 %24 %47
 OpExecutionMode %3 Triangles
 OpExecutionMode %3 SpacingEqual
@@ -97,26 +98,29 @@ OpDecorate %47 BuiltIn InvocationId
 %46 = OpTypePointer Input %6
 %47 = OpVariable %46 Input
 %76 = OpTypeBool
+%78 = OpConstant %6 4104
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %79
-%79 = OpLabel
+OpBranch %80
+%80 = OpLabel
 %74 = OpFunctionCall %1 %25
 %75 = OpLoad %6 %47
 %77 = OpIEqual %76 %75 %31
-OpControlBarrier %13 %17 %31
-OpSelectionMerge %81 None
-OpBranchConditional %77 %80 %81
-%80 = OpLabel
-%78 = OpFunctionCall %1 %27
-OpBranch %81
+OpControlBarrier %13 %13 %78
+OpSelectionMerge %82 None
+OpBranchConditional %77 %81 %82
 %81 = OpLabel
+%79 = OpFunctionCall %1 %27
+OpBranch %82
+%82 = OpLabel
+OpBranch %83
+%83 = OpLabel
 OpReturn
 OpFunctionEnd
 %25 = OpFunction %1 None %2
 %26 = OpLabel
-OpBranch %83
-%83 = OpLabel
+OpBranch %84
+%84 = OpLabel
 %30 = OpAccessChain %29 %12 %31 %31
 %32 = OpLoad %5 %30
 %33 = OpAccessChain %29 %12 %34 %34

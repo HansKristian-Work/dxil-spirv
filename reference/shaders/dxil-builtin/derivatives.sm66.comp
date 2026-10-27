@@ -14,16 +14,17 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 58
+; Bound: 57
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
 OpCapability ComputeDerivativeGroupQuadsKHR
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_compute_shader_derivatives"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %18
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %11 %14 %18
 OpExecutionMode %3 DerivativeGroupQuadsKHR
 OpExecutionMode %3 LocalSize 4 4 4
 OpName %3 "main"
@@ -92,7 +93,7 @@ OpBranch %56
 %53 = OpLoad %9 %11
 %54 = OpCompositeConstruct %16 %22 %25 %28
 %55 = OpCompositeConstruct %45 %49 %50 %51 %52
-OpImageWrite %53 %54 %55
+OpImageWrite %53 %54 %55 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

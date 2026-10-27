@@ -55,14 +55,15 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 105
+; Bound: 104
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
+OpCapability VulkanMemoryModel
 %32 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %16 %22 %27
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -157,7 +158,7 @@ OpDecorate %27 NonReadable
 OpBranch %103
 %103 = OpLabel
 %30 = OpAccessChain %29 %10 %28 %28
-%31 = OpLoad %6 %30
+%31 = OpLoad %6 %30 NonPrivatePointer
 %33 = OpExtInst %6 %32 FindSMsb %31
 %36 = OpIEqual %35 %33 %38
 %39 = OpISub %6 %41 %33
@@ -167,9 +168,9 @@ OpBranch %103
 %48 = OpSelect %6 %47 %51 %43
 %52 = OpVectorShuffle %23 %48 %53 0 1
 %55 = OpAccessChain %54 %27 %28 %28
-OpStore %55 %52
+OpStore %55 %52 NonPrivatePointer
 %57 = OpAccessChain %56 %16 %28 %28
-%58 = OpLoad %12 %57
+%58 = OpLoad %12 %57 NonPrivatePointer
 %59 = OpSConvert %23 %58
 %60 = OpExtInst %23 %32 FindSMsb %59
 %62 = OpIEqual %61 %60 %63
@@ -179,9 +180,9 @@ OpStore %55 %52
 %69 = OpIEqual %61 %67 %63
 %70 = OpSelect %23 %69 %63 %68
 %72 = OpAccessChain %54 %27 %28 %71
-OpStore %72 %70
+OpStore %72 %70 NonPrivatePointer
 %74 = OpAccessChain %73 %22 %28 %28
-%75 = OpLoad %18 %74
+%75 = OpLoad %18 %74 NonPrivatePointer
 %76 = OpBitcast %6 %75
 %77 = OpVectorShuffle %23 %76 %76 1 3
 %80 = OpShiftRightArithmetic %79 %77 %82
@@ -199,7 +200,7 @@ OpStore %72 %70
 %99 = OpIEqual %61 %97 %63
 %100 = OpSelect %23 %99 %63 %98
 %102 = OpAccessChain %54 %27 %28 %101
-OpStore %102 %100
+OpStore %102 %100 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

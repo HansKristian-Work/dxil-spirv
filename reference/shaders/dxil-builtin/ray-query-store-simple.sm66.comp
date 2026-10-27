@@ -29,18 +29,19 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 68
+; Bound: 67
 ; Schema: 0
 OpCapability Shader
 OpCapability RayQueryKHR
 OpCapability RayTraversalPrimitiveCullingKHR
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_query"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %22
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %16 %19 %22
 OpExecutionMode %3 LocalSize 8 8 1
 OpName %3 "main"
 OpName %14 ""

@@ -1,19 +1,20 @@
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 123
+; Bound: 122
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability DotProductInput4x8BitPacked
 OpCapability DotProduct
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_integer_dot_product"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %34
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %9 %13 %19 %23 %27 %31 %34
 OpExecutionMode %3 LocalSize 64 1 1
 OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
@@ -120,7 +121,7 @@ OpBranch %121
 %36 = OpAccessChain %35 %34 %37
 %38 = OpLoad %5 %36
 %40 = OpAccessChain %39 %27 %37 %38
-%41 = OpLoad %5 %40
+%41 = OpLoad %5 %40 NonPrivatePointer
 %42 = OpAccessChain %39 %13 %37 %38
 %43 = OpLoad %5 %42
 %44 = OpAccessChain %39 %9 %37 %38
@@ -128,9 +129,9 @@ OpBranch %121
 %46 = OpUDot %5 %45 %43 PackedVectorFormat4x8Bit
 %47 = OpIAdd %5 %41 %46
 %48 = OpAccessChain %39 %27 %37 %38
-OpStore %48 %47
+OpStore %48 %47 NonPrivatePointer
 %49 = OpAccessChain %39 %27 %37 %38
-%50 = OpLoad %5 %49
+%50 = OpLoad %5 %49 NonPrivatePointer
 %51 = OpAccessChain %39 %13 %37 %38
 %52 = OpLoad %5 %51
 %53 = OpAccessChain %39 %9 %37 %38
@@ -138,9 +139,9 @@ OpStore %48 %47
 %55 = OpSDot %5 %54 %52 PackedVectorFormat4x8Bit
 %56 = OpIAdd %5 %50 %55
 %57 = OpAccessChain %39 %27 %37 %38
-OpStore %57 %56
+OpStore %57 %56 NonPrivatePointer
 %58 = OpAccessChain %39 %31 %37 %38
-%59 = OpLoad %5 %58
+%59 = OpLoad %5 %58 NonPrivatePointer
 %61 = OpBitcast %60 %59
 %63 = OpAccessChain %62 %23 %37 %38
 %64 = OpLoad %15 %63
@@ -166,9 +167,9 @@ OpStore %57 %56
 %89 = OpFAdd %60 %61 %88
 %90 = OpBitcast %5 %89
 %91 = OpAccessChain %39 %31 %37 %38
-OpStore %91 %90
+OpStore %91 %90 NonPrivatePointer
 %92 = OpAccessChain %39 %31 %37 %38
-%93 = OpLoad %5 %92
+%93 = OpLoad %5 %92 NonPrivatePointer
 %94 = OpBitcast %60 %93
 %95 = OpAccessChain %62 %23 %37 %38
 %96 = OpLoad %15 %95
@@ -194,7 +195,7 @@ OpStore %91 %90
 %118 = OpFAdd %60 %94 %117
 %119 = OpBitcast %5 %118
 %120 = OpAccessChain %39 %31 %37 %38
-OpStore %120 %119
+OpStore %120 %119 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 

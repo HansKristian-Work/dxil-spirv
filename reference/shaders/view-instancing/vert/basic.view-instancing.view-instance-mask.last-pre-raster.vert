@@ -30,16 +30,17 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 51
+; Bound: 49
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
 OpCapability ShaderViewportIndexLayerEXT
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_shader_viewport_index_layer"
-OpMemoryModel Logical GLSL450
-OpEntryPoint Vertex %3 "main" %8 %34
+OpMemoryModel Logical Vulkan
+OpEntryPoint Vertex %3 "main" %8 %12 %15 %34
 OpName %3 "main"
 OpName %8 "SV_Position"
 OpName %10 "ViewInstanceMaskUBO"

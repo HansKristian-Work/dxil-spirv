@@ -1,49 +1,40 @@
 #version 460
+#extension GL_EXT_demote_to_helper_invocation : require
 
 layout(location = 0) in vec2 TEXCOORD;
-bool discard_state;
 
-void discard_cond(bool _30)
+void demote_cond(bool _27)
 {
-    if (_30)
+    if (_27)
     {
-        discard_state = true;
-    }
-}
-
-void discard_exit()
-{
-    if (discard_state)
-    {
-        discard;
+        demote;
     }
 }
 
 void main()
 {
-    discard_state = false;
-    discard_cond((TEXCOORD.x + (-10.0)) < 0.0);
-    discard_cond((TEXCOORD.y + (-20.0)) < 0.0);
-    discard_exit();
+    demote_cond((TEXCOORD.x + (-10.0)) < 0.0);
+    demote_cond((TEXCOORD.y + (-20.0)) < 0.0);
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 47
+; Bound: 34
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpCapability DemoteToHelperInvocation
+OpExtension "SPV_EXT_demote_to_helper_invocation"
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "TEXCOORD"
-OpName %23 "discard_state"
-OpName %31 "discard_cond"
-OpName %39 "discard_exit"
+OpName %28 "demote_cond"
 OpDecorate %8 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -58,49 +49,33 @@ OpDecorate %8 Location 0
 %18 = OpConstant %5 -10
 %19 = OpTypeBool
 %21 = OpConstant %5 0
-%22 = OpTypePointer Private %19
-%23 = OpVariable %22 Private
-%24 = OpConstantFalse %19
-%26 = OpConstant %5 -20
-%29 = OpTypeFunction %1 %19
-%35 = OpConstantTrue %19
+%23 = OpConstant %5 -20
+%26 = OpTypeFunction %1 %19
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpStore %23 %24
-OpBranch %28
-%28 = OpLabel
+OpBranch %25
+%25 = OpLabel
 %10 = OpAccessChain %9 %8 %12
 %13 = OpLoad %5 %10
 %14 = OpAccessChain %9 %8 %15
 %16 = OpLoad %5 %14
 %17 = OpFAdd %5 %13 %18
 %20 = OpFOrdLessThan %19 %17 %21
-%37 = OpFunctionCall %1 %31 %20
-%25 = OpFAdd %5 %16 %26
-%27 = OpFOrdLessThan %19 %25 %21
-%38 = OpFunctionCall %1 %31 %27
-%45 = OpFunctionCall %1 %39
+%32 = OpFunctionCall %1 %28 %20
+%22 = OpFAdd %5 %16 %23
+%24 = OpFOrdLessThan %19 %22 %21
+%33 = OpFunctionCall %1 %28 %24
 OpReturn
 OpFunctionEnd
-%31 = OpFunction %1 None %29
-%30 = OpFunctionParameter %19
-%32 = OpLabel
-OpSelectionMerge %34 None
-OpBranchConditional %30 %33 %34
-%33 = OpLabel
-OpStore %23 %35
-OpBranch %34
-%34 = OpLabel
-OpReturn
-OpFunctionEnd
-%39 = OpFunction %1 None %2
-%40 = OpLabel
-%43 = OpLoad %19 %23
-OpSelectionMerge %42 None
-OpBranchConditional %43 %41 %42
-%41 = OpLabel
-OpKill
-%42 = OpLabel
+%28 = OpFunction %1 None %26
+%27 = OpFunctionParameter %19
+%29 = OpLabel
+OpSelectionMerge %31 None
+OpBranchConditional %27 %30 %31
+%30 = OpLabel
+OpDemoteToHelperInvocation
+OpBranch %31
+%31 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

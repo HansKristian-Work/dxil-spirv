@@ -64,19 +64,20 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 79
+; Bound: 78
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
 OpCapability Int16
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint Fragment %3 "main" %16 %18
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint Fragment %3 "main" %9 %13 %16 %18
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
@@ -184,7 +185,7 @@ OpBranch %77
 %55 = OpBitcast %54 %25
 %56 = OpInBoundsAccessChain %38 %55 %40 %32
 %58 = OpFConvert %33 %51
-OpStore %56 %58 Aligned 4
+OpStore %56 %58 Aligned|NonPrivatePointer 4
 %60 = OpAccessChain %59 %13 %40 %32
 %61 = OpLoad %5 %60
 %62 = OpUConvert %30 %61
@@ -195,7 +196,7 @@ OpStore %56 %58 Aligned 4
 %70 = OpBitcast %69 %22
 %72 = OpInBoundsAccessChain %71 %70 %40 %32
 %74 = OpUConvert %5 %66
-OpStore %72 %74 Aligned 4
+OpStore %72 %74 Aligned|NonPrivatePointer 4
 %76 = OpBitcast %14 %75
 OpStore %18 %76
 OpReturn

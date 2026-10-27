@@ -22,14 +22,15 @@ void main()
 // SPIR-V disassembly
 // MultiviewCompatible
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 75
+; Bound: 74
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
 OpCapability MultiView
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint TessellationEvaluation %3 "main" %11 %13 %16 %17 %19 %23 %30
 OpExecutionMode %3 Triangles
 OpName %3 "main"

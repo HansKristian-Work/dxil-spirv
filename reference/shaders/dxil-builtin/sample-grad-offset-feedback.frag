@@ -28,37 +28,37 @@ layout(location = 0) out vec2 SV_Target;
 
 void main()
 {
-    uint _175;
-    vec4 _176;
-    _175 = sparseTextureGradOffsetARB(sampler1D(_8, _23), TEXCOORD.x, TEXCOORD.z, TEXCOORD.w, 1, _176);
-    SparseTexel _55 = SparseTexel(_175, _176);
+    uint _174;
+    vec4 _175;
+    _174 = sparseTextureGradOffsetARB(sampler1D(_8, _23), TEXCOORD.x, TEXCOORD.z, TEXCOORD.w, 1, _175);
+    SparseTexel _55 = SparseTexel(_174, _175);
     vec4 _57 = _55._m1;
     _62 _63 = _62(_57.x, _57.y, _57.z, _57.w, _55._m0);
-    uint _177;
-    vec4 _178;
-    _177 = sparseTextureGradOffsetARB(sampler1DArray(_11, _23), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.z, TEXCOORD.y, 2, _178);
-    SparseTexel _75 = SparseTexel(_177, _178);
+    uint _176;
+    vec4 _177;
+    _176 = sparseTextureGradOffsetARB(sampler1DArray(_11, _23), vec2(TEXCOORD.x, TEXCOORD.y), TEXCOORD.z, TEXCOORD.y, 2, _177);
+    SparseTexel _75 = SparseTexel(_176, _177);
     vec4 _78 = _75._m1;
     _62 _83 = _62(_78.x, _78.y, _78.z, _78.w, _75._m0);
-    uint _179;
-    vec4 _180;
-    _179 = sparseTextureGradOffsetARB(sampler2D(_14, _23), vec2(TEXCOORD.x, TEXCOORD.y), vec2(TEXCOORD.z), vec2(TEXCOORD.w), ivec2(-3, -4), _180);
-    SparseTexel _92 = SparseTexel(_179, _180);
+    uint _178;
+    vec4 _179;
+    _178 = sparseTextureGradOffsetARB(sampler2D(_14, _23), vec2(TEXCOORD.x, TEXCOORD.y), vec2(TEXCOORD.z), vec2(TEXCOORD.w), ivec2(-3, -4), _179);
+    SparseTexel _92 = SparseTexel(_178, _179);
     vec4 _99 = _92._m1;
     _62 _104 = _62(_99.x, _99.y, _99.z, _99.w, _92._m0);
     float _109 = float(sparseTexelsResidentARB(int(_104._m4)));
-    uint _181;
-    vec4 _182;
-    _181 = sparseTextureGradOffsetARB(sampler2DArray(_17, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), vec2(TEXCOORD.z), vec2(TEXCOORD.w), ivec2(4, -5), _182);
-    SparseTexel _114 = SparseTexel(_181, _182);
+    uint _180;
+    vec4 _181;
+    _180 = sparseTextureGradOffsetARB(sampler2DArray(_17, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), vec2(TEXCOORD.z), vec2(TEXCOORD.w), ivec2(4, -5), _181);
+    SparseTexel _114 = SparseTexel(_180, _181);
     vec4 _121 = _114._m1;
     _62 _126 = _62(_121.x, _121.y, _121.z, _121.w, _114._m0);
     float _127 = _126._m0;
     float _130 = float(sparseTexelsResidentARB(int(_126._m4)));
-    uint _183;
-    vec4 _184;
-    _183 = sparseTextureGradOffsetARB(sampler3D(_20, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), vec3(TEXCOORD.z), vec3(TEXCOORD.w), ivec3(5, 6, 7), _184);
-    SparseTexel _136 = SparseTexel(_183, _184);
+    uint _182;
+    vec4 _183;
+    _182 = sparseTextureGradOffsetARB(sampler3D(_20, _23), vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), vec3(TEXCOORD.z), vec3(TEXCOORD.w), ivec3(5, 6, 7), _183);
+    SparseTexel _136 = SparseTexel(_182, _183);
     vec4 _143 = _136._m1;
     _62 _148 = _62(_143.x, _143.y, _143.z, _143.w, _136._m0);
     float _153 = float(sparseTexelsResidentARB(int(_148._m4)));
@@ -71,15 +71,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 175
+; Bound: 174
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency
 OpCapability Sampled1D
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %26 %29
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26 %29
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %26 "TEXCOORD"

@@ -55,9 +55,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.4
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 107
+; Bound: 106
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -70,12 +70,13 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
 %35 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
 OpEntryPoint MissKHR %3 "main" %13 %19
 OpName %3 "main"
 OpName %11 "SBTBlock"

@@ -67,7 +67,7 @@ uint RobustPhysicalAtomicCounter(uvec2 _50, uint _51, uint _52)
 void main()
 {
     uint _30 = gl_GlobalInvocationID.x + 2u;
-    uint _69 = RobustPhysicalAtomicCounter(DescriptorHeapRaw.ptr.descriptors[registers._m4 + _30]._m0[3u], 1u, 0u);
+    uint _68 = RobustPhysicalAtomicCounter(DescriptorHeapRaw.ptr.descriptors[registers._m4 + _30]._m0[3u], 1u, 0u);
     uint _71 = (gl_GlobalInvocationID.x ^ 1u) + 2u;
     uint _84 = RobustPhysicalAtomicCounter(DescriptorHeapRaw.ptr.descriptors[registers._m4 + _71]._m0[3u], 1u, 0u);
 }
@@ -76,20 +76,21 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 87
+; Bound: 86
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
 OpCapability StorageTexelBufferArrayDynamicIndexing
 OpCapability StorageTexelBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint GLCompute %3 "main" %25
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12 %22 %25
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpName %6 "RootConstants"
@@ -173,7 +174,8 @@ OpDecorate %76 NonUniform
 %58 = OpTypeVector %57 2
 %59 = OpConstantNull %13
 %62 = OpTypePointer PhysicalStorageBuffer %5
-%65 = OpConstant %5 1
+%65 = OpConstant %5 5
+%69 = OpConstant %5 1
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 OpBranch %85
@@ -193,8 +195,8 @@ OpBranch %85
 %46 = OpIAdd %5 %45 %30
 %43 = OpInBoundsAccessChain %42 %41 %28 %46 %28 %47
 %48 = OpLoad %13 %43 Aligned 8
-%69 = OpFunctionCall %5 %53 %48 %65 %28
-%70 = OpBitwiseXor %5 %29 %65
+%68 = OpFunctionCall %5 %53 %48 %69 %28
+%70 = OpBitwiseXor %5 %29 %69
 %71 = OpIAdd %5 %70 %31
 %73 = OpAccessChain %34 %8 %14
 %74 = OpLoad %5 %73
@@ -208,7 +210,7 @@ OpBranch %85
 %82 = OpIAdd %5 %81 %71
 %79 = OpInBoundsAccessChain %42 %78 %28 %82 %28 %47
 %83 = OpLoad %13 %79 Aligned 8
-%84 = OpFunctionCall %5 %53 %83 %65 %28
+%84 = OpFunctionCall %5 %53 %83 %69 %28
 OpReturn
 OpFunctionEnd
 %53 = OpFunction %5 None %49

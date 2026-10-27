@@ -21,14 +21,15 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 72
+; Bound: 71
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
 OpCapability ClipDistance
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint TessellationEvaluation %3 "main" %11 %14 %17 %21 %22 %24 %27
 OpExecutionMode %3 Triangles
 OpName %3 "main"

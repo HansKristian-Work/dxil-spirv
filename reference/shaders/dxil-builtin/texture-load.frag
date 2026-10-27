@@ -39,15 +39,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 150
+; Bound: 149
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
 OpCapability Image1D
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %45 %48
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26 %29 %32 %35 %38 %41 %45 %48
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %45 "TEXCOORD"
@@ -202,31 +203,31 @@ OpBranch %148
 %113 = OpCompositeExtract %5 %110 1
 %114 = OpFAdd %5 %108 %112
 %115 = OpFAdd %5 %109 %113
-%116 = OpImageRead %74 %53 %64 None
+%116 = OpImageRead %74 %53 %64 NonPrivateTexel
 %117 = OpCompositeExtract %5 %116 0
 %118 = OpCompositeExtract %5 %116 1
 %119 = OpFAdd %5 %114 %117
 %120 = OpFAdd %5 %115 %118
 %122 = OpCompositeConstruct %79 %64 %67
-%121 = OpImageRead %74 %52 %122 None
+%121 = OpImageRead %74 %52 %122 NonPrivateTexel
 %123 = OpCompositeExtract %5 %121 0
 %124 = OpCompositeExtract %5 %121 1
 %125 = OpFAdd %5 %119 %123
 %126 = OpFAdd %5 %120 %124
 %128 = OpCompositeConstruct %79 %64 %67
-%127 = OpImageRead %74 %51 %128 None
+%127 = OpImageRead %74 %51 %128 NonPrivateTexel
 %129 = OpCompositeExtract %5 %127 0
 %130 = OpCompositeExtract %5 %127 1
 %131 = OpFAdd %5 %125 %129
 %132 = OpFAdd %5 %126 %130
 %134 = OpCompositeConstruct %92 %64 %67 %70
-%133 = OpImageRead %74 %50 %134 None
+%133 = OpImageRead %74 %50 %134 NonPrivateTexel
 %135 = OpCompositeExtract %5 %133 0
 %136 = OpCompositeExtract %5 %133 1
 %137 = OpFAdd %5 %131 %135
 %138 = OpFAdd %5 %132 %136
 %140 = OpCompositeConstruct %92 %64 %67 %70
-%139 = OpImageRead %74 %49 %140 None
+%139 = OpImageRead %74 %49 %140 NonPrivateTexel
 %141 = OpCompositeExtract %5 %139 0
 %142 = OpCompositeExtract %5 %139 1
 %143 = OpFAdd %5 %137 %141

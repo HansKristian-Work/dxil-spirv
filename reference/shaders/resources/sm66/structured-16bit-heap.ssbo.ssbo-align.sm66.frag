@@ -104,9 +104,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 266
+; Bound: 265
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -115,10 +115,11 @@ OpCapability GroupNonUniformBallot
 OpCapability StorageBuffer16BitAccess
 OpCapability DenormPreserve
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %56 %60 %64
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %10 %15 %22 %27 %32 %38 %44 %49 %54 %56 %60 %64
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
 OpName %3 "main"
@@ -370,7 +371,7 @@ OpBranch %264
 %162 = OpULessThan %135 %77 %160
 %163 = OpSelect %5 %162 %161 %138
 %164 = OpAccessChain %139 %101 %67 %163
-%165 = OpLoad %5 %164
+%165 = OpLoad %5 %164 NonPrivatePointer
 %166 = OpBitcast %61 %165
 %167 = OpFAdd %61 %158 %166
 %168 = OpCompositeExtract %5 %113 0
@@ -379,7 +380,7 @@ OpBranch %264
 %171 = OpULessThan %135 %81 %169
 %172 = OpSelect %5 %171 %170 %148
 %173 = OpAccessChain %149 %109 %67 %172
-%174 = OpLoad %17 %173
+%174 = OpLoad %17 %173 NonPrivatePointer
 %175 = OpBitcast %153 %174
 %176 = OpCompositeExtract %152 %175 0
 %177 = OpCompositeExtract %152 %175 1
@@ -431,7 +432,7 @@ OpBranch %264
 %230 = OpULessThan %135 %71 %228
 %231 = OpSelect %5 %230 %229 %188
 %232 = OpAccessChain %189 %126 %67 %231
-%233 = OpLoad %33 %232
+%233 = OpLoad %33 %232 NonPrivatePointer
 %234 = OpBitcast %192 %233
 %235 = OpCompositeExtract %152 %234 0
 %236 = OpCompositeExtract %152 %234 1
@@ -457,7 +458,7 @@ OpBranch %264
 %256 = OpBitcast %5 %246
 %257 = OpCompositeConstruct %39 %253 %254 %255 %256
 %258 = OpAccessChain %214 %128 %67 %252
-OpStore %258 %257
+OpStore %258 %257 NonPrivatePointer
 %260 = OpAccessChain %259 %64 %67
 OpStore %260 %243
 %261 = OpAccessChain %259 %64 %71

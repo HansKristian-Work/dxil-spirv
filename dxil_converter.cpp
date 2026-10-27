@@ -8237,7 +8237,7 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 	return { entry, spirv_module.get_entry_function(), false, false };
 }
 
-void Converter::Impl::build_function_bb_visit_order_inner_analysis(
+void Converter::Impl::build_function_bb_visit_order(
 	Vector<llvm::BasicBlock *> &bbs, UnorderedSet<llvm::BasicBlock *> &visited,
 	llvm::BasicBlock *bb)
 {
@@ -8255,7 +8255,7 @@ void Converter::Impl::build_function_bb_visit_order_inner_analysis(
 			if (can_optimize_conditional_branch_to_static(*this, inst->getCondition(), cond_value))
 			{
 				auto *succ = inst->getSuccessor(cond_value ? 0 : 1);
-				build_function_bb_visit_order_inner_analysis(bbs, visited, succ);
+				build_function_bb_visit_order(bbs, visited, succ);
 				bbs.push_back(bb);
 				return;
 			}
@@ -8265,13 +8265,45 @@ void Converter::Impl::build_function_bb_visit_order_inner_analysis(
 	for (auto itr = llvm::succ_begin(bb); itr != llvm::succ_end(bb); ++itr)
 	{
 		auto *succ = *itr;
-		build_function_bb_visit_order_inner_analysis(bbs, visited, succ);
+		build_function_bb_visit_order(bbs, visited, succ);
 	}
 
 	bbs.push_back(bb);
 }
 
-Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_analysis(llvm::Function *func)
+Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_and_register(
+		llvm::Function *func, CFGNodePool &pool)
+{
+	unsigned visit_index = 0;
+	auto bbs = build_function_bb_visit_order(func);
+	for (auto *bb : bbs)
+		build_function_bb_visit_register(bb, pool, to_string(visit_index++));
+
+	for (auto *bb : bbs)
+	{
+		auto *term = bb->getTerminator();
+		if (auto *inst = llvm::dyn_cast<llvm::BranchInst>(term))
+		{
+			if (inst->isConditional())
+			{
+				bool cond_value;
+				if (can_optimize_conditional_branch_to_static(*this, inst->getCondition(), cond_value))
+				{
+					auto *succ = inst->getSuccessor(cond_value ? 0 : 1);
+					bb_map[bb]->node->add_branch(bb_map[succ]->node);
+					continue;
+				}
+			}
+		}
+
+		for (auto itr = llvm::succ_begin(bb); itr != llvm::succ_end(bb); ++itr)
+			bb_map[bb]->node->add_branch(bb_map[*itr]->node);
+	}
+
+	return bbs;
+}
+
+Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order(llvm::Function *func)
 {
 	if (!func)
 		return {};
@@ -8279,7 +8311,7 @@ Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_analys
 	UnorderedSet<llvm::BasicBlock *> visited;
 	Vector<llvm::BasicBlock *> visit_order;
 	auto *entry = &func->getEntryBlock();
-	build_function_bb_visit_order_inner_analysis(visit_order, visited, entry);
+	build_function_bb_visit_order(visit_order, visited, entry);
 	// Get natural traverse order, input is post-traversal order.
 	std::reverse(visit_order.begin(), visit_order.end());
 	return visit_order;
@@ -8293,69 +8325,6 @@ void Converter::Impl::build_function_bb_visit_register(llvm::BasicBlock *bb, CFG
 	bb_map[bb]->node = entry_node;
 	entry_node->name = std::move(tag);
 	metas.push_back(std::move(entry_meta));
-}
-
-// This only exists so that we can avoid nuking all existing Fossilize caches with completely new shaders.
-// This traversal order is not a perfect reverse post-traversal,
-// so we cannot use it for analysis with alloca() -> CBV forwarding checks.
-// Once we are ready to consider doing large scale SPIR-V changes that invalidate all caches anyway,
-// we might as well get rid of this path in the same update and use the common analysis path.
-Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_legacy(
-    llvm::Function *func, CFGNodePool &pool)
-{
-	if (!func)
-		return {};
-
-	auto *entry = &func->getEntryBlock();
-	build_function_bb_visit_register(entry, pool, ".entry");
-
-	Vector<llvm::BasicBlock *> to_process;
-	Vector<llvm::BasicBlock *> processing;
-	to_process.push_back(entry);
-	Vector<llvm::BasicBlock *> visit_order;
-
-	unsigned fake_label_id = 0;
-
-	const auto queue_visit_succ = [&](llvm::BasicBlock *block, llvm::BasicBlock *succ) {
-		if (!bb_map.count(succ))
-		{
-			to_process.push_back(succ);
-			build_function_bb_visit_register(succ, pool, dxil_spv::to_string(++fake_label_id));
-		}
-
-		bb_map[block]->node->add_branch(bb_map[succ]->node);
-	};
-
-	// Traverse the CFG and register all blocks in the pool.
-	while (!to_process.empty())
-	{
-		std::swap(to_process, processing);
-		for (auto *block : processing)
-		{
-			visit_order.push_back(block);
-
-			auto *term = block->getTerminator();
-			if (auto *inst = llvm::dyn_cast<llvm::BranchInst>(term))
-			{
-				if (inst->isConditional())
-				{
-					bool cond_value;
-					if (can_optimize_conditional_branch_to_static(*this, inst->getCondition(), cond_value))
-					{
-						auto *succ = inst->getSuccessor(cond_value ? 0 : 1);
-						queue_visit_succ(block, succ);
-						continue;
-					}
-				}
-			}
-
-			for (auto itr = llvm::succ_begin(block); itr != llvm::succ_end(block); ++itr)
-				queue_visit_succ(block, *itr);
-		}
-		processing.clear();
-	}
-
-	return visit_order;
 }
 
 void Converter::Impl::emit_write_instrumentation_invocation_id(CFGNode *node)
@@ -8439,14 +8408,7 @@ bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
 		for (uint32_t i = 0, n = leaf_func->getFunctionType()->getNumParams(); i < n; i++, ++arg_iter)
 			rewrite_value(&*arg_iter, spv_func->getParamId(i));
 
-		auto visit_order = build_function_bb_visit_order_analysis(leaf_func);
-
-		for (auto *bb : visit_order)
-			build_function_bb_visit_register(bb, pool, "");
-
-		for (auto *bb : visit_order)
-			for (auto itr = llvm::succ_begin(bb); itr != llvm::succ_end(bb); ++itr)
-				bb_map[bb]->node->add_branch(bb_map[*itr]->node);
+		auto visit_order = build_function_bb_visit_order_and_register(leaf_func, pool);
 
 		builder().setBuildPoint(spv_entry);
 		auto *entry = convert_function(visit_order, false);
@@ -8858,7 +8820,7 @@ void Converter::Impl::analyze_instructions_post_execution_modes()
 	}
 }
 
-bool Converter::Impl::analyze_instructions(llvm::Function *func)
+bool Converter::Impl::analyze_instructions(llvm::Function *func, const Vector<llvm::BasicBlock *> &visit_order)
 {
 	// Need to analyze this in two stages.
 	// In the first stage, we need to analyze:
@@ -8872,8 +8834,6 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func)
 
 	if (func && options.propagate_precise && !options.force_precise)
 		propagate_precise(func);
-
-	auto visit_order = build_function_bb_visit_order_analysis(func);
 
 	for (auto *bb : visit_order)
 	{
@@ -9003,6 +8963,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	execution_model = get_execution_model(module, entry_point_meta);
 	execution_model_lib_target = get_execution_model_lib_target(module, entry_point_meta);
 
+	if (!module_is_dxbc_spirv(module) && !options.legacy_structurizer)
+	{
+		// New code, just finally go with SPIR-V 1.6 + VkMM by default.
+		spirv_module.set_override_spirv_version(0x10600);
+		execution_mode_meta.memory_model = spv::MemoryModelVulkan;
+	}
+
 	if (execution_model_lib_target && execution_model == spv::ExecutionModelGLCompute)
 	{
 		// Might as well go with SPIR-V 1.6. Then we get subgroup size control semantics for "free".
@@ -9054,7 +9021,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	spirv_module.set_instruction_instrumentation_info(options.instruction_instrumentation);
 
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
-	auto visit_order = build_function_bb_visit_order_legacy(func, pool);
+	auto visit_order = build_function_bb_visit_order_and_register(func, pool);
 	Vector<llvm::BasicBlock *> patch_visit_order;
 
 	// dxilconv emits somewhat broken code for min16float for resource access.
@@ -9070,6 +9037,11 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		spirv_module.enable_min16float_min_spec_simulation(true);
 	}
 
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (GlobalConfiguration::get().experimental_unstructured_control_flow)
+		builder().addExtension("SPV_FROG_unstructured_control_flow");
+#endif
+
 	if (module_is_dxbc_spirv(module))
 	{
 		backend.skip_non_uniform_promotion = true;
@@ -9082,7 +9054,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 	if (!emit_resources_global_mapping())
 		return result;
-	if (!analyze_instructions(func))
+	if (!analyze_instructions(func, visit_order))
 		return result;
 
 	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", need_bda,
@@ -9092,7 +9064,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 
 	if (execution_mode_meta.patch_constant_function)
-		patch_visit_order = build_function_bb_visit_order_legacy(execution_mode_meta.patch_constant_function, pool);
+		patch_visit_order = build_function_bb_visit_order_and_register(execution_mode_meta.patch_constant_function, pool);
 
 	Vector<llvm::Function *> callees;
 	if (func)
@@ -9102,8 +9074,14 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 	// Analyze all leaf functions.
 	for (auto *leaf_func : callees)
-		if (leaf_func != func && !analyze_instructions(leaf_func))
-			return result;
+	{
+		if (leaf_func != func)
+		{
+			auto visit = build_function_bb_visit_order(leaf_func);
+			if (!analyze_instructions(leaf_func, visit))
+				return result;
+		}
+	}
 
 	if (!emit_resources())
 		return result;
@@ -9910,6 +9888,13 @@ void Converter::Impl::set_option(const OptionBase &cap)
 		break;
 	}
 
+	case Option::LegacyStructurizer:
+	{
+		auto &c = static_cast<const OptionLegacyStructurizer &>(cap);
+		options.legacy_structurizer = c.enabled;
+		break;
+	}
+
 	default:
 		break;
 	}
@@ -10010,6 +9995,10 @@ GlobalConfiguration::GlobalConfiguration()
 			wmma_conv_hack = true;
 		else if (strcmp(env, "debug_simulate_min16float_min_spec") == 0)
 			simulate_min16float_min_spec = true;
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+		else if (strcmp(env, "experimental_unstructured_cfg") == 0)
+			experimental_unstructured_control_flow = true;
+#endif
 	}
 }
 } // namespace dxil_spv

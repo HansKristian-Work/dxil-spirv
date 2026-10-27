@@ -29,7 +29,7 @@ layout(push_constant, std430) uniform RootConstants
     uint _m7;
 } registers;
 
-layout(set = 4, binding = 0, r32ui) uniform coherent uimageBuffer _12[];
+layout(set = 4, binding = 0, r32ui) uniform uimageBuffer _12[];
 
 void main()
 {
@@ -37,15 +37,15 @@ void main()
     uint _36 = _35 * 4u;
     SPIRV_Cross_beginInvocationInterlock();
     uvec4 _38 = imageLoad(_12[registers._m4], int(_36));
-    uvec4 _40 = imageLoad(_12[registers._m4], int(_36 + 1u));
-    uvec4 _43 = imageLoad(_12[registers._m4], int(_36 + 2u));
-    uvec4 _47 = imageLoad(_12[registers._m4], int(_36 + 3u));
-    vec4 _52 = uintBitsToFloat(uvec4(_38.x, _40.x, _43.x, _47.x));
-    uint _65 = _35 * 4u;
-    imageStore(_12[registers._m4], int(_65), uvec4(floatBitsToUint(_52.x + 1.0)));
-    imageStore(_12[registers._m4], int(_65 + 1u), uvec4(floatBitsToUint(_52.y + 2.0)));
-    imageStore(_12[registers._m4], int(_65 + 2u), uvec4(floatBitsToUint(_52.z + 3.0)));
-    imageStore(_12[registers._m4], int(_65 + 3u), uvec4(floatBitsToUint(_52.w + 4.0)));
+    uvec4 _41 = imageLoad(_12[registers._m4], int(_36 + 1u));
+    uvec4 _44 = imageLoad(_12[registers._m4], int(_36 + 2u));
+    uvec4 _48 = imageLoad(_12[registers._m4], int(_36 + 3u));
+    vec4 _53 = uintBitsToFloat(uvec4(_38.x, _41.x, _44.x, _48.x));
+    uint _66 = _35 * 4u;
+    imageStore(_12[registers._m4], int(_66), uvec4(floatBitsToUint(_53.x + 1.0)));
+    imageStore(_12[registers._m4], int(_66 + 1u), uvec4(floatBitsToUint(_53.y + 2.0)));
+    imageStore(_12[registers._m4], int(_66 + 2u), uvec4(floatBitsToUint(_53.z + 3.0)));
+    imageStore(_12[registers._m4], int(_66 + 3u), uvec4(floatBitsToUint(_53.w + 4.0)));
     SPIRV_Cross_endInvocationInterlock();
 }
 
@@ -53,20 +53,21 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 79
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpCapability FragmentShaderPixelInterlockEXT
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_EXT_fragment_shader_interlock"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint Fragment %3 "main" %16
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint Fragment %3 "main" %8 %12 %16
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
 OpExecutionMode %3 PixelInterlockOrderedEXT
@@ -85,7 +86,6 @@ OpMemberDecorate %6 6 Offset 24
 OpMemberDecorate %6 7 Offset 28
 OpDecorate %12 DescriptorSet 4
 OpDecorate %12 Binding 0
-OpDecorate %12 Coherent
 OpDecorate %16 BuiltIn FragCoord
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -109,16 +109,17 @@ OpDecorate %16 BuiltIn FragCoord
 %29 = OpConstant %5 1
 %34 = OpConstant %5 1000
 %37 = OpTypeVector %5 4
-%45 = OpConstant %5 2
-%49 = OpConstant %5 3
-%58 = OpConstant %13 1
-%60 = OpConstant %13 2
-%62 = OpConstant %13 3
-%64 = OpConstant %13 4
+%39 = OpConstant %5 5
+%46 = OpConstant %5 2
+%50 = OpConstant %5 3
+%59 = OpConstant %13 1
+%61 = OpConstant %13 2
+%63 = OpConstant %13 3
+%65 = OpConstant %13 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %77
-%77 = OpLabel
+OpBranch %78
+%78 = OpLabel
 %20 = OpAccessChain %19 %8 %21
 %22 = OpLoad %5 %20
 %18 = OpAccessChain %17 %12 %22
@@ -133,43 +134,43 @@ OpBranch %77
 %35 = OpIAdd %5 %33 %31
 %36 = OpIMul %5 %35 %21
 OpBeginInvocationInterlockEXT
-%38 = OpImageRead %37 %23 %36
-%39 = OpCompositeExtract %5 %38 0
-%41 = OpIAdd %5 %36 %29
-%40 = OpImageRead %37 %23 %41
-%42 = OpCompositeExtract %5 %40 0
-%44 = OpIAdd %5 %36 %45
-%43 = OpImageRead %37 %23 %44
-%46 = OpCompositeExtract %5 %43 0
-%48 = OpIAdd %5 %36 %49
-%47 = OpImageRead %37 %23 %48
-%50 = OpCompositeExtract %5 %47 0
-%51 = OpCompositeConstruct %37 %39 %42 %46 %50
-%52 = OpBitcast %14 %51
-%53 = OpCompositeExtract %13 %52 0
-%54 = OpCompositeExtract %13 %52 1
-%55 = OpCompositeExtract %13 %52 2
-%56 = OpCompositeExtract %13 %52 3
-%57 = OpFAdd %13 %53 %58
-%59 = OpFAdd %13 %54 %60
-%61 = OpFAdd %13 %55 %62
-%63 = OpFAdd %13 %56 %64
-%65 = OpIMul %5 %35 %21
-%66 = OpBitcast %5 %57
-%67 = OpBitcast %5 %59
-%68 = OpBitcast %5 %61
-%69 = OpBitcast %5 %63
-%70 = OpCompositeConstruct %37 %66 %66 %66 %66
-OpImageWrite %23 %65 %70
+%38 = OpImageRead %37 %23 %36 MakeTexelVisible|NonPrivateTexel %39
+%40 = OpCompositeExtract %5 %38 0
+%42 = OpIAdd %5 %36 %29
+%41 = OpImageRead %37 %23 %42 MakeTexelVisible|NonPrivateTexel %39
+%43 = OpCompositeExtract %5 %41 0
+%45 = OpIAdd %5 %36 %46
+%44 = OpImageRead %37 %23 %45 MakeTexelVisible|NonPrivateTexel %39
+%47 = OpCompositeExtract %5 %44 0
+%49 = OpIAdd %5 %36 %50
+%48 = OpImageRead %37 %23 %49 MakeTexelVisible|NonPrivateTexel %39
+%51 = OpCompositeExtract %5 %48 0
+%52 = OpCompositeConstruct %37 %40 %43 %47 %51
+%53 = OpBitcast %14 %52
+%54 = OpCompositeExtract %13 %53 0
+%55 = OpCompositeExtract %13 %53 1
+%56 = OpCompositeExtract %13 %53 2
+%57 = OpCompositeExtract %13 %53 3
+%58 = OpFAdd %13 %54 %59
+%60 = OpFAdd %13 %55 %61
+%62 = OpFAdd %13 %56 %63
+%64 = OpFAdd %13 %57 %65
+%66 = OpIMul %5 %35 %21
+%67 = OpBitcast %5 %58
+%68 = OpBitcast %5 %60
+%69 = OpBitcast %5 %62
+%70 = OpBitcast %5 %64
 %71 = OpCompositeConstruct %37 %67 %67 %67 %67
-%72 = OpIAdd %5 %65 %29
-OpImageWrite %23 %72 %71
-%73 = OpCompositeConstruct %37 %68 %68 %68 %68
-%74 = OpIAdd %5 %65 %45
-OpImageWrite %23 %74 %73
-%75 = OpCompositeConstruct %37 %69 %69 %69 %69
-%76 = OpIAdd %5 %65 %49
-OpImageWrite %23 %76 %75
+OpImageWrite %23 %66 %71 MakeTexelAvailable|NonPrivateTexel %39
+%72 = OpCompositeConstruct %37 %68 %68 %68 %68
+%73 = OpIAdd %5 %66 %29
+OpImageWrite %23 %73 %72 MakeTexelAvailable|NonPrivateTexel %39
+%74 = OpCompositeConstruct %37 %69 %69 %69 %69
+%75 = OpIAdd %5 %66 %46
+OpImageWrite %23 %75 %74 MakeTexelAvailable|NonPrivateTexel %39
+%76 = OpCompositeConstruct %37 %70 %70 %70 %70
+%77 = OpIAdd %5 %66 %50
+OpImageWrite %23 %77 %76 MakeTexelAvailable|NonPrivateTexel %39
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

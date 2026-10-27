@@ -19,10 +19,10 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     uint _22 = gl_GlobalInvocationID.x << 4u;
-    uvec4 _41 = uvec4(ivec4(vec4(_10._m0[ByteAddressMask(gl_GlobalInvocationID.x, 16u)])));
-    _14._m0[ByteAddressMask(gl_GlobalInvocationID.x, 16u)] = _41;
-    _14._m0[ByteAddressMask(gl_GlobalInvocationID.x + 16u, 16u)] = floatBitsToUint(vec4(ivec4(_41)));
-    _14._m0[ByteAddressMask(gl_GlobalInvocationID.x + 32u, 16u)] = _41;
+    uvec4 _40 = uvec4(ivec4(vec4(_10._m0[ByteAddressMask(gl_GlobalInvocationID.x, 16u)])));
+    _14._m0[ByteAddressMask(gl_GlobalInvocationID.x, 16u)] = _40;
+    _14._m0[ByteAddressMask(gl_GlobalInvocationID.x + 16u, 16u)] = floatBitsToUint(vec4(ivec4(_40)));
+    _14._m0[ByteAddressMask(gl_GlobalInvocationID.x + 32u, 16u)] = _40;
 }
 
 
@@ -31,10 +31,11 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 59
+; Bound: 57
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %14 %17
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
@@ -77,40 +78,40 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %23 = OpConstant %5 4
 %24 = OpTypeFunction %5 %5 %5
 %30 = OpConstant %5 4294967295
-%34 = OpConstant %5 16
-%35 = OpTypePointer StorageBuffer %6
-%38 = OpTypeFloat 32
-%39 = OpTypeVector %38 4
-%46 = OpConstant %5 256
-%52 = OpConstant %5 512
-%54 = OpConstant %5 32
+%33 = OpConstant %5 16
+%34 = OpTypePointer StorageBuffer %6
+%37 = OpTypeFloat 32
+%38 = OpTypeVector %37 4
+%45 = OpConstant %5 256
+%51 = OpConstant %5 512
+%53 = OpConstant %5 32
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %57
-%57 = OpLabel
+OpBranch %56
+%56 = OpLabel
 %19 = OpAccessChain %18 %17 %20
 %21 = OpLoad %5 %19
 %22 = OpShiftLeftLogical %5 %21 %23
-%33 = OpFunctionCall %5 %27 %21 %34
-%36 = OpAccessChain %35 %10 %20 %33
-%37 = OpLoad %6 %36
-%40 = OpConvertUToF %39 %37
-%41 = OpConvertFToS %6 %40
-%42 = OpFunctionCall %5 %27 %21 %34
-%43 = OpAccessChain %35 %14 %20 %42
-OpStore %43 %41
-%44 = OpConvertSToF %39 %41
-%45 = OpIAdd %5 %22 %46
-%47 = OpIAdd %5 %21 %34
-%48 = OpFunctionCall %5 %27 %47 %34
-%49 = OpBitcast %6 %44
-%50 = OpAccessChain %35 %14 %20 %48
-OpStore %50 %49
-%51 = OpIAdd %5 %22 %52
-%53 = OpIAdd %5 %21 %54
-%55 = OpFunctionCall %5 %27 %53 %34
-%56 = OpAccessChain %35 %14 %20 %55
-OpStore %56 %41
+%32 = OpFunctionCall %5 %27 %21 %33
+%35 = OpAccessChain %34 %10 %20 %32
+%36 = OpLoad %6 %35
+%39 = OpConvertUToF %38 %36
+%40 = OpConvertFToS %6 %39
+%41 = OpFunctionCall %5 %27 %21 %33
+%42 = OpAccessChain %34 %14 %20 %41
+OpStore %42 %40 NonPrivatePointer
+%43 = OpConvertSToF %38 %40
+%44 = OpIAdd %5 %22 %45
+%46 = OpIAdd %5 %21 %33
+%47 = OpFunctionCall %5 %27 %46 %33
+%48 = OpBitcast %6 %43
+%49 = OpAccessChain %34 %14 %20 %47
+OpStore %49 %48 NonPrivatePointer
+%50 = OpIAdd %5 %22 %51
+%52 = OpIAdd %5 %21 %53
+%54 = OpFunctionCall %5 %27 %52 %33
+%55 = OpAccessChain %34 %14 %20 %54
+OpStore %55 %40 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %27 = OpFunction %5 None %24

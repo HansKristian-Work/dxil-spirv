@@ -37,17 +37,17 @@ layout(set = 0, binding = 0, std430) buffer _38_41
     uvec4 _m0[];
 } _41[];
 
-layout(set = 0, binding = 0, std430) coherent buffer _43_46
+layout(set = 0, binding = 0, std430) buffer _43_46
 {
     uint _m0[];
 } _46[];
 
-layout(set = 0, binding = 0, std430) coherent buffer _48_51
+layout(set = 0, binding = 0, std430) buffer _48_51
 {
     uvec2 _m0[];
 } _51[];
 
-layout(set = 0, binding = 0, std430) coherent buffer _53_56
+layout(set = 0, binding = 0, std430) buffer _53_56
 {
     uvec4 _m0[];
 } _56[];
@@ -124,16 +124,17 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 391
+; Bound: 390
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformBallot
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %58 %62 %66
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %10 %15 %20 %26 %31 %36 %41 %46 %51 %56 %58 %62 %66
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "SSBO_Offsets"
@@ -197,19 +198,16 @@ OpMemberDecorate %43 0 Offset 0
 OpDecorate %43 Block
 OpDecorate %46 DescriptorSet 0
 OpDecorate %46 Binding 0
-OpDecorate %46 Coherent
 OpDecorate %47 ArrayStride 8
 OpMemberDecorate %48 0 Offset 0
 OpDecorate %48 Block
 OpDecorate %51 DescriptorSet 0
 OpDecorate %51 Binding 0
-OpDecorate %51 Coherent
 OpDecorate %52 ArrayStride 16
 OpMemberDecorate %53 0 Offset 0
 OpDecorate %53 Block
 OpDecorate %56 DescriptorSet 0
 OpDecorate %56 Binding 0
-OpDecorate %56 Coherent
 OpDecorate %58 Flat
 OpDecorate %58 Location 0
 OpDecorate %62 Flat
@@ -466,7 +464,7 @@ OpBranch %389
 %244 = OpULessThan %180 %71 %242
 %245 = OpSelect %5 %244 %243 %183
 %246 = OpAccessChain %184 %118 %69 %245
-%247 = OpLoad %5 %246
+%247 = OpLoad %5 %246 NonPrivatePointer
 %248 = OpBitcast %63 %247
 %249 = OpFAdd %63 %238 %248
 %250 = OpCompositeExtract %5 %130 0
@@ -475,7 +473,7 @@ OpBranch %389
 %253 = OpULessThan %180 %75 %251
 %254 = OpSelect %5 %253 %252 %193
 %255 = OpAccessChain %88 %126 %69 %254
-%256 = OpLoad %6 %255
+%256 = OpLoad %6 %255 NonPrivatePointer
 %257 = OpBitcast %196 %256
 %258 = OpCompositeExtract %63 %257 0
 %259 = OpCompositeExtract %63 %257 1
@@ -488,13 +486,13 @@ OpBranch %389
 %266 = OpULessThan %180 %262 %264
 %267 = OpSelect %5 %266 %265 %183
 %268 = OpAccessChain %184 %133 %69 %267
-%269 = OpLoad %5 %268
+%269 = OpLoad %5 %268 NonPrivatePointer
 %271 = OpIAdd %5 %267 %73
 %270 = OpAccessChain %184 %133 %69 %271
-%272 = OpLoad %5 %270
+%272 = OpLoad %5 %270 NonPrivatePointer
 %274 = OpIAdd %5 %267 %77
 %273 = OpAccessChain %184 %133 %69 %274
-%275 = OpLoad %5 %273
+%275 = OpLoad %5 %273 NonPrivatePointer
 %276 = OpCompositeConstruct %215 %269 %272 %275
 %277 = OpBitcast %217 %276
 %278 = OpCompositeExtract %63 %277 0
@@ -509,7 +507,7 @@ OpBranch %389
 %287 = OpULessThan %180 %83 %285
 %288 = OpSelect %5 %287 %286 %229
 %289 = OpAccessChain %230 %141 %69 %288
-%290 = OpLoad %21 %289
+%290 = OpLoad %21 %289 NonPrivatePointer
 %291 = OpBitcast %64 %290
 %292 = OpCompositeExtract %63 %291 0
 %293 = OpCompositeExtract %63 %291 1
@@ -525,7 +523,7 @@ OpBranch %389
 %303 = OpULessThan %180 %71 %301
 %304 = OpSelect %5 %303 %302 %183
 %305 = OpAccessChain %184 %149 %69 %304
-%306 = OpLoad %5 %305
+%306 = OpLoad %5 %305 MakePointerVisible|NonPrivatePointer %124
 %307 = OpBitcast %63 %306
 %308 = OpFAdd %63 %296 %307
 %309 = OpCompositeExtract %5 %161 0
@@ -534,7 +532,7 @@ OpBranch %389
 %312 = OpULessThan %180 %75 %310
 %313 = OpSelect %5 %312 %311 %193
 %314 = OpAccessChain %88 %157 %69 %313
-%315 = OpLoad %6 %314
+%315 = OpLoad %6 %314 MakePointerVisible|NonPrivatePointer %124
 %316 = OpBitcast %196 %315
 %317 = OpCompositeExtract %63 %316 0
 %318 = OpCompositeExtract %63 %316 1
@@ -547,13 +545,13 @@ OpBranch %389
 %325 = OpULessThan %180 %321 %323
 %326 = OpSelect %5 %325 %324 %183
 %327 = OpAccessChain %184 %164 %69 %326
-%328 = OpLoad %5 %327
+%328 = OpLoad %5 %327 MakePointerVisible|NonPrivatePointer %124
 %330 = OpIAdd %5 %326 %73
 %329 = OpAccessChain %184 %164 %69 %330
-%331 = OpLoad %5 %329
+%331 = OpLoad %5 %329 MakePointerVisible|NonPrivatePointer %124
 %333 = OpIAdd %5 %326 %77
 %332 = OpAccessChain %184 %164 %69 %333
-%334 = OpLoad %5 %332
+%334 = OpLoad %5 %332 MakePointerVisible|NonPrivatePointer %124
 %335 = OpCompositeConstruct %215 %328 %331 %334
 %336 = OpBitcast %217 %335
 %337 = OpCompositeExtract %63 %336 0
@@ -568,7 +566,7 @@ OpBranch %389
 %346 = OpULessThan %180 %83 %344
 %347 = OpSelect %5 %346 %345 %229
 %348 = OpAccessChain %230 %172 %69 %347
-%349 = OpLoad %21 %348
+%349 = OpLoad %21 %348 MakePointerVisible|NonPrivatePointer %124
 %350 = OpBitcast %64 %349
 %351 = OpCompositeExtract %63 %350 0
 %352 = OpCompositeExtract %63 %350 1
@@ -587,7 +585,7 @@ OpBranch %389
 %366 = OpBitcast %5 %364
 %367 = OpCompositeConstruct %6 %365 %366
 %368 = OpAccessChain %88 %126 %69 %363
-OpStore %368 %367
+OpStore %368 %367 NonPrivatePointer
 %369 = OpIMul %5 %75 %81
 %370 = OpCompositeExtract %5 %168 0
 %371 = OpCompositeExtract %5 %168 1
@@ -598,13 +596,13 @@ OpStore %368 %367
 %377 = OpBitcast %5 %375
 %378 = OpBitcast %5 %375
 %379 = OpAccessChain %184 %164 %69 %374
-OpStore %379 %376
+OpStore %379 %376 MakePointerAvailable|NonPrivatePointer %124
 %381 = OpIAdd %5 %374 %73
 %380 = OpAccessChain %184 %164 %69 %381
-OpStore %380 %377
+OpStore %380 %377 MakePointerAvailable|NonPrivatePointer %124
 %383 = OpIAdd %5 %374 %77
 %382 = OpAccessChain %184 %164 %69 %383
-OpStore %382 %378
+OpStore %382 %378 MakePointerAvailable|NonPrivatePointer %124
 %385 = OpAccessChain %384 %66 %69
 OpStore %385 %355
 %386 = OpAccessChain %384 %66 %73

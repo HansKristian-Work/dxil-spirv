@@ -31,34 +31,34 @@ layout(location = 0) out float SV_Target;
 
 void main()
 {
-    uint _126;
-    float _127;
-    _126 = sparseTextureClampARB(sampler1DShadow(_8, _23), vec2(TEXCOORD.x, DREF), 1.5, _127, 0.0);
-    SparseTexel _54 = SparseTexel(_126, _127);
+    uint _125;
+    float _126;
+    _125 = sparseTextureClampARB(sampler1DShadow(_8, _23), vec2(TEXCOORD.x, DREF), 1.5, _126, 0.0);
+    SparseTexel _54 = SparseTexel(_125, _126);
     float _56 = _54._m1;
     _57 _58 = _57(_56, _56, _56, _56, _54._m0);
-    uint _128;
-    float _129;
-    _128 = sparseTextureClampARB(sampler1DArrayShadow(_11, _23), vec3(vec2(TEXCOORD.x, TEXCOORD.y), DREF), 1.5, _129, 0.0);
-    SparseTexel _69 = SparseTexel(_128, _129);
+    uint _127;
+    float _128;
+    _127 = sparseTextureClampARB(sampler1DArrayShadow(_11, _23), vec3(vec2(TEXCOORD.x, TEXCOORD.y), DREF), 1.5, _128, 0.0);
+    SparseTexel _69 = SparseTexel(_127, _128);
     float _73 = _69._m1;
     _57 _74 = _57(_73, _73, _73, _73, _69._m0);
-    uint _130;
-    float _131;
-    _130 = sparseTextureClampARB(sampler2DShadow(_14, _23), vec3(vec2(TEXCOORD.x, TEXCOORD.y), DREF), 1.5, _131, 0.0);
-    SparseTexel _84 = SparseTexel(_130, _131);
+    uint _129;
+    float _130;
+    _129 = sparseTextureClampARB(sampler2DShadow(_14, _23), vec3(vec2(TEXCOORD.x, TEXCOORD.y), DREF), 1.5, _130, 0.0);
+    SparseTexel _84 = SparseTexel(_129, _130);
     float _87 = _84._m1;
     _57 _88 = _57(_87, _87, _87, _87, _84._m0);
-    uint _132;
-    float _133;
-    _132 = sparseTextureClampARB(sampler2DArrayShadow(_17, _23), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), DREF), 1.5, _133, 0.0);
-    SparseTexel _98 = SparseTexel(_132, _133);
+    uint _131;
+    float _132;
+    _131 = sparseTextureClampARB(sampler2DArrayShadow(_17, _23), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), DREF), 1.5, _132, 0.0);
+    SparseTexel _98 = SparseTexel(_131, _132);
     float _102 = _98._m1;
     _57 _103 = _57(_102, _102, _102, _102, _98._m0);
-    uint _134;
-    float _135;
-    _134 = sparseTextureClampARB(samplerCubeShadow(_20, _23), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), DREF), 1.5, _135, 0.0);
-    SparseTexel _113 = SparseTexel(_134, _135);
+    uint _133;
+    float _134;
+    _133 = sparseTextureClampARB(samplerCubeShadow(_20, _23), vec4(vec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z), DREF), 1.5, _134, 0.0);
+    SparseTexel _113 = SparseTexel(_133, _134);
     float _116 = _113._m1;
     _57 _117 = _57(_116, _116, _116, _116, _113._m0);
     SV_Target = ((((((((float(sparseTexelsResidentARB(int(_58._m4))) + _58._m0) + _74._m0) + float(sparseTexelsResidentARB(int(_74._m4)))) + _88._m0) + float(sparseTexelsResidentARB(int(_88._m4)))) + _103._m0) + float(sparseTexelsResidentARB(int(_103._m4)))) + _117._m0) + float(sparseTexelsResidentARB(int(_117._m4)));
@@ -68,16 +68,17 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 126
+; Bound: 125
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency
 OpCapability MinLod
 OpCapability Sampled1D
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %26 %28 %30
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26 %28 %30
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %26 "TEXCOORD"

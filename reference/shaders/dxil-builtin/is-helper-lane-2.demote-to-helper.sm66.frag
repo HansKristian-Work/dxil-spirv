@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_demote_to_helper_invocation : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
 
 layout(location = 0) in vec2 TEXCOORD;
@@ -6,49 +7,56 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    float _22;
-    float _25;
-    float _27;
-    float _29;
-    if (gl_HelperInvocation)
+    bool _21 = helperInvocationEXT();
+    float _49;
+    float _50;
+    float _51;
+    float _52;
+    if (_21)
     {
-        _22 = 0.0;
-        _25 = 0.0;
-        _27 = 0.0;
-        _29 = 0.0;
+        _49 = 0.0;
+        _50 = 0.0;
+        _51 = 0.0;
+        _52 = 0.0;
     }
     else
     {
-        _22 = subgroupExclusiveAdd(gl_HelperInvocation ? 0.0 : TEXCOORD.x);
-        _25 = subgroupExclusiveAdd(gl_HelperInvocation ? 0.0 : TEXCOORD.y);
-        _27 = subgroupExclusiveAdd(gl_HelperInvocation ? 0.0 : (TEXCOORD.x * TEXCOORD.x));
-        _29 = subgroupExclusiveAdd(gl_HelperInvocation ? 0.0 : (TEXCOORD.y * TEXCOORD.y));
+        bool _26 = helperInvocationEXT();
+        bool _30 = helperInvocationEXT();
+        bool _33 = helperInvocationEXT();
+        bool _36 = helperInvocationEXT();
+        _49 = subgroupExclusiveAdd(_26 ? 0.0 : TEXCOORD.x);
+        _50 = subgroupExclusiveAdd(_30 ? 0.0 : TEXCOORD.y);
+        _51 = subgroupExclusiveAdd(_33 ? 0.0 : (TEXCOORD.x * TEXCOORD.x));
+        _52 = subgroupExclusiveAdd(_36 ? 0.0 : (TEXCOORD.y * TEXCOORD.y));
     }
-    SV_Target.x = _22;
-    SV_Target.y = _25;
-    SV_Target.z = _27;
-    SV_Target.w = _29;
+    SV_Target.x = _49;
+    SV_Target.y = _50;
+    SV_Target.z = _51;
+    SV_Target.w = _52;
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 54
+; Bound: 58
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniformArithmetic
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %8 %11 %52
+OpCapability VulkanMemoryModel
+OpCapability DemoteToHelperInvocation
+OpExtension "SPV_EXT_demote_to_helper_invocation"
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %11
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "TEXCOORD"
 OpName %11 "SV_Target"
 OpDecorate %8 Location 0
 OpDecorate %11 Location 0
-OpDecorate %52 BuiltIn HelperInvocation
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -63,52 +71,67 @@ OpDecorate %52 BuiltIn HelperInvocation
 %15 = OpConstant %14 0
 %18 = OpConstant %14 1
 %20 = OpTypeBool
-%23 = OpConstant %5 0
-%31 = OpTypePointer Output %5
-%35 = OpConstant %14 2
-%37 = OpConstant %14 3
-%51 = OpTypePointer Input %20
-%52 = OpVariable %51 Input
+%25 = OpConstant %14 3
+%27 = OpConstant %5 0
+%42 = OpTypePointer Output %5
+%46 = OpConstant %14 2
+%48 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %48
-%48 = OpLabel
+%49 = OpVariable %48 Function
+%50 = OpVariable %48 Function
+%51 = OpVariable %48 Function
+%52 = OpVariable %48 Function
+OpBranch %53
+%53 = OpLabel
 %13 = OpAccessChain %12 %8 %15
 %16 = OpLoad %5 %13
 %17 = OpAccessChain %12 %8 %18
 %19 = OpLoad %5 %17
-%21 = OpLoad %20 %52
-OpSelectionMerge %50 None
-OpBranchConditional %21 %50 %49
-%49 = OpLabel
-%38 = OpFMul %5 %16 %16
-%39 = OpFMul %5 %19 %19
-%40 = OpLoad %20 %52
-%41 = OpSelect %5 %40 %23 %16
-%24 = OpGroupNonUniformFAdd %5 %37 ExclusiveScan %41
-%42 = OpLoad %20 %52
-%43 = OpSelect %5 %42 %23 %19
-%26 = OpGroupNonUniformFAdd %5 %37 ExclusiveScan %43
-%44 = OpLoad %20 %52
-%45 = OpSelect %5 %44 %23 %38
-%28 = OpGroupNonUniformFAdd %5 %37 ExclusiveScan %45
-%46 = OpLoad %20 %52
-%47 = OpSelect %5 %46 %23 %39
-%30 = OpGroupNonUniformFAdd %5 %37 ExclusiveScan %47
-OpBranch %50
-%50 = OpLabel
-%22 = OpPhi %5 %23 %48 %24 %49
-%25 = OpPhi %5 %23 %48 %26 %49
-%27 = OpPhi %5 %23 %48 %28 %49
-%29 = OpPhi %5 %23 %48 %30 %49
-%32 = OpAccessChain %31 %11 %15
-OpStore %32 %22
-%33 = OpAccessChain %31 %11 %18
-OpStore %33 %25
-%34 = OpAccessChain %31 %11 %35
-OpStore %34 %27
-%36 = OpAccessChain %31 %11 %37
-OpStore %36 %29
+%21 = OpIsHelperInvocationEXT %20
+OpSelectionMerge %56 None
+OpBranchConditional %21 %55 %54
+%54 = OpLabel
+%22 = OpFMul %5 %16 %16
+%23 = OpFMul %5 %19 %19
+%26 = OpIsHelperInvocationEXT %20
+%28 = OpSelect %5 %26 %27 %16
+%24 = OpGroupNonUniformFAdd %5 %25 ExclusiveScan %28
+%30 = OpIsHelperInvocationEXT %20
+%31 = OpSelect %5 %30 %27 %19
+%29 = OpGroupNonUniformFAdd %5 %25 ExclusiveScan %31
+%33 = OpIsHelperInvocationEXT %20
+%34 = OpSelect %5 %33 %27 %22
+%32 = OpGroupNonUniformFAdd %5 %25 ExclusiveScan %34
+%36 = OpIsHelperInvocationEXT %20
+%37 = OpSelect %5 %36 %27 %23
+%35 = OpGroupNonUniformFAdd %5 %25 ExclusiveScan %37
+OpStore %49 %24
+OpStore %50 %29
+OpStore %51 %32
+OpStore %52 %35
+OpBranch %56
+%55 = OpLabel
+OpStore %49 %27
+OpStore %50 %27
+OpStore %51 %27
+OpStore %52 %27
+OpBranch %56
+%56 = OpLabel
+OpBranch %57
+%57 = OpLabel
+%41 = OpLoad %5 %52
+%40 = OpLoad %5 %51
+%39 = OpLoad %5 %50
+%38 = OpLoad %5 %49
+%43 = OpAccessChain %42 %11 %15
+OpStore %43 %38
+%44 = OpAccessChain %42 %11 %18
+OpStore %44 %39
+%45 = OpAccessChain %42 %11 %46
+OpStore %45 %40
+%47 = OpAccessChain %42 %11 %25
+OpStore %47 %41
 OpReturn
 OpFunctionEnd
 #endif

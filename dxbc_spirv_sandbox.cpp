@@ -230,7 +230,7 @@ static Vector<uint32_t> run_test(const char *name, ir::Builder &builder)
 		if (entry.entry.is_structured)
 			structurizer.run_trivial();
 		else
-			structurizer.run();
+			structurizer.run_legacy_structurizer();
 		module.emit_entry_point_function_body(structurizer);
 	}
 
@@ -247,7 +247,7 @@ static Vector<uint32_t> run_test(const char *name, ir::Builder &builder)
 		if (leaf.is_structured)
 			structurizer.run_trivial();
 		else
-			structurizer.run();
+			structurizer.run_legacy_structurizer();
 
 		module.emit_leaf_function_body(leaf.func, structurizer);
 	}

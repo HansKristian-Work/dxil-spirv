@@ -24,7 +24,7 @@ struct IAddCarryResult
     uint _m1;
 };
 
-float _465;
+float _462;
 
 layout(buffer_reference, buffer_reference_align = 4, scalar) readonly buffer PhysicalPointerFloat3NonWriteArray
 {
@@ -101,9 +101,9 @@ bool ValidateBDALoadStore(uvec2 BDA, uint offset, uint len, uint type, uint invo
     {
         return true;
     }
-    IAddCarryResult _122;
-    _122._m0 = uaddCarry(BDA.x, offset, _122._m1);
-    uvec2 addr = uvec2(_122._m0, BDA.y + _122._m1);
+    IAddCarryResult _120;
+    _120._m0 = uaddCarry(BDA.x, offset, _120._m1);
+    uvec2 addr = uvec2(_120._m0, BDA.y + _120._m1);
     uint addr_lo = addr.x;
     uint byte_mask = (bitfieldExtract(4294967295u, int(0u), int(len)) << (addr_lo & 15u)) & 65535u;
     uint word_mask = (bitfieldExtract(4294967295u, int(0u), int((((addr_lo & 3u) + len) + 3u) >> 2u)) << bitfieldExtract(addr_lo, int(2u), int(2u))) & 15u;
@@ -185,18 +185,18 @@ void AssumeTrue(bool value, uint inst)
 {
     if ((!value) && ShouldReportInstrumentation)
     {
-        uint _495 = uint(InstrumentationControlData.atomics.length()) - 2u;
-        uint _497 = InstrumentationControlData.atomics[_495];
-        uint _503 = (((inst * 97u) ^ 43981u) ^ (_497 * 51329u)) & (uint(InstrumentationData.data.length()) - 1u);
-        uint _504 = _503 >> 4u;
-        uint _506 = 1u << (_503 & 15u);
-        uint _508 = atomicOr(InstrumentationControlData.atomics[_504], _506);
+        uint _492 = uint(InstrumentationControlData.atomics.length()) - 2u;
+        uint _494 = InstrumentationControlData.atomics[_492];
+        uint _500 = (((inst * 97u) ^ 43981u) ^ (_494 * 51329u)) & (uint(InstrumentationData.data.length()) - 1u);
+        uint _501 = _500 >> 4u;
+        uint _503 = 1u << (_500 & 15u);
+        uint _505 = atomicOr(InstrumentationControlData.atomics[_501], _503);
         ShouldReportInstrumentation = false;
-        if ((_508 & _506) == 0u)
+        if ((_505 & _503) == 0u)
         {
-            InstrumentationData.data[_503] = uvec4(43981u, 0u, inst, _497);
+            InstrumentationData.data[_500] = uvec4(43981u, 0u, inst, _494);
             memoryBarrierBuffer();
-            uint _516 = atomicOr(InstrumentationControlData.atomics[_504], _506 << 16u);
+            uint _513 = atomicOr(InstrumentationControlData.atomics[_501], _503 << 16u);
             memoryBarrierBuffer();
         }
     }
@@ -206,38 +206,39 @@ void main()
 {
     uint _34 = AllocateInvocationID();
     InvocationID = _34;
-    uint _437 = InvocationID;
-    bool _436 = ValidateBDALoadStore(registers._m1, (gl_GlobalInvocationID.x * 12u) + 0u, 12u, 0u, _437, true);
-    AssumeTrue(_436, 1u);
-    vec3 _441 = PhysicalPointerFloat3NonWriteArray(registers._m1).value[gl_GlobalInvocationID.x];
-    uint _453 = InvocationID;
-    bool _452 = ValidateBDALoadStore(registers._m2, (gl_GlobalInvocationID.x * 4u) + 0u, 4u, 0u, _453, true);
-    AssumeTrue(_452, 2u);
-    float _457 = PhysicalPointerFloatArray(registers._m2).value[gl_GlobalInvocationID.x];
-    uint _462 = InvocationID;
-    bool _461 = ValidateBDALoadStore(registers._m2, (gl_GlobalInvocationID.x * 4u) + 0u, 4u, 1u, _462, true);
-    AssumeTrue(_461, 3u);
-    PhysicalPointerFloatArray(registers._m2).value[gl_GlobalInvocationID.x] = ((_441.x + 40.0) + _441.z) + _457;
+    uint _434 = InvocationID;
+    bool _433 = ValidateBDALoadStore(registers._m1, (gl_GlobalInvocationID.x * 12u) + 0u, 12u, 0u, _434, true);
+    AssumeTrue(_433, 1u);
+    vec3 _438 = PhysicalPointerFloat3NonWriteArray(registers._m1).value[gl_GlobalInvocationID.x];
+    uint _450 = InvocationID;
+    bool _449 = ValidateBDALoadStore(registers._m2, (gl_GlobalInvocationID.x * 4u) + 0u, 4u, 0u, _450, true);
+    AssumeTrue(_449, 2u);
+    float _454 = PhysicalPointerFloatArray(registers._m2).value[gl_GlobalInvocationID.x];
+    uint _459 = InvocationID;
+    bool _458 = ValidateBDALoadStore(registers._m2, (gl_GlobalInvocationID.x * 4u) + 0u, 4u, 1u, _459, true);
+    AssumeTrue(_458, 3u);
+    PhysicalPointerFloatArray(registers._m2).value[gl_GlobalInvocationID.x] = ((_438.x + 40.0) + _438.z) + _454;
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 523
+; Bound: 518
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
 OpCapability Int64Atomics
 OpCapability SignedZeroInfNanPreserve
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_physical_storage_buffer"
-%146 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint GLCompute %3 "main" %43
+%144 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint GLCompute %3 "main" %9 %16 %18 %22 %43 %100 %104 %465 %470 %474
 OpExecutionMode %3 LocalSize 1 1 1
 OpExecutionMode %3 SignedZeroInfNanPreserve 32
 OpName %3 "main"
@@ -257,93 +258,93 @@ OpMemberName %50 0 "value"
 OpName %58 "AddrHash"
 OpName %56 "addr"
 OpName %57 "prime"
-OpName %99 "BloomBufferSSBO"
-OpMemberName %99 0 "atomics"
-OpName %101 "BloomBuffer"
-OpName %103 "BloomBuffer32SSBO"
-OpMemberName %103 0 "atomics"
-OpName %105 "BloomBuffer32"
-OpName %113 "ValidateBDALoadStore"
-OpName %107 "BDA"
-OpName %108 "offset"
-OpName %109 "len"
-OpName %110 "type"
-OpName %111 "invocation_id"
-OpName %112 "in_bounds"
-OpName %121 "IAddCarryResult"
-OpName %126 "addr"
-OpName %127 "addr_lo"
-OpName %131 "byte_mask"
-OpName %141 "word_mask"
-OpName %145 "hash_mask"
-OpName %150 "hash_offset"
-OpName %154 "bloom_index"
-OpName %158 "bloom_index"
-OpName %162 "bloom_index"
-OpName %165 "bloom_index"
-OpName %169 "bloom_index"
-OpName %173 "bloom_index"
-OpName %177 "bloom_index"
-OpName %181 "bloom_index"
-OpName %185 "bloom_index"
-OpName %189 "bloom_index"
-OpName %193 "bloom_index"
-OpName %197 "bloom_index"
-OpName %201 "bloom_index"
-OpName %205 "bloom_index"
-OpName %209 "bloom_index"
-OpName %213 "bloom_index"
-OpName %227 "invalidation_mask"
+OpName %98 "BloomBufferSSBO"
+OpMemberName %98 0 "atomics"
+OpName %100 "BloomBuffer"
+OpName %102 "BloomBuffer32SSBO"
+OpMemberName %102 0 "atomics"
+OpName %104 "BloomBuffer32"
+OpName %112 "ValidateBDALoadStore"
+OpName %106 "BDA"
+OpName %107 "offset"
+OpName %108 "len"
+OpName %109 "type"
+OpName %110 "invocation_id"
+OpName %111 "in_bounds"
+OpName %119 "IAddCarryResult"
+OpName %124 "addr"
+OpName %125 "addr_lo"
+OpName %129 "byte_mask"
+OpName %139 "word_mask"
+OpName %143 "hash_mask"
+OpName %148 "hash_offset"
+OpName %152 "bloom_index"
+OpName %156 "bloom_index"
+OpName %160 "bloom_index"
+OpName %163 "bloom_index"
+OpName %167 "bloom_index"
+OpName %171 "bloom_index"
+OpName %175 "bloom_index"
+OpName %179 "bloom_index"
+OpName %183 "bloom_index"
+OpName %187 "bloom_index"
+OpName %191 "bloom_index"
+OpName %195 "bloom_index"
+OpName %199 "bloom_index"
+OpName %203 "bloom_index"
+OpName %207 "bloom_index"
+OpName %211 "bloom_index"
+OpName %225 "invalidation_mask"
+OpName %228 "prev_hazard_partial"
 OpName %230 "prev_hazard_partial"
-OpName %232 "prev_hazard_partial"
-OpName %235 "prev_hazard_partial"
-OpName %238 "prev_hazard_partial"
-OpName %241 "prev_hazard_partial"
-OpName %244 "prev_hazard_partial"
-OpName %247 "prev_hazard_partial"
-OpName %250 "prev_hazard_partial"
-OpName %253 "prev_hazard_partial"
-OpName %256 "prev_hazard_partial"
-OpName %259 "prev_hazard_partial"
-OpName %262 "prev_hazard_partial"
-OpName %265 "prev_hazard_partial"
-OpName %268 "prev_hazard_partial"
-OpName %271 "prev_hazard_partial"
-OpName %274 "prev_hazard_partial"
-OpName %276 "prev_hazard"
-OpName %277 "prev_hazard_lo"
-OpName %278 "prev_hazard_hi"
-OpName %281 "has_exclusive_access"
-OpName %296 "lock_mask"
-OpName %299 "prev_lock"
-OpName %312 "lock_mask"
-OpName %315 "prev_lock"
-OpName %329 "lock_mask"
-OpName %332 "prev_lock"
-OpName %346 "lock_mask"
-OpName %349 "prev_lock"
-OpName %363 "lock_mask"
-OpName %366 "prev_lock"
-OpName %377 "lock_mask"
-OpName %380 "prev_lock"
-OpName %393 "lock_mask"
-OpName %396 "prev_lock"
-OpName %410 "lock_mask"
-OpName %413 "prev_lock"
-OpName %416 "has_complete_self_lock"
-OpName %432 "hazard"
-OpName %448 "PhysicalPointerFloatArray"
-OpMemberName %448 0 "value"
-OpName %468 "ShouldReportInstrumentation"
-OpName %471 "InstrumentationControlDataSSBO"
-OpMemberName %471 0 "atomics"
-OpName %473 "InstrumentationControlData"
-OpName %475 "InstrumentationDataSSBO"
-OpMemberName %475 0 "data"
-OpName %477 "InstrumentationData"
-OpName %481 "AssumeTrue"
-OpName %479 "value"
-OpName %480 "inst"
+OpName %233 "prev_hazard_partial"
+OpName %236 "prev_hazard_partial"
+OpName %239 "prev_hazard_partial"
+OpName %242 "prev_hazard_partial"
+OpName %245 "prev_hazard_partial"
+OpName %248 "prev_hazard_partial"
+OpName %251 "prev_hazard_partial"
+OpName %254 "prev_hazard_partial"
+OpName %257 "prev_hazard_partial"
+OpName %260 "prev_hazard_partial"
+OpName %263 "prev_hazard_partial"
+OpName %266 "prev_hazard_partial"
+OpName %269 "prev_hazard_partial"
+OpName %272 "prev_hazard_partial"
+OpName %274 "prev_hazard"
+OpName %275 "prev_hazard_lo"
+OpName %276 "prev_hazard_hi"
+OpName %279 "has_exclusive_access"
+OpName %294 "lock_mask"
+OpName %297 "prev_lock"
+OpName %310 "lock_mask"
+OpName %313 "prev_lock"
+OpName %327 "lock_mask"
+OpName %330 "prev_lock"
+OpName %344 "lock_mask"
+OpName %347 "prev_lock"
+OpName %361 "lock_mask"
+OpName %364 "prev_lock"
+OpName %375 "lock_mask"
+OpName %378 "prev_lock"
+OpName %391 "lock_mask"
+OpName %394 "prev_lock"
+OpName %408 "lock_mask"
+OpName %411 "prev_lock"
+OpName %414 "has_complete_self_lock"
+OpName %430 "hazard"
+OpName %445 "PhysicalPointerFloatArray"
+OpMemberName %445 0 "value"
+OpName %465 "ShouldReportInstrumentation"
+OpName %468 "InstrumentationControlDataSSBO"
+OpMemberName %468 0 "atomics"
+OpName %470 "InstrumentationControlData"
+OpName %472 "InstrumentationDataSSBO"
+OpMemberName %472 0 "data"
+OpName %474 "InstrumentationData"
+OpName %478 "AssumeTrue"
+OpName %476 "value"
+OpName %477 "inst"
 OpDecorate %7 Block
 OpMemberDecorate %7 0 Offset 0
 OpMemberDecorate %7 1 Offset 8
@@ -366,29 +367,29 @@ OpDecorate %49 ArrayStride 12
 OpMemberDecorate %50 0 Offset 0
 OpDecorate %50 Block
 OpMemberDecorate %50 0 NonWritable
-OpDecorate %98 ArrayStride 8
-OpMemberDecorate %99 0 Offset 0
-OpDecorate %99 Block
-OpDecorate %101 DescriptorSet 0
-OpDecorate %101 Binding 2
-OpDecorate %102 ArrayStride 8
-OpMemberDecorate %103 0 Offset 0
-OpDecorate %103 Block
-OpDecorate %105 DescriptorSet 0
-OpDecorate %105 Binding 2
-OpDecorate %447 ArrayStride 4
-OpMemberDecorate %448 0 Offset 0
-OpDecorate %448 Block
-OpDecorate %470 ArrayStride 4
-OpMemberDecorate %471 0 Offset 0
-OpDecorate %471 Block
-OpDecorate %473 DescriptorSet 0
-OpDecorate %473 Binding 2
-OpDecorate %474 ArrayStride 16
-OpMemberDecorate %475 0 Offset 0
-OpDecorate %475 Block
-OpDecorate %477 DescriptorSet 0
-OpDecorate %477 Binding 3
+OpDecorate %97 ArrayStride 8
+OpMemberDecorate %98 0 Offset 0
+OpDecorate %98 Block
+OpDecorate %100 DescriptorSet 0
+OpDecorate %100 Binding 2
+OpDecorate %101 ArrayStride 8
+OpMemberDecorate %102 0 Offset 0
+OpDecorate %102 Block
+OpDecorate %104 DescriptorSet 0
+OpDecorate %104 Binding 2
+OpDecorate %444 ArrayStride 4
+OpMemberDecorate %445 0 Offset 0
+OpDecorate %445 Block
+OpDecorate %467 ArrayStride 4
+OpMemberDecorate %468 0 Offset 0
+OpDecorate %468 Block
+OpDecorate %470 DescriptorSet 0
+OpDecorate %470 Binding 2
+OpDecorate %471 ArrayStride 16
+OpMemberDecorate %472 0 Offset 0
+OpDecorate %472 Block
+OpDecorate %474 DescriptorSet 0
+OpDecorate %474 Binding 3
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -412,7 +413,8 @@ OpDecorate %477 Binding 3
 %23 = OpTypeFunction %5
 %28 = OpTypePointer StorageBuffer %5
 %30 = OpConstant %5 0
-%32 = OpConstant %5 1103633207
+%32 = OpConstant %5 5
+%33 = OpConstant %5 1103633207
 %35 = OpTypePointer PushConstant %6
 %37 = OpConstant %5 2
 %41 = OpTypeVector %5 3
@@ -430,97 +432,97 @@ OpDecorate %477 Binding 3
 %67 = OpConstant %5 65535
 %68 = OpConstant %5 8
 %69 = OpConstantComposite %6 %68 %68
-%96 = OpTypeInt 64 0
-%97 = OpTypeBool
-%98 = OpTypeRuntimeArray %96
-%99 = OpTypeStruct %98
-%100 = OpTypePointer StorageBuffer %99
-%101 = OpVariable %100 StorageBuffer
-%102 = OpTypeRuntimeArray %6
-%103 = OpTypeStruct %102
-%104 = OpTypePointer StorageBuffer %103
-%105 = OpVariable %104 StorageBuffer
-%106 = OpTypeFunction %97 %6 %5 %5 %5 %5 %97
-%117 = OpConstantTrue %97
-%121 = OpTypeStruct %5 %5
-%132 = OpConstant %5 4294967295
-%133 = OpConstant %5 15
-%142 = OpConstant %5 3
-%152 = OpConstant %5 1103515245
-%156 = OpConstant %5 1103518333
-%160 = OpConstant %5 1103539331
-%167 = OpConstant %5 10006121
-%171 = OpConstant %5 4004951
-%175 = OpConstant %5 5005159
-%179 = OpConstant %5 6004811
-%183 = OpConstant %5 383
-%187 = OpConstant %5 821
-%191 = OpConstant %5 661
-%195 = OpConstant %5 1091
-%199 = OpConstant %5 1117
-%203 = OpConstant %5 3947
-%207 = OpConstant %5 4253
-%211 = OpConstant %5 7691
-%214 = OpTypeVector %96 4
-%215 = OpConstant %96 68719411200
-%216 = OpConstant %96 1099511627775
-%217 = OpConstant %96 1035087118335
-%218 = OpConstantComposite %214 %215 %216 %217 %215
-%222 = OpConstant %5 16
-%228 = OpTypePointer StorageBuffer %96
-%283 = OpTypeInt 32 1
-%284 = OpConstant %283 0
-%285 = OpConstant %283 3
-%287 = OpConstant %5 256
-%290 = OpConstant %5 65536
-%293 = OpConstant %283 6
-%295 = OpConstant %5 16777216
-%303 = OpConstant %283 9
-%306 = OpConstant %283 12
-%310 = OpConstant %283 15
-%320 = OpConstant %283 18
-%323 = OpConstant %283 21
-%327 = OpConstant %283 24
-%337 = OpConstant %283 23
-%340 = OpConstant %283 26
-%344 = OpConstant %283 29
-%354 = OpConstant %283 1
-%357 = OpConstant %283 4
-%361 = OpConstant %283 7
-%385 = OpConstant %283 17
-%388 = OpConstant %283 20
-%401 = OpConstant %283 22
-%404 = OpConstant %283 25
-%408 = OpConstant %283 28
-%439 = OpTypePointer PhysicalStorageBuffer %48
-%445 = OpConstant %47 40
-%447 = OpTypeRuntimeArray %47
-%448 = OpTypeStruct %447
-%449 = OpTypePointer PhysicalStorageBuffer %448
-%455 = OpTypePointer PhysicalStorageBuffer %47
-%467 = OpTypePointer Private %97
-%468 = OpVariable %467 Private %117
-%469 = OpTypeVector %5 4
-%470 = OpTypeRuntimeArray %5
-%471 = OpTypeStruct %470
-%472 = OpTypePointer StorageBuffer %471
-%473 = OpVariable %472 StorageBuffer
-%474 = OpTypeRuntimeArray %469
-%475 = OpTypeStruct %474
-%476 = OpTypePointer StorageBuffer %475
-%477 = OpVariable %476 StorageBuffer
-%478 = OpTypeFunction %1 %97 %5
-%492 = OpConstant %5 97
-%493 = OpConstant %5 43981
-%499 = OpConstant %5 51329
-%511 = OpConstantFalse %97
-%514 = OpTypePointer StorageBuffer %469
-%517 = OpConstant %5 72
+%95 = OpTypeInt 64 0
+%96 = OpTypeBool
+%97 = OpTypeRuntimeArray %95
+%98 = OpTypeStruct %97
+%99 = OpTypePointer StorageBuffer %98
+%100 = OpVariable %99 StorageBuffer
+%101 = OpTypeRuntimeArray %6
+%102 = OpTypeStruct %101
+%103 = OpTypePointer StorageBuffer %102
+%104 = OpVariable %103 StorageBuffer
+%105 = OpTypeFunction %96 %6 %5 %5 %5 %5 %96
+%116 = OpConstantTrue %96
+%119 = OpTypeStruct %5 %5
+%130 = OpConstant %5 4294967295
+%131 = OpConstant %5 15
+%140 = OpConstant %5 3
+%150 = OpConstant %5 1103515245
+%154 = OpConstant %5 1103518333
+%158 = OpConstant %5 1103539331
+%165 = OpConstant %5 10006121
+%169 = OpConstant %5 4004951
+%173 = OpConstant %5 5005159
+%177 = OpConstant %5 6004811
+%181 = OpConstant %5 383
+%185 = OpConstant %5 821
+%189 = OpConstant %5 661
+%193 = OpConstant %5 1091
+%197 = OpConstant %5 1117
+%201 = OpConstant %5 3947
+%205 = OpConstant %5 4253
+%209 = OpConstant %5 7691
+%212 = OpTypeVector %95 4
+%213 = OpConstant %95 68719411200
+%214 = OpConstant %95 1099511627775
+%215 = OpConstant %95 1035087118335
+%216 = OpConstantComposite %212 %213 %214 %215 %213
+%220 = OpConstant %5 16
+%226 = OpTypePointer StorageBuffer %95
+%281 = OpTypeInt 32 1
+%282 = OpConstant %281 0
+%283 = OpConstant %281 3
+%285 = OpConstant %5 256
+%288 = OpConstant %5 65536
+%291 = OpConstant %281 6
+%293 = OpConstant %5 16777216
+%301 = OpConstant %281 9
+%304 = OpConstant %281 12
+%308 = OpConstant %281 15
+%318 = OpConstant %281 18
+%321 = OpConstant %281 21
+%325 = OpConstant %281 24
+%335 = OpConstant %281 23
+%338 = OpConstant %281 26
+%342 = OpConstant %281 29
+%352 = OpConstant %281 1
+%355 = OpConstant %281 4
+%359 = OpConstant %281 7
+%383 = OpConstant %281 17
+%386 = OpConstant %281 20
+%399 = OpConstant %281 22
+%402 = OpConstant %281 25
+%406 = OpConstant %281 28
+%436 = OpTypePointer PhysicalStorageBuffer %48
+%442 = OpConstant %47 40
+%444 = OpTypeRuntimeArray %47
+%445 = OpTypeStruct %444
+%446 = OpTypePointer PhysicalStorageBuffer %445
+%452 = OpTypePointer PhysicalStorageBuffer %47
+%464 = OpTypePointer Private %96
+%465 = OpVariable %464 Private %116
+%466 = OpTypeVector %5 4
+%467 = OpTypeRuntimeArray %5
+%468 = OpTypeStruct %467
+%469 = OpTypePointer StorageBuffer %468
+%470 = OpVariable %469 StorageBuffer
+%471 = OpTypeRuntimeArray %466
+%472 = OpTypeStruct %471
+%473 = OpTypePointer StorageBuffer %472
+%474 = OpVariable %473 StorageBuffer
+%475 = OpTypeFunction %1 %96 %5
+%489 = OpConstant %5 97
+%490 = OpConstant %5 43981
+%496 = OpConstant %5 51329
+%508 = OpConstantFalse %96
+%511 = OpTypePointer StorageBuffer %466
+%514 = OpConstant %5 72
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%465 = OpUndef %47
-OpBranch %466
-%466 = OpLabel
+%462 = OpUndef %47
+OpBranch %463
+%463 = OpLabel
 %34 = OpFunctionCall %5 %24
 OpStore %18 %34
 %36 = OpAccessChain %35 %9 %37
@@ -531,33 +533,33 @@ OpStore %18 %34
 %46 = OpLoad %5 %45
 %53 = OpIMul %5 %46 %52
 %54 = OpIAdd %5 %53 %30
-%437 = OpLoad %5 %18
-%436 = OpFunctionCall %97 %113 %40 %54 %52 %30 %437 %117
-%519 = OpFunctionCall %1 %481 %436 %10
-%438 = OpBitcast %51 %40
-%440 = OpInBoundsAccessChain %439 %438 %30 %46
-%441 = OpLoad %48 %440 Aligned 4
-%442 = OpCompositeExtract %47 %441 0
-%443 = OpCompositeExtract %47 %441 2
-%444 = OpFAdd %47 %442 %445
-%446 = OpFAdd %47 %444 %443
-%450 = OpIMul %5 %46 %66
-%451 = OpIAdd %5 %450 %30
-%453 = OpLoad %5 %18
-%452 = OpFunctionCall %97 %113 %38 %451 %66 %30 %453 %117
-%520 = OpFunctionCall %1 %481 %452 %37
-%454 = OpBitcast %449 %38
-%456 = OpInBoundsAccessChain %455 %454 %30 %46
-%457 = OpLoad %47 %456 Aligned 4
-%458 = OpFAdd %47 %446 %457
-%459 = OpIMul %5 %46 %66
-%460 = OpIAdd %5 %459 %30
-%462 = OpLoad %5 %18
-%461 = OpFunctionCall %97 %113 %38 %460 %66 %10 %462 %117
-%521 = OpFunctionCall %1 %481 %461 %142
-%463 = OpBitcast %449 %38
-%464 = OpInBoundsAccessChain %455 %463 %30 %46
-OpStore %464 %458 Aligned 4
+%434 = OpLoad %5 %18
+%433 = OpFunctionCall %96 %112 %40 %54 %52 %30 %434 %116
+%515 = OpFunctionCall %1 %478 %433 %10
+%435 = OpBitcast %51 %40
+%437 = OpInBoundsAccessChain %436 %435 %30 %46
+%438 = OpLoad %48 %437 Aligned 4
+%439 = OpCompositeExtract %47 %438 0
+%440 = OpCompositeExtract %47 %438 2
+%441 = OpFAdd %47 %439 %442
+%443 = OpFAdd %47 %441 %440
+%447 = OpIMul %5 %46 %66
+%448 = OpIAdd %5 %447 %30
+%450 = OpLoad %5 %18
+%449 = OpFunctionCall %96 %112 %38 %448 %66 %30 %450 %116
+%516 = OpFunctionCall %1 %478 %449 %37
+%451 = OpBitcast %446 %38
+%453 = OpInBoundsAccessChain %452 %451 %30 %46
+%454 = OpLoad %47 %453 Aligned|NonPrivatePointer 4
+%455 = OpFAdd %47 %443 %454
+%456 = OpIMul %5 %46 %66
+%457 = OpIAdd %5 %456 %30
+%459 = OpLoad %5 %18
+%458 = OpFunctionCall %96 %112 %38 %457 %66 %10 %459 %116
+%517 = OpFunctionCall %1 %478 %458 %140
+%460 = OpBitcast %446 %38
+%461 = OpInBoundsAccessChain %452 %460 %30 %46
+OpStore %461 %455 Aligned|NonPrivatePointer 4
 OpReturn
 OpFunctionEnd
 %24 = OpFunction %5 None %23
@@ -565,7 +567,7 @@ OpFunctionEnd
 %26 = OpArrayLength %5 %22 0
 %27 = OpISub %5 %26 %10
 %29 = OpAccessChain %28 %22 %30 %27
-%31 = OpAtomicIAdd %5 %29 %10 %30 %32
+%31 = OpAtomicIAdd %5 %29 %32 %30 %33
 OpReturnValue %31
 OpFunctionEnd
 %58 = OpFunction %5 None %55
@@ -605,335 +607,335 @@ OpFunctionEnd
 %94 = OpCompositeExtract %5 %93 0
 OpReturnValue %94
 OpFunctionEnd
-%113 = OpFunction %97 None %106
-%107 = OpFunctionParameter %6
+%112 = OpFunction %96 None %105
+%106 = OpFunctionParameter %6
+%107 = OpFunctionParameter %5
 %108 = OpFunctionParameter %5
 %109 = OpFunctionParameter %5
 %110 = OpFunctionParameter %5
-%111 = OpFunctionParameter %5
-%112 = OpFunctionParameter %97
+%111 = OpFunctionParameter %96
+%113 = OpLabel
+OpSelectionMerge %115 None
+OpBranchConditional %111 %115 %114
 %114 = OpLabel
-OpSelectionMerge %116 None
-OpBranchConditional %112 %116 %115
+OpReturnValue %116
 %115 = OpLabel
-OpReturnValue %117
-%116 = OpLabel
-%119 = OpCompositeExtract %5 %107 0
-%120 = OpCompositeExtract %5 %107 1
-%122 = OpIAddCarry %121 %119 %108
-%123 = OpCompositeExtract %5 %122 0
-%124 = OpCompositeExtract %5 %122 1
-%125 = OpIAdd %5 %120 %124
-%126 = OpCompositeConstruct %6 %123 %125
-%127 = OpCompositeExtract %5 %126 0
-%128 = OpBitFieldUExtract %5 %132 %30 %109
-%129 = OpBitwiseAnd %5 %127 %133
-%130 = OpShiftLeftLogical %5 %128 %129
-%131 = OpBitwiseAnd %5 %130 %67
-%134 = OpBitwiseAnd %5 %127 %142
-%135 = OpIAdd %5 %134 %109
-%136 = OpIAdd %5 %135 %142
-%137 = OpShiftRightLogical %5 %136 %37
-%138 = OpBitFieldUExtract %5 %127 %37 %37
-%139 = OpBitFieldUExtract %5 %132 %30 %137
-%140 = OpShiftLeftLogical %5 %139 %138
-%141 = OpBitwiseAnd %5 %140 %133
-%143 = OpArrayLength %5 %101 0
-%144 = OpExtInst %5 %146 FindUMsb %143
-%145 = OpBitFieldUExtract %5 %132 %30 %144
-%147 = OpArrayLength %5 %101 0
-%148 = OpExtInst %5 %146 FindUMsb %147
-%149 = OpBitFieldUExtract %5 %147 %30 %148
-%150 = OpISub %5 %149 %10
-%151 = OpFunctionCall %5 %58 %126 %152
-%153 = OpBitwiseAnd %5 %151 %145
-%154 = OpIAdd %5 %153 %150
-%155 = OpFunctionCall %5 %58 %126 %156
-%157 = OpBitwiseAnd %5 %155 %145
-%158 = OpIAdd %5 %157 %150
-%159 = OpFunctionCall %5 %58 %126 %160
-%161 = OpBitwiseAnd %5 %159 %145
-%162 = OpIAdd %5 %161 %150
-%163 = OpFunctionCall %5 %58 %126 %32
-%164 = OpBitwiseAnd %5 %163 %145
-%165 = OpIAdd %5 %164 %150
-%166 = OpFunctionCall %5 %58 %126 %167
-%168 = OpBitwiseAnd %5 %166 %145
-%169 = OpIAdd %5 %168 %150
-%170 = OpFunctionCall %5 %58 %126 %171
-%172 = OpBitwiseAnd %5 %170 %145
-%173 = OpIAdd %5 %172 %150
-%174 = OpFunctionCall %5 %58 %126 %175
-%176 = OpBitwiseAnd %5 %174 %145
-%177 = OpIAdd %5 %176 %150
-%178 = OpFunctionCall %5 %58 %126 %179
-%180 = OpBitwiseAnd %5 %178 %145
-%181 = OpIAdd %5 %180 %150
-%182 = OpFunctionCall %5 %58 %126 %183
-%184 = OpBitwiseAnd %5 %182 %145
-%185 = OpIAdd %5 %184 %150
-%186 = OpFunctionCall %5 %58 %126 %187
-%188 = OpBitwiseAnd %5 %186 %145
-%189 = OpIAdd %5 %188 %150
-%190 = OpFunctionCall %5 %58 %126 %191
-%192 = OpBitwiseAnd %5 %190 %145
-%193 = OpIAdd %5 %192 %150
-%194 = OpFunctionCall %5 %58 %126 %195
-%196 = OpBitwiseAnd %5 %194 %145
-%197 = OpIAdd %5 %196 %150
-%198 = OpFunctionCall %5 %58 %126 %199
-%200 = OpBitwiseAnd %5 %198 %145
-%201 = OpIAdd %5 %200 %150
-%202 = OpFunctionCall %5 %58 %126 %203
-%204 = OpBitwiseAnd %5 %202 %145
-%205 = OpIAdd %5 %204 %150
-%206 = OpFunctionCall %5 %58 %126 %207
-%208 = OpBitwiseAnd %5 %206 %145
-%209 = OpIAdd %5 %208 %150
-%210 = OpFunctionCall %5 %58 %126 %211
-%212 = OpBitwiseAnd %5 %210 %145
-%213 = OpIAdd %5 %212 %150
-%219 = OpVectorExtractDynamic %96 %218 %110
-%220 = OpShiftLeftLogical %5 %131 %222
-%221 = OpShiftLeftLogical %5 %141 %66
-%223 = OpBitwiseOr %5 %131 %220
-%224 = OpBitwiseOr %5 %141 %221
-%225 = OpCompositeConstruct %6 %223 %224
-%226 = OpBitcast %96 %225
-%227 = OpBitwiseAnd %96 %219 %226
-%229 = OpInBoundsAccessChain %228 %101 %30 %154
-%230 = OpAtomicOr %96 %229 %10 %30 %227
-%231 = OpInBoundsAccessChain %228 %101 %30 %158
-%232 = OpAtomicOr %96 %231 %10 %30 %227
-%233 = OpBitwiseAnd %96 %230 %232
-%234 = OpInBoundsAccessChain %228 %101 %30 %162
-%235 = OpAtomicOr %96 %234 %10 %30 %227
-%236 = OpBitwiseAnd %96 %233 %235
-%237 = OpInBoundsAccessChain %228 %101 %30 %165
-%238 = OpAtomicOr %96 %237 %10 %30 %227
-%239 = OpBitwiseAnd %96 %236 %238
-%240 = OpInBoundsAccessChain %228 %101 %30 %169
-%241 = OpAtomicOr %96 %240 %10 %30 %227
-%242 = OpBitwiseAnd %96 %239 %241
-%243 = OpInBoundsAccessChain %228 %101 %30 %173
-%244 = OpAtomicOr %96 %243 %10 %30 %227
-%245 = OpBitwiseAnd %96 %242 %244
-%246 = OpInBoundsAccessChain %228 %101 %30 %177
-%247 = OpAtomicOr %96 %246 %10 %30 %227
-%248 = OpBitwiseAnd %96 %245 %247
-%249 = OpInBoundsAccessChain %228 %101 %30 %181
-%250 = OpAtomicOr %96 %249 %10 %30 %227
-%251 = OpBitwiseAnd %96 %248 %250
-%252 = OpInBoundsAccessChain %228 %101 %30 %185
-%253 = OpAtomicOr %96 %252 %10 %30 %227
-%254 = OpBitwiseAnd %96 %251 %253
-%255 = OpInBoundsAccessChain %228 %101 %30 %189
-%256 = OpAtomicOr %96 %255 %10 %30 %227
-%257 = OpBitwiseAnd %96 %254 %256
-%258 = OpInBoundsAccessChain %228 %101 %30 %193
-%259 = OpAtomicOr %96 %258 %10 %30 %227
-%260 = OpBitwiseAnd %96 %257 %259
-%261 = OpInBoundsAccessChain %228 %101 %30 %197
-%262 = OpAtomicOr %96 %261 %10 %30 %227
-%263 = OpBitwiseAnd %96 %260 %262
-%264 = OpInBoundsAccessChain %228 %101 %30 %201
-%265 = OpAtomicOr %96 %264 %10 %30 %227
-%266 = OpBitwiseAnd %96 %263 %265
-%267 = OpInBoundsAccessChain %228 %101 %30 %205
-%268 = OpAtomicOr %96 %267 %10 %30 %227
-%269 = OpBitwiseAnd %96 %266 %268
-%270 = OpInBoundsAccessChain %228 %101 %30 %209
-%271 = OpAtomicOr %96 %270 %10 %30 %227
-%272 = OpBitwiseAnd %96 %269 %271
-%273 = OpInBoundsAccessChain %228 %101 %30 %213
-%274 = OpAtomicOr %96 %273 %10 %30 %227
-%275 = OpBitwiseAnd %96 %272 %274
-%276 = OpBitcast %6 %275
-%277 = OpCompositeExtract %5 %276 0
-%278 = OpCompositeExtract %5 %276 1
-%279 = OpShiftRightLogical %5 %277 %222
-%280 = OpBitwiseAnd %5 %279 %131
-%281 = OpIEqual %97 %280 %30
-%282 = OpBitFieldUExtract %5 %111 %284 %285
-%286 = OpShiftLeftLogical %5 %287 %282
-%288 = OpBitFieldUExtract %5 %111 %285 %285
-%289 = OpShiftLeftLogical %5 %290 %288
-%291 = OpBitwiseOr %5 %286 %289
-%292 = OpBitFieldUExtract %5 %111 %293 %285
-%294 = OpShiftLeftLogical %5 %295 %292
-%296 = OpBitwiseOr %5 %291 %294
-%297 = OpSelect %5 %281 %296 %30
-%298 = OpInBoundsAccessChain %28 %105 %30 %154 %10
-%299 = OpAtomicOr %5 %298 %10 %30 %297
-%300 = OpBitwiseAnd %5 %299 %296
-%301 = OpIEqual %97 %300 %296
-%302 = OpBitFieldUExtract %5 %111 %303 %285
-%304 = OpShiftLeftLogical %5 %287 %302
-%305 = OpBitFieldUExtract %5 %111 %306 %285
-%307 = OpShiftLeftLogical %5 %290 %305
-%308 = OpBitwiseOr %5 %304 %307
-%309 = OpBitFieldUExtract %5 %111 %310 %285
-%311 = OpShiftLeftLogical %5 %295 %309
-%312 = OpBitwiseOr %5 %308 %311
-%313 = OpSelect %5 %281 %312 %30
-%314 = OpInBoundsAccessChain %28 %105 %30 %158 %10
-%315 = OpAtomicOr %5 %314 %10 %30 %313
-%316 = OpBitwiseAnd %5 %315 %312
-%317 = OpIEqual %97 %316 %312
-%318 = OpLogicalAnd %97 %301 %317
-%319 = OpBitFieldUExtract %5 %111 %320 %285
-%321 = OpShiftLeftLogical %5 %287 %319
-%322 = OpBitFieldUExtract %5 %111 %323 %285
-%324 = OpShiftLeftLogical %5 %290 %322
-%325 = OpBitwiseOr %5 %321 %324
-%326 = OpBitFieldUExtract %5 %111 %327 %285
-%328 = OpShiftLeftLogical %5 %295 %326
-%329 = OpBitwiseOr %5 %325 %328
-%330 = OpSelect %5 %281 %329 %30
-%331 = OpInBoundsAccessChain %28 %105 %30 %162 %10
-%332 = OpAtomicOr %5 %331 %10 %30 %330
-%333 = OpBitwiseAnd %5 %332 %329
-%334 = OpIEqual %97 %333 %329
-%335 = OpLogicalAnd %97 %318 %334
-%336 = OpBitFieldUExtract %5 %111 %337 %285
-%338 = OpShiftLeftLogical %5 %287 %336
-%339 = OpBitFieldUExtract %5 %111 %340 %285
-%341 = OpShiftLeftLogical %5 %290 %339
-%342 = OpBitwiseOr %5 %338 %341
-%343 = OpBitFieldUExtract %5 %111 %344 %285
-%345 = OpShiftLeftLogical %5 %295 %343
-%346 = OpBitwiseOr %5 %342 %345
-%347 = OpSelect %5 %281 %346 %30
-%348 = OpInBoundsAccessChain %28 %105 %30 %165 %10
-%349 = OpAtomicOr %5 %348 %10 %30 %347
-%350 = OpBitwiseAnd %5 %349 %346
-%351 = OpIEqual %97 %350 %346
-%352 = OpLogicalAnd %97 %335 %351
-%353 = OpBitFieldUExtract %5 %111 %354 %285
-%355 = OpShiftLeftLogical %5 %287 %353
-%356 = OpBitFieldUExtract %5 %111 %357 %285
-%358 = OpShiftLeftLogical %5 %290 %356
-%359 = OpBitwiseOr %5 %355 %358
-%360 = OpBitFieldUExtract %5 %111 %361 %285
-%362 = OpShiftLeftLogical %5 %295 %360
-%363 = OpBitwiseOr %5 %359 %362
-%364 = OpSelect %5 %281 %363 %30
-%365 = OpInBoundsAccessChain %28 %105 %30 %169 %10
-%366 = OpAtomicOr %5 %365 %10 %30 %364
-%367 = OpBitwiseAnd %5 %366 %363
-%368 = OpIEqual %97 %367 %363
-%369 = OpLogicalAnd %97 %352 %368
-%370 = OpBitFieldUExtract %5 %111 %303 %285
-%371 = OpShiftLeftLogical %5 %287 %370
-%372 = OpBitFieldUExtract %5 %111 %306 %285
-%373 = OpShiftLeftLogical %5 %290 %372
-%374 = OpBitwiseOr %5 %371 %373
-%375 = OpBitFieldUExtract %5 %111 %310 %285
-%376 = OpShiftLeftLogical %5 %295 %375
-%377 = OpBitwiseOr %5 %374 %376
-%378 = OpSelect %5 %281 %377 %30
-%379 = OpInBoundsAccessChain %28 %105 %30 %173 %10
-%380 = OpAtomicOr %5 %379 %10 %30 %378
-%381 = OpBitwiseAnd %5 %380 %377
-%382 = OpIEqual %97 %381 %377
-%383 = OpLogicalAnd %97 %369 %382
-%384 = OpBitFieldUExtract %5 %111 %385 %285
-%386 = OpShiftLeftLogical %5 %287 %384
-%387 = OpBitFieldUExtract %5 %111 %388 %285
-%389 = OpShiftLeftLogical %5 %290 %387
-%390 = OpBitwiseOr %5 %386 %389
-%391 = OpBitFieldUExtract %5 %111 %337 %285
-%392 = OpShiftLeftLogical %5 %295 %391
-%393 = OpBitwiseOr %5 %390 %392
-%394 = OpSelect %5 %281 %393 %30
-%395 = OpInBoundsAccessChain %28 %105 %30 %177 %10
-%396 = OpAtomicOr %5 %395 %10 %30 %394
-%397 = OpBitwiseAnd %5 %396 %393
-%398 = OpIEqual %97 %397 %393
-%399 = OpLogicalAnd %97 %383 %398
-%400 = OpBitFieldUExtract %5 %111 %401 %285
-%402 = OpShiftLeftLogical %5 %287 %400
-%403 = OpBitFieldUExtract %5 %111 %404 %285
-%405 = OpShiftLeftLogical %5 %290 %403
-%406 = OpBitwiseOr %5 %402 %405
-%407 = OpBitFieldUExtract %5 %111 %408 %285
-%409 = OpShiftLeftLogical %5 %295 %407
-%410 = OpBitwiseOr %5 %406 %409
-%411 = OpSelect %5 %281 %410 %30
-%412 = OpInBoundsAccessChain %28 %105 %30 %181 %10
-%413 = OpAtomicOr %5 %412 %10 %30 %411
-%414 = OpBitwiseAnd %5 %413 %410
-%415 = OpIEqual %97 %414 %410
-%416 = OpLogicalAnd %97 %399 %415
-OpSelectionMerge %421 None
-OpSwitch %110 %420 0 %417 1 %418 2 %419
-%420 = OpLabel
-%429 = OpShiftLeftLogical %5 %141 %66
-%430 = OpBitwiseAnd %5 %278 %429
-%431 = OpINotEqual %97 %430 %30
-OpBranch %421
+%117 = OpCompositeExtract %5 %106 0
+%118 = OpCompositeExtract %5 %106 1
+%120 = OpIAddCarry %119 %117 %107
+%121 = OpCompositeExtract %5 %120 0
+%122 = OpCompositeExtract %5 %120 1
+%123 = OpIAdd %5 %118 %122
+%124 = OpCompositeConstruct %6 %121 %123
+%125 = OpCompositeExtract %5 %124 0
+%126 = OpBitFieldUExtract %5 %130 %30 %108
+%127 = OpBitwiseAnd %5 %125 %131
+%128 = OpShiftLeftLogical %5 %126 %127
+%129 = OpBitwiseAnd %5 %128 %67
+%132 = OpBitwiseAnd %5 %125 %140
+%133 = OpIAdd %5 %132 %108
+%134 = OpIAdd %5 %133 %140
+%135 = OpShiftRightLogical %5 %134 %37
+%136 = OpBitFieldUExtract %5 %125 %37 %37
+%137 = OpBitFieldUExtract %5 %130 %30 %135
+%138 = OpShiftLeftLogical %5 %137 %136
+%139 = OpBitwiseAnd %5 %138 %131
+%141 = OpArrayLength %5 %100 0
+%142 = OpExtInst %5 %144 FindUMsb %141
+%143 = OpBitFieldUExtract %5 %130 %30 %142
+%145 = OpArrayLength %5 %100 0
+%146 = OpExtInst %5 %144 FindUMsb %145
+%147 = OpBitFieldUExtract %5 %145 %30 %146
+%148 = OpISub %5 %147 %10
+%149 = OpFunctionCall %5 %58 %124 %150
+%151 = OpBitwiseAnd %5 %149 %143
+%152 = OpIAdd %5 %151 %148
+%153 = OpFunctionCall %5 %58 %124 %154
+%155 = OpBitwiseAnd %5 %153 %143
+%156 = OpIAdd %5 %155 %148
+%157 = OpFunctionCall %5 %58 %124 %158
+%159 = OpBitwiseAnd %5 %157 %143
+%160 = OpIAdd %5 %159 %148
+%161 = OpFunctionCall %5 %58 %124 %33
+%162 = OpBitwiseAnd %5 %161 %143
+%163 = OpIAdd %5 %162 %148
+%164 = OpFunctionCall %5 %58 %124 %165
+%166 = OpBitwiseAnd %5 %164 %143
+%167 = OpIAdd %5 %166 %148
+%168 = OpFunctionCall %5 %58 %124 %169
+%170 = OpBitwiseAnd %5 %168 %143
+%171 = OpIAdd %5 %170 %148
+%172 = OpFunctionCall %5 %58 %124 %173
+%174 = OpBitwiseAnd %5 %172 %143
+%175 = OpIAdd %5 %174 %148
+%176 = OpFunctionCall %5 %58 %124 %177
+%178 = OpBitwiseAnd %5 %176 %143
+%179 = OpIAdd %5 %178 %148
+%180 = OpFunctionCall %5 %58 %124 %181
+%182 = OpBitwiseAnd %5 %180 %143
+%183 = OpIAdd %5 %182 %148
+%184 = OpFunctionCall %5 %58 %124 %185
+%186 = OpBitwiseAnd %5 %184 %143
+%187 = OpIAdd %5 %186 %148
+%188 = OpFunctionCall %5 %58 %124 %189
+%190 = OpBitwiseAnd %5 %188 %143
+%191 = OpIAdd %5 %190 %148
+%192 = OpFunctionCall %5 %58 %124 %193
+%194 = OpBitwiseAnd %5 %192 %143
+%195 = OpIAdd %5 %194 %148
+%196 = OpFunctionCall %5 %58 %124 %197
+%198 = OpBitwiseAnd %5 %196 %143
+%199 = OpIAdd %5 %198 %148
+%200 = OpFunctionCall %5 %58 %124 %201
+%202 = OpBitwiseAnd %5 %200 %143
+%203 = OpIAdd %5 %202 %148
+%204 = OpFunctionCall %5 %58 %124 %205
+%206 = OpBitwiseAnd %5 %204 %143
+%207 = OpIAdd %5 %206 %148
+%208 = OpFunctionCall %5 %58 %124 %209
+%210 = OpBitwiseAnd %5 %208 %143
+%211 = OpIAdd %5 %210 %148
+%217 = OpVectorExtractDynamic %95 %216 %109
+%218 = OpShiftLeftLogical %5 %129 %220
+%219 = OpShiftLeftLogical %5 %139 %66
+%221 = OpBitwiseOr %5 %129 %218
+%222 = OpBitwiseOr %5 %139 %219
+%223 = OpCompositeConstruct %6 %221 %222
+%224 = OpBitcast %95 %223
+%225 = OpBitwiseAnd %95 %217 %224
+%227 = OpInBoundsAccessChain %226 %100 %30 %152
+%228 = OpAtomicOr %95 %227 %32 %30 %225
+%229 = OpInBoundsAccessChain %226 %100 %30 %156
+%230 = OpAtomicOr %95 %229 %32 %30 %225
+%231 = OpBitwiseAnd %95 %228 %230
+%232 = OpInBoundsAccessChain %226 %100 %30 %160
+%233 = OpAtomicOr %95 %232 %32 %30 %225
+%234 = OpBitwiseAnd %95 %231 %233
+%235 = OpInBoundsAccessChain %226 %100 %30 %163
+%236 = OpAtomicOr %95 %235 %32 %30 %225
+%237 = OpBitwiseAnd %95 %234 %236
+%238 = OpInBoundsAccessChain %226 %100 %30 %167
+%239 = OpAtomicOr %95 %238 %32 %30 %225
+%240 = OpBitwiseAnd %95 %237 %239
+%241 = OpInBoundsAccessChain %226 %100 %30 %171
+%242 = OpAtomicOr %95 %241 %32 %30 %225
+%243 = OpBitwiseAnd %95 %240 %242
+%244 = OpInBoundsAccessChain %226 %100 %30 %175
+%245 = OpAtomicOr %95 %244 %32 %30 %225
+%246 = OpBitwiseAnd %95 %243 %245
+%247 = OpInBoundsAccessChain %226 %100 %30 %179
+%248 = OpAtomicOr %95 %247 %32 %30 %225
+%249 = OpBitwiseAnd %95 %246 %248
+%250 = OpInBoundsAccessChain %226 %100 %30 %183
+%251 = OpAtomicOr %95 %250 %32 %30 %225
+%252 = OpBitwiseAnd %95 %249 %251
+%253 = OpInBoundsAccessChain %226 %100 %30 %187
+%254 = OpAtomicOr %95 %253 %32 %30 %225
+%255 = OpBitwiseAnd %95 %252 %254
+%256 = OpInBoundsAccessChain %226 %100 %30 %191
+%257 = OpAtomicOr %95 %256 %32 %30 %225
+%258 = OpBitwiseAnd %95 %255 %257
+%259 = OpInBoundsAccessChain %226 %100 %30 %195
+%260 = OpAtomicOr %95 %259 %32 %30 %225
+%261 = OpBitwiseAnd %95 %258 %260
+%262 = OpInBoundsAccessChain %226 %100 %30 %199
+%263 = OpAtomicOr %95 %262 %32 %30 %225
+%264 = OpBitwiseAnd %95 %261 %263
+%265 = OpInBoundsAccessChain %226 %100 %30 %203
+%266 = OpAtomicOr %95 %265 %32 %30 %225
+%267 = OpBitwiseAnd %95 %264 %266
+%268 = OpInBoundsAccessChain %226 %100 %30 %207
+%269 = OpAtomicOr %95 %268 %32 %30 %225
+%270 = OpBitwiseAnd %95 %267 %269
+%271 = OpInBoundsAccessChain %226 %100 %30 %211
+%272 = OpAtomicOr %95 %271 %32 %30 %225
+%273 = OpBitwiseAnd %95 %270 %272
+%274 = OpBitcast %6 %273
+%275 = OpCompositeExtract %5 %274 0
+%276 = OpCompositeExtract %5 %274 1
+%277 = OpShiftRightLogical %5 %275 %220
+%278 = OpBitwiseAnd %5 %277 %129
+%279 = OpIEqual %96 %278 %30
+%280 = OpBitFieldUExtract %5 %110 %282 %283
+%284 = OpShiftLeftLogical %5 %285 %280
+%286 = OpBitFieldUExtract %5 %110 %283 %283
+%287 = OpShiftLeftLogical %5 %288 %286
+%289 = OpBitwiseOr %5 %284 %287
+%290 = OpBitFieldUExtract %5 %110 %291 %283
+%292 = OpShiftLeftLogical %5 %293 %290
+%294 = OpBitwiseOr %5 %289 %292
+%295 = OpSelect %5 %279 %294 %30
+%296 = OpInBoundsAccessChain %28 %104 %30 %152 %10
+%297 = OpAtomicOr %5 %296 %32 %30 %295
+%298 = OpBitwiseAnd %5 %297 %294
+%299 = OpIEqual %96 %298 %294
+%300 = OpBitFieldUExtract %5 %110 %301 %283
+%302 = OpShiftLeftLogical %5 %285 %300
+%303 = OpBitFieldUExtract %5 %110 %304 %283
+%305 = OpShiftLeftLogical %5 %288 %303
+%306 = OpBitwiseOr %5 %302 %305
+%307 = OpBitFieldUExtract %5 %110 %308 %283
+%309 = OpShiftLeftLogical %5 %293 %307
+%310 = OpBitwiseOr %5 %306 %309
+%311 = OpSelect %5 %279 %310 %30
+%312 = OpInBoundsAccessChain %28 %104 %30 %156 %10
+%313 = OpAtomicOr %5 %312 %32 %30 %311
+%314 = OpBitwiseAnd %5 %313 %310
+%315 = OpIEqual %96 %314 %310
+%316 = OpLogicalAnd %96 %299 %315
+%317 = OpBitFieldUExtract %5 %110 %318 %283
+%319 = OpShiftLeftLogical %5 %285 %317
+%320 = OpBitFieldUExtract %5 %110 %321 %283
+%322 = OpShiftLeftLogical %5 %288 %320
+%323 = OpBitwiseOr %5 %319 %322
+%324 = OpBitFieldUExtract %5 %110 %325 %283
+%326 = OpShiftLeftLogical %5 %293 %324
+%327 = OpBitwiseOr %5 %323 %326
+%328 = OpSelect %5 %279 %327 %30
+%329 = OpInBoundsAccessChain %28 %104 %30 %160 %10
+%330 = OpAtomicOr %5 %329 %32 %30 %328
+%331 = OpBitwiseAnd %5 %330 %327
+%332 = OpIEqual %96 %331 %327
+%333 = OpLogicalAnd %96 %316 %332
+%334 = OpBitFieldUExtract %5 %110 %335 %283
+%336 = OpShiftLeftLogical %5 %285 %334
+%337 = OpBitFieldUExtract %5 %110 %338 %283
+%339 = OpShiftLeftLogical %5 %288 %337
+%340 = OpBitwiseOr %5 %336 %339
+%341 = OpBitFieldUExtract %5 %110 %342 %283
+%343 = OpShiftLeftLogical %5 %293 %341
+%344 = OpBitwiseOr %5 %340 %343
+%345 = OpSelect %5 %279 %344 %30
+%346 = OpInBoundsAccessChain %28 %104 %30 %163 %10
+%347 = OpAtomicOr %5 %346 %32 %30 %345
+%348 = OpBitwiseAnd %5 %347 %344
+%349 = OpIEqual %96 %348 %344
+%350 = OpLogicalAnd %96 %333 %349
+%351 = OpBitFieldUExtract %5 %110 %352 %283
+%353 = OpShiftLeftLogical %5 %285 %351
+%354 = OpBitFieldUExtract %5 %110 %355 %283
+%356 = OpShiftLeftLogical %5 %288 %354
+%357 = OpBitwiseOr %5 %353 %356
+%358 = OpBitFieldUExtract %5 %110 %359 %283
+%360 = OpShiftLeftLogical %5 %293 %358
+%361 = OpBitwiseOr %5 %357 %360
+%362 = OpSelect %5 %279 %361 %30
+%363 = OpInBoundsAccessChain %28 %104 %30 %167 %10
+%364 = OpAtomicOr %5 %363 %32 %30 %362
+%365 = OpBitwiseAnd %5 %364 %361
+%366 = OpIEqual %96 %365 %361
+%367 = OpLogicalAnd %96 %350 %366
+%368 = OpBitFieldUExtract %5 %110 %301 %283
+%369 = OpShiftLeftLogical %5 %285 %368
+%370 = OpBitFieldUExtract %5 %110 %304 %283
+%371 = OpShiftLeftLogical %5 %288 %370
+%372 = OpBitwiseOr %5 %369 %371
+%373 = OpBitFieldUExtract %5 %110 %308 %283
+%374 = OpShiftLeftLogical %5 %293 %373
+%375 = OpBitwiseOr %5 %372 %374
+%376 = OpSelect %5 %279 %375 %30
+%377 = OpInBoundsAccessChain %28 %104 %30 %171 %10
+%378 = OpAtomicOr %5 %377 %32 %30 %376
+%379 = OpBitwiseAnd %5 %378 %375
+%380 = OpIEqual %96 %379 %375
+%381 = OpLogicalAnd %96 %367 %380
+%382 = OpBitFieldUExtract %5 %110 %383 %283
+%384 = OpShiftLeftLogical %5 %285 %382
+%385 = OpBitFieldUExtract %5 %110 %386 %283
+%387 = OpShiftLeftLogical %5 %288 %385
+%388 = OpBitwiseOr %5 %384 %387
+%389 = OpBitFieldUExtract %5 %110 %335 %283
+%390 = OpShiftLeftLogical %5 %293 %389
+%391 = OpBitwiseOr %5 %388 %390
+%392 = OpSelect %5 %279 %391 %30
+%393 = OpInBoundsAccessChain %28 %104 %30 %175 %10
+%394 = OpAtomicOr %5 %393 %32 %30 %392
+%395 = OpBitwiseAnd %5 %394 %391
+%396 = OpIEqual %96 %395 %391
+%397 = OpLogicalAnd %96 %381 %396
+%398 = OpBitFieldUExtract %5 %110 %399 %283
+%400 = OpShiftLeftLogical %5 %285 %398
+%401 = OpBitFieldUExtract %5 %110 %402 %283
+%403 = OpShiftLeftLogical %5 %288 %401
+%404 = OpBitwiseOr %5 %400 %403
+%405 = OpBitFieldUExtract %5 %110 %406 %283
+%407 = OpShiftLeftLogical %5 %293 %405
+%408 = OpBitwiseOr %5 %404 %407
+%409 = OpSelect %5 %279 %408 %30
+%410 = OpInBoundsAccessChain %28 %104 %30 %179 %10
+%411 = OpAtomicOr %5 %410 %32 %30 %409
+%412 = OpBitwiseAnd %5 %411 %408
+%413 = OpIEqual %96 %412 %408
+%414 = OpLogicalAnd %96 %397 %413
+OpSelectionMerge %419 None
+OpSwitch %109 %418 0 %415 1 %416 2 %417
+%415 = OpLabel
+%420 = OpBitwiseAnd %5 %275 %129
+%421 = OpINotEqual %96 %420 %30
+OpBranch %419
+%416 = OpLabel
+%422 = OpShiftLeftLogical %5 %129 %220
+%423 = OpBitwiseAnd %5 %275 %422
+%424 = OpINotEqual %96 %423 %30
+OpBranch %419
 %417 = OpLabel
-%422 = OpBitwiseAnd %5 %277 %131
-%423 = OpINotEqual %97 %422 %30
-OpBranch %421
+%425 = OpBitwiseAnd %5 %276 %139
+%426 = OpINotEqual %96 %425 %30
+OpBranch %419
 %418 = OpLabel
-%424 = OpShiftLeftLogical %5 %131 %222
-%425 = OpBitwiseAnd %5 %277 %424
-%426 = OpINotEqual %97 %425 %30
-OpBranch %421
+%427 = OpShiftLeftLogical %5 %139 %66
+%428 = OpBitwiseAnd %5 %276 %427
+%429 = OpINotEqual %96 %428 %30
+OpBranch %419
 %419 = OpLabel
-%427 = OpBitwiseAnd %5 %278 %141
-%428 = OpINotEqual %97 %427 %30
-OpBranch %421
-%421 = OpLabel
-%432 = OpPhi %97 %423 %417 %426 %418 %428 %419 %431 %420
-%433 = OpLogicalNot %97 %432
-%434 = OpLogicalOr %97 %433 %416
-OpReturnValue %434
+%430 = OpPhi %96 %421 %415 %424 %416 %426 %417 %429 %418
+%431 = OpLogicalNot %96 %430
+%432 = OpLogicalOr %96 %431 %414
+OpReturnValue %432
 OpFunctionEnd
-%481 = OpFunction %1 None %478
-%479 = OpFunctionParameter %97
-%480 = OpFunctionParameter %5
-%482 = OpLabel
-%485 = OpLogicalNot %97 %479
-%486 = OpLoad %97 %468
-%487 = OpLogicalAnd %97 %485 %486
-OpSelectionMerge %483 None
-OpBranchConditional %487 %484 %483
-%484 = OpLabel
-%490 = OpIMul %5 %480 %492
-%491 = OpBitwiseXor %5 %490 %493
-%494 = OpArrayLength %5 %473 0
-%495 = OpISub %5 %494 %37
-%496 = OpAccessChain %28 %473 %30 %495
-%497 = OpLoad %5 %496
-%498 = OpIMul %5 %497 %499
-%500 = OpBitwiseXor %5 %491 %498
-%501 = OpArrayLength %5 %477 0
-%502 = OpISub %5 %501 %10
-%503 = OpBitwiseAnd %5 %500 %502
-%504 = OpShiftRightLogical %5 %503 %66
-%505 = OpBitwiseAnd %5 %503 %133
-%506 = OpShiftLeftLogical %5 %10 %505
-%507 = OpAccessChain %28 %473 %30 %504
-%508 = OpAtomicOr %5 %507 %10 %30 %506
-%509 = OpBitwiseAnd %5 %508 %506
-%510 = OpIEqual %97 %509 %30
-OpStore %468 %511
-OpSelectionMerge %489 None
-OpBranchConditional %510 %488 %489
-%488 = OpLabel
-%512 = OpCompositeConstruct %469 %493 %30 %480 %497
-%513 = OpShiftLeftLogical %5 %506 %222
-%515 = OpAccessChain %514 %477 %30 %503
-OpStore %515 %512
-OpMemoryBarrier %10 %517
-%516 = OpAtomicOr %5 %507 %10 %30 %513
-OpMemoryBarrier %10 %517
-OpBranch %489
-%489 = OpLabel
-OpBranch %483
-%483 = OpLabel
+%478 = OpFunction %1 None %475
+%476 = OpFunctionParameter %96
+%477 = OpFunctionParameter %5
+%479 = OpLabel
+%482 = OpLogicalNot %96 %476
+%483 = OpLoad %96 %465
+%484 = OpLogicalAnd %96 %482 %483
+OpSelectionMerge %481 None
+OpBranchConditional %484 %480 %481
+%480 = OpLabel
+%487 = OpIMul %5 %477 %489
+%488 = OpBitwiseXor %5 %487 %490
+%491 = OpArrayLength %5 %470 0
+%492 = OpISub %5 %491 %37
+%493 = OpAccessChain %28 %470 %30 %492
+%494 = OpLoad %5 %493
+%495 = OpIMul %5 %494 %496
+%497 = OpBitwiseXor %5 %488 %495
+%498 = OpArrayLength %5 %474 0
+%499 = OpISub %5 %498 %10
+%500 = OpBitwiseAnd %5 %497 %499
+%501 = OpShiftRightLogical %5 %500 %66
+%502 = OpBitwiseAnd %5 %500 %131
+%503 = OpShiftLeftLogical %5 %10 %502
+%504 = OpAccessChain %28 %470 %30 %501
+%505 = OpAtomicOr %5 %504 %32 %30 %503
+%506 = OpBitwiseAnd %5 %505 %503
+%507 = OpIEqual %96 %506 %30
+OpStore %465 %508
+OpSelectionMerge %486 None
+OpBranchConditional %507 %485 %486
+%481 = OpLabel
 OpReturn
+%485 = OpLabel
+%509 = OpCompositeConstruct %466 %490 %30 %477 %494
+%510 = OpShiftLeftLogical %5 %503 %220
+%512 = OpAccessChain %511 %474 %30 %500
+OpStore %512 %509 NonPrivatePointer
+OpMemoryBarrier %32 %514
+%513 = OpAtomicOr %5 %504 %32 %30 %510
+OpMemoryBarrier %32 %514
+OpBranch %486
+%486 = OpLabel
+OpBranch %481
 OpFunctionEnd
 #endif

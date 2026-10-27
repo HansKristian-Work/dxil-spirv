@@ -16,15 +16,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 44
+; Bound: 43
 ; Schema: 0
 OpCapability Shader
 OpCapability SampleRateShading
 OpCapability FragmentBarycentricKHR
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_fragment_shader_barycentric"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %10 %11 %12 %15 %17 %19
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

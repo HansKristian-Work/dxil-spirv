@@ -33,13 +33,6 @@
 
 namespace dxil_spv
 {
-template <typename Container, typename T>
-static inline bool has_element(const Container &c, const T &value)
-{
-	auto itr = std::find(c.begin(), c.end(), value);
-	return itr != c.end();
-}
-
 template <typename Op>
 void CFGStructurizer::iterate_dominated_node_range_bottom_up(const CFGNode *start, const CFGNode *end, const Op &op)
 {
@@ -87,9 +80,9 @@ void CFGStructurizer::log_cfg_graphviz(const char *path) const
 		if (itr == node_to_id.end())
 		{
 			const char *shape = nullptr;
-			if (node->merge == MergeType::Loop)
+			if (node->merge == MergeType::Loop || node->ir.merge_info.merge_type == MergeType::Loop)
 				shape = "circle";
-			else if (node->merge == MergeType::Selection)
+			else if (node->merge == MergeType::Selection || node->ir.merge_info.merge_type == MergeType::Selection)
 				shape = "triangle";
 			else
 				shape = "box";
@@ -126,17 +119,23 @@ void CFGStructurizer::log_cfg_graphviz(const char *path) const
 			break;
 		}
 
-		if (node->merge == MergeType::Loop)
+		if (node->merge == MergeType::Loop || node->ir.merge_info.merge_type == MergeType::Loop)
 		{
-			if (node->pred_back_edge)
+			if (node->ir.merge_info.continue_block)
+				fprintf(file, "%u -> %u [style=\"dotted\"];\n", get_node_id(node), get_node_id(node->ir.merge_info.continue_block));
+			else if (node->pred_back_edge)
 				fprintf(file, "%u -> %u [style=\"dotted\"];\n", get_node_id(node), get_node_id(node->pred_back_edge));
 			if (node->loop_merge_block)
 				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->loop_merge_block));
+			else if (node->ir.merge_info.merge_block)
+				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->ir.merge_info.merge_block));
 		}
-		else if (node->merge == MergeType::Selection)
+		else if (node->merge == MergeType::Selection || node->ir.merge_info.merge_type == MergeType::Selection)
 		{
 			if (node->selection_merge_block)
 				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->selection_merge_block));
+			else if (node->ir.merge_info.merge_block)
+				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->ir.merge_info.merge_block));
 		}
 	}
 
@@ -235,8 +234,6 @@ void CFGStructurizer::log_cfg_structurize_test(const char *path) const
 		auto *n = stack.back();
 		stack.pop_back();
 		auto &t = n->ir.terminator;
-		if (!n->ir.operations.empty())
-			fprintf(f, "sideeffect %s\n", name(n));
 		if (t.type == Terminator::Type::Branch)
 			fprintf(f, "b %s %s\n", name(n), name(t.direct_block));
 		else if (t.type == Terminator::Type::Condition)
@@ -1329,6 +1326,7 @@ bool CFGStructurizer::rewrite_impossible_back_edges()
 
 bool CFGStructurizer::run_trivial()
 {
+	experimental_unstructured_flow = false;
 	recompute_cfg();
 	sink_ssa_constructs();
 	propagate_branch_control_hints();
@@ -1338,36 +1336,23 @@ bool CFGStructurizer::run_trivial()
 	return true;
 }
 
-bool CFGStructurizer::run()
+bool CFGStructurizer::run_experimental_unstructured()
 {
+	experimental_unstructured_flow = true;
+	reset_traversal();
+	visit(*entry_block);
+	return true;
+}
+
+bool CFGStructurizer::run_legacy_structurizer()
+{
+	run_common_preamble();
+
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
 	String graphviz_path;
 	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
 		graphviz_path = env;
-
-	// Debug only: dump the input CFG in the format structurize-test reads.
-	if (const char *env = getenv("DXIL_SPIRV_STRUCTURIZE_TEST_PATH"))
-		log_cfg_structurize_test(env);
 #endif
-
-	// We make the assumption during traversal that there is only one back edge.
-	// Fix this up here.
-	rewrite_multiple_back_edges();
-
-#ifdef DXIL_SPIRV_DEBUG_DUMPING
-	//log_cfg("Input state");
-	if (!graphviz_path.empty())
-	{
-		reset_traversal();
-		visit(*entry_block);
-		auto graphviz_input = graphviz_path + ".input";
-		log_cfg_graphviz(graphviz_input.c_str());
-	}
-#endif
-
-	recompute_cfg();
-	sink_ssa_constructs();
-	propagate_branch_control_hints();
 
 	cleanup_breaking_phi_constructs();
 
@@ -1806,6 +1791,12 @@ Operation *CFGStructurizer::duplicate_op(Operation *op, UnorderedMap<spv::Id, sp
 
 void CFGStructurizer::fixup_partial_stage_output_writes()
 {
+	if (limited_control_flow_analysis)
+	{
+		// Need full fat analysis with post-dominance, reachability, etc.
+		compute_full_control_flow_analysis();
+	}
+
 	// This isn't a perfect check by any means, but it's good enough.
 	// D3D12 isn't entirely well defined in these situations,
 	// so do whatever is needed to fixup obviously broken games.
@@ -1950,11 +1941,19 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 		// First, rewrite PHI inputs.
 		// Since we only have one pred now, we can resolve PHIs directly.
 		auto *block = pool.create_node();
+		block->interposing = true;
 		block->name = node->name + ".dup." + pred->name;
 
 		block->immediate_post_dominator = node->immediate_post_dominator;
 		block->immediate_dominator = pred;
-		pred->retarget_branch(node, block);
+
+		if (limited_control_flow_analysis)
+		{
+			pred->idom_children.push_back(block);
+			pred->retarget_branch_pre_traversal(node, block);
+		}
+		else
+			pred->retarget_branch(node, block);
 
 		for (auto *succ : node_succs)
 			block->add_branch(succ);
@@ -3140,6 +3139,9 @@ void CFGStructurizer::build_immediate_dominators()
 	{
 		auto *block = forward_post_visit_order[i - 1];
 		block->recompute_immediate_dominator();
+
+		if (limited_control_flow_analysis && block->immediate_dominator && block->immediate_dominator != block)
+			block->immediate_dominator->idom_children.push_back(block);
 	}
 }
 
@@ -3164,6 +3166,7 @@ void CFGStructurizer::reset_traversal()
 		node.traversing = false;
 		node.immediate_dominator = nullptr;
 		node.immediate_post_dominator = nullptr;
+		node.idom_children.clear();
 		node.fake_pred.clear();
 		node.fake_succ.clear();
 		node.headers.clear();
@@ -3406,11 +3409,19 @@ void CFGStructurizer::visit_for_back_edge_analysis(CFGNode &entry)
 	entry.traversing = true;
 	reachable_nodes.insert(&entry);
 
+	// Just keep track of visit ordering somehow. Reuse visit order here.
+	entry.backward_post_visit_order = backward_post_visit_order.size();
+	backward_post_visit_order.push_back(&entry);
+
 	for (auto *succ : entry.succ)
 	{
 		// Reuse the existing vector to keep track of back edges.
 		if (succ->traversing)
+		{
 			succ->fake_pred.push_back(&entry);
+			// We might have two different back-edges.
+			entry.fake_succ.push_back(succ);
+		}
 		else if (!succ->visited)
 			visit_for_back_edge_analysis(*succ);
 	}
@@ -3430,6 +3441,35 @@ void CFGStructurizer::visit_for_back_edge_analysis(CFGNode &entry)
 		new_back_edge->ir.terminator.direct_block = &entry;
 		new_back_edge->add_branch(&entry);
 	}
+
+	if (entry.fake_succ.size() >= 2)
+	{
+		// A node cannot have more than one back-edge in our implementation. Add interposing blocks to disambiguate.
+		// Only the innermost node should remain.
+		std::sort(entry.fake_succ.begin(), entry.fake_succ.end(), [](const CFGNode *a, const CFGNode *b)
+		{
+			return a->backward_post_visit_order < b->backward_post_visit_order;
+		});
+
+		entry.fake_succ.pop_back();
+		Vector<CFGNode *> rewrites;
+		std::swap(rewrites, entry.fake_succ);
+
+		for (auto *succ : rewrites)
+		{
+			auto *new_back_edge = pool.create_node();
+			entry.retarget_branch_pre_traversal(succ, new_back_edge);
+
+			auto itr = std::find(succ->fake_pred.begin(), succ->fake_pred.end(), &entry);
+			assert(itr != succ->fake_pred.end());
+			*itr = new_back_edge;
+
+			new_back_edge->name = entry.name + ".long-edge";
+			new_back_edge->add_branch(succ);
+			new_back_edge->ir.terminator.type = Terminator::Type::Branch;
+			new_back_edge->ir.terminator.direct_block = succ;
+		}
+	}
 }
 
 void CFGStructurizer::visit(CFGNode &entry)
@@ -3443,13 +3483,13 @@ void CFGStructurizer::visit(CFGNode &entry)
 		if (succ->traversing)
 		{
 			// For now, only support one back edge.
-			// DXIL seems to obey this.
-			assert(!entry.succ_back_edge || entry.succ_back_edge == succ);
+			assert(experimental_unstructured_flow || !entry.succ_back_edge || entry.succ_back_edge == succ);
 			entry.succ_back_edge = succ;
 
 			// For now, only support one back edge.
 			// DXIL seems to obey this.
-			assert(!succ->pred_back_edge || succ->pred_back_edge == &entry);
+			// For unstructured flow, we don't really do any passes, so just yolo it.
+			assert(experimental_unstructured_flow || !succ->pred_back_edge || succ->pred_back_edge == &entry);
 			succ->pred_back_edge = &entry;
 		}
 		else if (!succ->visited)
@@ -5134,12 +5174,17 @@ void CFGStructurizer::recompute_cfg()
 	// Need to prune dead preds before computing dominance.
 	prune_dead_preds();
 	build_immediate_dominators();
-	build_reachability();
-
-	backwards_visit();
-	build_immediate_post_dominators();
 
 	compute_dominance_frontier();
+	if (!limited_control_flow_analysis)
+		compute_full_control_flow_analysis();
+}
+
+void CFGStructurizer::compute_full_control_flow_analysis()
+{
+	build_reachability();
+	backwards_visit();
+	build_immediate_post_dominators();
 	compute_post_dominance_frontier();
 }
 
@@ -9147,10 +9192,11 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 {
 	// Make sure all blocks are known to the backend before we emit code.
 	// Prefer that IDs grow the further down the function we go.
-	for (auto itr = forward_post_visit_order.rbegin(); itr != forward_post_visit_order.rend(); ++itr)
+	for (auto index = forward_post_visit_order.size(); index; index--)
 	{
-		(*itr)->id = 0;
-		iface.register_block(*itr);
+		auto *block = forward_post_visit_order[index - 1];
+		block->id = 0;
+		iface.register_block(block);
 	}
 
 	// Need to emit blocks such that dominating blocks come before dominated blocks.
@@ -9160,31 +9206,67 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 
 		auto &merge = block->ir.merge_info;
 
-		switch (block->merge)
+		if (limited_control_flow_analysis)
 		{
-		case MergeType::Selection:
-			merge.merge_block = block->selection_merge_block;
-			if (merge.merge_block)
-				iface.register_block(merge.merge_block);
-			merge.merge_type = block->merge;
-			iface.emit_basic_block(block);
-			break;
+			// We don't use the top-level merge stuff in the new structurizer.
+			switch (merge.merge_type)
+			{
+			case MergeType::Selection:
+				// Not reachable in the end, force merge to unreachable.
+				if (merge.merge_block && !merge.merge_block->userdata)
+					merge.merge_block = nullptr;
 
-		case MergeType::Loop:
-			merge.merge_block = block->loop_merge_block;
-			merge.merge_type = block->merge;
-			merge.continue_block = block->pred_back_edge;
-			if (merge.merge_block)
-				iface.register_block(merge.merge_block);
-			if (merge.continue_block)
-				iface.register_block(merge.continue_block);
+				if (merge.merge_block)
+					iface.register_block(merge.merge_block);
+				iface.emit_basic_block(block);
+				break;
 
-			iface.emit_basic_block(block);
-			break;
+			case MergeType::Loop:
+				if (merge.merge_block && !merge.merge_block->userdata)
+					merge.merge_block = nullptr;
+				if (merge.continue_block && !merge.continue_block->userdata)
+					merge.continue_block = nullptr;
 
-		default:
-			iface.emit_basic_block(block);
-			break;
+				if (merge.merge_block)
+					iface.register_block(merge.merge_block);
+				if (merge.continue_block)
+					iface.register_block(merge.continue_block);
+				iface.emit_basic_block(block);
+				break;
+
+			default:
+				iface.emit_basic_block(block);
+				break;
+			}
+		}
+		else
+		{
+			switch (block->merge)
+			{
+			case MergeType::Selection:
+				merge.merge_block = block->selection_merge_block;
+				if (merge.merge_block)
+					iface.register_block(merge.merge_block);
+				merge.merge_type = block->merge;
+				iface.emit_basic_block(block);
+				break;
+
+			case MergeType::Loop:
+				merge.merge_block = block->loop_merge_block;
+				merge.merge_type = block->merge;
+				merge.continue_block = block->pred_back_edge;
+				if (merge.merge_block)
+					iface.register_block(merge.merge_block);
+				if (merge.continue_block)
+					iface.register_block(merge.continue_block);
+
+				iface.emit_basic_block(block);
+				break;
+
+			default:
+				iface.emit_basic_block(block);
+				break;
+			}
 		}
 	}
 }

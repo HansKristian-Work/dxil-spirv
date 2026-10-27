@@ -43,13 +43,14 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 51
+; Bound: 50
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
 OpCapability Int16
 OpCapability StorageBuffer16BitAccess
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %16 %22 %27
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
@@ -119,21 +120,21 @@ OpDecorate %27 NonReadable
 OpBranch %49
 %49 = OpLabel
 %30 = OpAccessChain %29 %10 %28 %28
-%31 = OpLoad %6 %30
+%31 = OpLoad %6 %30 NonPrivatePointer
 %32 = OpBitCount %6 %31
 %33 = OpVectorShuffle %23 %32 %34 0 1
 %36 = OpAccessChain %35 %27 %28 %28
-OpStore %36 %33
+OpStore %36 %33 NonPrivatePointer
 %38 = OpAccessChain %37 %16 %28 %28
-%39 = OpLoad %12 %38
+%39 = OpLoad %12 %38 NonPrivatePointer
 %40 = OpBitCount %23 %39
 %42 = OpAccessChain %35 %27 %28 %41
-OpStore %42 %40
+OpStore %42 %40 NonPrivatePointer
 %44 = OpAccessChain %43 %22 %28 %28
-%45 = OpLoad %18 %44
+%45 = OpLoad %18 %44 NonPrivatePointer
 %46 = OpBitCount %23 %45
 %48 = OpAccessChain %35 %27 %28 %47
-OpStore %48 %46
+OpStore %48 %46 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

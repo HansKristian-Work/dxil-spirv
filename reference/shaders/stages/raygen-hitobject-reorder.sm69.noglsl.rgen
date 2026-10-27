@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 48
+; Bound: 47
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -16,11 +16,12 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability ShaderInvocationReorderEXT
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_EXT_shader_invocation_reorder"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %16 %17
 OpName %3 "main"
 OpName %8 "AS"
@@ -82,7 +83,7 @@ OpHitObjectExecuteShaderEXT %31 %16
 %42 = OpCompositeExtract %9 %37 3
 %44 = OpCompositeConstruct %43 %20 %20
 %45 = OpCompositeConstruct %13 %39 %40 %41 %42
-OpImageWrite %38 %44 %45
+OpImageWrite %38 %44 %45 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 

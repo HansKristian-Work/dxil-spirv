@@ -65,15 +65,16 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 128
+; Bound: 127
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
 OpCapability Float64
 OpCapability GroupNonUniformQuad
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint GLCompute %3 "main" %10 %14 %17
 OpExecutionMode %3 LocalSize 4 1 1
 OpExecutionMode %3 DenormPreserve 16
@@ -146,7 +147,7 @@ OpBranch %126
 %40 = OpVectorShuffle %26 %35 %39 0 1 2 3
 %41 = OpBitcast %6 %40
 %42 = OpAccessChain %22 %14 %20 %21
-OpStore %42 %41
+OpStore %42 %41 NonPrivatePointer
 %43 = OpIAdd %5 %21 %34
 %44 = OpIAdd %5 %21 %34
 %45 = OpAccessChain %22 %10 %20 %44
@@ -181,7 +182,7 @@ OpStore %42 %41
 %78 = OpIAdd %5 %21 %34
 %79 = OpBitcast %6 %76
 %80 = OpAccessChain %22 %14 %20 %78
-OpStore %80 %79
+OpStore %80 %79 NonPrivatePointer
 %81 = OpIAdd %5 %21 %38
 %82 = OpIAdd %5 %21 %38
 %83 = OpAccessChain %22 %10 %20 %82
@@ -224,7 +225,7 @@ OpStore %80 %79
 %123 = OpIAdd %5 %21 %38
 %124 = OpBitcast %6 %122
 %125 = OpAccessChain %22 %14 %20 %123
-OpStore %125 %124
+OpStore %125 %124 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

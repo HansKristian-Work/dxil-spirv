@@ -88,16 +88,16 @@ void descriptor_qa_report_fault(uint fault_type, uint heap_offset, uint cookie, 
 
 uint descriptor_qa_check(uint heap_offset, uint descriptor_type_mask, uint instruction)
 {
-    uint _88 = QAHeapData.descriptor_count;
-    uint _90 = QAHeapData.heap_index;
-    uint _93 = QAGlobalData.va_map_timestamp;
-    uvec3 _96 = QAHeapData.cookies_descriptor_info[heap_offset];
-    uint _105 = QAGlobalData.live_status_table[_96.x >> 5u];
-    uint _119 = ((uint(heap_offset >= _88) | (((_96.z & descriptor_type_mask) == descriptor_type_mask) ? 0u : 2u)) | (((_105 & (1u << (_96.x & 31u))) != 0u) ? 0u : 4u)) | ((_93 >= _96.y) ? 0u : 8u);
-    if (_119 != 0u)
+    uint _87 = QAHeapData.descriptor_count;
+    uint _89 = QAHeapData.heap_index;
+    uint _92 = QAGlobalData.va_map_timestamp;
+    uvec3 _95 = QAHeapData.cookies_descriptor_info[heap_offset];
+    uint _104 = QAGlobalData.live_status_table[_95.x >> 5u];
+    uint _118 = ((uint(heap_offset >= _87) | (((_95.z & descriptor_type_mask) == descriptor_type_mask) ? 0u : 2u)) | (((_104 & (1u << (_95.x & 31u))) != 0u) ? 0u : 4u)) | ((_92 >= _95.y) ? 0u : 8u);
+    if (_118 != 0u)
     {
-        descriptor_qa_report_fault(_119, heap_offset, _96.x, _90, descriptor_type_mask, _96.z, instruction);
-        return _88;
+        descriptor_qa_report_fault(_118, heap_offset, _95.x, _89, descriptor_type_mask, _95.z, instruction);
+        return _87;
     }
     return heap_offset;
 }
@@ -107,24 +107,24 @@ void main()
     uint _35 = descriptor_qa_check(registers._m0 + 110u, 320u, 1u);
     _28._m0 = vec4(1.0, 2.0, 3.0, 4.0);
     traceRayEXT(accelerationStructureEXT(_20._m0[subgroupBroadcastFirst(_35)]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 3);
-    uint _147 = descriptor_qa_check(registers._m0 + 3u, 320u, 2u);
+    uint _144 = descriptor_qa_check(registers._m0 + 3u, 320u, 2u);
     _27._m0 = _28._m0;
-    traceRayEXT(accelerationStructureEXT(_20._m0[subgroupBroadcastFirst(_147)]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 2);
-    uint _163 = descriptor_qa_check((registers._m0 + 100u) + uint(int(_27._m0.w)), 320u, 3u);
+    traceRayEXT(accelerationStructureEXT(_20._m0[subgroupBroadcastFirst(_144)]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 2);
+    uint _160 = descriptor_qa_check((registers._m0 + 100u) + uint(int(_27._m0.w)), 320u, 3u);
     _26._m0 = _27._m0;
-    traceRayEXT(accelerationStructureEXT(_20._m0[_163]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
-    uint _177 = descriptor_qa_check((SBT._m7.x >> 6u) + 210u, 320u, 4u);
+    traceRayEXT(accelerationStructureEXT(_20._m0[_160]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 1);
+    uint _174 = descriptor_qa_check((SBT._m7.x >> 6u) + 210u, 320u, 4u);
     _25._m0 = _26._m0;
-    traceRayEXT(accelerationStructureEXT(_20._m0[subgroupBroadcastFirst(_177)]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
+    traceRayEXT(accelerationStructureEXT(_20._m0[subgroupBroadcastFirst(_174)]), 0u, 0u, 0u, 0u, 0u, vec3(1.0, 2.0, 3.0), 1.0, vec3(0.0, 0.0, 1.0), 4.0, 0);
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.4
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 187
+; Bound: 183
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -138,12 +138,13 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint RayGenerationKHR %3 "main" %8 %16 %20 %25 %26 %27 %28 %39 %80
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint RayGenerationKHR %3 "main" %8 %16 %20 %25 %26 %27 %28 %39 %79
 OpName %3 "main"
 OpName %6 "RootConstants"
 OpName %8 "registers"
@@ -172,15 +173,15 @@ OpName %44 "heap_index"
 OpName %45 "descriptor_type"
 OpName %46 "actual_descriptor_type"
 OpName %47 "instruction"
-OpName %78 "DescriptorHeapQAData"
-OpMemberName %78 0 "descriptor_count"
-OpMemberName %78 1 "heap_index"
-OpMemberName %78 2 "cookies_descriptor_info"
-OpName %80 "QAHeapData"
-OpName %85 "descriptor_qa_check"
-OpName %82 "heap_offset"
-OpName %83 "descriptor_type_mask"
-OpName %84 "instruction"
+OpName %77 "DescriptorHeapQAData"
+OpMemberName %77 0 "descriptor_count"
+OpMemberName %77 1 "heap_index"
+OpMemberName %77 2 "cookies_descriptor_info"
+OpName %79 "QAHeapData"
+OpName %84 "descriptor_qa_check"
+OpName %81 "heap_offset"
+OpName %82 "descriptor_type_mask"
+OpName %83 "instruction"
 OpDecorate %6 Block
 OpMemberDecorate %6 0 Offset 0
 OpMemberDecorate %6 1 Offset 4
@@ -226,14 +227,14 @@ OpMemberDecorate %37 10 Offset 44
 OpDecorate %37 Block
 OpDecorate %39 DescriptorSet 10
 OpDecorate %39 Binding 10
-OpDecorate %77 ArrayStride 12
-OpMemberDecorate %78 0 Offset 0
-OpMemberDecorate %78 1 Offset 4
-OpMemberDecorate %78 2 Offset 8
-OpDecorate %78 Block
-OpDecorate %80 DescriptorSet 10
-OpDecorate %80 Binding 11
-OpDecorate %80 NonWritable
+OpDecorate %76 ArrayStride 12
+OpMemberDecorate %77 0 Offset 0
+OpMemberDecorate %77 1 Offset 4
+OpMemberDecorate %77 2 Offset 8
+OpDecorate %77 Block
+OpDecorate %79 DescriptorSet 10
+OpDecorate %79 Binding 11
+OpDecorate %79 NonWritable
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
@@ -280,91 +281,91 @@ OpDecorate %80 NonWritable
 %70 = OpTypePointer StorageBuffer %13
 %72 = OpConstant %5 72
 %74 = OpConstant %5 8
-%76 = OpTypeVector %5 3
-%77 = OpTypeRuntimeArray %76
-%78 = OpTypeStruct %5 %5 %77
-%79 = OpTypePointer StorageBuffer %78
-%80 = OpVariable %79 StorageBuffer
-%81 = OpTypeFunction %5 %5 %5 %5
-%92 = OpConstant %5 9
-%94 = OpTypePointer StorageBuffer %76
-%102 = OpConstant %5 31
-%104 = OpConstant %5 10
-%126 = OpConstant %5 320
-%130 = OpTypeAccelerationStructureKHR
-%132 = OpTypePointer RayPayloadKHR %22
-%134 = OpConstant %21 1
-%135 = OpConstant %21 2
-%136 = OpConstant %21 3
-%137 = OpConstant %21 4
-%138 = OpConstantComposite %22 %134 %135 %136 %137
-%139 = OpConstant %21 0
-%140 = OpTypeVector %21 3
-%161 = OpConstant %5 100
-%171 = OpTypePointer ShaderRecordBufferKHR %5
-%176 = OpConstant %5 210
+%75 = OpTypeVector %5 3
+%76 = OpTypeRuntimeArray %75
+%77 = OpTypeStruct %5 %5 %76
+%78 = OpTypePointer StorageBuffer %77
+%79 = OpVariable %78 StorageBuffer
+%80 = OpTypeFunction %5 %5 %5 %5
+%91 = OpConstant %5 9
+%93 = OpTypePointer StorageBuffer %75
+%101 = OpConstant %5 31
+%103 = OpConstant %5 10
+%123 = OpConstant %5 320
+%127 = OpTypeAccelerationStructureKHR
+%129 = OpTypePointer RayPayloadKHR %22
+%131 = OpConstant %21 1
+%132 = OpConstant %21 2
+%133 = OpConstant %21 3
+%134 = OpConstant %21 4
+%135 = OpConstantComposite %22 %131 %132 %133 %134
+%136 = OpConstant %21 0
+%137 = OpTypeVector %21 3
+%158 = OpConstant %5 100
+%168 = OpTypePointer ShaderRecordBufferKHR %5
+%173 = OpConstant %5 210
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %185
-%185 = OpLabel
+OpBranch %182
+%182 = OpLabel
 %30 = OpAccessChain %29 %8 %31
 %32 = OpLoad %5 %30
 %33 = OpIAdd %5 %32 %34
-%35 = OpFunctionCall %5 %85 %33 %126 %54
-%127 = OpGroupNonUniformBroadcastFirst %5 %60 %35
-%128 = OpAccessChain %70 %20 %31 %127
-%129 = OpLoad %13 %128
-%131 = OpConvertUToAccelerationStructureKHR %130 %129
-%133 = OpInBoundsAccessChain %132 %28 %31
-OpStore %133 %138
-%141 = OpCompositeConstruct %140 %134 %135 %136
-%142 = OpCompositeConstruct %140 %139 %139 %134
-OpTraceRayKHR %131 %31 %31 %31 %31 %31 %141 %134 %142 %137 %28
-%143 = OpLoad %22 %133
-%144 = OpAccessChain %29 %8 %31
-%145 = OpLoad %5 %144
-%146 = OpIAdd %5 %145 %60
-%147 = OpFunctionCall %5 %85 %146 %126 %63
-%148 = OpGroupNonUniformBroadcastFirst %5 %60 %147
-%149 = OpAccessChain %70 %20 %31 %148
-%150 = OpLoad %13 %149
-%151 = OpConvertUToAccelerationStructureKHR %130 %150
-%152 = OpInBoundsAccessChain %132 %27 %31
-OpStore %152 %143
-%153 = OpCompositeConstruct %140 %134 %135 %136
-%154 = OpCompositeConstruct %140 %139 %139 %134
-OpTraceRayKHR %151 %31 %31 %31 %31 %31 %153 %134 %154 %137 %27
-%155 = OpLoad %22 %152
-%156 = OpCompositeExtract %21 %155 3
-%157 = OpConvertFToS %5 %156
-%158 = OpAccessChain %29 %8 %31
-%159 = OpLoad %5 %158
-%160 = OpIAdd %5 %159 %161
-%162 = OpIAdd %5 %160 %157
-%163 = OpFunctionCall %5 %85 %162 %126 %60
-%164 = OpAccessChain %70 %20 %31 %163
-%165 = OpLoad %13 %164
-%166 = OpConvertUToAccelerationStructureKHR %130 %165
-%167 = OpInBoundsAccessChain %132 %26 %31
-OpStore %167 %155
-%168 = OpCompositeConstruct %140 %134 %135 %136
-%169 = OpCompositeConstruct %140 %139 %139 %134
-OpTraceRayKHR %166 %31 %31 %31 %31 %31 %168 %134 %169 %137 %26
-%170 = OpLoad %22 %167
-%172 = OpAccessChain %171 %16 %66 %31
-%173 = OpLoad %5 %172
-%174 = OpShiftRightLogical %5 %173 %11
-%175 = OpIAdd %5 %174 %176
-%177 = OpFunctionCall %5 %85 %175 %126 %52
-%178 = OpGroupNonUniformBroadcastFirst %5 %60 %177
-%179 = OpAccessChain %70 %20 %31 %178
-%180 = OpLoad %13 %179
-%181 = OpConvertUToAccelerationStructureKHR %130 %180
-%182 = OpInBoundsAccessChain %132 %25 %31
-OpStore %182 %170
-%183 = OpCompositeConstruct %140 %134 %135 %136
-%184 = OpCompositeConstruct %140 %139 %139 %134
-OpTraceRayKHR %181 %31 %31 %31 %31 %31 %183 %134 %184 %137 %25
+%35 = OpFunctionCall %5 %84 %33 %123 %54
+%124 = OpGroupNonUniformBroadcastFirst %5 %60 %35
+%125 = OpAccessChain %70 %20 %31 %124
+%126 = OpLoad %13 %125
+%128 = OpConvertUToAccelerationStructureKHR %127 %126
+%130 = OpInBoundsAccessChain %129 %28 %31
+OpStore %130 %135
+%138 = OpCompositeConstruct %137 %131 %132 %133
+%139 = OpCompositeConstruct %137 %136 %136 %131
+OpTraceRayKHR %128 %31 %31 %31 %31 %31 %138 %131 %139 %134 %28
+%140 = OpLoad %22 %130
+%141 = OpAccessChain %29 %8 %31
+%142 = OpLoad %5 %141
+%143 = OpIAdd %5 %142 %60
+%144 = OpFunctionCall %5 %84 %143 %123 %63
+%145 = OpGroupNonUniformBroadcastFirst %5 %60 %144
+%146 = OpAccessChain %70 %20 %31 %145
+%147 = OpLoad %13 %146
+%148 = OpConvertUToAccelerationStructureKHR %127 %147
+%149 = OpInBoundsAccessChain %129 %27 %31
+OpStore %149 %140
+%150 = OpCompositeConstruct %137 %131 %132 %133
+%151 = OpCompositeConstruct %137 %136 %136 %131
+OpTraceRayKHR %148 %31 %31 %31 %31 %31 %150 %131 %151 %134 %27
+%152 = OpLoad %22 %149
+%153 = OpCompositeExtract %21 %152 3
+%154 = OpConvertFToS %5 %153
+%155 = OpAccessChain %29 %8 %31
+%156 = OpLoad %5 %155
+%157 = OpIAdd %5 %156 %158
+%159 = OpIAdd %5 %157 %154
+%160 = OpFunctionCall %5 %84 %159 %123 %60
+%161 = OpAccessChain %70 %20 %31 %160
+%162 = OpLoad %13 %161
+%163 = OpConvertUToAccelerationStructureKHR %127 %162
+%164 = OpInBoundsAccessChain %129 %26 %31
+OpStore %164 %152
+%165 = OpCompositeConstruct %137 %131 %132 %133
+%166 = OpCompositeConstruct %137 %136 %136 %131
+OpTraceRayKHR %163 %31 %31 %31 %31 %31 %165 %131 %166 %134 %26
+%167 = OpLoad %22 %164
+%169 = OpAccessChain %168 %16 %66 %31
+%170 = OpLoad %5 %169
+%171 = OpShiftRightLogical %5 %170 %11
+%172 = OpIAdd %5 %171 %173
+%174 = OpFunctionCall %5 %84 %172 %123 %52
+%175 = OpGroupNonUniformBroadcastFirst %5 %60 %174
+%176 = OpAccessChain %70 %20 %31 %175
+%177 = OpLoad %13 %176
+%178 = OpConvertUToAccelerationStructureKHR %127 %177
+%179 = OpInBoundsAccessChain %129 %25 %31
+OpStore %179 %167
+%180 = OpCompositeConstruct %137 %131 %132 %133
+%181 = OpCompositeConstruct %137 %136 %136 %131
+OpTraceRayKHR %178 %31 %31 %31 %31 %31 %180 %131 %181 %134 %25
 OpReturn
 OpFunctionEnd
 %48 = OpFunction %1 None %40
@@ -377,73 +378,73 @@ OpFunctionEnd
 %47 = OpFunctionParameter %5
 %49 = OpLabel
 %51 = OpAccessChain %50 %39 %52
-%53 = OpAtomicIAdd %5 %51 %54 %31 %54
+%53 = OpAtomicIAdd %5 %51 %9 %31 %54
 %56 = OpIEqual %55 %53 %31
 OpSelectionMerge %58 None
 OpBranchConditional %56 %57 %58
 %57 = OpLabel
 %59 = OpAccessChain %50 %39 %60
-OpStore %59 %43
+OpStore %59 %43 NonPrivatePointer
 %61 = OpAccessChain %50 %39 %54
-OpStore %61 %42
+OpStore %61 %42 NonPrivatePointer
 %62 = OpAccessChain %50 %39 %63
-OpStore %62 %44
+OpStore %62 %44 NonPrivatePointer
 %64 = OpAccessChain %50 %39 %11
-OpStore %64 %45
+OpStore %64 %45 NonPrivatePointer
 %65 = OpAccessChain %50 %39 %66
-OpStore %65 %46
+OpStore %65 %46 NonPrivatePointer
 %67 = OpAccessChain %50 %39 %9
-OpStore %67 %47
+OpStore %67 %47 NonPrivatePointer
 %71 = OpAccessChain %70 %39 %31
-OpStore %71 %69
-OpMemoryBarrier %54 %72
+OpStore %71 %69 NonPrivatePointer
+OpMemoryBarrier %9 %72
 %73 = OpAccessChain %50 %39 %74
-OpStore %73 %41
+OpStore %73 %41 NonPrivatePointer
 OpBranch %58
 %58 = OpLabel
 OpReturn
 OpFunctionEnd
-%85 = OpFunction %5 None %81
+%84 = OpFunction %5 None %80
+%81 = OpFunctionParameter %5
 %82 = OpFunctionParameter %5
 %83 = OpFunctionParameter %5
-%84 = OpFunctionParameter %5
-%86 = OpLabel
-%87 = OpAccessChain %50 %80 %31
-%88 = OpLoad %5 %87
-%89 = OpAccessChain %50 %80 %54
-%90 = OpLoad %5 %89
-%91 = OpAccessChain %50 %39 %92
-%93 = OpLoad %5 %91
-%95 = OpAccessChain %94 %80 %63 %82
-%96 = OpLoad %76 %95
-%97 = OpCompositeExtract %5 %96 0
-%98 = OpCompositeExtract %5 %96 1
-%99 = OpCompositeExtract %5 %96 2
-%100 = OpShiftRightLogical %5 %97 %9
-%101 = OpBitwiseAnd %5 %97 %102
-%103 = OpAccessChain %50 %39 %104 %100
-%105 = OpLoad %5 %103
-%106 = OpShiftLeftLogical %5 %54 %101
-%107 = OpBitwiseAnd %5 %105 %106
-%108 = OpINotEqual %55 %107 %31
-%109 = OpBitwiseAnd %5 %99 %83
-%110 = OpIEqual %55 %109 %83
-%111 = OpUGreaterThanEqual %55 %82 %88
-%112 = OpSelect %5 %111 %54 %31
-%113 = OpSelect %5 %110 %31 %63
-%114 = OpSelect %5 %108 %31 %52
-%115 = OpUGreaterThanEqual %55 %93 %98
-%116 = OpSelect %5 %115 %31 %74
-%117 = OpBitwiseOr %5 %112 %113
-%118 = OpBitwiseOr %5 %117 %114
-%119 = OpBitwiseOr %5 %118 %116
-%120 = OpINotEqual %55 %119 %31
-OpSelectionMerge %122 None
-OpBranchConditional %120 %121 %122
+%85 = OpLabel
+%86 = OpAccessChain %50 %79 %31
+%87 = OpLoad %5 %86
+%88 = OpAccessChain %50 %79 %54
+%89 = OpLoad %5 %88
+%90 = OpAccessChain %50 %39 %91
+%92 = OpLoad %5 %90
+%94 = OpAccessChain %93 %79 %63 %81
+%95 = OpLoad %75 %94
+%96 = OpCompositeExtract %5 %95 0
+%97 = OpCompositeExtract %5 %95 1
+%98 = OpCompositeExtract %5 %95 2
+%99 = OpShiftRightLogical %5 %96 %9
+%100 = OpBitwiseAnd %5 %96 %101
+%102 = OpAccessChain %50 %39 %103 %99
+%104 = OpLoad %5 %102
+%105 = OpShiftLeftLogical %5 %54 %100
+%106 = OpBitwiseAnd %5 %104 %105
+%107 = OpINotEqual %55 %106 %31
+%108 = OpBitwiseAnd %5 %98 %82
+%109 = OpIEqual %55 %108 %82
+%110 = OpUGreaterThanEqual %55 %81 %87
+%111 = OpSelect %5 %110 %54 %31
+%112 = OpSelect %5 %109 %31 %63
+%113 = OpSelect %5 %107 %31 %52
+%114 = OpUGreaterThanEqual %55 %92 %97
+%115 = OpSelect %5 %114 %31 %74
+%116 = OpBitwiseOr %5 %111 %112
+%117 = OpBitwiseOr %5 %116 %113
+%118 = OpBitwiseOr %5 %117 %115
+%119 = OpINotEqual %55 %118 %31
+OpSelectionMerge %121 None
+OpBranchConditional %119 %120 %121
+%120 = OpLabel
+%122 = OpFunctionCall %1 %48 %118 %81 %96 %89 %82 %98 %83
+OpReturnValue %87
 %121 = OpLabel
-%123 = OpFunctionCall %1 %48 %119 %82 %97 %90 %83 %99 %84
-OpReturnValue %88
-%122 = OpLabel
-OpReturnValue %82
+OpReturnValue %81
 OpFunctionEnd
 #endif

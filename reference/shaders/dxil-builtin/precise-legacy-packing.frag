@@ -12,15 +12,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 22
+; Bound: 21
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability FloatControls2
 OpExtension "SPV_KHR_float_controls2"
 %11 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %7 %9
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionModeId %3 FPFastMathDefault %5 %19

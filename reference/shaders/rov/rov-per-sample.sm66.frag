@@ -16,11 +16,11 @@ layout(sample_interlock_ordered) in;
 #endif
 layout(early_fragment_tests) in;
 
-layout(set = 0, binding = 0, r32ui) uniform coherent uimageBuffer _9[];
-layout(set = 0, binding = 0, r32ui) uniform coherent uimageBuffer _12[];
-layout(set = 0, binding = 0, r32f) uniform coherent imageBuffer _17[];
-layout(set = 0, binding = 0, r32f) uniform coherent image1D _21[];
-layout(set = 0, binding = 0, r32f) uniform coherent image2D _25[];
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _9[];
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _12[];
+layout(set = 0, binding = 0, r32f) uniform imageBuffer _17[];
+layout(set = 0, binding = 0, r32f) uniform image1D _21[];
+layout(set = 0, binding = 0, r32f) uniform image2D _25[];
 
 uint ByteAddressMask(uint index, uint stride)
 {
@@ -32,13 +32,13 @@ void main()
     uint _41 = uint(gl_SampleID) + uint(gl_FragCoord.x);
     uint _42 = uint(gl_FragCoord.y) + uint(gl_SampleID);
     uint _48 = (_42 * 1000u) + _41;
-    uint _61 = ByteAddressMask(_48 * 4u, 4u);
+    uint _60 = ByteAddressMask(_48 * 4u, 4u);
     SPIRV_Cross_beginInvocationInterlock();
-    uvec4 _63 = imageLoad(_9[0u], int(_61));
-    uvec4 _65 = imageLoad(_9[0u], int(_61 + 1u));
-    uvec4 _68 = imageLoad(_9[0u], int(_61 + 2u));
-    uvec4 _72 = imageLoad(_9[0u], int(_61 + 3u));
-    uvec4 _76 = uvec4(_63.x, _65.x, _68.x, _72.x);
+    uvec4 _62 = imageLoad(_9[0u], int(_60));
+    uvec4 _65 = imageLoad(_9[0u], int(_60 + 1u));
+    uvec4 _68 = imageLoad(_9[0u], int(_60 + 2u));
+    uvec4 _72 = imageLoad(_9[0u], int(_60 + 3u));
+    uvec4 _76 = uvec4(_62.x, _65.x, _68.x, _72.x);
     uint _86 = ByteAddressMask(_48 * 4u, 4u);
     imageStore(_9[0u], int(_86), uvec4(_76.x + 1u));
     imageStore(_9[0u], int(_86 + 1u), uvec4(_76.y + 2u));
@@ -68,9 +68,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 178
+; Bound: 177
 ; Schema: 0
 OpCapability Shader
 OpCapability SampleRateShading
@@ -78,11 +78,12 @@ OpCapability Image1D
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpCapability FragmentShaderSampleInterlockEXT
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_EXT_fragment_shader_interlock"
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %28 %30
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %9 %12 %17 %21 %25 %28 %30
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 EarlyFragmentTests
 OpExecutionMode %3 SampleInterlockOrderedEXT
@@ -94,19 +95,14 @@ OpName %53 "index"
 OpName %54 "stride"
 OpDecorate %9 DescriptorSet 0
 OpDecorate %9 Binding 0
-OpDecorate %9 Coherent
 OpDecorate %12 DescriptorSet 0
 OpDecorate %12 Binding 0
-OpDecorate %12 Coherent
 OpDecorate %17 DescriptorSet 0
 OpDecorate %17 Binding 0
-OpDecorate %17 Coherent
 OpDecorate %21 DescriptorSet 0
 OpDecorate %21 Binding 0
-OpDecorate %21 Coherent
 OpDecorate %25 DescriptorSet 0
 OpDecorate %25 Binding 0
-OpDecorate %25 Coherent
 OpDecorate %28 BuiltIn FragCoord
 OpDecorate %30 BuiltIn SampleId
 OpDecorate %30 Flat
@@ -146,7 +142,8 @@ OpDecorate %30 Flat
 %50 = OpConstant %5 4
 %52 = OpTypeFunction %5 %5 %5
 %58 = OpConstant %5 4294967295
-%62 = OpTypeVector %5 4
+%61 = OpTypeVector %5 4
+%63 = OpConstant %5 5
 %70 = OpConstant %5 2
 %74 = OpConstant %5 3
 %115 = OpConstant %13 1
@@ -176,20 +173,20 @@ OpBranch %176
 %48 = OpIAdd %5 %46 %41
 %49 = OpShiftLeftLogical %5 %48 %50
 %51 = OpIMul %5 %48 %50
-%61 = OpFunctionCall %5 %55 %51 %50
+%60 = OpFunctionCall %5 %55 %51 %50
 OpBeginInvocationInterlockEXT
-%63 = OpImageRead %62 %45 %61
-%64 = OpCompositeExtract %5 %63 0
-%66 = OpIAdd %5 %61 %36
-%65 = OpImageRead %62 %45 %66
+%62 = OpImageRead %61 %45 %60 MakeTexelVisible|NonPrivateTexel %63
+%64 = OpCompositeExtract %5 %62 0
+%66 = OpIAdd %5 %60 %36
+%65 = OpImageRead %61 %45 %66 MakeTexelVisible|NonPrivateTexel %63
 %67 = OpCompositeExtract %5 %65 0
-%69 = OpIAdd %5 %61 %70
-%68 = OpImageRead %62 %45 %69
+%69 = OpIAdd %5 %60 %70
+%68 = OpImageRead %61 %45 %69 MakeTexelVisible|NonPrivateTexel %63
 %71 = OpCompositeExtract %5 %68 0
-%73 = OpIAdd %5 %61 %74
-%72 = OpImageRead %62 %45 %73
+%73 = OpIAdd %5 %60 %74
+%72 = OpImageRead %61 %45 %73 MakeTexelVisible|NonPrivateTexel %63
 %75 = OpCompositeExtract %5 %72 0
-%76 = OpCompositeConstruct %62 %64 %67 %71 %75
+%76 = OpCompositeConstruct %61 %64 %67 %71 %75
 %77 = OpCompositeExtract %5 %76 0
 %78 = OpCompositeExtract %5 %76 1
 %79 = OpCompositeExtract %5 %76 2
@@ -200,32 +197,32 @@ OpBeginInvocationInterlockEXT
 %84 = OpIAdd %5 %80 %50
 %85 = OpIMul %5 %48 %50
 %86 = OpFunctionCall %5 %55 %85 %50
-%87 = OpCompositeConstruct %62 %81 %81 %81 %81
-OpImageWrite %45 %86 %87
-%88 = OpCompositeConstruct %62 %82 %82 %82 %82
+%87 = OpCompositeConstruct %61 %81 %81 %81 %81
+OpImageWrite %45 %86 %87 MakeTexelAvailable|NonPrivateTexel %63
+%88 = OpCompositeConstruct %61 %82 %82 %82 %82
 %89 = OpIAdd %5 %86 %36
-OpImageWrite %45 %89 %88
-%90 = OpCompositeConstruct %62 %83 %83 %83 %83
+OpImageWrite %45 %89 %88 MakeTexelAvailable|NonPrivateTexel %63
+%90 = OpCompositeConstruct %61 %83 %83 %83 %83
 %91 = OpIAdd %5 %86 %70
-OpImageWrite %45 %91 %90
-%92 = OpCompositeConstruct %62 %84 %84 %84 %84
+OpImageWrite %45 %91 %90 MakeTexelAvailable|NonPrivateTexel %63
+%92 = OpCompositeConstruct %61 %84 %84 %84 %84
 %93 = OpIAdd %5 %86 %74
-OpImageWrite %45 %93 %92
+OpImageWrite %45 %93 %92 MakeTexelAvailable|NonPrivateTexel %63
 %94 = OpAccessChain %43 %12 %36
 %95 = OpLoad %6 %94
 %96 = OpIMul %5 %48 %50
-%97 = OpImageRead %62 %95 %96
+%97 = OpImageRead %61 %95 %96 MakeTexelVisible|NonPrivateTexel %63
 %98 = OpCompositeExtract %5 %97 0
 %100 = OpIAdd %5 %96 %36
-%99 = OpImageRead %62 %95 %100
+%99 = OpImageRead %61 %95 %100 MakeTexelVisible|NonPrivateTexel %63
 %101 = OpCompositeExtract %5 %99 0
 %103 = OpIAdd %5 %96 %70
-%102 = OpImageRead %62 %95 %103
+%102 = OpImageRead %61 %95 %103 MakeTexelVisible|NonPrivateTexel %63
 %104 = OpCompositeExtract %5 %102 0
 %106 = OpIAdd %5 %96 %74
-%105 = OpImageRead %62 %95 %106
+%105 = OpImageRead %61 %95 %106 MakeTexelVisible|NonPrivateTexel %63
 %107 = OpCompositeExtract %5 %105 0
-%108 = OpCompositeConstruct %62 %98 %101 %104 %107
+%108 = OpCompositeConstruct %61 %98 %101 %104 %107
 %109 = OpBitcast %26 %108
 %110 = OpCompositeExtract %13 %109 0
 %111 = OpCompositeExtract %13 %109 1
@@ -240,20 +237,20 @@ OpImageWrite %45 %93 %92
 %124 = OpBitcast %5 %116
 %125 = OpBitcast %5 %118
 %126 = OpBitcast %5 %120
-%127 = OpCompositeConstruct %62 %123 %123 %123 %123
-OpImageWrite %95 %122 %127
-%128 = OpCompositeConstruct %62 %124 %124 %124 %124
+%127 = OpCompositeConstruct %61 %123 %123 %123 %123
+OpImageWrite %95 %122 %127 MakeTexelAvailable|NonPrivateTexel %63
+%128 = OpCompositeConstruct %61 %124 %124 %124 %124
 %129 = OpIAdd %5 %122 %36
-OpImageWrite %95 %129 %128
-%130 = OpCompositeConstruct %62 %125 %125 %125 %125
+OpImageWrite %95 %129 %128 MakeTexelAvailable|NonPrivateTexel %63
+%130 = OpCompositeConstruct %61 %125 %125 %125 %125
 %131 = OpIAdd %5 %122 %70
-OpImageWrite %95 %131 %130
-%132 = OpCompositeConstruct %62 %126 %126 %126 %126
+OpImageWrite %95 %131 %130 MakeTexelAvailable|NonPrivateTexel %63
+%132 = OpCompositeConstruct %61 %126 %126 %126 %126
 %133 = OpIAdd %5 %122 %74
-OpImageWrite %95 %133 %132
+OpImageWrite %95 %133 %132 MakeTexelAvailable|NonPrivateTexel %63
 %135 = OpAccessChain %134 %17 %70
 %136 = OpLoad %14 %135
-%137 = OpImageRead %26 %136 %48
+%137 = OpImageRead %26 %136 %48 MakeTexelVisible|NonPrivateTexel %63
 %138 = OpCompositeExtract %13 %137 0
 %139 = OpCompositeExtract %13 %137 1
 %140 = OpCompositeExtract %13 %137 2
@@ -263,10 +260,10 @@ OpImageWrite %95 %133 %132
 %144 = OpFAdd %13 %140 %119
 %145 = OpFAdd %13 %141 %121
 %146 = OpCompositeConstruct %26 %142 %143 %144 %145
-OpImageWrite %136 %48 %146
+OpImageWrite %136 %48 %146 MakeTexelAvailable|NonPrivateTexel %63
 %148 = OpAccessChain %147 %21 %74
 %149 = OpLoad %18 %148
-%150 = OpImageRead %26 %149 %48 None
+%150 = OpImageRead %26 %149 %48 MakeTexelVisible|NonPrivateTexel %63
 %151 = OpCompositeExtract %13 %150 0
 %152 = OpCompositeExtract %13 %150 1
 %153 = OpCompositeExtract %13 %150 2
@@ -276,11 +273,11 @@ OpImageWrite %136 %48 %146
 %157 = OpFAdd %13 %153 %119
 %158 = OpFAdd %13 %154 %121
 %159 = OpCompositeConstruct %26 %155 %156 %157 %158
-OpImageWrite %149 %48 %159
+OpImageWrite %149 %48 %159 MakeTexelAvailable|NonPrivateTexel %63
 %161 = OpAccessChain %160 %25 %50
 %162 = OpLoad %22 %161
 %165 = OpCompositeConstruct %164 %41 %42
-%163 = OpImageRead %26 %162 %165 None
+%163 = OpImageRead %26 %162 %165 MakeTexelVisible|NonPrivateTexel %63
 %166 = OpCompositeExtract %13 %163 0
 %167 = OpCompositeExtract %13 %163 1
 %168 = OpCompositeExtract %13 %163 2
@@ -291,7 +288,7 @@ OpImageWrite %149 %48 %159
 %173 = OpFAdd %13 %169 %121
 %174 = OpCompositeConstruct %164 %41 %42
 %175 = OpCompositeConstruct %26 %170 %171 %172 %173
-OpImageWrite %162 %174 %175
+OpImageWrite %162 %174 %175 MakeTexelAvailable|NonPrivateTexel %63
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

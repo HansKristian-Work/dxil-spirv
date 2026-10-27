@@ -26,9 +26,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.4
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 72
+; Bound: 71
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -42,9 +42,10 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %13 %14 %15 %60
 OpName %3 "main"
 OpName %8 "IMG"
@@ -128,7 +129,7 @@ OpExecuteCallableKHR %39 %12
 %66 = OpLoad %6 %8
 %68 = OpCompositeConstruct %67 %63 %65
 %69 = OpCompositeConstruct %9 %54 %55 %56 %57
-OpImageWrite %66 %68 %69
+OpImageWrite %66 %68 %69 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

@@ -36,16 +36,17 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.4
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 69
+; Bound: 68
 ; Schema: 0
 OpCapability Shader
 OpCapability GroupNonUniform
 OpCapability GroupNonUniformBallot
 OpCapability MeshShadingEXT
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_mesh_shader"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint MeshEXT %3 "main" %11 %14 %19 %22 %30 %32
 OpExecutionMode %3 OutputVertices 24
 OpExecutionMode %3 OutputPrimitivesEXT 8
@@ -116,11 +117,11 @@ OpSetMeshOutputsEXT %8 %15
 %41 = OpIEqual %34 %39 %25
 %42 = OpLogicalOr %34 %40 %41
 %43 = OpLogicalAnd %34 %35 %42
-OpSelectionMerge %66 None
-OpBranchConditional %43 %65 %66
-%65 = OpLabel
-OpReturn
+OpSelectionMerge %67 None
+OpBranchConditional %43 %66 %67
 %66 = OpLabel
+OpReturn
+%67 = OpLabel
 %44 = OpIAdd %7 %31 %27
 %45 = OpConvertUToF %5 %44
 %47 = OpAccessChain %46 %11 %31 %25
@@ -147,6 +148,8 @@ OpBranchConditional %55 %63 %64
 OpStore %61 %59
 OpBranch %64
 %64 = OpLabel
+OpBranch %65
+%65 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

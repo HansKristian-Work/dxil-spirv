@@ -25,13 +25,14 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 101
+; Bound: 100
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %17 %22
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %10 %14 %17 %22
 OpExecutionMode %3 LocalSize 2 1 1
 OpName %3 "main"
 OpName %8 "SSBO"
@@ -93,7 +94,7 @@ OpBranch %99
 %30 = OpIAdd %5 %28 %23
 %31 = OpIAdd %5 %30 %29
 %33 = OpAccessChain %32 %10 %20 %31
-%34 = OpLoad %6 %33
+%34 = OpLoad %6 %33 NonPrivatePointer
 %37 = OpBitcast %36 %34
 %38 = OpCompositeExtract %35 %37 0
 %39 = OpCompositeExtract %35 %37 1
@@ -107,11 +108,11 @@ OpBranch %99
 %47 = OpBitcast %5 %41
 %48 = OpCompositeConstruct %6 %44 %45 %46 %47
 %49 = OpAccessChain %32 %14 %20 %43
-OpStore %49 %48
+OpStore %49 %48 NonPrivatePointer
 %50 = OpIMul %5 %21 %25
 %51 = OpIAdd %5 %50 %23
 %52 = OpAccessChain %32 %10 %20 %51
-%53 = OpLoad %6 %52
+%53 = OpLoad %6 %52 NonPrivatePointer
 %54 = OpBitcast %36 %53
 %55 = OpCompositeExtract %35 %54 0
 %56 = OpCompositeExtract %35 %54 1
@@ -126,7 +127,7 @@ OpStore %49 %48
 %65 = OpBitcast %5 %58
 %66 = OpCompositeConstruct %6 %62 %63 %64 %65
 %67 = OpAccessChain %32 %14 %20 %61
-OpStore %67 %66
+OpStore %67 %66 NonPrivatePointer
 %68 = OpIMul %5 %23 %69
 %70 = OpIAdd %5 %68 %71
 %72 = OpIMul %5 %21 %25
@@ -134,7 +135,7 @@ OpStore %67 %66
 %76 = OpIAdd %5 %72 %73
 %77 = OpIAdd %5 %76 %75
 %78 = OpAccessChain %32 %10 %20 %77
-%79 = OpLoad %6 %78
+%79 = OpLoad %6 %78 NonPrivatePointer
 %80 = OpBitcast %36 %79
 %81 = OpCompositeExtract %35 %80 0
 %82 = OpCompositeExtract %35 %80 1
@@ -152,7 +153,7 @@ OpStore %67 %66
 %96 = OpBitcast %5 %84
 %97 = OpCompositeConstruct %6 %93 %94 %95 %96
 %98 = OpAccessChain %32 %14 %20 %92
-OpStore %98 %97
+OpStore %98 %97 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

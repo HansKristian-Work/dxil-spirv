@@ -29,13 +29,14 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 66
+; Bound: 63
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint TessellationControl %3 "main" %10 %14 %18 %22 %24 %41
 OpExecutionMode %3 Triangles
 OpExecutionMode %3 SpacingEqual
@@ -95,8 +96,8 @@ OpReturn
 OpFunctionEnd
 %25 = OpFunction %1 None %2
 %26 = OpLabel
-OpBranch %62
-%62 = OpLabel
+OpBranch %61
+%61 = OpLabel
 %30 = OpAccessChain %29 %10 %31
 %32 = OpLoad %5 %30
 %33 = OpAccessChain %29 %10 %11
@@ -112,8 +113,8 @@ OpReturn
 OpFunctionEnd
 %27 = OpFunction %1 None %2
 %28 = OpLabel
-OpBranch %64
-%64 = OpLabel
+OpBranch %62
+%62 = OpLabel
 %43 = OpAccessChain %23 %14 %31
 %44 = OpLoad %5 %43
 %45 = OpAccessChain %29 %10 %31

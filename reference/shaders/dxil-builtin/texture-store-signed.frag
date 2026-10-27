@@ -1,9 +1,9 @@
 #version 460
 
 layout(set = 0, binding = 1) uniform writeonly iimage1D _8;
-layout(set = 0, binding = 2) uniform coherent writeonly iimage1DArray _11;
+layout(set = 0, binding = 2) uniform writeonly iimage1DArray _11;
 layout(set = 0, binding = 3) uniform writeonly iimage2D _14;
-layout(set = 0, binding = 4) uniform coherent writeonly iimage2DArray _17;
+layout(set = 0, binding = 4) uniform writeonly iimage2DArray _17;
 layout(set = 0, binding = 5) uniform writeonly iimage3D _20;
 
 layout(location = 0) in vec3 TEXCOORD;
@@ -24,15 +24,16 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 72
+; Bound: 71
 ; Schema: 0
 OpCapability Shader
 OpCapability Image1D
 OpCapability StorageImageWriteWithoutFormat
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %24
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %24
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %24 "TEXCOORD"
@@ -42,14 +43,12 @@ OpDecorate %8 NonReadable
 OpDecorate %11 DescriptorSet 0
 OpDecorate %11 Binding 2
 OpDecorate %11 NonReadable
-OpDecorate %11 Coherent
 OpDecorate %14 DescriptorSet 0
 OpDecorate %14 Binding 3
 OpDecorate %14 NonReadable
 OpDecorate %17 DescriptorSet 0
 OpDecorate %17 Binding 4
 OpDecorate %17 NonReadable
-OpDecorate %17 Coherent
 OpDecorate %20 DescriptorSet 0
 OpDecorate %20 Binding 5
 OpDecorate %20 NonReadable
@@ -111,25 +110,25 @@ OpBranch %70
 %41 = OpConvertFToS %32 %34
 %43 = OpCompositeConstruct %42 %36 %39 %36 %36
 %45 = OpBitcast %44 %43
-OpImageWrite %29 %41 %45
+OpImageWrite %29 %41 %45 NonPrivateTexel
 %46 = OpConvertFToS %32 %37
 %50 = OpCompositeConstruct %49 %41 %46
 %51 = OpCompositeConstruct %42 %47 %48 %47 %47
 %52 = OpBitcast %44 %51
-OpImageWrite %28 %50 %52
+OpImageWrite %28 %50 %52 MakeTexelAvailable|NonPrivateTexel %53
 %55 = OpCompositeConstruct %49 %41 %46
 %56 = OpCompositeConstruct %42 %53 %54 %53 %53
 %57 = OpBitcast %44 %56
-OpImageWrite %27 %55 %57
+OpImageWrite %27 %55 %57 NonPrivateTexel
 %58 = OpConvertFToS %32 %40
 %62 = OpCompositeConstruct %61 %41 %46 %58
 %63 = OpCompositeConstruct %42 %59 %60 %59 %59
 %64 = OpBitcast %44 %63
-OpImageWrite %26 %62 %64
+OpImageWrite %26 %62 %64 MakeTexelAvailable|NonPrivateTexel %53
 %67 = OpCompositeConstruct %61 %41 %46 %58
 %68 = OpCompositeConstruct %42 %65 %66 %65 %65
 %69 = OpBitcast %44 %68
-OpImageWrite %25 %67 %69
+OpImageWrite %25 %67 %69 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

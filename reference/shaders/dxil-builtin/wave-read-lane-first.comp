@@ -11,25 +11,26 @@ uint ByteAddressMask(uint index, uint stride)
 
 void main()
 {
-    uint _39 = ByteAddressMask(gl_GlobalInvocationID.x * 3u, 4u);
-    imageStore(_8, int(_39), uvec4(subgroupBroadcastFirst(gl_GlobalInvocationID.x)));
-    imageStore(_8, int(_39 + 1u), uvec4(subgroupBroadcastFirst(gl_GlobalInvocationID.y)));
-    imageStore(_8, int(_39 + 2u), uvec4(subgroupBroadcastFirst(gl_GlobalInvocationID.z)));
+    uint _38 = ByteAddressMask(gl_GlobalInvocationID.x * 3u, 4u);
+    imageStore(_8, int(_38), uvec4(subgroupBroadcastFirst(gl_GlobalInvocationID.x)));
+    imageStore(_8, int(_38 + 1u), uvec4(subgroupBroadcastFirst(gl_GlobalInvocationID.y)));
+    imageStore(_8, int(_38 + 2u), uvec4(subgroupBroadcastFirst(gl_GlobalInvocationID.z)));
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 49
+; Bound: 47
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformBallot
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %12
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpName %33 "ByteAddressMask"
@@ -56,12 +57,12 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %28 = OpConstant %5 12
 %30 = OpTypeFunction %5 %5 %5
 %36 = OpConstant %5 4294967295
-%40 = OpConstant %5 4
-%41 = OpTypeVector %5 4
+%39 = OpConstant %5 4
+%40 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %47
-%47 = OpLabel
+OpBranch %46
+%46 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
@@ -74,15 +75,15 @@ OpBranch %47
 %26 = OpGroupNonUniformBroadcastFirst %5 %24 %22
 %27 = OpIMul %5 %16 %28
 %29 = OpIMul %5 %16 %24
-%39 = OpFunctionCall %5 %33 %29 %40
-%42 = OpCompositeConstruct %41 %23 %23 %23 %23
-OpImageWrite %9 %39 %42
-%43 = OpCompositeConstruct %41 %25 %25 %25 %25
-%44 = OpIAdd %5 %39 %18
-OpImageWrite %9 %44 %43
-%45 = OpCompositeConstruct %41 %26 %26 %26 %26
-%46 = OpIAdd %5 %39 %21
-OpImageWrite %9 %46 %45
+%38 = OpFunctionCall %5 %33 %29 %39
+%41 = OpCompositeConstruct %40 %23 %23 %23 %23
+OpImageWrite %9 %38 %41 NonPrivateTexel
+%42 = OpCompositeConstruct %40 %25 %25 %25 %25
+%43 = OpIAdd %5 %38 %18
+OpImageWrite %9 %43 %42 NonPrivateTexel
+%44 = OpCompositeConstruct %40 %26 %26 %26 %26
+%45 = OpIAdd %5 %38 %21
+OpImageWrite %9 %45 %44 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %33 = OpFunction %5 None %30

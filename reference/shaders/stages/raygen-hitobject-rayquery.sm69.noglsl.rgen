@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 142
+; Bound: 150
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -17,26 +17,20 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability ShaderInvocationReorderEXT
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_EXT_shader_invocation_reorder"
 OpExtension "SPV_KHR_ray_query"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel Logical GLSL450
-OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %16 %17 %21 %25 %35 %97
+OpMemoryModel Logical Vulkan
+OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %16 %17 %21 %25 %35 %83
 OpName %3 "main"
 OpName %8 "AS"
 OpName %12 "IMG"
 OpName %14 ""
 OpName %19 ""
-OpName %95 "EmptyStruct"
-OpName %115 "frontier_phi_10.pred.7.ladder.11.ladder"
-OpName %116 "frontier_phi_10.pred.7.ladder"
-OpName %117 "frontier_phi_10.pred"
-OpName %118 "frontier_phi_10.pred.7.ladder.11.ladder"
-OpName %119 "frontier_phi_10.pred.7.ladder"
-OpName %120 "frontier_phi_10.pred"
-OpName %121 "frontier_phi_8.5.ladder"
+OpName %81 "EmptyStruct"
 OpDecorate %8 DescriptorSet 40
 OpDecorate %8 Binding 30
 OpDecorate %12 DescriptorSet 20
@@ -83,31 +77,41 @@ OpDecorate %25 BuiltIn LaunchIdKHR
 %46 = OpConstant %9 4
 %48 = OpConstant %9 8
 %49 = OpTypeBool
-%58 = OpConstant %22 2
-%63 = OpTypePointer HitObjectAttributeEXT %18
-%65 = OpTypeHitObjectEXT
-%66 = OpTypePointer Function %65
-%70 = OpConstant %22 268435455
-%71 = OpConstant %22 65535
-%74 = OpTypePointer RayPayloadKHR %13
-%76 = OpConstantNull %13
-%82 = OpConstant %9 0.100000001
-%83 = OpConstant %9 0.200000003
-%84 = OpConstant %9 0.300000012
-%85 = OpConstantComposite %13 %82 %83 %84
-%90 = OpTypeVector %22 2
-%92 = OpTypeVector %9 4
-%95 = OpTypeStruct
-%96 = OpTypePointer HitObjectAttributeEXT %95
-%97 = OpVariable %96 HitObjectAttributeEXT
+%61 = OpConstant %22 2
+%78 = OpTypeHitObjectEXT
+%79 = OpTypePointer Function %78
+%81 = OpTypeStruct
+%82 = OpTypePointer HitObjectAttributeEXT %81
+%83 = OpVariable %82 HitObjectAttributeEXT
+%86 = OpConstant %22 268435455
+%87 = OpConstant %22 65535
+%90 = OpTypePointer RayPayloadKHR %13
+%92 = OpConstantNull %13
+%94 = OpTypePointer HitObjectAttributeEXT %18
+%103 = OpConstant %9 0.100000001
+%104 = OpConstant %9 0.200000003
+%105 = OpConstant %9 0.300000012
+%106 = OpConstantComposite %13 %103 %104 %105
+%111 = OpTypeVector %22 2
+%113 = OpTypeVector %9 4
+%115 = OpTypePointer Function %13
+%117 = OpTypePointer Function %18
+%119 = OpTypePointer Function %22
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%67 = OpVariable %66 Function
-%94 = OpVariable %66 Function
-%52 = OpUndef %18
-%73 = OpUndef %22
-OpBranch %122
-%122 = OpLabel
+%80 = OpVariable %79 Function
+%96 = OpVariable %79 Function
+%116 = OpVariable %115 Function
+%118 = OpVariable %117 Function
+%120 = OpVariable %119 Function
+%121 = OpVariable %117 Function
+%122 = OpVariable %119 Function
+%123 = OpVariable %117 Function
+%124 = OpVariable %119 Function
+%53 = OpUndef %18
+%89 = OpUndef %22
+OpBranch %125
+%125 = OpLabel
 %27 = OpAccessChain %26 %25 %28
 %29 = OpLoad %22 %27
 %30 = OpAccessChain %26 %25 %31
@@ -117,113 +121,136 @@ OpBranch %122
 %47 = OpCompositeConstruct %13 %40 %42 %44
 OpRayQueryInitializeKHR %35 %36 %37 %38 %45 %46 %47 %48
 %50 = OpRayQueryProceedKHR %49 %35
-OpSelectionMerge %135 None
-OpBranchConditional %50 %123 %135
-%123 = OpLabel
-OpBranch %124
-%124 = OpLabel
-%59 = OpPhi %18 %52 %123 %53 %133
-%60 = OpPhi %22 %28 %123 %55 %133
-%61 = OpRayQueryGetIntersectionTypeKHR %22 %35 %28
-%62 = OpIEqual %49 %61 %28
-OpLoopMerge %134 %133 None
-OpBranch %125
-%125 = OpLabel
-OpSelectionMerge %132 None
-OpBranchConditional %62 %131 %126
-%131 = OpLabel
-OpRayQueryConfirmIntersectionKHR %35
-OpBranch %132
+OpSelectionMerge %141 None
+OpBranchConditional %50 %127 %126
 %126 = OpLabel
-%79 = OpIEqual %49 %61 %31
-OpSelectionMerge %130 None
-OpBranchConditional %79 %127 %130
+OpStore %120 %28
+OpBranch %141
 %127 = OpLabel
-%105 = OpRayQueryGetIntersectionPrimitiveIndexKHR %22 %35 %28
-%106 = OpUGreaterThan %49 %105 %58
-OpSelectionMerge %129 None
-OpBranchConditional %106 %129 %128
+OpStore %124 %28
+OpBranch %128
 %128 = OpLabel
-%107 = OpRayQueryGetRayTMinKHR %9 %35
-OpRayQueryGenerateIntersectionKHR %35 %107
-%108 = OpRayQueryGetIntersectionObjectRayOriginKHR %13 %35 %28
-%109 = OpCompositeExtract %9 %108 0
-%110 = OpCompositeInsert %18 %109 %52 0
-%111 = OpRayQueryGetIntersectionObjectRayOriginKHR %13 %35 %28
-%112 = OpCompositeExtract %9 %111 1
-%102 = OpCompositeInsert %18 %112 %110 1
-%113 = OpRayQueryGetIntersectionObjectRayDirectionKHR %13 %35 %28
-%114 = OpCompositeExtract %9 %113 2
-%103 = OpConvertFToU %22 %114
+%54 = OpLoad %22 %124
+%51 = OpLoad %18 %123
+%56 = OpRayQueryGetIntersectionTypeKHR %22 %35 %28
+%57 = OpIEqual %49 %56 %28
+OpLoopMerge %140 %139 None
 OpBranch %129
 %129 = OpLabel
-%115 = OpPhi %18 %59 %127 %102 %128
-%118 = OpPhi %22 %60 %127 %103 %128
-OpBranch %130
+OpSelectionMerge %138 None
+OpBranchConditional %57 %137 %130
 %130 = OpLabel
-%116 = OpPhi %18 %59 %126 %115 %129
-%119 = OpPhi %22 %60 %126 %118 %129
-OpBranch %132
+%58 = OpIEqual %49 %56 %31
+OpSelectionMerge %136 None
+OpBranchConditional %58 %132 %131
+%131 = OpLabel
+OpStore %121 %51
+OpStore %122 %54
+OpBranch %136
 %132 = OpLabel
-%117 = OpPhi %18 %59 %131 %116 %130
-%120 = OpPhi %22 %60 %131 %119 %130
-%53 = OpCopyObject %18 %117
-%55 = OpCopyObject %22 %120
-OpBranch %133
+%59 = OpRayQueryGetIntersectionPrimitiveIndexKHR %22 %35 %28
+%60 = OpUGreaterThan %49 %59 %61
+OpSelectionMerge %135 None
+OpBranchConditional %60 %134 %133
 %133 = OpLabel
-%104 = OpRayQueryProceedKHR %49 %35
-OpBranchConditional %104 %124 %134
+%62 = OpRayQueryGetRayTMinKHR %9 %35
+OpRayQueryGenerateIntersectionKHR %35 %62
+%63 = OpRayQueryGetIntersectionObjectRayOriginKHR %13 %35 %28
+%64 = OpCompositeExtract %9 %63 0
+%65 = OpCompositeInsert %18 %64 %53 0
+%66 = OpRayQueryGetIntersectionObjectRayOriginKHR %13 %35 %28
+%67 = OpCompositeExtract %9 %66 1
+%68 = OpCompositeInsert %18 %67 %65 1
+%69 = OpRayQueryGetIntersectionObjectRayDirectionKHR %13 %35 %28
+%70 = OpCompositeExtract %9 %69 2
+%71 = OpConvertFToU %22 %70
+OpStore %121 %68
+OpStore %122 %71
+OpBranch %135
 %134 = OpLabel
+OpStore %121 %51
+OpStore %122 %54
 OpBranch %135
 %135 = OpLabel
-%51 = OpPhi %18 %52 %122 %53 %134
-%54 = OpPhi %22 %28 %122 %55 %134
-%56 = OpRayQueryGetIntersectionTypeKHR %22 %35 %31
-%57 = OpIEqual %49 %56 %58
-OpSelectionMerge %140 None
-OpBranchConditional %57 %139 %136
-%139 = OpLabel
-%64 = OpInBoundsAccessChain %63 %21 %28
-OpStore %64 %51
-OpHitObjectRecordFromQueryEXT %67 %35 %28 %21 %54
-%68 = OpHitObjectIsHitEXT %49 %67
-%69 = OpSelect %22 %68 %70 %71
-%72 = OpBitwiseAnd %22 %28 %69
-OpHitObjectSetShaderBindingTableRecordIndexEXT %67 %72
-OpReorderThreadWithHitObjectEXT %67 %73 %28
-%75 = OpInBoundsAccessChain %74 %17 %28
-OpStore %75 %76
-OpHitObjectExecuteShaderEXT %67 %17
-%77 = OpLoad %13 %75
-OpBranch %140
+OpBranch %136
 %136 = OpLabel
-%78 = OpIEqual %49 %56 %31
-OpSelectionMerge %138 None
-OpBranchConditional %78 %137 %138
+OpBranch %138
 %137 = OpLabel
-OpHitObjectRecordFromQueryEXT %94 %35 %28 %97
-%98 = OpHitObjectIsHitEXT %49 %94
-%99 = OpSelect %22 %98 %70 %71
-%100 = OpBitwiseAnd %22 %31 %99
-OpHitObjectSetShaderBindingTableRecordIndexEXT %94 %100
-OpReorderThreadWithHitObjectEXT %94 %73 %28
-%101 = OpInBoundsAccessChain %74 %16 %28
-OpStore %101 %76
-OpHitObjectExecuteShaderEXT %94 %16
-%81 = OpLoad %13 %101
+OpRayQueryConfirmIntersectionKHR %35
+OpStore %121 %51
+OpStore %122 %54
 OpBranch %138
 %138 = OpLabel
-%121 = OpPhi %13 %81 %137 %85 %136
-OpBranch %140
+%55 = OpLoad %22 %122
+%52 = OpLoad %18 %121
+%72 = OpRayQueryProceedKHR %49 %35
+OpSelectionMerge %149 None
+OpBranchConditional %72 %139 %140
+%149 = OpLabel
+OpUnreachable
+%139 = OpLabel
+OpStore %123 %52
+OpStore %124 %55
+OpBranch %128
 %140 = OpLabel
-%80 = OpPhi %13 %77 %139 %121 %138
-%86 = OpCompositeExtract %9 %80 0
-%87 = OpCompositeExtract %9 %80 1
-%88 = OpCompositeExtract %9 %80 2
-%89 = OpLoad %10 %12
-%91 = OpCompositeConstruct %90 %29 %32
-%93 = OpCompositeConstruct %92 %86 %87 %88 %39
-OpImageWrite %89 %91 %93
+OpStore %118 %52
+OpStore %120 %55
+OpBranch %141
+%141 = OpLabel
+%74 = OpLoad %22 %120
+%73 = OpLoad %18 %118
+%75 = OpRayQueryGetIntersectionTypeKHR %22 %35 %31
+%76 = OpIEqual %49 %75 %61
+OpSelectionMerge %147 None
+OpBranchConditional %76 %146 %142
+%142 = OpLabel
+%77 = OpIEqual %49 %75 %31
+OpSelectionMerge %145 None
+OpBranchConditional %77 %144 %143
+%143 = OpLabel
+OpStore %116 %106
+OpBranch %145
+%144 = OpLabel
+OpHitObjectRecordFromQueryEXT %80 %35 %28 %83
+%84 = OpHitObjectIsHitEXT %49 %80
+%85 = OpSelect %22 %84 %86 %87
+%88 = OpBitwiseAnd %22 %31 %85
+OpHitObjectSetShaderBindingTableRecordIndexEXT %80 %88
+OpReorderThreadWithHitObjectEXT %80 %89 %28
+%91 = OpInBoundsAccessChain %90 %16 %28
+OpStore %91 %92
+OpHitObjectExecuteShaderEXT %80 %16
+%93 = OpLoad %13 %91
+OpStore %116 %93
+OpBranch %145
+%145 = OpLabel
+OpBranch %147
+%146 = OpLabel
+%95 = OpInBoundsAccessChain %94 %21 %28
+OpStore %95 %73
+OpHitObjectRecordFromQueryEXT %96 %35 %28 %21 %74
+%97 = OpHitObjectIsHitEXT %49 %96
+%98 = OpSelect %22 %97 %86 %87
+%99 = OpBitwiseAnd %22 %28 %98
+OpHitObjectSetShaderBindingTableRecordIndexEXT %96 %99
+OpReorderThreadWithHitObjectEXT %96 %89 %28
+%100 = OpInBoundsAccessChain %90 %17 %28
+OpStore %100 %92
+OpHitObjectExecuteShaderEXT %96 %17
+%101 = OpLoad %13 %100
+OpStore %116 %101
+OpBranch %147
+%147 = OpLabel
+OpBranch %148
+%148 = OpLabel
+%102 = OpLoad %13 %116
+%107 = OpCompositeExtract %9 %102 0
+%108 = OpCompositeExtract %9 %102 1
+%109 = OpCompositeExtract %9 %102 2
+%110 = OpLoad %10 %12
+%112 = OpCompositeConstruct %111 %29 %32
+%114 = OpCompositeConstruct %113 %107 %108 %109 %39
+OpImageWrite %110 %112 %114 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 

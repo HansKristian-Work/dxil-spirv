@@ -17,10 +17,10 @@ void main()
 {
     uint64_t _22 = uint64_t(gl_GlobalInvocationID.x);
     uint64_t _26 = imageAtomicAdd(_8, int(0u), _22);
-    uint64_t _30 = imageAtomicAnd(_9, int(1u), _22);
-    uint64_t _34 = imageAtomicOr(_8, int(2u), _22);
-    uint64_t _38 = imageAtomicXor(_9, int(3u), _22);
-    uint64_t _42 = imageAtomicMin(_8, int(4u), _22);
+    uint64_t _31 = imageAtomicAnd(_9, int(1u), _22);
+    uint64_t _35 = imageAtomicOr(_8, int(2u), _22);
+    uint64_t _39 = imageAtomicXor(_9, int(3u), _22);
+    uint64_t _43 = imageAtomicMin(_8, int(4u), _22);
     uint64_t _46 = imageAtomicMax(_8, int(5u), _22);
     uint64_t _50 = imageAtomicMin(_9, int(6u), _22);
     uint64_t _54 = imageAtomicMax(_9, int(7u), _22);
@@ -35,18 +35,19 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 80
+; Bound: 79
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
 OpCapability Int64Atomics
 OpCapability ImageBuffer
 OpCapability Int64ImageEXT
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_shader_image_int64"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %17
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %9 %12 %13 %17
 OpExecutionMode %3 LocalSize 128 1 1
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
@@ -76,11 +77,11 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %18 = OpTypePointer Input %14
 %20 = OpConstant %14 0
 %24 = OpTypePointer Image %5
-%27 = OpConstant %14 1
-%32 = OpConstant %14 2
-%36 = OpConstant %14 3
-%40 = OpConstant %14 4
-%44 = OpConstant %14 5
+%27 = OpConstant %14 5
+%29 = OpConstant %14 1
+%33 = OpConstant %14 2
+%37 = OpConstant %14 3
+%41 = OpConstant %14 4
 %48 = OpConstant %14 6
 %52 = OpConstant %14 7
 %56 = OpConstant %14 8
@@ -100,19 +101,19 @@ OpBranch %78
 %25 = OpImageTexelPointer %24 %8 %20 %20
 %26 = OpAtomicIAdd %5 %25 %27 %20 %22
 %28 = OpLoad %6 %9
-%29 = OpImageTexelPointer %24 %9 %27 %20
-%30 = OpAtomicAnd %5 %29 %27 %20 %22
-%31 = OpLoad %6 %8
-%33 = OpImageTexelPointer %24 %8 %32 %20
-%34 = OpAtomicOr %5 %33 %27 %20 %22
-%35 = OpLoad %6 %9
-%37 = OpImageTexelPointer %24 %9 %36 %20
-%38 = OpAtomicXor %5 %37 %27 %20 %22
-%39 = OpLoad %6 %8
-%41 = OpImageTexelPointer %24 %8 %40 %20
-%42 = OpAtomicUMin %5 %41 %27 %20 %22
-%43 = OpLoad %6 %8
-%45 = OpImageTexelPointer %24 %8 %44 %20
+%30 = OpImageTexelPointer %24 %9 %29 %20
+%31 = OpAtomicAnd %5 %30 %27 %20 %22
+%32 = OpLoad %6 %8
+%34 = OpImageTexelPointer %24 %8 %33 %20
+%35 = OpAtomicOr %5 %34 %27 %20 %22
+%36 = OpLoad %6 %9
+%38 = OpImageTexelPointer %24 %9 %37 %20
+%39 = OpAtomicXor %5 %38 %27 %20 %22
+%40 = OpLoad %6 %8
+%42 = OpImageTexelPointer %24 %8 %41 %20
+%43 = OpAtomicUMin %5 %42 %27 %20 %22
+%44 = OpLoad %6 %8
+%45 = OpImageTexelPointer %24 %8 %27 %20
 %46 = OpAtomicUMax %5 %45 %27 %20 %22
 %47 = OpLoad %6 %9
 %49 = OpImageTexelPointer %24 %9 %48 %20
@@ -130,11 +131,11 @@ OpBranch %78
 %66 = OpImageTexelPointer %24 %9 %65 %20
 %67 = OpAtomicCompareExchange %5 %66 %27 %20 %20 %22 %68
 %69 = OpLoad %10 %12
-%71 = OpCompositeConstruct %70 %27 %32
+%71 = OpCompositeConstruct %70 %29 %33
 %72 = OpImageTexelPointer %24 %12 %71 %20
 %73 = OpAtomicIAdd %5 %72 %27 %20 %22
 %74 = OpLoad %10 %13
-%75 = OpCompositeConstruct %70 %36 %40
+%75 = OpCompositeConstruct %70 %37 %41
 %76 = OpImageTexelPointer %24 %13 %75 %20
 %77 = OpAtomicIAdd %5 %76 %27 %20 %22
 OpReturn

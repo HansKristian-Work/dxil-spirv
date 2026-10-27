@@ -10,22 +10,23 @@ layout(location = 0) out uint SV_Target;
 void main()
 {
     uint _19 = imageAtomicAdd(_9, int(0u), 1u);
-    uint _22 = imageAtomicAdd(_11, int(0u), 4294967295u);
-    SV_Target = (_22 - 1u) + _19;
+    uint _23 = imageAtomicAdd(_11, int(0u), 4294967295u);
+    SV_Target = (_23 - 1u) + _19;
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 28
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %13
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %9 %10 %11 %13
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %13 "SV_Target"
@@ -55,21 +56,22 @@ OpDecorate %13 Location 0
 %13 = OpVariable %12 Output
 %16 = OpTypePointer Image %5
 %18 = OpConstant %5 0
-%20 = OpConstant %5 1
-%23 = OpConstant %5 4294967295
+%20 = OpConstant %5 5
+%21 = OpConstant %5 1
+%24 = OpConstant %5 4294967295
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %26
-%26 = OpLabel
+OpBranch %27
+%27 = OpLabel
 %14 = OpLoad %6 %10
 %15 = OpLoad %6 %8
 %17 = OpImageTexelPointer %16 %9 %18 %18
-%19 = OpAtomicIAdd %5 %17 %20 %18 %20
-%21 = OpImageTexelPointer %16 %11 %18 %18
-%22 = OpAtomicIAdd %5 %21 %20 %18 %23
-%24 = OpISub %5 %22 %20
-%25 = OpIAdd %5 %24 %19
-OpStore %13 %25
+%19 = OpAtomicIAdd %5 %17 %20 %18 %21
+%22 = OpImageTexelPointer %16 %11 %18 %18
+%23 = OpAtomicIAdd %5 %22 %20 %18 %24
+%25 = OpISub %5 %23 %21
+%26 = OpIAdd %5 %25 %19
+OpStore %13 %26
 OpReturn
 OpFunctionEnd
 #endif

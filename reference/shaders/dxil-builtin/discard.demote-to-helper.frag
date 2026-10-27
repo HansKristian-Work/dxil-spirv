@@ -22,14 +22,15 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 29
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability DemoteToHelperInvocation
 OpExtension "SPV_EXT_demote_to_helper_invocation"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
@@ -57,9 +58,6 @@ OpBranch %22
 %15 = OpFOrdGreaterThan %14 %13 %16
 OpSelectionMerge %27 None
 OpBranchConditional %15 %26 %23
-%26 = OpLabel
-OpDemoteToHelperInvocation
-OpBranch %27
 %23 = OpLabel
 %17 = OpAccessChain %9 %8 %18
 %19 = OpLoad %5 %17
@@ -71,7 +69,12 @@ OpDemoteToHelperInvocation
 OpBranch %25
 %25 = OpLabel
 OpBranch %27
+%26 = OpLabel
+OpDemoteToHelperInvocation
+OpBranch %27
 %27 = OpLabel
+OpBranch %28
+%28 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

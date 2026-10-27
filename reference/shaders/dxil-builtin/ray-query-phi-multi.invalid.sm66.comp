@@ -19,17 +19,17 @@ void main()
     float _33 = float(gl_GlobalInvocationID.x) + 0.5;
     float _35 = float(gl_GlobalInvocationID.y) + 0.5;
     uvec4 _40 = floatBitsToUint(_16._m0[0u]);
-    uint _44;
+    uint _65;
     if (_40.y == 0u)
     {
-        _44 = 0u;
+        _65 = 0u;
     }
     else
     {
-        _44 = 1u;
+        _65 = 1u;
     }
     uint _45 = _40.x;
-    rayQueryInitializeEXT(RayQueryHeap[_44], _8[_45], 4u, 255u, vec3(_33, _35, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
+    rayQueryInitializeEXT(RayQueryHeap[_65], _8[_45], 4u, 255u, vec3(_33, _35, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
     rayQueryInitializeEXT(RayQueryHeap[1u], _8[_45], 4u, 255u, vec3(_33, _35, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
 }
 
@@ -37,18 +37,19 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 68
+; Bound: 71
 ; Schema: 0
 OpCapability Shader
 OpCapability RayQueryKHR
 OpCapability RayTraversalPrimitiveCullingKHR
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_query"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %24
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %16 %21 %24
 OpExecutionMode %3 LocalSize 8 8 1
 OpName %3 "main"
 OpName %14 ""
@@ -99,10 +100,12 @@ OpDecorate %24 BuiltIn GlobalInvocationId
 %56 = OpTypeVector %11 3
 %58 = OpConstant %11 0.100000001
 %60 = OpConstant %11 1000
+%64 = OpTypePointer Function %9
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %64
-%64 = OpLabel
+%65 = OpVariable %64 Function
+OpBranch %66
+%66 = OpLabel
 %26 = OpAccessChain %25 %24 %27
 %28 = OpLoad %9 %26
 %29 = OpAccessChain %25 %24 %10
@@ -116,12 +119,18 @@ OpBranch %64
 %40 = OpBitcast %39 %38
 %41 = OpCompositeExtract %9 %40 1
 %43 = OpIEqual %42 %41 %27
-OpSelectionMerge %66 None
-OpBranchConditional %43 %66 %65
-%65 = OpLabel
-OpBranch %66
-%66 = OpLabel
-%44 = OpPhi %9 %27 %64 %10 %65
+OpSelectionMerge %69 None
+OpBranchConditional %43 %68 %67
+%67 = OpLabel
+OpStore %65 %10
+OpBranch %69
+%68 = OpLabel
+OpStore %65 %27
+OpBranch %69
+%69 = OpLabel
+OpBranch %70
+%70 = OpLabel
+%44 = OpLoad %9 %65
 %45 = OpCompositeExtract %9 %40 0
 %47 = OpAccessChain %46 %8 %45
 %48 = OpLoad %5 %47

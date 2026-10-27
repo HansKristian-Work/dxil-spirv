@@ -28,26 +28,27 @@ void main()
     imageStore(_9, int(ByteAddressMask((gl_GlobalInvocationID.x * 7u) + 4u, 4u)), uvec4(subgroupXor(gl_GlobalInvocationID.x)));
     imageStore(_9, int(ByteAddressMask((gl_GlobalInvocationID.x * 7u) + 5u, 4u)), uvec4(uint(subgroupMin(int(gl_GlobalInvocationID.x)))));
     imageStore(_9, int(ByteAddressMask((gl_GlobalInvocationID.x * 7u) + 6u, 4u)), uvec4(uint(subgroupMax(int(gl_GlobalInvocationID.x)))));
-    float _120 = float(gl_GlobalInvocationID.x);
-    imageStore(_10, int(ByteAddressMask(gl_GlobalInvocationID.x * 7u, 4u)), uvec4(uint(subgroupAdd(_120))));
-    imageStore(_10, int(ByteAddressMask((gl_GlobalInvocationID.x * 7u) + 1u, 4u)), uvec4(uint(subgroupMul(_120))));
-    imageStore(_10, int(ByteAddressMask((gl_GlobalInvocationID.x * 7u) + 5u, 4u)), uvec4(uint(subgroupMin(_120))));
-    imageStore(_10, int(ByteAddressMask((gl_GlobalInvocationID.x * 7u) + 6u, 4u)), uvec4(uint(subgroupMax(_120))));
+    float _119 = float(gl_GlobalInvocationID.x);
+    imageStore(_10, int(ByteAddressMask(gl_GlobalInvocationID.x * 7u, 4u)), uvec4(uint(subgroupAdd(_119))));
+    imageStore(_10, int(ByteAddressMask((gl_GlobalInvocationID.x * 7u) + 1u, 4u)), uvec4(uint(subgroupMul(_119))));
+    imageStore(_10, int(ByteAddressMask((gl_GlobalInvocationID.x * 7u) + 5u, 4u)), uvec4(uint(subgroupMin(_119))));
+    imageStore(_10, int(ByteAddressMask((gl_GlobalInvocationID.x * 7u) + 6u, 4u)), uvec4(uint(subgroupMax(_119))));
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 146
+; Bound: 144
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability GroupNonUniformArithmetic
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %16
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %9 %10 %16
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpName %30 "ByteAddressMask"
@@ -81,22 +82,22 @@ OpDecorate %16 BuiltIn GlobalInvocationId
 %26 = OpConstant %5 7
 %27 = OpTypeFunction %5 %5 %5
 %33 = OpConstant %5 4294967295
-%37 = OpConstant %5 4
-%38 = OpTypeVector %5 4
-%44 = OpConstant %5 1
-%49 = OpConstant %5 8
-%52 = OpConstant %5 2
-%57 = OpConstant %5 12
-%64 = OpConstant %5 16
-%71 = OpConstant %5 20
-%74 = OpConstant %5 5
-%79 = OpConstant %5 24
-%82 = OpConstant %5 6
-%119 = OpTypeFloat 32
+%36 = OpConstant %5 4
+%37 = OpTypeVector %5 4
+%43 = OpConstant %5 1
+%48 = OpConstant %5 8
+%51 = OpConstant %5 2
+%56 = OpConstant %5 12
+%63 = OpConstant %5 16
+%70 = OpConstant %5 20
+%73 = OpConstant %5 5
+%78 = OpConstant %5 24
+%81 = OpConstant %5 6
+%118 = OpTypeFloat 32
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %144
-%144 = OpLabel
+OpBranch %143
+%143 = OpLabel
 %11 = OpLoad %6 %10
 %12 = OpLoad %6 %9
 %13 = OpLoad %6 %8
@@ -105,120 +106,120 @@ OpBranch %144
 %21 = OpGroupNonUniformIAdd %5 %22 Reduce %20
 %23 = OpIMul %5 %20 %24
 %25 = OpIMul %5 %20 %26
-%36 = OpFunctionCall %5 %30 %25 %37
-%39 = OpCompositeConstruct %38 %21 %21 %21 %21
-OpImageWrite %13 %36 %39
-%40 = OpGroupNonUniformIMul %5 %22 Reduce %20
-%41 = OpIAdd %5 %23 %37
-%42 = OpIMul %5 %20 %26
-%43 = OpIAdd %5 %42 %44
-%45 = OpFunctionCall %5 %30 %43 %37
-%46 = OpCompositeConstruct %38 %40 %40 %40 %40
-OpImageWrite %13 %45 %46
-%47 = OpGroupNonUniformBitwiseAnd %5 %22 Reduce %20
-%48 = OpIAdd %5 %23 %49
-%50 = OpIMul %5 %20 %26
-%51 = OpIAdd %5 %50 %52
-%53 = OpFunctionCall %5 %30 %51 %37
-%54 = OpCompositeConstruct %38 %47 %47 %47 %47
-OpImageWrite %13 %53 %54
-%55 = OpGroupNonUniformBitwiseOr %5 %22 Reduce %20
-%56 = OpIAdd %5 %23 %57
-%58 = OpIMul %5 %20 %26
-%59 = OpIAdd %5 %58 %22
-%60 = OpFunctionCall %5 %30 %59 %37
-%61 = OpCompositeConstruct %38 %55 %55 %55 %55
-OpImageWrite %13 %60 %61
-%62 = OpGroupNonUniformBitwiseXor %5 %22 Reduce %20
-%63 = OpIAdd %5 %23 %64
-%65 = OpIMul %5 %20 %26
-%66 = OpIAdd %5 %65 %37
-%67 = OpFunctionCall %5 %30 %66 %37
-%68 = OpCompositeConstruct %38 %62 %62 %62 %62
-OpImageWrite %13 %67 %68
-%69 = OpGroupNonUniformUMin %5 %22 Reduce %20
-%70 = OpIAdd %5 %23 %71
-%72 = OpIMul %5 %20 %26
-%73 = OpIAdd %5 %72 %74
-%75 = OpFunctionCall %5 %30 %73 %37
-%76 = OpCompositeConstruct %38 %69 %69 %69 %69
-OpImageWrite %13 %75 %76
-%77 = OpGroupNonUniformUMax %5 %22 Reduce %20
-%78 = OpIAdd %5 %23 %79
-%80 = OpIMul %5 %20 %26
-%81 = OpIAdd %5 %80 %82
-%83 = OpFunctionCall %5 %30 %81 %37
-%84 = OpCompositeConstruct %38 %77 %77 %77 %77
-OpImageWrite %13 %83 %84
-%85 = OpGroupNonUniformIAdd %5 %22 Reduce %20
-%86 = OpIMul %5 %20 %26
-%87 = OpFunctionCall %5 %30 %86 %37
-%88 = OpCompositeConstruct %38 %85 %85 %85 %85
-OpImageWrite %12 %87 %88
-%89 = OpGroupNonUniformIMul %5 %22 Reduce %20
-%90 = OpIMul %5 %20 %26
-%91 = OpIAdd %5 %90 %44
-%92 = OpFunctionCall %5 %30 %91 %37
-%93 = OpCompositeConstruct %38 %89 %89 %89 %89
-OpImageWrite %12 %92 %93
-%94 = OpGroupNonUniformBitwiseAnd %5 %22 Reduce %20
-%95 = OpIMul %5 %20 %26
-%96 = OpIAdd %5 %95 %52
-%97 = OpFunctionCall %5 %30 %96 %37
-%98 = OpCompositeConstruct %38 %94 %94 %94 %94
-OpImageWrite %12 %97 %98
-%99 = OpGroupNonUniformBitwiseOr %5 %22 Reduce %20
-%100 = OpIMul %5 %20 %26
-%101 = OpIAdd %5 %100 %22
-%102 = OpFunctionCall %5 %30 %101 %37
-%103 = OpCompositeConstruct %38 %99 %99 %99 %99
-OpImageWrite %12 %102 %103
-%104 = OpGroupNonUniformBitwiseXor %5 %22 Reduce %20
-%105 = OpIMul %5 %20 %26
-%106 = OpIAdd %5 %105 %37
-%107 = OpFunctionCall %5 %30 %106 %37
-%108 = OpCompositeConstruct %38 %104 %104 %104 %104
-OpImageWrite %12 %107 %108
-%109 = OpGroupNonUniformSMin %5 %22 Reduce %20
-%110 = OpIMul %5 %20 %26
-%111 = OpIAdd %5 %110 %74
-%112 = OpFunctionCall %5 %30 %111 %37
-%113 = OpCompositeConstruct %38 %109 %109 %109 %109
-OpImageWrite %12 %112 %113
-%114 = OpGroupNonUniformSMax %5 %22 Reduce %20
-%115 = OpIMul %5 %20 %26
-%116 = OpIAdd %5 %115 %82
-%117 = OpFunctionCall %5 %30 %116 %37
-%118 = OpCompositeConstruct %38 %114 %114 %114 %114
-OpImageWrite %12 %117 %118
-%120 = OpConvertUToF %119 %20
-%121 = OpGroupNonUniformFAdd %119 %22 Reduce %120
-%122 = OpConvertFToU %5 %121
-%123 = OpIMul %5 %20 %26
-%124 = OpFunctionCall %5 %30 %123 %37
-%125 = OpCompositeConstruct %38 %122 %122 %122 %122
-OpImageWrite %11 %124 %125
-%126 = OpGroupNonUniformFMul %119 %22 Reduce %120
-%127 = OpConvertFToU %5 %126
-%128 = OpIMul %5 %20 %26
-%129 = OpIAdd %5 %128 %44
-%130 = OpFunctionCall %5 %30 %129 %37
-%131 = OpCompositeConstruct %38 %127 %127 %127 %127
-OpImageWrite %11 %130 %131
-%132 = OpGroupNonUniformFMin %119 %22 Reduce %120
-%133 = OpConvertFToU %5 %132
-%134 = OpIMul %5 %20 %26
-%135 = OpIAdd %5 %134 %74
-%136 = OpFunctionCall %5 %30 %135 %37
-%137 = OpCompositeConstruct %38 %133 %133 %133 %133
-OpImageWrite %11 %136 %137
-%138 = OpGroupNonUniformFMax %119 %22 Reduce %120
-%139 = OpConvertFToU %5 %138
-%140 = OpIMul %5 %20 %26
-%141 = OpIAdd %5 %140 %82
-%142 = OpFunctionCall %5 %30 %141 %37
-%143 = OpCompositeConstruct %38 %139 %139 %139 %139
-OpImageWrite %11 %142 %143
+%35 = OpFunctionCall %5 %30 %25 %36
+%38 = OpCompositeConstruct %37 %21 %21 %21 %21
+OpImageWrite %13 %35 %38 NonPrivateTexel
+%39 = OpGroupNonUniformIMul %5 %22 Reduce %20
+%40 = OpIAdd %5 %23 %36
+%41 = OpIMul %5 %20 %26
+%42 = OpIAdd %5 %41 %43
+%44 = OpFunctionCall %5 %30 %42 %36
+%45 = OpCompositeConstruct %37 %39 %39 %39 %39
+OpImageWrite %13 %44 %45 NonPrivateTexel
+%46 = OpGroupNonUniformBitwiseAnd %5 %22 Reduce %20
+%47 = OpIAdd %5 %23 %48
+%49 = OpIMul %5 %20 %26
+%50 = OpIAdd %5 %49 %51
+%52 = OpFunctionCall %5 %30 %50 %36
+%53 = OpCompositeConstruct %37 %46 %46 %46 %46
+OpImageWrite %13 %52 %53 NonPrivateTexel
+%54 = OpGroupNonUniformBitwiseOr %5 %22 Reduce %20
+%55 = OpIAdd %5 %23 %56
+%57 = OpIMul %5 %20 %26
+%58 = OpIAdd %5 %57 %22
+%59 = OpFunctionCall %5 %30 %58 %36
+%60 = OpCompositeConstruct %37 %54 %54 %54 %54
+OpImageWrite %13 %59 %60 NonPrivateTexel
+%61 = OpGroupNonUniformBitwiseXor %5 %22 Reduce %20
+%62 = OpIAdd %5 %23 %63
+%64 = OpIMul %5 %20 %26
+%65 = OpIAdd %5 %64 %36
+%66 = OpFunctionCall %5 %30 %65 %36
+%67 = OpCompositeConstruct %37 %61 %61 %61 %61
+OpImageWrite %13 %66 %67 NonPrivateTexel
+%68 = OpGroupNonUniformUMin %5 %22 Reduce %20
+%69 = OpIAdd %5 %23 %70
+%71 = OpIMul %5 %20 %26
+%72 = OpIAdd %5 %71 %73
+%74 = OpFunctionCall %5 %30 %72 %36
+%75 = OpCompositeConstruct %37 %68 %68 %68 %68
+OpImageWrite %13 %74 %75 NonPrivateTexel
+%76 = OpGroupNonUniformUMax %5 %22 Reduce %20
+%77 = OpIAdd %5 %23 %78
+%79 = OpIMul %5 %20 %26
+%80 = OpIAdd %5 %79 %81
+%82 = OpFunctionCall %5 %30 %80 %36
+%83 = OpCompositeConstruct %37 %76 %76 %76 %76
+OpImageWrite %13 %82 %83 NonPrivateTexel
+%84 = OpGroupNonUniformIAdd %5 %22 Reduce %20
+%85 = OpIMul %5 %20 %26
+%86 = OpFunctionCall %5 %30 %85 %36
+%87 = OpCompositeConstruct %37 %84 %84 %84 %84
+OpImageWrite %12 %86 %87 NonPrivateTexel
+%88 = OpGroupNonUniformIMul %5 %22 Reduce %20
+%89 = OpIMul %5 %20 %26
+%90 = OpIAdd %5 %89 %43
+%91 = OpFunctionCall %5 %30 %90 %36
+%92 = OpCompositeConstruct %37 %88 %88 %88 %88
+OpImageWrite %12 %91 %92 NonPrivateTexel
+%93 = OpGroupNonUniformBitwiseAnd %5 %22 Reduce %20
+%94 = OpIMul %5 %20 %26
+%95 = OpIAdd %5 %94 %51
+%96 = OpFunctionCall %5 %30 %95 %36
+%97 = OpCompositeConstruct %37 %93 %93 %93 %93
+OpImageWrite %12 %96 %97 NonPrivateTexel
+%98 = OpGroupNonUniformBitwiseOr %5 %22 Reduce %20
+%99 = OpIMul %5 %20 %26
+%100 = OpIAdd %5 %99 %22
+%101 = OpFunctionCall %5 %30 %100 %36
+%102 = OpCompositeConstruct %37 %98 %98 %98 %98
+OpImageWrite %12 %101 %102 NonPrivateTexel
+%103 = OpGroupNonUniformBitwiseXor %5 %22 Reduce %20
+%104 = OpIMul %5 %20 %26
+%105 = OpIAdd %5 %104 %36
+%106 = OpFunctionCall %5 %30 %105 %36
+%107 = OpCompositeConstruct %37 %103 %103 %103 %103
+OpImageWrite %12 %106 %107 NonPrivateTexel
+%108 = OpGroupNonUniformSMin %5 %22 Reduce %20
+%109 = OpIMul %5 %20 %26
+%110 = OpIAdd %5 %109 %73
+%111 = OpFunctionCall %5 %30 %110 %36
+%112 = OpCompositeConstruct %37 %108 %108 %108 %108
+OpImageWrite %12 %111 %112 NonPrivateTexel
+%113 = OpGroupNonUniformSMax %5 %22 Reduce %20
+%114 = OpIMul %5 %20 %26
+%115 = OpIAdd %5 %114 %81
+%116 = OpFunctionCall %5 %30 %115 %36
+%117 = OpCompositeConstruct %37 %113 %113 %113 %113
+OpImageWrite %12 %116 %117 NonPrivateTexel
+%119 = OpConvertUToF %118 %20
+%120 = OpGroupNonUniformFAdd %118 %22 Reduce %119
+%121 = OpConvertFToU %5 %120
+%122 = OpIMul %5 %20 %26
+%123 = OpFunctionCall %5 %30 %122 %36
+%124 = OpCompositeConstruct %37 %121 %121 %121 %121
+OpImageWrite %11 %123 %124 NonPrivateTexel
+%125 = OpGroupNonUniformFMul %118 %22 Reduce %119
+%126 = OpConvertFToU %5 %125
+%127 = OpIMul %5 %20 %26
+%128 = OpIAdd %5 %127 %43
+%129 = OpFunctionCall %5 %30 %128 %36
+%130 = OpCompositeConstruct %37 %126 %126 %126 %126
+OpImageWrite %11 %129 %130 NonPrivateTexel
+%131 = OpGroupNonUniformFMin %118 %22 Reduce %119
+%132 = OpConvertFToU %5 %131
+%133 = OpIMul %5 %20 %26
+%134 = OpIAdd %5 %133 %73
+%135 = OpFunctionCall %5 %30 %134 %36
+%136 = OpCompositeConstruct %37 %132 %132 %132 %132
+OpImageWrite %11 %135 %136 NonPrivateTexel
+%137 = OpGroupNonUniformFMax %118 %22 Reduce %119
+%138 = OpConvertFToU %5 %137
+%139 = OpIMul %5 %20 %26
+%140 = OpIAdd %5 %139 %81
+%141 = OpFunctionCall %5 %30 %140 %36
+%142 = OpCompositeConstruct %37 %138 %138 %138 %138
+OpImageWrite %11 %141 %142 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %30 = OpFunction %5 None %27

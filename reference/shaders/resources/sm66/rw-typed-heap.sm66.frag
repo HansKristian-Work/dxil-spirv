@@ -3,8 +3,8 @@
 
 layout(set = 0, binding = 0, r32f) uniform readonly image2D _9[];
 layout(set = 0, binding = 0) uniform writeonly uimageBuffer _14[];
-layout(set = 0, binding = 0, r32i) uniform coherent iimage2D _19[];
-layout(set = 0, binding = 0, r32ui) uniform coherent uimage1D _23[];
+layout(set = 0, binding = 0, r32i) uniform iimage2D _19[];
+layout(set = 0, binding = 0, r32ui) uniform uimage1D _23[];
 
 layout(location = 0) flat in uint INDEX;
 layout(location = 0, component = 1) flat in ivec3 UV;
@@ -20,17 +20,17 @@ void main()
     imageStore(_14[INDEX + 1u], int(_36), uvec4(_40));
     ivec4 _70 = imageLoad(_19[_53], ivec2(uvec2(_40, _44)));
     imageStore(_19[_53], ivec2(uvec2(_40, _44)), ivec4(uvec4(_36)));
-    uint _80 = imageAtomicAdd(_23[INDEX + 3u], int(_36), _40);
+    uint _81 = imageAtomicAdd(_23[INDEX + 3u], int(_36), _40);
     SV_Target.x = _63.x;
     SV_Target.y = float(int(uvec4(_70).x));
-    SV_Target.z = float(_80);
+    SV_Target.z = float(_81);
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 88
 ; Schema: 0
@@ -39,9 +39,10 @@ OpCapability Image1D
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability RuntimeDescriptorArray
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %25 %28 %31
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %9 %14 %19 %23 %25 %28 %31
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %25 "INDEX"
@@ -55,10 +56,8 @@ OpDecorate %14 Binding 0
 OpDecorate %14 NonReadable
 OpDecorate %19 DescriptorSet 0
 OpDecorate %19 Binding 0
-OpDecorate %19 Coherent
 OpDecorate %23 DescriptorSet 0
 OpDecorate %23 Binding 0
-OpDecorate %23 Coherent
 OpDecorate %25 Flat
 OpDecorate %25 Location 0
 OpDecorate %28 Flat
@@ -107,12 +106,13 @@ OpDecorate %31 Location 0
 %64 = OpTypeVector %10 2
 %67 = OpTypeVector %10 4
 %69 = OpTypeVector %15 4
-%78 = OpTypePointer Image %10
-%82 = OpTypePointer Output %5
+%72 = OpConstant %10 5
+%79 = OpTypePointer Image %10
+%83 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %86
-%86 = OpLabel
+OpBranch %87
+%87 = OpLabel
 %33 = OpAccessChain %32 %28 %34
 %35 = OpLoad %15 %33
 %36 = OpBitcast %10 %35
@@ -135,28 +135,28 @@ OpBranch %86
 %60 = OpAccessChain %59 %23 %57
 %61 = OpLoad %20 %60
 %65 = OpCompositeConstruct %64 %36 %40
-%63 = OpImageRead %62 %48 %65 None
+%63 = OpImageRead %62 %48 %65 NonPrivateTexel
 %66 = OpCompositeExtract %5 %63 0
 %68 = OpCompositeConstruct %67 %40 %40 %40 %40
-OpImageWrite %52 %36 %68
+OpImageWrite %52 %36 %68 NonPrivateTexel
 %71 = OpCompositeConstruct %64 %40 %44
-%70 = OpImageRead %69 %56 %71 None
-%72 = OpBitcast %67 %70
-%73 = OpCompositeExtract %10 %72 0
-%74 = OpConvertSToF %5 %73
-%75 = OpCompositeConstruct %64 %40 %44
-%76 = OpCompositeConstruct %67 %36 %36 %36 %36
-%77 = OpBitcast %69 %76
-OpImageWrite %56 %75 %77
-%79 = OpImageTexelPointer %78 %60 %36 %34
-%80 = OpAtomicIAdd %10 %79 %38 %34 %40
-%81 = OpConvertUToF %5 %80
-%83 = OpAccessChain %82 %31 %34
-OpStore %83 %66
-%84 = OpAccessChain %82 %31 %38
-OpStore %84 %74
-%85 = OpAccessChain %82 %31 %42
-OpStore %85 %81
+%70 = OpImageRead %69 %56 %71 MakeTexelVisible|NonPrivateTexel %72
+%73 = OpBitcast %67 %70
+%74 = OpCompositeExtract %10 %73 0
+%75 = OpConvertSToF %5 %74
+%76 = OpCompositeConstruct %64 %40 %44
+%77 = OpCompositeConstruct %67 %36 %36 %36 %36
+%78 = OpBitcast %69 %77
+OpImageWrite %56 %76 %78 MakeTexelAvailable|NonPrivateTexel %72
+%80 = OpImageTexelPointer %79 %60 %36 %34
+%81 = OpAtomicIAdd %10 %80 %72 %34 %40
+%82 = OpConvertUToF %5 %81
+%84 = OpAccessChain %83 %31 %34
+OpStore %84 %66
+%85 = OpAccessChain %83 %31 %38
+OpStore %85 %75
+%86 = OpAccessChain %83 %31 %42
+OpStore %86 %82
 OpReturn
 OpFunctionEnd
 #endif

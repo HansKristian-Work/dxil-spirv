@@ -35,87 +35,87 @@ layout(location = 0) out vec2 SV_Target;
 
 void main()
 {
-    uint _299;
-    vec4 _300;
-    _299 = sparseTexelFetchARB(_8, int(TEXCOORD.x), int(TEXCOORD.y), _300);
-    SparseTexel _76 = SparseTexel(_299, _300);
+    uint _298;
+    vec4 _299;
+    _298 = sparseTexelFetchARB(_8, int(TEXCOORD.x), int(TEXCOORD.y), _299);
+    SparseTexel _76 = SparseTexel(_298, _299);
     vec4 _78 = _76._m1;
     _83 _84 = _83(_78.x, _78.y, _78.z, _78.w, _76._m0);
     float _90 = float(sparseTexelsResidentARB(int(_84._m4)));
-    uint _301;
-    vec4 _302;
-    _301 = sparseTexelFetchARB(_11, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z), _302);
-    SparseTexel _95 = SparseTexel(_301, _302);
+    uint _300;
+    vec4 _301;
+    _300 = sparseTexelFetchARB(_11, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z), _301);
+    SparseTexel _95 = SparseTexel(_300, _301);
     vec4 _99 = _95._m1;
     _83 _104 = _83(_99.x, _99.y, _99.z, _99.w, _95._m0);
     float _111 = float(sparseTexelsResidentARB(int(_104._m4)));
-    uint _303;
-    vec4 _304;
-    _303 = sparseTexelFetchARB(_14, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z), _304);
-    SparseTexel _114 = SparseTexel(_303, _304);
+    uint _302;
+    vec4 _303;
+    _302 = sparseTexelFetchARB(_14, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z), _303);
+    SparseTexel _114 = SparseTexel(_302, _303);
     vec4 _117 = _114._m1;
     _83 _122 = _83(_117.x, _117.y, _117.z, _117.w, _114._m0);
     float _129 = float(sparseTexelsResidentARB(int(_122._m4)));
-    uint _305;
-    vec4 _306;
-    _305 = sparseTexelFetchARB(_17, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w), _306);
-    SparseTexel _132 = SparseTexel(_305, _306);
+    uint _304;
+    vec4 _305;
+    _304 = sparseTexelFetchARB(_17, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w), _305);
+    SparseTexel _132 = SparseTexel(_304, _305);
     vec4 _136 = _132._m1;
     _83 _141 = _83(_136.x, _136.y, _136.z, _136.w, _132._m0);
     float _148 = float(sparseTexelsResidentARB(int(_141._m4)));
-    uint _307;
-    vec4 _308;
-    _307 = sparseTexelFetchARB(_20, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w), _308);
-    SparseTexel _151 = SparseTexel(_307, _308);
+    uint _306;
+    vec4 _307;
+    _306 = sparseTexelFetchARB(_20, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w), _307);
+    SparseTexel _151 = SparseTexel(_306, _307);
     vec4 _154 = _151._m1;
     _83 _159 = _83(_154.x, _154.y, _154.z, _154.w, _151._m0);
     float _166 = float(sparseTexelsResidentARB(int(_159._m4)));
-    uint _309;
-    vec4 _310;
-    _309 = sparseTexelFetchARB(_23, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z), _310);
-    SparseTexel _169 = SparseTexel(_309, _310);
+    uint _308;
+    vec4 _309;
+    _308 = sparseTexelFetchARB(_23, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(TEXCOORD.z), _309);
+    SparseTexel _169 = SparseTexel(_308, _309);
     vec4 _172 = _169._m1;
     _83 _177 = _83(_172.x, _172.y, _172.z, _172.w, _169._m0);
     float _184 = float(sparseTexelsResidentARB(int(_177._m4)));
-    uint _311;
-    vec4 _312;
-    _311 = sparseTexelFetchARB(_26, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w), _312);
-    SparseTexel _187 = SparseTexel(_311, _312);
+    uint _310;
+    vec4 _311;
+    _310 = sparseTexelFetchARB(_26, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), int(TEXCOORD.w), _311);
+    SparseTexel _187 = SparseTexel(_310, _311);
     vec4 _190 = _187._m1;
     _83 _195 = _83(_190.x, _190.y, _190.z, _190.w, _187._m0);
     float _202 = float(sparseTexelsResidentARB(int(_195._m4)));
-    uint _313;
-    vec4 _314;
-    _313 = sparseImageLoadARB(_29, int(TEXCOORD.x), _314);
-    SparseTexel _205 = SparseTexel(_313, _314);
+    uint _312;
+    vec4 _313;
+    _312 = sparseImageLoadARB(_29, int(TEXCOORD.x), _313);
+    SparseTexel _205 = SparseTexel(_312, _313);
     vec4 _207 = _205._m1;
     _83 _212 = _83(_207.x, _207.y, _207.z, _207.w, _205._m0);
     float _219 = float(sparseTexelsResidentARB(int(_212._m4)));
-    uint _315;
-    vec4 _316;
-    _315 = sparseImageLoadARB(_32, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), _316);
-    SparseTexel _222 = SparseTexel(_315, _316);
+    uint _314;
+    vec4 _315;
+    _314 = sparseImageLoadARB(_32, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), _315);
+    SparseTexel _222 = SparseTexel(_314, _315);
     vec4 _225 = _222._m1;
     _83 _230 = _83(_225.x, _225.y, _225.z, _225.w, _222._m0);
     float _237 = float(sparseTexelsResidentARB(int(_230._m4)));
-    uint _317;
-    vec4 _318;
-    _317 = sparseImageLoadARB(_35, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), _318);
-    SparseTexel _240 = SparseTexel(_317, _318);
+    uint _316;
+    vec4 _317;
+    _316 = sparseImageLoadARB(_35, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), _317);
+    SparseTexel _240 = SparseTexel(_316, _317);
     vec4 _243 = _240._m1;
     _83 _248 = _83(_243.x, _243.y, _243.z, _243.w, _240._m0);
     float _255 = float(sparseTexelsResidentARB(int(_248._m4)));
-    uint _319;
-    vec4 _320;
-    _319 = sparseImageLoadARB(_38, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), _320);
-    SparseTexel _258 = SparseTexel(_319, _320);
+    uint _318;
+    vec4 _319;
+    _318 = sparseImageLoadARB(_38, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), _319);
+    SparseTexel _258 = SparseTexel(_318, _319);
     vec4 _261 = _258._m1;
     _83 _266 = _83(_261.x, _261.y, _261.z, _261.w, _258._m0);
     float _273 = float(sparseTexelsResidentARB(int(_266._m4)));
-    uint _321;
-    vec4 _322;
-    _321 = sparseImageLoadARB(_41, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), _322);
-    SparseTexel _276 = SparseTexel(_321, _322);
+    uint _320;
+    vec4 _321;
+    _320 = sparseImageLoadARB(_41, ivec3(uvec3(TEXCOORD.x, TEXCOORD.y, TEXCOORD.z)), _321);
+    SparseTexel _276 = SparseTexel(_320, _321);
     vec4 _279 = _276._m1;
     _83 _284 = _83(_279.x, _279.y, _279.z, _279.w, _276._m0);
     float _291 = float(sparseTexelsResidentARB(int(_284._m4)));
@@ -127,16 +127,17 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 299
+; Bound: 298
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency
 OpCapability Sampled1D
 OpCapability Image1D
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %45 %48
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26 %29 %32 %35 %38 %41 %45 %48
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %45 "TEXCOORD"
@@ -382,7 +383,7 @@ OpBranch %297
 %202 = OpSelect %5 %199 %91 %92
 %203 = OpFAdd %5 %200 %202
 %204 = OpFAdd %5 %201 %202
-%205 = OpImageSparseRead %75 %53 %64 None
+%205 = OpImageSparseRead %75 %53 %64 NonPrivateTexel
 %206 = OpCompositeExtract %42 %205 0
 %207 = OpCompositeExtract %74 %205 1
 %208 = OpCompositeExtract %5 %207 0
@@ -400,7 +401,7 @@ OpBranch %297
 %220 = OpFAdd %5 %217 %219
 %221 = OpFAdd %5 %218 %219
 %223 = OpCompositeConstruct %96 %64 %67
-%222 = OpImageSparseRead %75 %52 %223 None
+%222 = OpImageSparseRead %75 %52 %223 NonPrivateTexel
 %224 = OpCompositeExtract %42 %222 0
 %225 = OpCompositeExtract %74 %222 1
 %226 = OpCompositeExtract %5 %225 0
@@ -418,7 +419,7 @@ OpBranch %297
 %238 = OpFAdd %5 %235 %237
 %239 = OpFAdd %5 %236 %237
 %241 = OpCompositeConstruct %96 %64 %67
-%240 = OpImageSparseRead %75 %51 %241 None
+%240 = OpImageSparseRead %75 %51 %241 NonPrivateTexel
 %242 = OpCompositeExtract %42 %240 0
 %243 = OpCompositeExtract %74 %240 1
 %244 = OpCompositeExtract %5 %243 0
@@ -436,7 +437,7 @@ OpBranch %297
 %256 = OpFAdd %5 %253 %255
 %257 = OpFAdd %5 %254 %255
 %259 = OpCompositeConstruct %133 %64 %67 %70
-%258 = OpImageSparseRead %75 %50 %259 None
+%258 = OpImageSparseRead %75 %50 %259 NonPrivateTexel
 %260 = OpCompositeExtract %42 %258 0
 %261 = OpCompositeExtract %74 %258 1
 %262 = OpCompositeExtract %5 %261 0
@@ -454,7 +455,7 @@ OpBranch %297
 %274 = OpFAdd %5 %271 %273
 %275 = OpFAdd %5 %272 %273
 %277 = OpCompositeConstruct %133 %64 %67 %70
-%276 = OpImageSparseRead %75 %49 %277 None
+%276 = OpImageSparseRead %75 %49 %277 NonPrivateTexel
 %278 = OpCompositeExtract %42 %276 0
 %279 = OpCompositeExtract %74 %276 1
 %280 = OpCompositeExtract %5 %279 0

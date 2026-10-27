@@ -1,4 +1,16 @@
-add_subdirectory(spirv-headers EXCLUDE_FROM_ALL)
+if (DXIL_SPV_FUZZ_CLI)
+    set(GRANITE_RENDERER OFF CACHE BOOL "" FORCE)
+    set(GRANITE_VULKAN_SHADER_MANAGER_RUNTIME_COMPILER OFF CACHE BOOL "" FORCE)
+    set(GRANITE_VULKAN_SYSTEM_HANDLES OFF CACHE BOOL "" FORCE)
+    set(GRANITE_SHADER_COMPILER_OPTIMIZE OFF CACHE BOOL "" FORCE)
+    set(GRANITE_SHIPPING ON CACHE BOOL "" FORCE)
+    set(GRANITE_VULKAN_FOSSILIZE OFF CACHE BOOL "" FORCE)
+    set(GRANITE_PLATFORM "null" CACHE STRING "" FORCE)
+    add_subdirectory(Granite EXCLUDE_FROM_ALL)
+else()
+    add_subdirectory(spirv-headers EXCLUDE_FROM_ALL)
+endif()
+
 set(SPIRV-Headers_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/spirv-headers" CACHE STRING "SPIRV-Headers path" FORCE)
 
 add_library(dxil-spirv-headers INTERFACE)
@@ -150,14 +162,13 @@ if (DXIL_SPIRV_CLI)
     # SPIRV-Tools refuses to configure if this is not set.
     set(CMAKE_CXX_STANDARD 17)
     add_subdirectory(SPIRV-Tools EXCLUDE_FROM_ALL)
-    add_subdirectory(SPIRV-Cross EXCLUDE_FROM_ALL)
+    if (NOT DXIL_SPV_FUZZ_CLI)
+        add_subdirectory(SPIRV-Cross EXCLUDE_FROM_ALL)
+    endif()
 endif()
 
 add_library(glslang-spirv-builder STATIC
         glslang-spirv/spvIR.h
-        glslang-spirv/Logger.cpp
-        glslang-spirv/Logger.h
-        glslang-spirv/InReadableOrder.cpp
         glslang-spirv/SpvBuilder.h
         glslang-spirv/SpvBuilder.cpp)
 set_target_properties(glslang-spirv-builder PROPERTIES POSITION_INDEPENDENT_CODE ON)

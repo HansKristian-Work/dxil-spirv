@@ -1,13 +1,14 @@
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 31
+; Bound: 30
 ; Schema: 0
 OpCapability Shader
+OpCapability VulkanMemoryModel
 OpCapability RawAccessChainsNV
 OpExtension "SPV_NV_raw_access_chains"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %12
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %9 %12
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpName %7 "SSBO"
@@ -40,14 +41,14 @@ OpBranch %29
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
 %19 = OpRawAccessChainNV %18 %9 %20 %16 %15 RobustnessPerElementNV
-%21 = OpLoad %17 %19 Aligned 8
+%21 = OpLoad %17 %19 Aligned|NonPrivatePointer 8
 %22 = OpCompositeExtract %5 %21 0
 %23 = OpCompositeExtract %5 %21 1
 %24 = OpIAdd %5 %22 %25
 %26 = OpIAdd %5 %23 %25
 %27 = OpRawAccessChainNV %18 %9 %20 %16 %15 RobustnessPerElementNV
 %28 = OpCompositeConstruct %17 %24 %26
-OpStore %27 %28 Aligned 8
+OpStore %27 %28 Aligned|NonPrivatePointer 8
 OpReturn
 OpFunctionEnd
 

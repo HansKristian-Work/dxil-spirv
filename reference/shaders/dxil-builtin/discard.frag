@@ -1,49 +1,40 @@
 #version 460
+#extension GL_EXT_demote_to_helper_invocation : require
 
 layout(location = 0) in vec2 TEXCOORD;
-bool discard_state;
-
-void discard_exit()
-{
-    if (discard_state)
-    {
-        discard;
-    }
-}
 
 void main()
 {
-    discard_state = false;
     if (TEXCOORD.x > 10.0)
     {
-        discard_state = true;
+        demote;
     }
     else
     {
         if (TEXCOORD.y > 20.0)
         {
-            discard_state = true;
+            demote;
         }
     }
-    discard_exit();
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 40
+; Bound: 29
 ; Schema: 0
 OpCapability Shader
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpCapability DemoteToHelperInvocation
+OpExtension "SPV_EXT_demote_to_helper_invocation"
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %8 "TEXCOORD"
-OpName %18 "discard_state"
-OpName %32 "discard_exit"
 OpDecorate %8 Location 0
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -56,48 +47,34 @@ OpDecorate %8 Location 0
 %12 = OpConstant %11 0
 %14 = OpTypeBool
 %16 = OpConstant %5 10
-%17 = OpTypePointer Private %14
-%18 = OpVariable %17 Private
-%19 = OpConstantFalse %14
-%21 = OpConstant %11 1
-%24 = OpConstant %5 20
-%31 = OpConstantTrue %14
+%18 = OpConstant %11 1
+%21 = OpConstant %5 20
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpStore %18 %19
-OpBranch %25
-%25 = OpLabel
+OpBranch %22
+%22 = OpLabel
 %10 = OpAccessChain %9 %8 %12
 %13 = OpLoad %5 %10
 %15 = OpFOrdGreaterThan %14 %13 %16
-OpSelectionMerge %30 None
-OpBranchConditional %15 %29 %26
-%29 = OpLabel
-OpStore %18 %31
-OpBranch %30
+OpSelectionMerge %27 None
+OpBranchConditional %15 %26 %23
+%23 = OpLabel
+%17 = OpAccessChain %9 %8 %18
+%19 = OpLoad %5 %17
+%20 = OpFOrdGreaterThan %14 %19 %21
+OpSelectionMerge %25 None
+OpBranchConditional %20 %24 %25
+%24 = OpLabel
+OpDemoteToHelperInvocation
+OpBranch %25
+%25 = OpLabel
+OpBranch %27
 %26 = OpLabel
-%20 = OpAccessChain %9 %8 %21
-%22 = OpLoad %5 %20
-%23 = OpFOrdGreaterThan %14 %22 %24
-OpSelectionMerge %28 None
-OpBranchConditional %23 %27 %28
+OpDemoteToHelperInvocation
+OpBranch %27
 %27 = OpLabel
-OpStore %18 %31
 OpBranch %28
 %28 = OpLabel
-OpBranch %30
-%30 = OpLabel
-%38 = OpFunctionCall %1 %32
-OpReturn
-OpFunctionEnd
-%32 = OpFunction %1 None %2
-%33 = OpLabel
-%36 = OpLoad %14 %18
-OpSelectionMerge %35 None
-OpBranchConditional %36 %34 %35
-%34 = OpLabel
-OpKill
-%35 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

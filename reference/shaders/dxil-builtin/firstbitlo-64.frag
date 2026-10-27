@@ -19,14 +19,15 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 30
+; Bound: 29
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
+OpCapability VulkanMemoryModel
 %19 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %7 %8 %10
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

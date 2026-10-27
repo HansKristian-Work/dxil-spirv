@@ -36,14 +36,15 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 124
+; Bound: 123
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %21 %26
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %13 %17 %21 %26
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
@@ -100,7 +101,7 @@ OpDecorate %108 RelaxedPrecision
 %47 = OpConstant %10 2
 %49 = OpConstant %10 3
 %51 = OpConstant %10 4
-%64 = OpConstant %5 264
+%64 = OpConstant %5 24840
 %66 = OpConstant %5 5
 %114 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
@@ -122,7 +123,7 @@ OpStore %36 %40
 OpStore %38 %40
 %41 = OpConvertUToF %10 %27
 %43 = OpAccessChain %42 %13 %27
-OpStore %43 %41
+OpStore %43 %41 NonPrivatePointer
 %44 = OpFAdd %10 %41 %45
 %46 = OpFAdd %10 %41 %47
 %48 = OpFAdd %10 %41 %49
@@ -130,53 +131,53 @@ OpStore %43 %41
 %52 = OpIMul %5 %27 %28
 %53 = OpIAdd %5 %24 %52
 %54 = OpAccessChain %42 %17 %53
-OpStore %54 %44
+OpStore %54 %44 NonPrivatePointer
 %55 = OpIMul %5 %27 %28
 %56 = OpIAdd %5 %35 %55
 %57 = OpAccessChain %42 %17 %56
-OpStore %57 %46
+OpStore %57 %46 NonPrivatePointer
 %58 = OpIMul %5 %27 %28
 %59 = OpIAdd %5 %37 %58
 %60 = OpAccessChain %42 %17 %59
-OpStore %60 %48
+OpStore %60 %48 NonPrivatePointer
 %61 = OpIMul %5 %27 %28
 %62 = OpIAdd %5 %39 %61
 %63 = OpAccessChain %42 %17 %62
-OpStore %63 %50
+OpStore %63 %50 NonPrivatePointer
 OpControlBarrier %37 %37 %64
 %65 = OpBitwiseXor %5 %27 %66
 %67 = OpAccessChain %42 %13 %65
-%68 = OpLoad %10 %67
+%68 = OpLoad %10 %67 NonPrivatePointer
 %69 = OpBitwiseAnd %5 %27 %39
 %70 = OpAccessChain %32 %31 %69
 OpStore %70 %68
 %71 = OpBitwiseXor %5 %27 %28
 %72 = OpAccessChain %42 %13 %71
-%73 = OpLoad %10 %72
+%73 = OpLoad %10 %72 NonPrivatePointer
 %74 = OpIAdd %5 %27 %35
 %75 = OpBitwiseAnd %5 %74 %39
 %76 = OpAccessChain %32 %31 %75
 OpStore %76 %73
 %77 = OpBitwiseXor %5 %27 %35
 %78 = OpAccessChain %42 %13 %77
-%79 = OpLoad %10 %78
+%79 = OpLoad %10 %78 NonPrivatePointer
 %80 = OpBitwiseXor %5 %27 %39
 %81 = OpIMul %5 %80 %28
 %82 = OpIAdd %5 %24 %81
 %83 = OpAccessChain %42 %17 %82
-%84 = OpLoad %10 %83
+%84 = OpLoad %10 %83 NonPrivatePointer
 %85 = OpIMul %5 %80 %28
 %86 = OpIAdd %5 %35 %85
 %87 = OpAccessChain %42 %17 %86
-%88 = OpLoad %10 %87
+%88 = OpLoad %10 %87 NonPrivatePointer
 %89 = OpIMul %5 %80 %28
 %90 = OpIAdd %5 %37 %89
 %91 = OpAccessChain %42 %17 %90
-%92 = OpLoad %10 %91
+%92 = OpLoad %10 %91 NonPrivatePointer
 %93 = OpIMul %5 %80 %28
 %94 = OpIAdd %5 %39 %93
 %95 = OpAccessChain %42 %17 %94
-%96 = OpLoad %10 %95
+%96 = OpLoad %10 %95 NonPrivatePointer
 %97 = OpFAdd %10 %84 %79
 %98 = OpFAdd %10 %88 %79
 %99 = OpFAdd %10 %92 %79
@@ -195,16 +196,16 @@ OpStore %76 %73
 %112 = OpBitcast %5 %107
 %113 = OpBitcast %5 %108
 %115 = OpCompositeConstruct %114 %110 %110 %110 %110
-OpImageWrite %18 %109 %115
+OpImageWrite %18 %109 %115 NonPrivateTexel
 %116 = OpCompositeConstruct %114 %111 %111 %111 %111
 %117 = OpIAdd %5 %109 %35
-OpImageWrite %18 %117 %116
+OpImageWrite %18 %117 %116 NonPrivateTexel
 %118 = OpCompositeConstruct %114 %112 %112 %112 %112
 %119 = OpIAdd %5 %109 %37
-OpImageWrite %18 %119 %118
+OpImageWrite %18 %119 %118 NonPrivateTexel
 %120 = OpCompositeConstruct %114 %113 %113 %113 %113
 %121 = OpIAdd %5 %109 %39
-OpImageWrite %18 %121 %120
+OpImageWrite %18 %121 %120 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

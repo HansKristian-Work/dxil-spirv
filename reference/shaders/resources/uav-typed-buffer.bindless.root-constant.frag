@@ -45,20 +45,21 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 116
+; Bound: 115
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability RuntimeDescriptorArray
 OpCapability StorageTexelBufferArrayDynamicIndexing
 OpCapability StorageTexelBufferArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpCapability PhysicalStorageBufferAddresses
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_physical_storage_buffer"
-OpMemoryModel PhysicalStorageBuffer64 GLSL450
-OpEntryPoint Fragment %3 "main" %25 %27 %29
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint Fragment %3 "main" %8 %13 %17 %22 %25 %27 %29
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %6 "RootConstants"
@@ -155,7 +156,7 @@ OpBranch %114
 %41 = OpAccessChain %40 %25 %42
 %43 = OpLoad %9 %41
 %44 = OpConvertFToS %5 %43
-%45 = OpImageRead %23 %38 %44
+%45 = OpImageRead %23 %38 %44 NonPrivateTexel
 %46 = OpCompositeExtract %9 %45 0
 %47 = OpCompositeExtract %9 %45 1
 %48 = OpCompositeExtract %9 %45 2
@@ -176,7 +177,7 @@ OpBranch %114
 %69 = OpIAdd %5 %68 %64
 %66 = OpAccessChain %65 %17 %69
 %70 = OpLoad %14 %66
-%71 = OpImageRead %61 %70 %44
+%71 = OpImageRead %61 %70 %44 NonPrivateTexel
 %72 = OpCompositeExtract %5 %71 0
 %73 = OpCompositeExtract %5 %71 1
 %74 = OpCompositeExtract %5 %71 2
@@ -195,7 +196,7 @@ OpBranch %114
 %90 = OpIAdd %5 %89 %84
 %87 = OpAccessChain %86 %22 %90
 %91 = OpLoad %19 %87
-%93 = OpImageRead %92 %91 %44
+%93 = OpImageRead %92 %91 %44 NonPrivateTexel
 %94 = OpBitcast %61 %93
 %95 = OpCompositeExtract %5 %94 0
 %96 = OpCompositeExtract %5 %94 1

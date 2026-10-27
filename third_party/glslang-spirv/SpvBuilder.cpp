@@ -52,7 +52,7 @@
 
 namespace spv {
 
-Builder::Builder(unsigned int magicNumber, SpvBuildLogger* buildLogger) :
+Builder::Builder(unsigned int magicNumber) :
     source(SourceLanguageUnknown),
     sourceVersion(0),
     sourceFileStringId(NoResult),
@@ -64,8 +64,7 @@ Builder::Builder(unsigned int magicNumber, SpvBuildLogger* buildLogger) :
     buildPoint(0),
     uniqueId(0),
     entryPointFunction(0),
-    generatingOpCodeForSpecConst(false),
-    logger(buildLogger)
+    generatingOpCodeForSpecConst(false)
 {
     clearAccessChain();
 }
@@ -1334,8 +1333,7 @@ Function* Builder::makeFunctionEntry(Decoration precision, Id returnType, const 
 
     // CFG
     if (entry) {
-        *entry = new Block(getUniqueId(), *function);
-        function->addBlock(*entry);
+        *entry = function->newBlock(getUniqueId());
         setBuildPoint(*entry);
     }
 
@@ -1348,7 +1346,7 @@ Function* Builder::makeFunctionEntry(Decoration precision, Id returnType, const 
 }
 
 // Comments in header
-void Builder::makeReturn(bool implicit, Id retVal)
+void Builder::makeReturnValue(Id retVal)
 {
     if (retVal) {
         Instruction* inst = new Instruction(NoResult, NoType, OpReturnValue);
@@ -1356,9 +1354,11 @@ void Builder::makeReturn(bool implicit, Id retVal)
         buildPoint->addInstruction(std::unique_ptr<Instruction>(inst));
     } else
         buildPoint->addInstruction(std::unique_ptr<Instruction>(new Instruction(NoResult, NoType, OpReturn)));
+}
 
-    if (! implicit)
-        createAndSetNoPredecessorBlock("post-return");
+void Builder::makeReturn()
+{
+    return makeReturnValue(0);
 }
 
 // Comments in header
@@ -1371,18 +1371,11 @@ void Builder::leaveFunction()
     // If our function did not contain a return, add a return void now.
     if (! block->isTerminated()) {
         if (function.getReturnType() == makeVoidType())
-            makeReturn(true);
+            makeReturn();
         else {
-            makeReturn(true, createUndefined(function.getReturnType()));
+            makeReturnValue(createUndefined(function.getReturnType()));
         }
     }
-}
-
-// Comments in header
-void Builder::makeDiscard()
-{
-    buildPoint->addInstruction(std::unique_ptr<Instruction>(new Instruction(OpKill)));
-    createAndSetNoPredecessorBlock("post-discard");
 }
 
 // Comments in header
@@ -2353,62 +2346,6 @@ Id Builder::createMatrixConstructor(Decoration precision, const dxil_spv::Vector
 }
 
 // Comments in header
-Builder::If::If(Id cond, unsigned int ctrl, Builder& gb) :
-    builder(gb),
-    condition(cond),
-    control(ctrl),
-    elseBlock(0)
-{
-    function = &builder.getBuildPoint()->getParent();
-
-    // make the blocks, but only put the then-block into the function,
-    // the else-block and merge-block will be added later, in order, after
-    // earlier code is emitted
-    thenBlock = new Block(builder.getUniqueId(), *function);
-    mergeBlock = new Block(builder.getUniqueId(), *function);
-
-    // Save the current block, so that we can add in the flow control split when
-    // makeEndIf is called.
-    headerBlock = builder.getBuildPoint();
-
-    function->addBlock(thenBlock);
-    builder.setBuildPoint(thenBlock);
-}
-
-// Comments in header
-void Builder::If::makeBeginElse()
-{
-    // Close out the "then" by having it jump to the mergeBlock
-    builder.createBranch(mergeBlock);
-
-    // Make the first else block and add it to the function
-    elseBlock = new Block(builder.getUniqueId(), *function);
-    function->addBlock(elseBlock);
-
-    // Start building the else block
-    builder.setBuildPoint(elseBlock);
-}
-
-// Comments in header
-void Builder::If::makeEndIf()
-{
-    // jump to the merge block
-    builder.createBranch(mergeBlock);
-
-    // Go back to the headerBlock and make the flow control split
-    builder.setBuildPoint(headerBlock);
-    builder.createSelectionMerge(mergeBlock, control);
-    if (elseBlock)
-        builder.createConditionalBranch(condition, thenBlock, elseBlock);
-    else
-        builder.createConditionalBranch(condition, thenBlock, mergeBlock);
-
-    // add the merge block to the function
-    function->addBlock(mergeBlock);
-    builder.setBuildPoint(mergeBlock);
-}
-
-// Comments in header
 void Builder::makeSwitch(Id selector, unsigned int control, int numSegments, const dxil_spv::Vector<int>& caseValues,
                          const dxil_spv::Vector<int>& valueIndexToSegment, int defaultSegment,
                          dxil_spv::Vector<Block*>& segmentBlocks)
@@ -2417,9 +2354,9 @@ void Builder::makeSwitch(Id selector, unsigned int control, int numSegments, con
 
     // make all the blocks
     for (int s = 0; s < numSegments; ++s)
-        segmentBlocks.push_back(new Block(getUniqueId(), function));
+        segmentBlocks.push_back(function.newBlock(getUniqueId()));
 
-    Block* mergeBlock = new Block(getUniqueId(), function);
+    Block* mergeBlock = function.newBlock(getUniqueId());
 
     // make and insert the switch's selection-merge instruction
     createSelectionMerge(mergeBlock, control);
@@ -2442,80 +2379,11 @@ void Builder::makeSwitch(Id selector, unsigned int control, int numSegments, con
 }
 
 // Comments in header
-void Builder::addSwitchBreak()
-{
-    // branch to the top of the merge block stack
-    createBranch(switchMerges.top());
-    createAndSetNoPredecessorBlock("post-switch-break");
-}
-
-// Comments in header
-void Builder::nextSwitchSegment(dxil_spv::Vector<Block*>& segmentBlock, int nextSegment)
-{
-    int lastSegment = nextSegment - 1;
-    if (lastSegment >= 0) {
-        // Close out previous segment by jumping, if necessary, to next segment
-        if (! buildPoint->isTerminated())
-            createBranch(segmentBlock[nextSegment]);
-    }
-    Block* block = segmentBlock[nextSegment];
-    block->getParent().addBlock(block);
-    setBuildPoint(block);
-}
-
-// Comments in header
 void Builder::endSwitch(dxil_spv::Vector<Block*>& /*segmentBlock*/)
 {
-    // Close out previous segment by jumping, if necessary, to next segment
-    if (! buildPoint->isTerminated())
-        addSwitchBreak();
-
-    switchMerges.top()->getParent().addBlock(switchMerges.top());
+    assert(buildPoint->isTerminated());
     setBuildPoint(switchMerges.top());
-
     switchMerges.pop();
-}
-
-Block& Builder::makeNewBlock()
-{
-    Function& function = buildPoint->getParent();
-    auto block = new Block(getUniqueId(), function);
-    function.addBlock(block);
-    return *block;
-}
-
-Builder::LoopBlocks& Builder::makeNewLoop()
-{
-    // This verbosity is needed to simultaneously get the same behavior
-    // everywhere (id's in the same order), have a syntax that works
-    // across lots of versions of C++, have no warnings from pedantic
-    // compilation modes, and leave the rest of the code alone.
-    Block& head            = makeNewBlock();
-    Block& body            = makeNewBlock();
-    Block& merge           = makeNewBlock();
-    Block& continue_target = makeNewBlock();
-    LoopBlocks blocks(head, body, merge, continue_target);
-    loops.push(blocks);
-    return loops.top();
-}
-
-void Builder::createLoopContinue()
-{
-    createBranch(&loops.top().continue_target);
-    // Set up a block for dead code.
-    createAndSetNoPredecessorBlock("post-loop-continue");
-}
-
-void Builder::createLoopExit()
-{
-    createBranch(&loops.top().merge);
-    // Set up a block for dead code.
-    createAndSetNoPredecessorBlock("post-loop-break");
-}
-
-void Builder::closeLoop()
-{
-    loops.pop();
 }
 
 void Builder::clearAccessChain()
@@ -2699,42 +2567,6 @@ Id Builder::accessChainGetInferredType()
     return type;
 }
 
-// comment in header
-void Builder::eliminateDeadDecorations() {
-    dxil_spv::UnorderedSet<const Block*> reachable_blocks;
-    dxil_spv::UnorderedSet<Id> unreachable_definitions;
-    // Collect IDs defined in unreachable blocks. For each function, label the
-    // reachable blocks first. Then for each unreachable block, collect the
-    // result IDs of the instructions in it.
-    for (dxil_spv::Vector<Function*>::const_iterator fi = module.getFunctions().cbegin();
-        fi != module.getFunctions().cend(); fi++) {
-        Function* f = *fi;
-        Block* entry = f->getEntryBlock();
-        inReadableOrder(entry, [&reachable_blocks](const Block* b) {
-            reachable_blocks.insert(b);
-        });
-        for (dxil_spv::Vector<Block*>::const_iterator bi = f->getBlocks().cbegin();
-            bi != f->getBlocks().cend(); bi++) {
-            Block* b = *bi;
-            if (!reachable_blocks.count(b)) {
-                for (dxil_spv::Vector<std::unique_ptr<Instruction> >::const_iterator
-                         ii = b->getInstructions().cbegin();
-                    ii != b->getInstructions().cend(); ii++) {
-                    Instruction* i = ii->get();
-                    unreachable_definitions.insert(i->getResultId());
-                }
-            }
-        }
-    }
-    decorations.erase(std::remove_if(decorations.begin(), decorations.end(),
-        [&unreachable_definitions](std::unique_ptr<Instruction>& I) -> bool {
-            Instruction* inst = I.get();
-            Id decoration_id = inst->getIdOperand(0);
-            return unreachable_definitions.count(decoration_id) != 0;
-        }),
-        decorations.end());
-}
-
 void Builder::dump(dxil_spv::Vector<unsigned int>& out) const
 {
     // Header, before first instructions:
@@ -2877,20 +2709,6 @@ void Builder::transferAccessChainSwizzle(bool dynamic)
     }
 }
 
-// Utility method for creating a new block and setting the insert point to
-// be in it. This is useful for flow-control operations that need a "dummy"
-// block proceeding them (e.g. instructions after a discard, etc).
-void Builder::createAndSetNoPredecessorBlock(const char* /*name*/)
-{
-    Block* block = new Block(getUniqueId(), buildPoint->getParent());
-    block->setUnreachable();
-    buildPoint->getParent().addBlock(block);
-    setBuildPoint(block);
-
-    // if (name)
-    //    addName(block->getId(), name);
-}
-
 // Comments in header
 void Builder::createBranch(Block* block)
 {
@@ -2943,34 +2761,31 @@ void Builder::dumpSourceInstructions(dxil_spv::Vector<unsigned int>& out) const
     const int opSourceWordCount = 4;
     const int nonNullBytesPerInstruction = 4 * (maxWordCount - opSourceWordCount) - 1;
 
-    if (source != SourceLanguageUnknown) {
+    if (sourceFileStringId != NoResult) {
         // OpSource Language Version File Source
         Instruction sourceInst(NoResult, NoType, OpSource);
         sourceInst.addImmediateOperand(source);
         sourceInst.addImmediateOperand(sourceVersion);
         // File operand
-        if (sourceFileStringId != NoResult) {
-            sourceInst.addIdOperand(sourceFileStringId);
-            // Source operand
-            if (sourceText.size() > 0) {
-                int nextByte = 0;
-                dxil_spv::String subString;
-                while ((int)sourceText.size() - nextByte > 0) {
-                    subString = sourceText.substr(nextByte, nonNullBytesPerInstruction);
-                    if (nextByte == 0) {
-                        // OpSource
-                        sourceInst.addStringOperand(subString.c_str());
-                        sourceInst.dump(out);
-                    } else {
-                        // OpSourcContinued
-                        Instruction sourceContinuedInst(OpSourceContinued);
-                        sourceContinuedInst.addStringOperand(subString.c_str());
-                        sourceContinuedInst.dump(out);
-                    }
-                    nextByte += nonNullBytesPerInstruction;
+        sourceInst.addIdOperand(sourceFileStringId);
+        // Source operand
+        if (sourceText.size() > 0) {
+            int nextByte = 0;
+            dxil_spv::String subString;
+            while ((int)sourceText.size() - nextByte > 0) {
+                subString = sourceText.substr(nextByte, nonNullBytesPerInstruction);
+                if (nextByte == 0) {
+                    // OpSource
+                    sourceInst.addStringOperand(subString.c_str());
+                    sourceInst.dump(out);
+                } else {
+                    // OpSourcContinued
+                    Instruction sourceContinuedInst(OpSourceContinued);
+                    sourceContinuedInst.addStringOperand(subString.c_str());
+                    sourceContinuedInst.dump(out);
                 }
-            } else
-                sourceInst.dump(out);
+                nextByte += nonNullBytesPerInstruction;
+            }
         } else
             sourceInst.dump(out);
     }

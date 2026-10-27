@@ -19,7 +19,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 61
 ; Schema: 0
@@ -27,8 +27,9 @@ OpCapability Shader
 OpCapability ImageBuffer
 OpCapability StorageImageReadWithoutFormat
 OpCapability StorageImageWriteWithoutFormat
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %21
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %11 %15 %21
 OpExecutionMode %3 LocalSize 1 1 1
 OpName %3 "main"
 OpDecorate %8 DescriptorSet 0
@@ -62,11 +63,12 @@ OpDecorate %21 BuiltIn GlobalInvocationId
 %38 = OpConstant %5 2
 %50 = OpConstant %5 3
 %55 = OpTypePointer Image %12
-%58 = OpConstant %12 10
+%58 = OpConstant %12 5
+%59 = OpConstant %12 10
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %59
-%59 = OpLabel
+OpBranch %60
+%60 = OpLabel
 %16 = OpLoad %13 %15
 %17 = OpLoad %9 %11
 %18 = OpLoad %6 %8
@@ -75,7 +77,7 @@ OpBranch %59
 %26 = OpAccessChain %22 %21 %27
 %28 = OpLoad %12 %26
 %32 = OpCompositeConstruct %31 %25 %28
-%30 = OpImageRead %29 %18 %32 None
+%30 = OpImageRead %29 %18 %32 NonPrivateTexel
 %33 = OpCompositeExtract %5 %30 0
 %34 = OpCompositeExtract %5 %30 1
 %35 = OpCompositeExtract %5 %30 2
@@ -86,8 +88,8 @@ OpBranch %59
 %41 = OpFAdd %5 %36 %38
 %42 = OpCompositeConstruct %31 %25 %28
 %43 = OpCompositeConstruct %29 %37 %39 %40 %41
-OpImageWrite %18 %42 %43
-%44 = OpImageRead %29 %17 %25
+OpImageWrite %18 %42 %43 NonPrivateTexel
+%44 = OpImageRead %29 %17 %25 NonPrivateTexel
 %45 = OpCompositeExtract %5 %44 0
 %46 = OpCompositeExtract %5 %44 1
 %47 = OpCompositeExtract %5 %44 2
@@ -97,9 +99,9 @@ OpImageWrite %18 %42 %43
 %52 = OpFAdd %5 %47 %50
 %53 = OpFAdd %5 %48 %50
 %54 = OpCompositeConstruct %29 %49 %51 %52 %53
-OpImageWrite %17 %25 %54
+OpImageWrite %17 %25 %54 NonPrivateTexel
 %56 = OpImageTexelPointer %55 %15 %28 %24
-%57 = OpAtomicIAdd %12 %56 %27 %24 %58
+%57 = OpAtomicIAdd %12 %56 %58 %24 %59
 OpReturn
 OpFunctionEnd
 #endif

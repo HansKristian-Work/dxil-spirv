@@ -42,14 +42,15 @@ void main()
 // SPIR-V disassembly
 // MultiviewCompatible
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 69
+; Bound: 68
 ; Schema: 0
 OpCapability Shader
 OpCapability Tessellation
 OpCapability MultiView
-OpMemoryModel Logical GLSL450
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
 OpEntryPoint TessellationControl %3 "main" %10 %14 %17 %18 %19 %23 %30 %34
 OpExecutionMode %3 Quads
 OpExecutionMode %3 SpacingEqual
@@ -109,26 +110,29 @@ OpDecorate %34 BuiltIn InvocationId
 %50 = OpConstant %6 1
 %53 = OpConstant %6 3
 %58 = OpTypeBool
+%60 = OpConstant %6 4104
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %61
-%61 = OpLabel
+OpBranch %62
+%62 = OpLabel
 %56 = OpFunctionCall %1 %24
 %57 = OpLoad %6 %34
 %59 = OpIEqual %58 %57 %47
-OpControlBarrier %20 %11 %47
-OpSelectionMerge %63 None
-OpBranchConditional %59 %62 %63
-%62 = OpLabel
-%60 = OpFunctionCall %1 %26
-OpBranch %63
+OpControlBarrier %20 %20 %60
+OpSelectionMerge %64 None
+OpBranchConditional %59 %63 %64
 %63 = OpLabel
+%61 = OpFunctionCall %1 %26
+OpBranch %64
+%64 = OpLabel
+OpBranch %65
+%65 = OpLabel
 OpReturn
 OpFunctionEnd
 %24 = OpFunction %1 None %2
 %25 = OpLabel
-OpBranch %65
-%65 = OpLabel
+OpBranch %66
+%66 = OpLabel
 %31 = OpLoad %6 %30
 %32 = OpIMul %6 %31 %20
 %33 = OpBitFieldUExtract %6 %28 %32 %20

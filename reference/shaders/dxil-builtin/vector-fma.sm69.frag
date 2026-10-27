@@ -33,14 +33,15 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 71
+; Bound: 70
 ; Schema: 0
 OpCapability Shader
 OpCapability Float64
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_float_controls"
 %57 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %9 %10 %12
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 64

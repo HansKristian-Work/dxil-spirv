@@ -9,74 +9,63 @@ layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _14;
 
 void main()
 {
-    float _45;
-    float _48;
-    float _51;
-    float _54;
+    float _81;
+    float _82;
+    float _83;
+    float _84;
     if (gl_GlobalInvocationID.x < 20u)
     {
-        mediump vec4 _36 = texelFetch(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
-        _45 = _36.x;
-        _48 = _36.y;
-        _51 = _36.z;
-        _54 = _36.w;
+        mediump vec4 _51 = texelFetch(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
+        _81 = _51.x;
+        _82 = _51.y;
+        _83 = _51.z;
+        _84 = _51.w;
     }
     else
     {
-        float frontier_phi_3_2_ladder;
-        float frontier_phi_3_2_ladder_1;
-        float frontier_phi_3_2_ladder_2;
-        float frontier_phi_3_2_ladder_3;
         if (gl_GlobalInvocationID.y < 40u)
         {
-            mediump vec4 _76 = texelFetch(_9, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
-            frontier_phi_3_2_ladder = _76.x;
-            frontier_phi_3_2_ladder_1 = _76.y;
-            frontier_phi_3_2_ladder_2 = _76.z;
-            frontier_phi_3_2_ladder_3 = _76.w;
+            mediump vec4 _45 = texelFetch(_9, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
+            _81 = _45.x;
+            _82 = _45.y;
+            _83 = _45.z;
+            _84 = _45.w;
         }
         else
         {
-            mediump vec4 _78 = texelFetch(_10, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
-            frontier_phi_3_2_ladder = _78.x;
-            frontier_phi_3_2_ladder_1 = _78.y;
-            frontier_phi_3_2_ladder_2 = _78.z;
-            frontier_phi_3_2_ladder_3 = _78.w;
+            mediump vec4 _38 = texelFetch(_10, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
+            _81 = _38.x;
+            _82 = _38.y;
+            _83 = _38.z;
+            _84 = _38.w;
         }
-        _45 = frontier_phi_3_2_ladder;
-        _48 = frontier_phi_3_2_ladder_1;
-        _51 = frontier_phi_3_2_ladder_2;
-        _54 = frontier_phi_3_2_ladder_3;
     }
-    mediump float _57 = _54;
-    mediump float _58 = _51;
-    mediump float _59 = _48;
-    mediump float _60 = _45;
-    uint _61 = gl_GlobalInvocationID.x * 4u;
-    imageStore(_14, int(_61), uvec4(floatBitsToUint(_60)));
-    imageStore(_14, int(_61 + 1u), uvec4(floatBitsToUint(_59)));
-    imageStore(_14, int(_61 + 2u), uvec4(floatBitsToUint(_58)));
-    imageStore(_14, int(_61 + 3u), uvec4(floatBitsToUint(_57)));
+    mediump float _61 = _84;
+    mediump float _62 = _83;
+    mediump float _63 = _82;
+    mediump float _64 = _81;
+    uint _65 = gl_GlobalInvocationID.x * 4u;
+    imageStore(_14, int(_65), uvec4(floatBitsToUint(_64)));
+    imageStore(_14, int(_65 + 1u), uvec4(floatBitsToUint(_63)));
+    imageStore(_14, int(_65 + 2u), uvec4(floatBitsToUint(_62)));
+    imageStore(_14, int(_65 + 3u), uvec4(floatBitsToUint(_61)));
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 92
+; Bound: 93
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %21
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %9 %10 %14 %21
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
-OpName %80 "frontier_phi_3.2.ladder"
-OpName %81 "frontier_phi_3.2.ladder"
-OpName %82 "frontier_phi_3.2.ladder"
-OpName %83 "frontier_phi_3.2.ladder"
 OpDecorate %8 RelaxedPrecision
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
@@ -90,10 +79,10 @@ OpDecorate %14 DescriptorSet 0
 OpDecorate %14 Binding 0
 OpDecorate %14 NonReadable
 OpDecorate %21 BuiltIn GlobalInvocationId
-OpDecorate %57 RelaxedPrecision
-OpDecorate %58 RelaxedPrecision
-OpDecorate %59 RelaxedPrecision
-OpDecorate %60 RelaxedPrecision
+OpDecorate %61 RelaxedPrecision
+OpDecorate %62 RelaxedPrecision
+OpDecorate %63 RelaxedPrecision
+OpDecorate %64 RelaxedPrecision
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32
@@ -115,16 +104,21 @@ OpDecorate %60 RelaxedPrecision
 %30 = OpConstant %11 2
 %32 = OpTypeBool
 %34 = OpConstant %11 20
-%35 = OpTypeVector %5 4
-%37 = OpTypeVector %11 2
-%44 = OpConstant %11 40
-%62 = OpConstant %11 4
-%67 = OpTypeVector %11 4
-%75 = OpConstant %11 3
+%36 = OpConstant %11 40
+%37 = OpTypeVector %5 4
+%39 = OpTypeVector %11 2
+%66 = OpConstant %11 4
+%71 = OpTypeVector %11 4
+%79 = OpConstant %11 3
+%80 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %84
-%84 = OpLabel
+%81 = OpVariable %80 Function
+%82 = OpVariable %80 Function
+%83 = OpVariable %80 Function
+%84 = OpVariable %80 Function
+OpBranch %85
+%85 = OpLabel
 %15 = OpLoad %12 %14
 %16 = OpLoad %6 %10
 %17 = OpLoad %6 %9
@@ -136,67 +130,77 @@ OpBranch %84
 %29 = OpAccessChain %22 %21 %30
 %31 = OpLoad %11 %29
 %33 = OpULessThan %32 %25 %34
-OpSelectionMerge %90 None
-OpBranchConditional %33 %89 %85
-%89 = OpLabel
-%38 = OpCompositeConstruct %37 %25 %28
-%36 = OpImageFetch %35 %18 %38 Lod %31
-%39 = OpCompositeExtract %5 %36 0
-%40 = OpCompositeExtract %5 %36 1
-%41 = OpCompositeExtract %5 %36 2
-%42 = OpCompositeExtract %5 %36 3
-OpBranch %90
-%85 = OpLabel
-%43 = OpULessThan %32 %28 %44
-OpSelectionMerge %88 None
-OpBranchConditional %43 %87 %86
-%87 = OpLabel
-%77 = OpCompositeConstruct %37 %25 %28
-%76 = OpImageFetch %35 %17 %77 Lod %31
-%46 = OpCompositeExtract %5 %76 0
-%49 = OpCompositeExtract %5 %76 1
-%52 = OpCompositeExtract %5 %76 2
-%55 = OpCompositeExtract %5 %76 3
-OpBranch %88
+OpSelectionMerge %91 None
+OpBranchConditional %33 %90 %86
 %86 = OpLabel
-%79 = OpCompositeConstruct %37 %25 %28
-%78 = OpImageFetch %35 %16 %79 Lod %31
-%47 = OpCompositeExtract %5 %78 0
-%50 = OpCompositeExtract %5 %78 1
-%53 = OpCompositeExtract %5 %78 2
-%56 = OpCompositeExtract %5 %78 3
-OpBranch %88
+%35 = OpULessThan %32 %28 %36
+OpSelectionMerge %89 None
+OpBranchConditional %35 %88 %87
+%87 = OpLabel
+%40 = OpCompositeConstruct %39 %25 %28
+%38 = OpImageFetch %37 %16 %40 Lod %31
+%41 = OpCompositeExtract %5 %38 0
+%42 = OpCompositeExtract %5 %38 1
+%43 = OpCompositeExtract %5 %38 2
+%44 = OpCompositeExtract %5 %38 3
+OpStore %81 %41
+OpStore %82 %42
+OpStore %83 %43
+OpStore %84 %44
+OpBranch %89
 %88 = OpLabel
-%80 = OpPhi %5 %46 %87 %47 %86
-%81 = OpPhi %5 %49 %87 %50 %86
-%82 = OpPhi %5 %52 %87 %53 %86
-%83 = OpPhi %5 %55 %87 %56 %86
-OpBranch %90
+%46 = OpCompositeConstruct %39 %25 %28
+%45 = OpImageFetch %37 %17 %46 Lod %31
+%47 = OpCompositeExtract %5 %45 0
+%48 = OpCompositeExtract %5 %45 1
+%49 = OpCompositeExtract %5 %45 2
+%50 = OpCompositeExtract %5 %45 3
+OpStore %81 %47
+OpStore %82 %48
+OpStore %83 %49
+OpStore %84 %50
+OpBranch %89
+%89 = OpLabel
+OpBranch %91
 %90 = OpLabel
-%45 = OpPhi %5 %39 %89 %80 %88
-%48 = OpPhi %5 %40 %89 %81 %88
-%51 = OpPhi %5 %41 %89 %82 %88
-%54 = OpPhi %5 %42 %89 %83 %88
-%57 = OpCopyObject %5 %54
-%58 = OpCopyObject %5 %51
-%59 = OpCopyObject %5 %48
-%60 = OpCopyObject %5 %45
-%61 = OpIMul %11 %25 %62
-%63 = OpBitcast %11 %60
-%64 = OpBitcast %11 %59
-%65 = OpBitcast %11 %58
-%66 = OpBitcast %11 %57
-%68 = OpCompositeConstruct %67 %63 %63 %63 %63
-OpImageWrite %15 %61 %68
-%69 = OpCompositeConstruct %67 %64 %64 %64 %64
-%70 = OpIAdd %11 %61 %27
-OpImageWrite %15 %70 %69
-%71 = OpCompositeConstruct %67 %65 %65 %65 %65
-%72 = OpIAdd %11 %61 %30
-OpImageWrite %15 %72 %71
-%73 = OpCompositeConstruct %67 %66 %66 %66 %66
-%74 = OpIAdd %11 %61 %75
-OpImageWrite %15 %74 %73
+%52 = OpCompositeConstruct %39 %25 %28
+%51 = OpImageFetch %37 %18 %52 Lod %31
+%53 = OpCompositeExtract %5 %51 0
+%54 = OpCompositeExtract %5 %51 1
+%55 = OpCompositeExtract %5 %51 2
+%56 = OpCompositeExtract %5 %51 3
+OpStore %81 %53
+OpStore %82 %54
+OpStore %83 %55
+OpStore %84 %56
+OpBranch %91
+%91 = OpLabel
+OpBranch %92
+%92 = OpLabel
+%60 = OpLoad %5 %84
+%59 = OpLoad %5 %83
+%58 = OpLoad %5 %82
+%57 = OpLoad %5 %81
+%61 = OpCopyObject %5 %60
+%62 = OpCopyObject %5 %59
+%63 = OpCopyObject %5 %58
+%64 = OpCopyObject %5 %57
+%65 = OpIMul %11 %25 %66
+%67 = OpBitcast %11 %64
+%68 = OpBitcast %11 %63
+%69 = OpBitcast %11 %62
+%70 = OpBitcast %11 %61
+%72 = OpCompositeConstruct %71 %67 %67 %67 %67
+OpImageWrite %15 %65 %72 NonPrivateTexel
+%73 = OpCompositeConstruct %71 %68 %68 %68 %68
+%74 = OpIAdd %11 %65 %27
+OpImageWrite %15 %74 %73 NonPrivateTexel
+%75 = OpCompositeConstruct %71 %69 %69 %69 %69
+%76 = OpIAdd %11 %65 %30
+OpImageWrite %15 %76 %75 NonPrivateTexel
+%77 = OpCompositeConstruct %71 %70 %70 %70 %70
+%78 = OpIAdd %11 %65 %79
+OpImageWrite %15 %78 %77 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 #endif

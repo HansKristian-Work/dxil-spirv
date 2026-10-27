@@ -28,18 +28,19 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 73
+; Bound: 72
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
 OpCapability Tessellation
 OpCapability MultiViewport
 OpCapability ShaderViewportIndexLayerEXT
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_shader_viewport_index_layer"
-OpMemoryModel Logical GLSL450
-OpEntryPoint TessellationEvaluation %3 "main" %11 %13 %16 %18 %19 %20 %22 %34
+OpMemoryModel Logical Vulkan
+OpEntryPoint TessellationEvaluation %3 "main" %11 %13 %16 %18 %19 %20 %22 %25 %34
 OpExecutionMode %3 Triangles
 OpName %3 "main"
 OpName %11 "A"

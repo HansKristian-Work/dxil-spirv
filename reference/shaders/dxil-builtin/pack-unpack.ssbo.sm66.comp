@@ -38,17 +38,18 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 139
+; Bound: 138
 ; Schema: 0
 OpCapability Shader
 OpCapability Int16
 OpCapability Int8
 OpCapability StorageBuffer16BitAccess
+OpCapability VulkanMemoryModel
 %80 = OpExtInstImport "GLSL.std.450"
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %23
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %9 %14 %20 %23
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpName %7 "SSBO"
@@ -138,7 +139,7 @@ OpBranch %137
 %38 = OpCompositeExtract %5 %34 3
 %39 = OpCompositeConstruct %10 %35 %36 %37 %38
 %41 = OpAccessChain %40 %14 %26 %27
-OpStore %41 %39
+OpStore %41 %39 NonPrivatePointer
 %42 = OpBitcast %32 %30
 %43 = OpUConvert %16 %42
 %44 = OpCompositeExtract %15 %43 0
@@ -147,7 +148,7 @@ OpStore %41 %39
 %47 = OpCompositeExtract %15 %43 3
 %48 = OpCompositeConstruct %16 %44 %45 %46 %47
 %50 = OpAccessChain %49 %20 %26 %27
-OpStore %50 %48
+OpStore %50 %48 NonPrivatePointer
 %51 = OpBitcast %32 %30
 %52 = OpSConvert %10 %51
 %53 = OpCompositeExtract %5 %52 0
@@ -156,7 +157,7 @@ OpStore %50 %48
 %56 = OpCompositeExtract %5 %52 3
 %57 = OpCompositeConstruct %10 %53 %54 %55 %56
 %58 = OpAccessChain %40 %14 %26 %27
-OpStore %58 %57
+OpStore %58 %57 NonPrivatePointer
 %59 = OpBitcast %32 %30
 %60 = OpSConvert %16 %59
 %61 = OpCompositeExtract %15 %60 0
@@ -165,11 +166,11 @@ OpStore %58 %57
 %64 = OpCompositeExtract %15 %60 3
 %65 = OpCompositeConstruct %16 %61 %62 %63 %64
 %66 = OpAccessChain %49 %20 %26 %27
-OpStore %66 %65
+OpStore %66 %65 NonPrivatePointer
 %67 = OpIAdd %5 %27 %68
 %69 = OpIAdd %5 %27 %68
 %70 = OpAccessChain %40 %14 %26 %69
-%71 = OpLoad %10 %70
+%71 = OpLoad %10 %70 NonPrivatePointer
 %72 = OpCompositeExtract %5 %71 0
 %73 = OpCompositeExtract %5 %71 1
 %74 = OpCompositeExtract %5 %71 2
@@ -189,10 +190,10 @@ OpStore %66 %65
 %100 = OpIAdd %5 %27 %99
 %101 = OpCompositeConstruct %10 %78 %78 %89 %97
 %102 = OpAccessChain %40 %14 %26 %100
-OpStore %102 %101
+OpStore %102 %101 NonPrivatePointer
 %103 = OpIAdd %5 %27 %68
 %104 = OpAccessChain %49 %20 %26 %103
-%105 = OpLoad %16 %104
+%105 = OpLoad %16 %104 NonPrivatePointer
 %106 = OpCompositeExtract %15 %105 0
 %107 = OpCompositeExtract %15 %105 1
 %108 = OpCompositeExtract %15 %105 2
@@ -214,7 +215,7 @@ OpStore %102 %101
 %134 = OpIAdd %5 %27 %99
 %135 = OpCompositeConstruct %16 %131 %131 %132 %133
 %136 = OpAccessChain %49 %20 %26 %134
-OpStore %136 %135
+OpStore %136 %135 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

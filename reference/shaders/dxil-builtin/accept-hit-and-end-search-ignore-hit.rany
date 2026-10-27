@@ -32,7 +32,7 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.4
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
 ; Bound: 28
 ; Schema: 0
@@ -47,9 +47,10 @@ OpCapability UniformBufferArrayNonUniformIndexing
 OpCapability SampledImageArrayNonUniformIndexing
 OpCapability StorageBufferArrayNonUniformIndexing
 OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
 OpExtension "SPV_KHR_ray_tracing"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint AnyHitKHR %3 "main" %8 %12
 OpName %3 "main"
 OpName %6 ""
@@ -82,13 +83,13 @@ OpBranch %24
 %20 = OpFOrdGreaterThan %19 %18 %21
 OpSelectionMerge %27 None
 OpBranchConditional %20 %26 %25
+%27 = OpLabel
+OpUnreachable
+%25 = OpLabel
+OpIgnoreIntersectionKHR
 %26 = OpLabel
 %23 = OpInBoundsAccessChain %22 %8 %16
 OpStore %23 %21
 OpTerminateRayKHR
-%25 = OpLabel
-OpIgnoreIntersectionKHR
-%27 = OpLabel
-OpUnreachable
 OpFunctionEnd
 #endif

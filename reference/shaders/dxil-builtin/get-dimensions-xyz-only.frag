@@ -54,9 +54,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 230
+; Bound: 229
 ; Schema: 0
 OpCapability Shader
 OpCapability Sampled1D
@@ -65,8 +65,9 @@ OpCapability SampledCubeArray
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability ImageQuery
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %64 %66
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17 %20 %23 %26 %29 %32 %35 %39 %40 %43 %46 %49 %52 %55 %58 %61 %62 %64 %66
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %64 "LEVEL"

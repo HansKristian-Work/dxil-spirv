@@ -1,0 +1,229 @@
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 158
+; Schema: 0
+OpCapability Shader
+OpCapability StorageImageMultisample
+OpCapability ImageBuffer
+OpCapability ImageMSArray
+OpCapability StorageImageWriteWithoutFormat
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %11 %15 %18
+OpExecutionMode %3 LocalSize 4 4 4
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 1
+OpDecorate %15 DescriptorSet 0
+OpDecorate %15 Binding 2
+OpDecorate %15 NonReadable
+OpDecorate %18 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeImage %5 2D 0 0 1 2 R32f
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeImage %5 2D 0 1 1 2 R32f
+%10 = OpTypePointer UniformConstant %9
+%11 = OpVariable %10 UniformConstant
+%12 = OpTypeInt 32 0
+%13 = OpTypeImage %12 Buffer 0 0 0 2 R32ui
+%14 = OpTypePointer UniformConstant %13
+%15 = OpVariable %14 UniformConstant
+%16 = OpTypeVector %12 3
+%17 = OpTypePointer Input %16
+%18 = OpVariable %17 Input
+%19 = OpTypePointer Input %12
+%21 = OpConstant %12 0
+%24 = OpConstant %12 1
+%27 = OpConstant %12 2
+%29 = OpConstant %12 4
+%30 = OpTypeArray %5 %29
+%31 = OpTypePointer Function %30
+%36 = OpConstant %12 3
+%37 = OpTypeBool
+%40 = OpConstant %12 6
+%54 = OpTypeVector %5 4
+%66 = OpTypeVector %12 2
+%78 = OpConstant %12 26696
+%80 = OpTypePointer Function %5
+%131 = OpTypeVector %12 4
+%143 = OpTypePointer Function %12
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%32 = OpVariable %31 Function
+%139 = OpVariable %80 Function
+%140 = OpVariable %80 Function
+%141 = OpVariable %80 Function
+%142 = OpVariable %80 Function
+%144 = OpVariable %143 Function
+OpBranch %145
+%145 = OpLabel
+%20 = OpAccessChain %19 %18 %21
+%22 = OpLoad %12 %20
+%23 = OpAccessChain %19 %18 %24
+%25 = OpLoad %12 %23
+%26 = OpAccessChain %19 %18 %27
+%28 = OpLoad %12 %26
+%33 = OpBitwiseXor %12 %22 %24
+%34 = OpBitwiseXor %12 %25 %27
+%35 = OpBitwiseXor %12 %28 %36
+%38 = OpIEqual %37 %28 %36
+%39 = OpShiftLeftLogical %12 %35 %40
+%41 = OpShiftLeftLogical %12 %34 %29
+%42 = OpShiftLeftLogical %12 %33 %27
+%43 = OpIAdd %12 %41 %42
+%44 = OpIAdd %12 %43 %39
+%45 = OpConvertUToF %5 %44
+%46 = OpBitwiseOr %12 %44 %24
+%47 = OpConvertUToF %5 %46
+%48 = OpBitwiseOr %12 %44 %27
+%49 = OpConvertUToF %5 %48
+%50 = OpBitwiseOr %12 %44 %36
+%51 = OpConvertUToF %5 %50
+OpSelectionMerge %148 None
+OpBranchConditional %38 %147 %146
+%146 = OpLabel
+%52 = OpLoad %9 %11
+%53 = OpCompositeConstruct %16 %33 %34 %35
+%55 = OpCompositeConstruct %54 %45 %45 %45 %45
+OpImageWrite %52 %53 %55 Sample|NonPrivateTexel %21
+%56 = OpLoad %9 %11
+%57 = OpCompositeConstruct %16 %33 %34 %35
+%58 = OpCompositeConstruct %54 %47 %47 %47 %47
+OpImageWrite %56 %57 %58 Sample|NonPrivateTexel %24
+%59 = OpLoad %9 %11
+%60 = OpCompositeConstruct %16 %33 %34 %35
+%61 = OpCompositeConstruct %54 %49 %49 %49 %49
+OpImageWrite %59 %60 %61 Sample|NonPrivateTexel %27
+%62 = OpLoad %9 %11
+%63 = OpCompositeConstruct %16 %33 %34 %35
+%64 = OpCompositeConstruct %54 %51 %51 %51 %51
+OpImageWrite %62 %63 %64 Sample|NonPrivateTexel %36
+OpBranch %148
+%147 = OpLabel
+%65 = OpLoad %6 %8
+%67 = OpCompositeConstruct %66 %33 %34
+%68 = OpCompositeConstruct %54 %45 %45 %45 %45
+OpImageWrite %65 %67 %68 Sample|NonPrivateTexel %21
+%69 = OpLoad %6 %8
+%70 = OpCompositeConstruct %66 %33 %34
+%71 = OpCompositeConstruct %54 %47 %47 %47 %47
+OpImageWrite %69 %70 %71 Sample|NonPrivateTexel %24
+%72 = OpLoad %6 %8
+%73 = OpCompositeConstruct %66 %33 %34
+%74 = OpCompositeConstruct %54 %49 %49 %49 %49
+OpImageWrite %72 %73 %74 Sample|NonPrivateTexel %27
+%75 = OpLoad %6 %8
+%76 = OpCompositeConstruct %66 %33 %34
+%77 = OpCompositeConstruct %54 %51 %51 %51 %51
+OpImageWrite %75 %76 %77 Sample|NonPrivateTexel %36
+OpBranch %148
+%148 = OpLabel
+OpControlBarrier %27 %27 %78
+%79 = OpIEqual %37 %28 %21
+%81 = OpAccessChain %80 %32 %21
+OpSelectionMerge %155 None
+OpBranchConditional %79 %154 %149
+%149 = OpLabel
+%82 = OpLoad %9 %11
+%84 = OpCompositeConstruct %16 %22 %25 %28
+%83 = OpImageRead %54 %82 %84 Sample|NonPrivateTexel %21
+%85 = OpCompositeExtract %5 %83 0
+OpStore %81 %85
+OpStore %144 %24
+OpBranch %150
+%150 = OpLabel
+%86 = OpLoad %12 %144
+%88 = OpLoad %9 %11
+%90 = OpCompositeConstruct %16 %22 %25 %28
+%89 = OpImageRead %54 %88 %90 Sample|NonPrivateTexel %86
+%91 = OpCompositeExtract %5 %89 0
+%92 = OpAccessChain %80 %32 %86
+OpStore %92 %91
+%87 = OpIAdd %12 %86 %24
+%93 = OpIEqual %37 %87 %29
+OpLoopMerge %153 %152 None
+OpBranch %151
+%151 = OpLabel
+OpSelectionMerge %157 None
+OpBranchConditional %93 %153 %152
+%157 = OpLabel
+OpUnreachable
+%152 = OpLabel
+OpStore %144 %87
+OpBranch %150
+%153 = OpLabel
+%94 = OpLoad %5 %81
+%95 = OpInBoundsAccessChain %80 %32 %24
+%96 = OpLoad %5 %95
+%97 = OpInBoundsAccessChain %80 %32 %27
+%98 = OpLoad %5 %97
+%99 = OpInBoundsAccessChain %80 %32 %36
+%100 = OpLoad %5 %99
+OpStore %139 %100
+OpStore %140 %98
+OpStore %141 %96
+OpStore %142 %94
+OpBranch %155
+%154 = OpLabel
+%101 = OpLoad %6 %8
+%103 = OpCompositeConstruct %66 %22 %25
+%102 = OpImageRead %54 %101 %103 Sample|NonPrivateTexel %21
+%104 = OpCompositeExtract %5 %102 0
+OpStore %81 %104
+%106 = OpCompositeConstruct %66 %22 %25
+%105 = OpImageRead %54 %101 %106 Sample|NonPrivateTexel %24
+%107 = OpCompositeExtract %5 %105 0
+%108 = OpAccessChain %80 %32 %24
+OpStore %108 %107
+%110 = OpCompositeConstruct %66 %22 %25
+%109 = OpImageRead %54 %101 %110 Sample|NonPrivateTexel %27
+%111 = OpCompositeExtract %5 %109 0
+%112 = OpAccessChain %80 %32 %27
+OpStore %112 %111
+%114 = OpCompositeConstruct %66 %22 %25
+%113 = OpImageRead %54 %101 %114 Sample|NonPrivateTexel %36
+%115 = OpCompositeExtract %5 %113 0
+%116 = OpAccessChain %80 %32 %36
+OpStore %116 %115
+OpStore %139 %115
+OpStore %140 %111
+OpStore %141 %107
+OpStore %142 %104
+OpBranch %155
+%155 = OpLabel
+OpBranch %156
+%156 = OpLabel
+%120 = OpLoad %5 %142
+%119 = OpLoad %5 %141
+%118 = OpLoad %5 %140
+%117 = OpLoad %5 %139
+%121 = OpShiftLeftLogical %12 %28 %29
+%122 = OpShiftLeftLogical %12 %25 %27
+%123 = OpIAdd %12 %122 %22
+%124 = OpIAdd %12 %123 %121
+%125 = OpLoad %13 %15
+%126 = OpIMul %12 %124 %29
+%127 = OpBitcast %12 %120
+%128 = OpBitcast %12 %119
+%129 = OpBitcast %12 %118
+%130 = OpBitcast %12 %117
+%132 = OpCompositeConstruct %131 %127 %127 %127 %127
+OpImageWrite %125 %126 %132 NonPrivateTexel
+%133 = OpCompositeConstruct %131 %128 %128 %128 %128
+%134 = OpIAdd %12 %126 %24
+OpImageWrite %125 %134 %133 NonPrivateTexel
+%135 = OpCompositeConstruct %131 %129 %129 %129 %129
+%136 = OpIAdd %12 %126 %27
+OpImageWrite %125 %136 %135 NonPrivateTexel
+%137 = OpCompositeConstruct %131 %130 %130 %130 %130
+%138 = OpIAdd %12 %126 %36
+OpImageWrite %125 %138 %137 NonPrivateTexel
+OpReturn
+OpFunctionEnd
+

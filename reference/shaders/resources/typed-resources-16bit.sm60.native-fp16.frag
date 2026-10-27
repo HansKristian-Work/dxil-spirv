@@ -82,9 +82,9 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 340
+; Bound: 339
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -93,11 +93,12 @@ OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
 OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
 OpCapability FloatControls2
 OpExtension "SPV_KHR_float_controls"
 OpExtension "SPV_KHR_float_controls2"
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %50 %53 %56 %59
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %12 %16 %19 %22 %25 %28 %31 %34 %37 %40 %43 %46 %47 %50 %53 %56 %59
 OpExecutionMode %3 OriginUpperLeft
 OpExecutionMode %3 DenormPreserve 16
 OpExecutionModeId %3 FPFastMathDefault %5 %337
@@ -290,28 +291,28 @@ OpBranch %338
 %87 = OpCompositeConstruct %86 %84 %85
 %89 = OpCompositeConstruct %88 %82 %83 %82 %83
 %90 = OpFConvert %51 %89
-OpImageWrite %65 %87 %90
+OpImageWrite %65 %87 %90 NonPrivateTexel
 %92 = OpConvertFToS %91 %77
 %93 = OpConvertFToS %91 %80
 %94 = OpCompositeConstruct %86 %84 %85
 %96 = OpCompositeConstruct %95 %92 %93 %92 %93
 %97 = OpSConvert %54 %96
-OpImageWrite %64 %94 %97
+OpImageWrite %64 %94 %97 NonPrivateTexel
 %98 = OpConvertFToU %91 %77
 %99 = OpConvertFToU %91 %80
 %100 = OpCompositeConstruct %86 %84 %85
 %101 = OpCompositeConstruct %95 %98 %99 %98 %99
 %102 = OpUConvert %57 %101
-OpImageWrite %63 %100 %102
+OpImageWrite %63 %100 %102 NonPrivateTexel
 %104 = OpCompositeConstruct %88 %103 %103 %103 %103
 %105 = OpFConvert %51 %104
-OpImageWrite %62 %84 %105
+OpImageWrite %62 %84 %105 NonPrivateTexel
 %107 = OpCompositeConstruct %95 %106 %106 %106 %106
 %108 = OpSConvert %54 %107
-OpImageWrite %61 %84 %108
+OpImageWrite %61 %84 %108 NonPrivateTexel
 %110 = OpCompositeConstruct %95 %109 %109 %109 %109
 %111 = OpUConvert %57 %110
-OpImageWrite %60 %84 %111
+OpImageWrite %60 %84 %111 NonPrivateTexel
 %113 = OpSampledImage %112 %71 %73
 %116 = OpCompositeConstruct %48 %77 %80
 %115 = OpImageSampleImplicitLod %51 %113 %116 None

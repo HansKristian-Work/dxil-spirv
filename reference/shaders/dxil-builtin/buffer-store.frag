@@ -16,30 +16,31 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     imageStore(_8, int(INDEX), vec4(DATA.x, DATA.y, DATA.x, DATA.x));
-    uint _49 = ByteAddressMask(INDEX * 2u, 4u);
-    imageStore(_12, int(_49), uvec4(floatBitsToUint(DATA.x)));
-    imageStore(_12, int(_49 + 1u), uvec4(floatBitsToUint(DATA.y)));
-    uint _55 = INDEX * 2u;
-    imageStore(_13, int(_55), uvec4(floatBitsToUint(DATA.x)));
-    imageStore(_13, int(_55 + 1u), uvec4(floatBitsToUint(DATA.y)));
-    uint _63 = (INDEX * 5u) + 3u;
-    imageStore(_14, int(_63), uvec4(floatBitsToUint(DATA.x)));
-    imageStore(_14, int(_63 + 1u), uvec4(floatBitsToUint(DATA.y)));
+    uint _48 = ByteAddressMask(INDEX * 2u, 4u);
+    imageStore(_12, int(_48), uvec4(floatBitsToUint(DATA.x)));
+    imageStore(_12, int(_48 + 1u), uvec4(floatBitsToUint(DATA.y)));
+    uint _54 = INDEX * 2u;
+    imageStore(_13, int(_54), uvec4(floatBitsToUint(DATA.x)));
+    imageStore(_13, int(_54 + 1u), uvec4(floatBitsToUint(DATA.y)));
+    uint _62 = (INDEX * 5u) + 3u;
+    imageStore(_14, int(_62), uvec4(floatBitsToUint(DATA.x)));
+    imageStore(_14, int(_62 + 1u), uvec4(floatBitsToUint(DATA.y)));
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 71
+; Bound: 69
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
 OpCapability StorageImageWriteWithoutFormat
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %16 %19
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %12 %13 %14 %16 %19
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %16 "INDEX"
@@ -89,13 +90,13 @@ OpDecorate %19 Component 1
 %39 = OpConstant %9 2
 %40 = OpTypeFunction %9 %9 %9
 %46 = OpConstant %9 4294967295
-%50 = OpConstant %9 4
-%51 = OpTypeVector %9 4
-%62 = OpConstant %9 5
+%49 = OpConstant %9 4
+%50 = OpTypeVector %9 4
+%61 = OpConstant %9 5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %69
-%69 = OpLabel
+OpBranch %68
+%68 = OpLabel
 %20 = OpLoad %10 %14
 %21 = OpLoad %10 %13
 %22 = OpLoad %10 %12
@@ -106,34 +107,34 @@ OpBranch %69
 %30 = OpLoad %5 %28
 %31 = OpLoad %9 %16
 %33 = OpCompositeConstruct %32 %27 %30 %27 %27
-OpImageWrite %23 %31 %33
+OpImageWrite %23 %31 %33 NonPrivateTexel
 %34 = OpBitcast %9 %27
 %35 = OpBitcast %9 %30
 %36 = OpShiftLeftLogical %9 %31 %37
 %38 = OpIMul %9 %31 %39
-%49 = OpFunctionCall %9 %43 %38 %50
-%52 = OpCompositeConstruct %51 %34 %34 %34 %34
-OpImageWrite %22 %49 %52
-%53 = OpCompositeConstruct %51 %35 %35 %35 %35
-%54 = OpIAdd %9 %49 %29
-OpImageWrite %22 %54 %53
-%55 = OpIMul %9 %31 %39
-%56 = OpBitcast %9 %27
-%57 = OpBitcast %9 %30
-%58 = OpCompositeConstruct %51 %56 %56 %56 %56
-OpImageWrite %21 %55 %58
-%59 = OpCompositeConstruct %51 %57 %57 %57 %57
-%60 = OpIAdd %9 %55 %29
-OpImageWrite %21 %60 %59
-%61 = OpIMul %9 %31 %62
-%63 = OpIAdd %9 %61 %37
-%64 = OpBitcast %9 %27
-%65 = OpBitcast %9 %30
-%66 = OpCompositeConstruct %51 %64 %64 %64 %64
-OpImageWrite %20 %63 %66
-%67 = OpCompositeConstruct %51 %65 %65 %65 %65
-%68 = OpIAdd %9 %63 %29
-OpImageWrite %20 %68 %67
+%48 = OpFunctionCall %9 %43 %38 %49
+%51 = OpCompositeConstruct %50 %34 %34 %34 %34
+OpImageWrite %22 %48 %51 NonPrivateTexel
+%52 = OpCompositeConstruct %50 %35 %35 %35 %35
+%53 = OpIAdd %9 %48 %29
+OpImageWrite %22 %53 %52 NonPrivateTexel
+%54 = OpIMul %9 %31 %39
+%55 = OpBitcast %9 %27
+%56 = OpBitcast %9 %30
+%57 = OpCompositeConstruct %50 %55 %55 %55 %55
+OpImageWrite %21 %54 %57 NonPrivateTexel
+%58 = OpCompositeConstruct %50 %56 %56 %56 %56
+%59 = OpIAdd %9 %54 %29
+OpImageWrite %21 %59 %58 NonPrivateTexel
+%60 = OpIMul %9 %31 %61
+%62 = OpIAdd %9 %60 %37
+%63 = OpBitcast %9 %27
+%64 = OpBitcast %9 %30
+%65 = OpCompositeConstruct %50 %63 %63 %63 %63
+OpImageWrite %20 %62 %65 NonPrivateTexel
+%66 = OpCompositeConstruct %50 %64 %64 %64 %64
+%67 = OpIAdd %9 %62 %29
+OpImageWrite %20 %67 %66 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %43 = OpFunction %9 None %40

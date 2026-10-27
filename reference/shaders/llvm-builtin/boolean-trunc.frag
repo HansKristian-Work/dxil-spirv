@@ -6,30 +6,31 @@ uint _11 = 0u;
 void main()
 {
     _11 = uint(0u == uint(gl_SampleMaskIn[0u]));
-    float _25;
+    float _30;
     if ((_11 & 1u) != 0u)
     {
-        _25 = 2.0;
+        _30 = 2.0;
     }
     else
     {
-        _25 = 1.0;
+        _30 = 1.0;
     }
-    SV_Target = dFdxFine(_25);
+    SV_Target = dFdxFine(_30);
 }
 
 
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 33
+; Bound: 36
 ; Schema: 0
 OpCapability Shader
 OpCapability DerivativeControl
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %7 %15
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %7 %11 %15
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %7 "SV_Target"
@@ -53,10 +54,12 @@ OpDecorate %15 Flat
 %19 = OpTypeBool
 %26 = OpConstant %5 2
 %27 = OpConstant %5 1
+%29 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %29
-%29 = OpLabel
+%30 = OpVariable %29 Function
+OpBranch %31
+%31 = OpLabel
 %17 = OpAccessChain %16 %15 %9
 %18 = OpLoad %8 %17
 %20 = OpIEqual %19 %9 %18
@@ -65,12 +68,18 @@ OpStore %11 %21
 %22 = OpLoad %8 %11
 %23 = OpBitwiseAnd %8 %22 %12
 %24 = OpINotEqual %19 %23 %9
-OpSelectionMerge %31 None
-OpBranchConditional %24 %30 %31
-%30 = OpLabel
-OpBranch %31
-%31 = OpLabel
-%25 = OpPhi %5 %27 %29 %26 %30
+OpSelectionMerge %34 None
+OpBranchConditional %24 %33 %32
+%32 = OpLabel
+OpStore %30 %27
+OpBranch %34
+%33 = OpLabel
+OpStore %30 %26
+OpBranch %34
+%34 = OpLabel
+OpBranch %35
+%35 = OpLabel
+%25 = OpLoad %5 %30
 %28 = OpDPdxFine %5 %25
 OpStore %7 %28
 OpReturn

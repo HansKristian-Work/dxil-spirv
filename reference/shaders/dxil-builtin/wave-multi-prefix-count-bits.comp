@@ -38,17 +38,18 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 74
+; Bound: 72
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
 OpCapability ImageBuffer
 OpCapability GroupNonUniformArithmetic
 OpCapability GroupNonUniformBallot
-OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %3 "main" %18
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %9 %12 %18
 OpExecutionMode %3 LocalSize 64 1 1
 OpName %3 "main"
 OpName %54 "WaveMultiPrefixCountBits"
@@ -87,8 +88,8 @@ OpDecorate %18 BuiltIn GlobalInvocationId
 %60 = OpConstantTrue %47
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %72
-%72 = OpLabel
+OpBranch %71
+%71 = OpLabel
 %13 = OpLoad %10 %12
 %14 = OpLoad %6 %9
 %15 = OpLoad %6 %8
@@ -114,10 +115,10 @@ OpBranch %72
 %45 = OpImageFetch %25 %15 %22
 %46 = OpCompositeExtract %5 %45 0
 %48 = OpINotEqual %47 %46 %49
-%70 = OpCompositeConstruct %25 %41 %42 %43 %44
-%69 = OpFunctionCall %5 %54 %48 %70
-%71 = OpCompositeConstruct %25 %69 %69 %69 %69
-OpImageWrite %13 %22 %71
+%69 = OpCompositeConstruct %25 %41 %42 %43 %44
+%68 = OpFunctionCall %5 %54 %48 %69
+%70 = OpCompositeConstruct %25 %68 %68 %68 %68
+OpImageWrite %13 %22 %70 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %54 = OpFunction %5 None %51

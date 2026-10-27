@@ -25,16 +25,16 @@ layout(location = 0) out ivec2 SV_Target;
 
 void main()
 {
-    uint _68;
-    ivec4 _69;
-    _68 = sparseTexelFetchARB(_8, int(TEXCOORD), _69);
-    SparseTexel _23 = SparseTexel(_68, _69);
+    uint _67;
+    ivec4 _68;
+    _67 = sparseTexelFetchARB(_8, int(TEXCOORD), _68);
+    SparseTexel _23 = SparseTexel(_67, _68);
     uvec4 _27 = uvec4(_23._m1);
     _32 _33 = _32(_27.x, _27.y, _27.z, _27.w, _23._m0);
-    uint _70;
-    ivec4 _71;
-    _70 = sparseImageLoadARB(_11, int(TEXCOORD), _71);
-    SparseTexel _42 = SparseTexel(_70, _71);
+    uint _69;
+    ivec4 _70;
+    _69 = sparseImageLoadARB(_11, int(TEXCOORD), _70);
+    SparseTexel _42 = SparseTexel(_69, _70);
     uvec4 _45 = uvec4(_42._m1);
     _32 _50 = _32(_45.x, _45.y, _45.z, _45.w, _42._m0);
     uint _56 = uint(sparseTexelsResidentARB(int(_50._m4))) + uint(sparseTexelsResidentARB(int(_33._m4)));
@@ -46,16 +46,17 @@ void main()
 #if 0
 // SPIR-V disassembly
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 68
+; Bound: 67
 ; Schema: 0
 OpCapability Shader
 OpCapability SparseResidency
 OpCapability SampledBuffer
 OpCapability ImageBuffer
-OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %3 "main" %14 %17
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint Fragment %3 "main" %8 %11 %14 %17
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"
 OpName %14 "TEXCOORD"
@@ -114,7 +115,7 @@ OpBranch %66
 %36 = OpCompositeExtract %12 %33 4
 %38 = OpImageSparseTexelsResident %37 %36
 %41 = OpSelect %12 %38 %40 %39
-%42 = OpImageSparseRead %22 %18 %20
+%42 = OpImageSparseRead %22 %18 %20 NonPrivateTexel
 %43 = OpCompositeExtract %12 %42 0
 %44 = OpCompositeExtract %21 %42 1
 %45 = OpBitcast %26 %44

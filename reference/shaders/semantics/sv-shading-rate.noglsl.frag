@@ -1,12 +1,13 @@
 ; SPIR-V
-; Version: 1.3
+; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 13
+; Bound: 12
 ; Schema: 0
 OpCapability Shader
 OpCapability FragmentShadingRateKHR
+OpCapability VulkanMemoryModel
 OpExtension "SPV_KHR_fragment_shading_rate"
-OpMemoryModel Logical GLSL450
+OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %7 %9
 OpExecutionMode %3 OriginUpperLeft
 OpName %3 "main"

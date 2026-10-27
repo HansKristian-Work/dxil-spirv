@@ -31,6 +31,7 @@
 #include "llvm_bitcode_parser.hpp"
 #include "logging.hpp"
 #include "spirv_module.hpp"
+#include "opcodes/converter_impl.hpp"
 #include <string.h>
 #include <new>
 
@@ -422,6 +423,7 @@ struct dxil_spv_converter_s
 	bool active_table = false;
 	bool uses_subgroup_size = false;
 	bool is_multiview_compatible = false;
+	bool legacy_structurizer = false;
 	uint32_t workgroup_size[3] = {};
 	uint32_t patch_vertex_count = 0;
     uint32_t patch_location_offset = UINT32_MAX;
@@ -810,8 +812,12 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 		if (entry_point.entry.is_structured)
 			structurizer.run_trivial();
+		else if (GlobalConfiguration::get().experimental_unstructured_control_flow)
+			structurizer.run_experimental_unstructured();
+		else if (converter->legacy_structurizer)
+			structurizer.run_legacy_structurizer();
 		else
-			structurizer.run();
+			structurizer.run_structurizer();
 
 		if (entry_point.entry.needs_stage_io_analysis)
 			structurizer.fixup_partial_stage_output_writes();
@@ -831,8 +837,12 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 		if (leaf.is_structured)
 			structurizer.run_trivial();
+		else if (GlobalConfiguration::get().experimental_unstructured_control_flow)
+			structurizer.run_experimental_unstructured();
+		else if (converter->legacy_structurizer)
+			structurizer.run_legacy_structurizer();
 		else
-			structurizer.run();
+			structurizer.run_structurizer();
 
 		if (leaf.needs_stage_io_analysis)
 			structurizer.fixup_partial_stage_output_writes();
@@ -1538,6 +1548,17 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		OptionConservativeSSBOVectorization helper;
 		auto *cons = reinterpret_cast<const dxil_spv_option_conservative_ssbo_vectorization *>(option);
 		helper.enabled = cons->enabled == DXIL_SPV_TRUE;
+
+		converter->options.emplace_back(duplicate(helper));
+		break;
+	}
+
+	case DXIL_SPV_OPTION_LEGACY_STRUCTURIZER:
+	{
+		OptionLegacyStructurizer helper;
+		auto *legacy = reinterpret_cast<const dxil_spv_option_legacy_structurizer *>(option);
+		helper.enabled = legacy->enabled == DXIL_SPV_TRUE;
+		converter->legacy_structurizer = helper.enabled;
 
 		converter->options.emplace_back(duplicate(helper));
 		break;

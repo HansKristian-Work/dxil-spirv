@@ -28,6 +28,7 @@
 #include "ir.hpp"
 
 #include <memory>
+#include <algorithm>
 #include <stdint.h>
 
 namespace dxil_spv
@@ -49,7 +50,9 @@ class CFGStructurizer
 {
 public:
 	CFGStructurizer(CFGNode *entry, CFGNodePool &pool, SPIRVModule &module);
-	bool run();
+	bool run_legacy_structurizer();
+	bool run_structurizer();
+	bool run_experimental_unstructured();
 	bool run_trivial();
 	void traverse(BlockEmissionInterface &iface);
 	CFGNode *get_entry_block() const;
@@ -74,6 +77,9 @@ private:
 
 	Vector<uint32_t> reachability_bitset;
 	unsigned reachability_stride = 0;
+	bool experimental_unstructured_flow = false;
+	bool limited_control_flow_analysis = false;
+	bool debug_labels = false;
 
 	UnorderedSet<const CFGNode *> reachable_nodes;
 	UnorderedSet<const CFGNode *> structured_loop_merge_targets;
@@ -219,6 +225,7 @@ private:
 	bool rewrite_invalid_real_loop_breaks();
 	bool rewrite_invalid_switch_breaks();
 	void recompute_cfg();
+	void compute_full_control_flow_analysis();
 	void rewrite_multiple_back_edges();
 	bool rewrite_impossible_back_edges();
 	void compute_dominance_frontier();
@@ -305,5 +312,131 @@ private:
 
 	template <typename Op>
 	void iterate_dominated_node_range_bottom_up(const CFGNode *start, const CFGNode *end, const Op &op);
+
+	// The new structurizer rewritten from ground up.
+	struct SerializationLevel
+	{
+		Vector<CFGNode *> paths;
+		// If skipping is possible, a dummy path is.
+		// If number of paths + skip is 1: No selector.
+		// If number of paths + skip is 2: A simple boolean.
+		// If number of paths + skip is >2: Switch value.
+		spv::Id path_selector_id = 0;
+		bool skippable = false;
+
+		CFGNode *input_node = nullptr;
+		CFGNode *output_node = nullptr;
+
+		// If set, redirect any branch here instead of the normal merge target.
+		CFGNode *breaking_branch = nullptr;
+	};
+
+	void run_common_preamble();
+	void rewrite_switch_blocks();
+	void rewrite_complex_loop_successors();
+	void convert_phi_to_variables();
+	void serialize_merge_levels_for_dominated_paths(
+		CFGNode *node, const Vector<SerializationLevel> &levels, CFGNode *merge_node);
+
+	void enter_succ(CFGNode *from, CFGNode *succ,
+	                const Vector<SerializationLevel> &levels, CFGNode *merge_node);
+
+	void enter_succ(CFGNode *from, CFGNode *true_path, CFGNode *false_path, spv::Id cond,
+	                const SerializationLevel *true_level, const SerializationLevel *false_level,
+	                const Vector<SerializationLevel> &levels, CFGNode *merge_node);
+
+	bool resolve_direct_path(CFGNode *from, CFGNode *succ, const SerializationLevel *level);
+
+	bool resolve_complex_breaks(CFGNode *from, CFGNode *rerouted_succ, CFGNode *intended_succ);
+
+	void serialize_merge_levels_for_dominated_paths_entry();
+	static const SerializationLevel *find_level_for_block(const Vector<SerializationLevel> &levels, CFGNode *block);
+	static const SerializationLevel *find_latest_level_dominating_block(const Vector<SerializationLevel> &levels, CFGNode *block);
+	static void fixup_degenerate_conditional_branch(CFGNode *node);
+	void fixup_degenerate_conditional_branches();
+
+	spv::Id build_conditional_for_switch_block(CFGNode *block, CFGNode *target, const Vector<Terminator::Case> &cases, spv::Id cond_id);
+	bool ensure_valid_phi_rewrites(CFGNode *node);
+
+	void split_loop_inner_outer(
+		CFGNode *node, CFGNode *back_edge, Vector<CFGNode *> &back_edge_candidates,
+		Vector<CFGNode *> &outer_dominated);
+
+	void move_interposing_nodes_into_loop(CFGNode *header,
+	                                      const Vector<SerializationLevel> &outer_levels,
+	                                      Vector<CFGNode *> &back_edge_candidates, Vector<CFGNode *> &outer_idom);
+
+	void filter_outer_idom_candidates(Vector<CFGNode *> &outer_idom);
+
+	void organize_levels(CFGNode *node, const Vector<CFGNode *> &children,
+	                     const Vector<SerializationLevel> &outer_levels,
+	                     Vector<SerializationLevel> &levels,
+	                     const Vector<CFGNode *> *allow_frontiers,
+	                     bool promote_children_to_frontier);
+
+	void analyze_levels_skippability(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
+	                                 Vector<SerializationLevel> &levels);
+
+	void route_branches(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
+	                    const Vector<SerializationLevel> &levels,
+	                    CFGNode *outer_merge);
+
+	void traverse_routes(Vector<SerializationLevel> &&levels, size_t num_traverse_levels,
+	                     CFGNode *start_node, CFGNode *outer_merge);
+
+	bool select_path(CFGNode *node, const SerializationLevel *level, CFGNode *path, const char *tag,
+	                 const Vector<SerializationLevel> &levels, CFGNode *merge_node);
+
+	static bool level_has_non_breaking_non_continue_path(CFGNode *succ, const SerializationLevel *level);
+
+	// For nested loops.
+	struct LoopScope
+	{
+		CFGNode *header_block = nullptr;
+		CFGNode *merge_block = nullptr;
+		CFGNode *continue_block = nullptr;
+		// Can be set by inner loops. If this is a variable, we need to insert an "if (bypass) break;" or
+		// "if (bypass) continue;"
+		spv::Id bypass_break_id = 0;
+		spv::Id bypass_continue_id = 0;
+
+		// Usually we visit the continue block through normal dominance, but with multiple breaks and continues in play,
+		// we may end up skipping over it.
+		// This can happen if an inner continue is the only way to reach this continue.
+		// We stop traversing at loop boundaries.
+		bool visited_continue_block = false;
+	};
+	Vector<LoopScope> loop_scopes;
+
+	CFGNode *route_loop_bypass(CFGNode *header, CFGNode *merge,
+	                           spv::Id bypass_break_id, spv::Id bypass_continue_id,
+	                           const LoopScope &outer_scope);
+
+	CFGNode *route_conditional_break(CFGNode *node, spv::Id var_id, CFGNode *break_candidate, const char *tag);
+
+	LoopScope *find_scope_for_block(CFGNode *node);
+	bool is_backwards_branch(CFGNode *node) const;
+	LoopScope *find_outer_continue_scope_for_block(CFGNode *node);
+
+	bool branch_requires_breaking_construct(const Vector<SerializationLevel> &levels, CFGNode *node);
+	bool branch_requires_redirection(const Vector<SerializationLevel> &levels, CFGNode *node);
+
+	void cleanup_degenerate_blocks();
+	void rewrite_degenerate_phi_constructs();
+	void rewrite_degenerate_interposing_frontiers();
 };
+
+template <typename Container, typename T>
+static inline bool has_element(const Container &c, const T &value)
+{
+	auto itr = std::find(c.begin(), c.end(), value);
+	return itr != c.end();
+}
+
+template <typename Container, typename T>
+static inline void push_back_unique(Container &c, const T &value)
+{
+	if (!has_element(c, value))
+		c.push_back(value);
+}
 } // namespace dxil_spv

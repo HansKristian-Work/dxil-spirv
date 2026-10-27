@@ -33,6 +33,8 @@ set_target_properties(dxil-debug PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 option(DXIL_SPIRV_CLI "Enable CLI support." ON)
 option(DXIL_SPIRV_NATIVE_LLVM "Enable native LLVM support." OFF)
+option(DXIL_SPV_MISC_CLI "Enable misc CLI apps." OFF)
+option(DXIL_SPV_FUZZ_CLI "Enable fuzzer CLI apps. Requires Granite to be symlinked in." OFF)
 
 include(GNUInstallDirs)
 
@@ -67,7 +69,7 @@ add_library(dxil-converter STATIC
         llvm_bitcode_parser.hpp llvm_bitcode_parser.cpp
         dxil.hpp
         dxil_converter.hpp dxil_converter.cpp
-        cfg_structurizer.hpp cfg_structurizer.cpp
+        cfg_structurizer.hpp cfg_structurizer.cpp cfg_structurizer_new.cpp
         node_pool.hpp node_pool.cpp
         node.hpp node.cpp
         dxil_parser.hpp dxil_parser.cpp
@@ -129,14 +131,16 @@ target_compile_options(dxil-spirv-c-static PRIVATE ${DXIL_SPV_CXX_FLAGS})
 set_target_properties(dxil-spirv-c-static PROPERTIES PUBLIC_HEADERS dxil_spirv_c.h)
 set_target_properties(dxil-spirv-c-static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-if (DXIL_SPIRV_CLI)
+if (DXIL_SPIRV_CLI OR DXIL_SPIRV_MISC_CLI)
     add_library(cli-parser STATIC
             third_party/cli_parser/cli_parser.hpp
             third_party/cli_parser/cli_parser.cpp)
     target_include_directories(cli-parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/cli_parser)
     target_link_libraries(cli-parser PUBLIC dxil-debug)
     target_compile_options(cli-parser PRIVATE ${DXIL_SPV_CXX_FLAGS})
+endif()
 
+if (DXIL_SPIRV_CLI)
     add_executable(dxil-spirv dxil_spirv.cpp)
     add_executable(dxil-extract dxil_extract.cpp)
     target_link_libraries(dxil-spirv PRIVATE dxil-spirv-c-shared cli-parser SPIRV-Tools-static spirv-cross-c dxil-debug)
@@ -159,7 +163,7 @@ if (DXIL_SPIRV_CLI)
 endif()
 
 set(DXIL_SPV_VERSION_MAJOR 2)
-set(DXIL_SPV_VERSION_MINOR 76)
+set(DXIL_SPV_VERSION_MINOR 77)
 set(DXIL_SPV_VERSION_PATCH 0)
 set(DXIL_SPV_VERSION ${DXIL_SPV_VERSION_MAJOR}.${DXIL_SPV_VERSION_MINOR}.${DXIL_SPV_VERSION_PATCH})
 set_target_properties(dxil-spirv-c-shared PROPERTIES
@@ -185,12 +189,8 @@ install(TARGETS dxil-spirv-c-shared
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dxil-spirv)
 install(EXPORT dxil_spirv_c_sharedConfig DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/dxil_spirv_c_shared/cmake)
 
-option(DXIL_SPV_MISC_CLI "Enable misc CLI apps." OFF)
-
 if (DXIL_SPV_MISC_CLI)
-    add_executable(structurize-test misc/structurize_test.cpp)
-    target_link_libraries(structurize-test PRIVATE dxil-converter SPIRV-Tools-static spirv-cross-c dxil-debug dxil-utils)
-    target_compile_options(structurize-test PRIVATE ${DXIL_SPV_CXX_FLAGS})
     target_compile_definitions(dxil-converter PUBLIC DXIL_SPIRV_DEBUG_DUMPING)
     target_compile_definitions(spirv-module PRIVATE DXIL_SPIRV_DEBUG_DUMPING)
+    add_subdirectory(misc)
 endif()
