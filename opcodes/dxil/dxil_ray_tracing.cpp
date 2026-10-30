@@ -24,6 +24,7 @@
 
 #include "opcodes/opcodes.hpp"
 #include "dxil_common.hpp"
+#include "dxil_waveops.hpp"
 #include "opcodes/converter_impl.hpp"
 #include "spirv_module.hpp"
 #include "logging.hpp"
@@ -417,6 +418,13 @@ bool build_ray_query_object(Converter::Impl &impl, const llvm::Value *operand,
 			impl.add(chain);
 
 			object_id = chain->id;
+
+			// Special weird quirk of ray-query.
+			if (!value_is_statically_wave_uniform(impl, operand))
+			{
+				builder.addDecoration(object_id, spv::DecorationNonUniform);
+				builder.addCapability(spv::CapabilityShaderNonUniform);
+			}
 		}
 		else
 		{

@@ -44,6 +44,7 @@ void main()
 OpCapability Shader
 OpCapability RayQueryKHR
 OpCapability RayTraversalPrimitiveCullingKHR
+OpCapability ShaderNonUniform
 OpCapability RuntimeDescriptorArray
 OpCapability VulkanMemoryModel
 OpExtension "SPV_EXT_descriptor_indexing"
@@ -62,6 +63,7 @@ OpDecorate %14 Block
 OpDecorate %16 DescriptorSet 0
 OpDecorate %16 Binding 0
 OpDecorate %24 BuiltIn GlobalInvocationId
+OpDecorate %50 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeAccelerationStructureKHR

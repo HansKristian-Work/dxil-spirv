@@ -1,0 +1,101 @@
+#version 460
+#extension GL_EXT_ray_query : require
+#extension GL_EXT_ray_flags_primitive_culling : require
+layout(primitive_culling);
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform accelerationStructureEXT _8;
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _12;
+
+rayQueryEXT RayQueryHeap;
+uint _19[2];
+
+void main()
+{
+    _19[0u] = 0u;
+    _19[1u] = 0u;
+    _19[gl_GlobalInvocationID.x & 1u] = 0u;
+    rayQueryInitializeEXT(RayQueryHeap, _8, 0u, 255u, vec3(0.0), 0.0, vec3(0.0, 0.0, 1.0), 1.0);
+    uint _42 = rayQueryGetIntersectionPrimitiveIndexEXT(RayQueryHeap, bool(0u));
+    imageStore(_12, int(gl_GlobalInvocationID.x), uvec4(_42));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 46
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability RayQueryKHR
+OpCapability RayTraversalPrimitiveCullingKHR
+OpCapability VulkanMemoryModel
+OpExtension "SPV_KHR_ray_query"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12 %15 %19 %24
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %15 "RayQueryHeap"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 0
+OpDecorate %12 NonReadable
+OpDecorate %24 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 1
+%6 = OpTypeAccelerationStructureKHR
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeInt 32 0
+%10 = OpTypeImage %9 Buffer 0 0 0 2 R32ui
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpTypeRayQueryKHR
+%14 = OpTypePointer Private %13
+%15 = OpVariable %14 Private
+%16 = OpConstant %9 2
+%17 = OpTypeArray %9 %16
+%18 = OpTypePointer Private %17
+%19 = OpVariable %18 Private
+%22 = OpTypeVector %9 3
+%23 = OpTypePointer Input %22
+%24 = OpVariable %23 Input
+%25 = OpTypePointer Input %9
+%27 = OpConstant %9 0
+%29 = OpTypePointer Private %9
+%32 = OpConstant %9 1
+%35 = OpConstant %9 255
+%36 = OpTypeFloat 32
+%37 = OpConstant %36 0
+%38 = OpConstant %36 1
+%39 = OpTypeVector %36 3
+%43 = OpTypeVector %9 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %45
+%45 = OpLabel
+%20 = OpLoad %10 %12
+%21 = OpLoad %6 %8
+%26 = OpAccessChain %25 %24 %27
+%28 = OpLoad %9 %26
+%30 = OpAccessChain %29 %19 %27
+OpStore %30 %27
+%31 = OpAccessChain %29 %19 %32
+OpStore %31 %27
+%33 = OpBitwiseAnd %9 %28 %32
+%34 = OpInBoundsAccessChain %29 %19 %33
+OpStore %34 %27
+%40 = OpCompositeConstruct %39 %37 %37 %37
+%41 = OpCompositeConstruct %39 %37 %37 %38
+OpRayQueryInitializeKHR %15 %21 %27 %35 %40 %37 %41 %38
+%42 = OpRayQueryGetIntersectionPrimitiveIndexKHR %9 %15 %27
+%44 = OpCompositeConstruct %43 %42 %42 %42 %42
+OpImageWrite %20 %28 %44 NonPrivateTexel
+OpReturn
+OpFunctionEnd
+#endif

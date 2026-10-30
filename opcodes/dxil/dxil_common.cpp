@@ -547,6 +547,12 @@ bool value_is_dx_op_instrinsic(const llvm::Value *value, DXIL::Op op)
 	return op == DXIL::Op(opcode);
 }
 
+bool value_is_ray_query(const llvm::Value *value)
+{
+	return value_is_dx_op_instrinsic(value, DXIL::Op::AllocateRayQuery) ||
+	       value_is_dx_op_instrinsic(value, DXIL::Op::AllocateRayQuery2);
+}
+
 bool value_depends_on_dx_op(const llvm::Value *value, DXIL::Op op)
 {
 	// Only find simple patterns that we need to care about.

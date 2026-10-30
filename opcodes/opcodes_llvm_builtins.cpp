@@ -2696,6 +2696,19 @@ bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *instruc
 			return analyze_phi_hitobject(impl, instruction);
 	}
 
+	for (uint32_t i = 0; i < instruction->getNumIncomingValues(); i++)
+		if (value_is_ray_query(instruction->getIncomingValue(i)))
+			impl.shader_analysis.ray_query.uses_non_direct_indexing = true;
+
+	return true;
+}
+
+bool analyze_select_instruction(Converter::Impl &impl, const llvm::SelectInst *instruction)
+{
+	for (uint32_t i = 0; i < instruction->getNumOperands(); i++)
+		if (value_is_ray_query(instruction->getOperand(i)))
+			impl.shader_analysis.ray_query.uses_non_direct_indexing = true;
+
 	return true;
 }
 
@@ -2711,6 +2724,9 @@ bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *ins
 
 	if (DXIL::AddressSpace(inst->getOperand(1)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
 		impl.shader_analysis.has_group_shared_access = true;
+
+	if (value_is_ray_query(inst->getOperand(0)))
+		impl.shader_analysis.ray_query.uses_non_direct_indexing = true;
 
 	if (!analyze_ags_wmma_store(impl, inst))
 		return false;

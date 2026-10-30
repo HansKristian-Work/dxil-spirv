@@ -1554,7 +1554,7 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 			impl.shader_analysis.ray_query.reference_handle_value = object;
 		}
 
-		if (!value_is_dx_op_instrinsic(object, DXIL::Op::AllocateRayQuery))
+		if (!value_is_ray_query(object))
 			impl.shader_analysis.ray_query.uses_non_direct_indexing = true;
 
 		// Primitive culling flag is implied, only analyze for Force2State flag.

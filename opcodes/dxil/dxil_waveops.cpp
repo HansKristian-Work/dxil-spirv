@@ -300,6 +300,8 @@ bool value_is_statically_wave_uniform(Converter::Impl &impl, const llvm::Value *
 	    value_is_dx_op_instrinsic(value, DXIL::Op::WaveAnyTrue) ||
 	    value_is_dx_op_instrinsic(value, DXIL::Op::WaveAllTrue) ||
 	    value_is_dx_op_instrinsic(value, DXIL::Op::WaveReadLaneFirst) ||
+	    value_is_dx_op_instrinsic(value, DXIL::Op::AllocateRayQuery) ||
+	    value_is_dx_op_instrinsic(value, DXIL::Op::AllocateRayQuery2) ||
 	    value_is_dx_op_instrinsic(value, DXIL::Op::GroupId))
 	{
 		return true;
