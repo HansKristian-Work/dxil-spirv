@@ -1,0 +1,104 @@
+#version 460
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct WideArithResult
+{
+    uint _m0;
+    uint _m1;
+};
+
+struct _37
+{
+    uint _m0;
+    bool _m1;
+};
+
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
+
+void main()
+{
+    uint _17 = gl_GlobalInvocationID.x * 2u;
+    uvec4 _20 = imageLoad(_8, int(_17));
+    uvec4 _22 = imageLoad(_8, int(_17 + 1u));
+    uvec2 _27 = uvec2(_20.x, _22.x);
+    WideArithResult _31;
+    _31._m0 = uaddCarry(_27.x, 4294967295u, _31._m1);
+    _37 _38 = _37(_31._m0, _31._m1 != 0u);
+    uint _43 = gl_GlobalInvocationID.x * 2u;
+    imageStore(_8, int(_43), uvec4(_38._m0));
+    imageStore(_8, int(_43 + 1u), uvec4(uint(_38._m1) + _27.y));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 48
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %30 "WideArithResult"
+OpName %37 ""
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%10 = OpTypeVector %5 3
+%11 = OpTypePointer Input %10
+%12 = OpVariable %11 Input
+%13 = OpTypePointer Input %5
+%15 = OpConstant %5 0
+%18 = OpConstant %5 2
+%19 = OpTypeVector %5 4
+%24 = OpConstant %5 1
+%26 = OpTypeVector %5 2
+%30 = OpTypeStruct %5 %5
+%32 = OpConstant %5 4294967295
+%35 = OpTypeBool
+%37 = OpTypeStruct %5 %35
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %47
+%47 = OpLabel
+%9 = OpLoad %6 %8
+%14 = OpAccessChain %13 %12 %15
+%16 = OpLoad %5 %14
+%17 = OpIMul %5 %16 %18
+%20 = OpImageRead %19 %9 %17 NonPrivateTexel
+%21 = OpCompositeExtract %5 %20 0
+%23 = OpIAdd %5 %17 %24
+%22 = OpImageRead %19 %9 %23 NonPrivateTexel
+%25 = OpCompositeExtract %5 %22 0
+%27 = OpCompositeConstruct %26 %21 %25
+%28 = OpCompositeExtract %5 %27 0
+%29 = OpCompositeExtract %5 %27 1
+%31 = OpIAddCarry %30 %28 %32
+%33 = OpCompositeExtract %5 %31 0
+%34 = OpCompositeExtract %5 %31 1
+%36 = OpINotEqual %35 %34 %15
+%38 = OpCompositeConstruct %37 %33 %36
+%39 = OpCompositeExtract %5 %38 0
+%40 = OpCompositeExtract %35 %38 1
+%41 = OpSelect %5 %40 %24 %15
+%42 = OpIAdd %5 %41 %29
+%43 = OpIMul %5 %16 %18
+%44 = OpCompositeConstruct %19 %39 %39 %39 %39
+OpImageWrite %9 %43 %44 NonPrivateTexel
+%45 = OpCompositeConstruct %19 %42 %42 %42 %42
+%46 = OpIAdd %5 %43 %24
+OpImageWrite %9 %46 %45 NonPrivateTexel
+OpReturn
+OpFunctionEnd
+#endif

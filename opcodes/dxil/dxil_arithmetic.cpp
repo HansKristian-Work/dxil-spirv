@@ -507,13 +507,13 @@ bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &imp
 	return true;
 }
 
-bool emit_dxil_wide_arith_instruction(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction,
-                                      bool spirv_semantics)
+bool emit_dxil_wide_arith_instruction_mul(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction,
+                                          bool spirv_semantics)
 {
 	auto &builder = impl.builder();
 	spv::Id u32_type = builder.makeUintType(32);
 
-	if ((opcode == spv::OpSMulExtended || opcode == spv::OpUMulExtended) && !spirv_semantics)
+	if (!spirv_semantics)
 	{
 		// Demote to plain multiply.
 		auto composite_itr = impl.llvm_composite_meta.find(instruction);
@@ -562,6 +562,71 @@ bool emit_dxil_wide_arith_instruction(spv::Op opcode, Converter::Impl &impl, con
 
 	spv::Id result = impl.build_vector(u32_type, extracted_values, 2);
 	impl.rewrite_value(instruction, result);
+
+	return true;
+}
+
+bool emit_dxil_wide_arith_instruction_add(spv::Op opcode, Converter::Impl &impl, const llvm::CallInst *instruction,
+                                          bool spirv_semantics)
+{
+	auto &builder = impl.builder();
+	spv::Id u32_type = builder.makeUintType(32);
+
+	spv::Id type_id;
+
+	if (spirv_semantics)
+	{
+		type_id = impl.get_type_id(llvm::cast<llvm::VectorType>(instruction->getType())->getElementType());
+		type_id = impl.get_struct_type({ type_id, type_id }, 0, "WideArithResult");
+	}
+	else
+	{
+		type_id = builder.makeUintType(32);
+		type_id = impl.get_struct_type({ type_id, type_id }, 0, "WideArithResult");
+	}
+
+	Operation *add_op = impl.allocate(opcode, type_id);
+	add_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
+	add_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
+	impl.add(add_op);
+
+	if (spirv_semantics)
+	{
+		spv::Id extracted_values[2];
+		for (uint32_t i = 0; i < 2; i++)
+		{
+			auto *ext_op = impl.allocate(spv::OpCompositeExtract, u32_type);
+			ext_op->add_id(add_op->id);
+			ext_op->add_literal(i);
+			impl.add(ext_op);
+			extracted_values[i] = ext_op->id;
+		}
+
+		spv::Id result = impl.build_vector(u32_type, extracted_values, 2);
+		impl.rewrite_value(instruction, result);
+	}
+	else
+	{
+		auto *ext_lo = impl.allocate(spv::OpCompositeExtract, u32_type);
+		ext_lo->add_id(add_op->id);
+		ext_lo->add_literal(0);
+		impl.add(ext_lo);
+
+		auto *ext_carry = impl.allocate(spv::OpCompositeExtract, u32_type);
+		ext_carry->add_id(add_op->id);
+		ext_carry->add_literal(1);
+		impl.add(ext_carry);
+
+		auto *carry_bit = impl.allocate(spv::OpINotEqual, builder.makeBoolType());
+		carry_bit->add_id(ext_carry->id);
+		carry_bit->add_id(builder.makeUintConstant(0));
+		impl.add(carry_bit);
+
+		auto *construct = impl.allocate(spv::OpCompositeConstruct, instruction);
+		construct->add_id(ext_lo->id);
+		construct->add_id(carry_bit->id);
+		impl.add(construct);
+	}
 
 	return true;
 }
