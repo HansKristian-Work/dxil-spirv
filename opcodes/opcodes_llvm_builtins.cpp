@@ -24,14 +24,16 @@
 
 #include "opcodes_llvm_builtins.hpp"
 #include "converter_impl.hpp"
+#include "dxil/dxil_ags.hpp"
+#include "dxil/dxil_arithmetic.hpp"
+#include "dxil/dxil_common.hpp"
+#include "dxil/dxil_ray_tracing.hpp"
+#include "dxil/dxil_resources.hpp"
 #include "logging.hpp"
 #include "spirv_module.hpp"
-#include "dxil/dxil_common.hpp"
-#include "dxil/dxil_resources.hpp"
-#include "dxil/dxil_arithmetic.hpp"
-#include "dxil/dxil_ags.hpp"
-#include "dxil/dxil_ray_tracing.hpp"
+#include <algorithm>
 #include <limits>
+#include <unordered_map>
 
 namespace dxil_spv
 {
@@ -70,8 +72,8 @@ static bool instruction_is_ballot(const llvm::Value *aggregate)
 	return false;
 }
 
-static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm::Value *value,
-                                              unsigned bits, bool is_signed)
+static spv::Id build_naturally_extended_value(Converter::Impl &impl, const llvm::Value *value, unsigned bits,
+                                              bool is_signed)
 {
 	spv::Id id = impl.get_id_for_value(value);
 	auto *scalar_type = value->getType()->getScalarType();
@@ -175,16 +177,13 @@ static spv::Id emit_fixup_fdiv_sqrt(Converter::Impl &impl, const llvm::BinaryOpe
 	return 0;
 }
 
-static spv::Id peephole_trivial_arithmetic_identity(Converter::Impl &,
-                                                    const llvm::ConstantExpr *,
-                                                    llvm::BinaryOperator::BinaryOps,
-                                                    bool)
+static spv::Id peephole_trivial_arithmetic_identity(Converter::Impl &, const llvm::ConstantExpr *,
+                                                    llvm::BinaryOperator::BinaryOps, bool)
 {
 	return 0;
 }
 
-static spv::Id peephole_trivial_arithmetic_identity(Converter::Impl &impl,
-                                                    const llvm::BinaryOperator *instruction,
+static spv::Id peephole_trivial_arithmetic_identity(Converter::Impl &impl, const llvm::BinaryOperator *instruction,
                                                     llvm::BinaryOperator::BinaryOps inverse_operation,
                                                     bool is_commutative)
 {
@@ -207,7 +206,8 @@ static spv::Id peephole_trivial_arithmetic_identity(Converter::Impl &impl,
 	// - c = F(F^-1(c, b), b) // F = fdiv -> !is_commutative
 	// - c = F(F^-1(b, c), b) // F = fdiv -> !is_commutative
 
-	const auto hoist_value = [&](llvm::BinaryOperator *binop, llvm::Value *inverse_value) -> bool {
+	const auto hoist_value = [&](llvm::BinaryOperator *binop, llvm::Value *inverse_value) -> bool
+	{
 		auto *cancel_op0 = binop->getOperand(0);
 		auto *cancel_op1 = binop->getOperand(1);
 		if (counter_op_is_commutative && cancel_op0 == inverse_value)
@@ -238,8 +238,7 @@ static spv::Id peephole_trivial_arithmetic_identity(Converter::Impl &impl,
 	return 0;
 }
 
-static spv::Id resolve_llvm_actual_value_type(Converter::Impl &impl,
-                                              const llvm::Value *dependent_value,
+static spv::Id resolve_llvm_actual_value_type(Converter::Impl &impl, const llvm::Value *dependent_value,
                                               const llvm::Value *value, spv::Id default_value_type)
 {
 	auto itr = impl.llvm_value_actual_type.find(value);
@@ -343,8 +342,236 @@ static llvm::Value *get_bitwise_not_from_xor(llvm::Value *a, llvm::Value *b)
 		return nullptr;
 }
 
+struct BitProvenance
+{
+	const llvm::Value *provider = nullptr;
+	int8_t bits[32];
+};
+
+static bool get_bit_provenance(const llvm::Value *val, BitProvenance &prov,
+                               std::unordered_map<const llvm::Value *, BitProvenance> &memo, int depth)
+{
+	if (!val || depth > 16)
+		return false;
+
+	if (!val->getType()->isIntegerTy() || val->getType()->getIntegerBitWidth() > 32)
+		return false;
+
+	auto it = memo.find(val);
+	if (it != memo.end())
+	{
+		prov = it->second;
+		return true;
+	}
+
+	if (const auto *c = llvm::dyn_cast<llvm::ConstantInt>(val))
+	{
+		if (c->getUniqueInteger().getZExtValue() == 0)
+		{
+			prov.provider = nullptr;
+			std::fill(std::begin(prov.bits), std::end(prov.bits), int8_t(-1));
+			memo[val] = prov;
+			return true;
+		}
+		return false;
+	}
+
+	unsigned opcode = 0;
+	const llvm::Value *op0 = nullptr;
+	const llvm::Value *op1 = nullptr;
+
+	if (const auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(val))
+	{
+		opcode = binop->getOpcode();
+		op0 = binop->getOperand(0);
+		op1 = binop->getOperand(1);
+	}
+	else if (const auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(val))
+	{
+		opcode = cexpr->getOpcode();
+		if (cexpr->getNumOperands() >= 2)
+		{
+			op0 = cexpr->getOperand(0);
+			op1 = cexpr->getOperand(1);
+		}
+	}
+
+	if (opcode == llvm::Instruction::BinaryOps::Or || opcode == llvm::Instruction::BinaryOps::Xor)
+	{
+		BitProvenance lhs, rhs;
+		if (!get_bit_provenance(op0, lhs, memo, depth + 1) || !get_bit_provenance(op1, rhs, memo, depth + 1))
+			return false;
+
+		if (lhs.provider && rhs.provider && lhs.provider != rhs.provider)
+			return false;
+
+		prov.provider = lhs.provider ? lhs.provider : rhs.provider;
+		for (unsigned i = 0; i < 32; ++i)
+		{
+			if (lhs.bits[i] != -1 && rhs.bits[i] != -1)
+			{
+				if (lhs.bits[i] != rhs.bits[i])
+					return false;
+				prov.bits[i] = lhs.bits[i];
+			}
+			else if (lhs.bits[i] != -1)
+			{
+				prov.bits[i] = lhs.bits[i];
+			}
+			else
+			{
+				prov.bits[i] = rhs.bits[i];
+			}
+		}
+		memo[val] = prov;
+		return true;
+	}
+	else if (opcode == llvm::Instruction::BinaryOps::And)
+	{
+		const llvm::Value *val_op = nullptr;
+		const llvm::ConstantInt *c_op = llvm::dyn_cast<llvm::ConstantInt>(op1);
+		if (c_op)
+		{
+			val_op = op0;
+		}
+		else if ((c_op = llvm::dyn_cast<llvm::ConstantInt>(op0)))
+		{
+			val_op = op1;
+		}
+
+		if (!c_op || !val_op)
+			return false;
+
+		BitProvenance base;
+		if (!get_bit_provenance(val_op, base, memo, depth + 1))
+			return false;
+
+		prov.provider = base.provider;
+		uint64_t mask = c_op->getUniqueInteger().getZExtValue();
+		for (unsigned i = 0; i < 32; ++i)
+		{
+			if ((mask & (1ull << i)) != 0)
+				prov.bits[i] = base.bits[i];
+			else
+				prov.bits[i] = -1;
+		}
+		memo[val] = prov;
+		return true;
+	}
+	else if (opcode == llvm::Instruction::BinaryOps::Shl)
+	{
+		const auto *c_op = llvm::dyn_cast<llvm::ConstantInt>(op1);
+		if (!c_op)
+			return false;
+
+		uint64_t shift = c_op->getUniqueInteger().getZExtValue();
+		if (shift >= 32)
+		{
+			prov.provider = nullptr;
+			std::fill(std::begin(prov.bits), std::end(prov.bits), int8_t(-1));
+			memo[val] = prov;
+			return true;
+		}
+
+		BitProvenance base;
+		if (!get_bit_provenance(op0, base, memo, depth + 1))
+			return false;
+
+		prov.provider = base.provider;
+		for (unsigned i = 0; i < shift; ++i)
+			prov.bits[i] = -1;
+		for (unsigned i = shift; i < 32; ++i)
+			prov.bits[i] = base.bits[i - shift];
+		memo[val] = prov;
+		return true;
+	}
+	else if (opcode == llvm::Instruction::BinaryOps::LShr)
+	{
+		const auto *c_op = llvm::dyn_cast<llvm::ConstantInt>(op1);
+		if (!c_op)
+			return false;
+
+		uint64_t shift = c_op->getUniqueInteger().getZExtValue();
+		if (shift >= 32)
+		{
+			prov.provider = nullptr;
+			std::fill(std::begin(prov.bits), std::end(prov.bits), int8_t(-1));
+			memo[val] = prov;
+			return true;
+		}
+
+		BitProvenance base;
+		if (!get_bit_provenance(op0, base, memo, depth + 1))
+			return false;
+
+		prov.provider = base.provider;
+		for (unsigned i = 0; i < 32 - shift; ++i)
+			prov.bits[i] = base.bits[i + shift];
+		for (unsigned i = 32 - shift; i < 32; ++i)
+			prov.bits[i] = -1;
+		memo[val] = prov;
+		return true;
+	}
+
+	// Leaf value
+	unsigned width = val->getType()->getIntegerBitWidth();
+	prov.provider = val;
+	for (unsigned i = 0; i < width; ++i)
+		prov.bits[i] = static_cast<int8_t>(i);
+	for (unsigned i = width; i < 32; ++i)
+		prov.bits[i] = -1;
+	memo[val] = prov;
+	return true;
+}
+
+template <typename T>
+static const llvm::Value *match_generic_bitreverse(const T *instruction, unsigned &shift_amount)
+{
+	if (!instruction->getType()->isIntegerTy() || instruction->getType()->getIntegerBitWidth() != 32)
+		return nullptr;
+
+	unsigned opcode = instruction->getOpcode();
+	if (opcode != llvm::Instruction::BinaryOps::Or && opcode != llvm::Instruction::BinaryOps::Xor)
+		return nullptr;
+
+	std::unordered_map<const llvm::Value *, BitProvenance> memo;
+	BitProvenance prov;
+	if (!get_bit_provenance(instruction, prov, memo, 0) || !prov.provider)
+		return nullptr;
+
+	int max_dst = -1;
+	for (int i = 31; i >= 0; --i)
+	{
+		if (prov.bits[i] != -1)
+		{
+			max_dst = i;
+			break;
+		}
+	}
+
+	// Require at least 2 bits to be non-trivial
+	if (max_dst < 1)
+		return nullptr;
+
+	int n = max_dst + 1;
+	for (int i = 0; i < n; ++i)
+	{
+		if (prov.bits[i] != (n - 1 - i))
+			return nullptr;
+	}
+	for (int i = n; i < 32; ++i)
+	{
+		if (prov.bits[i] != -1)
+			return nullptr;
+	}
+
+	shift_amount = 32 - n;
+	return prov.provider;
+}
+
 template <typename InstructionType>
-static spv::Id emit_integer_division_instruction(Converter::Impl &impl, const InstructionType *instruction, spv::Op opcode)
+static spv::Id emit_integer_division_instruction(Converter::Impl &impl, const InstructionType *instruction,
+                                                 spv::Op opcode)
 {
 	auto &builder = impl.builder();
 
@@ -374,8 +601,8 @@ static spv::Id emit_integer_division_instruction(Converter::Impl &impl, const In
 
 	// No need to add any extra code for instructions that have a constant
 	// divisor that isn't zero
-	bool is_constant_divisor = llvm::isa<llvm::ConstantInt>(divisor) &&
-		instruction->getType()->getTypeID() != llvm::Type::TypeID::VectorTyID;
+	bool is_constant_divisor =
+	    llvm::isa<llvm::ConstantInt>(divisor) && instruction->getType()->getTypeID() != llvm::Type::TypeID::VectorTyID;
 
 	if (is_constant_divisor && llvm::cast<llvm::ConstantInt>(divisor)->getUniqueInteger().getZExtValue())
 	{
@@ -505,7 +732,8 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		opcode = spv::OpFMul;
 		is_precision_sensitive = true;
 		can_relax_precision = true;
-		if (spv::Id id = peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FDiv, true))
+		if (spv::Id id =
+		        peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FDiv, true))
 			return id;
 		break;
 	}
@@ -514,7 +742,8 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		opcode = spv::OpFDiv;
 		is_precision_sensitive = true;
 		can_relax_precision = true;
-		if (spv::Id id = peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FMul, false))
+		if (spv::Id id =
+		        peephole_trivial_arithmetic_identity(impl, instruction, llvm::BinaryOperator::BinaryOps::FMul, false))
 			return id;
 		if (spv::Id id = emit_fixup_fdiv_sqrt(impl, instruction))
 			return id;
@@ -595,6 +824,40 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 		}
 
 		opcode = type->getIntegerBitWidth() == 1 ? spv::OpLogicalNotEqual : spv::OpBitwiseXor;
+		if (type->getIntegerBitWidth() != 1)
+		{
+			unsigned shift_amount = 0;
+			if (const auto *src = match_generic_bitreverse(instruction, shift_amount))
+			{
+				if (shift_amount == 0)
+				{
+					Operation *brev;
+					if (llvm::isa<llvm::ConstantExpr>(instruction))
+						brev = impl.allocate(spv::OpBitReverse, impl.get_type_id(instruction->getType()));
+					else
+						brev = impl.allocate(spv::OpBitReverse, instruction);
+					brev->add_id(impl.get_id_for_value(src));
+					impl.add(brev);
+					return brev->id;
+				}
+				else
+				{
+					auto *brev = impl.allocate(spv::OpBitReverse, impl.get_type_id(instruction->getType()));
+					brev->add_id(impl.get_id_for_value(src));
+					impl.add(brev);
+
+					Operation *shift;
+					if (llvm::isa<llvm::ConstantExpr>(instruction))
+						shift = impl.allocate(spv::OpShiftRightLogical, impl.get_type_id(instruction->getType()));
+					else
+						shift = impl.allocate(spv::OpShiftRightLogical, instruction);
+					shift->add_id(brev->id);
+					shift->add_id(impl.builder().makeUintConstant(shift_amount));
+					impl.add(shift);
+					return shift->id;
+				}
+			}
+		}
 		break;
 
 	case llvm::BinaryOperator::BinaryOps::And:
@@ -606,9 +869,44 @@ static spv::Id emit_binary_instruction_impl(Converter::Impl &impl, const Instruc
 
 	case llvm::BinaryOperator::BinaryOps::Or:
 		if (type->getIntegerBitWidth() == 1)
+		{
 			opcode = spv::OpLogicalOr;
+		}
 		else
+		{
 			opcode = spv::OpBitwiseOr;
+			unsigned shift_amount = 0;
+			if (const auto *src = match_generic_bitreverse(instruction, shift_amount))
+			{
+				if (shift_amount == 0)
+				{
+					Operation *brev;
+					if (llvm::isa<llvm::ConstantExpr>(instruction))
+						brev = impl.allocate(spv::OpBitReverse, impl.get_type_id(instruction->getType()));
+					else
+						brev = impl.allocate(spv::OpBitReverse, instruction);
+					brev->add_id(impl.get_id_for_value(src));
+					impl.add(brev);
+					return brev->id;
+				}
+				else
+				{
+					auto *brev = impl.allocate(spv::OpBitReverse, impl.get_type_id(instruction->getType()));
+					brev->add_id(impl.get_id_for_value(src));
+					impl.add(brev);
+
+					Operation *shift;
+					if (llvm::isa<llvm::ConstantExpr>(instruction))
+						shift = impl.allocate(spv::OpShiftRightLogical, impl.get_type_id(instruction->getType()));
+					else
+						shift = impl.allocate(spv::OpShiftRightLogical, instruction);
+					shift->add_id(brev->id);
+					shift->add_id(impl.builder().makeUintConstant(shift_amount));
+					impl.add(shift);
+					return shift->id;
+				}
+			}
+		}
 		break;
 
 	default:
@@ -763,7 +1061,8 @@ static spv::Id emit_boolean_trunc_instruction(Converter::Impl &impl, const Instr
 }
 
 template <typename InstructionType>
-static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const InstructionType *instruction, bool is_signed)
+static spv::Id emit_boolean_convert_instruction(Converter::Impl &impl, const InstructionType *instruction,
+                                                bool is_signed)
 {
 	auto &builder = impl.builder();
 	auto *output_type = instruction->getType();
@@ -852,8 +1151,8 @@ static spv::Id emit_masked_cast_instruction(Converter::Impl &impl, const Instruc
 	if (physical_output_bits == physical_input_bits)
 	{
 		// We cannot use a cast operation in SPIR-V here, just extend the value to physical size and roll with it.
-		spv::Id extended_id = build_naturally_extended_value(impl, instruction->getOperand(0), logical_bits,
-		                                                     opcode == spv::OpSConvert);
+		spv::Id extended_id =
+		    build_naturally_extended_value(impl, instruction->getOperand(0), logical_bits, opcode == spv::OpSConvert);
 		impl.rewrite_value(instruction, extended_id);
 		return extended_id;
 	}
@@ -861,8 +1160,8 @@ static spv::Id emit_masked_cast_instruction(Converter::Impl &impl, const Instruc
 	{
 		// Before extending, we must properly sign-extend.
 		auto *mask_op = impl.allocate(opcode, instruction);
-		mask_op->add_id(build_naturally_extended_value(impl, instruction->getOperand(0), logical_bits,
-		                                               opcode == spv::OpSConvert));
+		mask_op->add_id(
+		    build_naturally_extended_value(impl, instruction->getOperand(0), logical_bits, opcode == spv::OpSConvert));
 		impl.add(mask_op);
 		return mask_op->id;
 	}
@@ -982,9 +1281,8 @@ static spv::Id emit_dxbc_tgsm_bitcast(Converter::Impl &impl, const InstructionTy
 
 			if (output_pointer_depth < input_pointer_depth)
 			{
-				auto *chain = impl.allocate(
-				    spv::OpInBoundsAccessChain,
-				    builder.makePointer(spv::StorageClassWorkgroup, builder.makeUintType(32)));
+				auto *chain = impl.allocate(spv::OpInBoundsAccessChain,
+				                            builder.makePointer(spv::StorageClassWorkgroup, builder.makeUintType(32)));
 
 				chain->add_id(input_id);
 				while (output_pointer_depth < input_pointer_depth)
@@ -1022,8 +1320,8 @@ spv::Id emit_bypass_fp16_trunc(Converter::Impl &impl, const llvm::Instruction *i
 
 		if (const auto *binop = llvm::dyn_cast<llvm::BinaryOperator>(input_uint))
 		{
-			if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::LShr &&
-			    get_constant_operand(binop, 1, &cop) && cop == 16)
+			if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::LShr && get_constant_operand(binop, 1, &cop) &&
+			    cop == 16)
 			{
 				input_uint = binop->getOperand(0);
 				component = 1;
@@ -1223,8 +1521,7 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 
 	bool is_fp16_quant = value_cast_is_fp16_quantization(impl, instruction, &value_id);
 
-	if (is_fp16_quant && impl.execution_mode_meta.native_16bit_operations &&
-	    !impl.execution_mode_meta.float_controls2)
+	if (is_fp16_quant && impl.execution_mode_meta.native_16bit_operations && !impl.execution_mode_meta.float_controls2)
 	{
 		// D3D12 compilers will enforce a truncate here through a FP32 -> FP16 -> FP32 chain,
 		// where Vulkan compilers ... don't :(
@@ -1263,8 +1560,7 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 	}
 
 	if (instruction->getOpcode() == llvm::Instruction::CastOps::FPTrunc &&
-	    instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID &&
-	    impl.support_native_fp16_operations())
+	    instruction->getType()->getTypeID() == llvm::Type::TypeID::HalfTyID && impl.support_native_fp16_operations())
 	{
 		// Avoid roundtrip. Can happen for shaders which cast between min16 types, legacy packing, etc, etc.
 		if (spv::Id id = emit_bypass_fp16_trunc(impl, instruction))
@@ -1381,8 +1677,7 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 
 		spv::Id value_type = impl.get_type_id(pointee_type);
 		// In case we get back-to-back pointer bitcasts for no good reason :v
-		value_type = resolve_llvm_actual_value_type(impl, instruction,
-		                                            instruction->getOperand(0), value_type);
+		value_type = resolve_llvm_actual_value_type(impl, instruction, instruction->getOperand(0), value_type);
 
 		spv::StorageClass fallback_storage;
 		if (static_cast<DXIL::AddressSpace>(pointer_type->getAddressSpace()) == DXIL::AddressSpace::GroupShared)
@@ -1675,9 +1970,8 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 		if (impl.masked_alloca_forward_gep.count(instruction))
 			return true;
 
-		return emit_gep_as_cbuffer_scalar_offset(
-			impl, instruction,
-			tracker.cbv_handle, tracker.itr->second.scalar_index_offset, tracker.itr->second.stride);
+		return emit_gep_as_cbuffer_scalar_offset(impl, instruction, tracker.cbv_handle,
+		                                         tracker.itr->second.scalar_index_offset, tracker.itr->second.stride);
 	}
 
 	auto global_itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getOperand(0));
@@ -1700,7 +1994,8 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	ags_getelementptr_filter(impl, instruction, type_id);
 
 	spv::StorageClass storage;
-	if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::PhysicalNodeIO)
+	if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) ==
+	    DXIL::AddressSpace::PhysicalNodeIO)
 		storage = spv::StorageClassPhysicalStorageBuffer;
 	else
 		storage = impl.get_effective_storage_class(instruction->getOperand(0), builder.getStorageClass(ptr_id));
@@ -1742,8 +2037,8 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 					{
 						auto *global_var = llvm::dyn_cast<llvm::GlobalVariable>(instruction->getOperand(0));
 						if (global_var && global_var->hasInitializer() && global_var->isConstant() &&
-						    impl.options.extended_robustness.constant_lut &&
-						    !elementptr_shift && address_space == DXIL::AddressSpace::Thread)
+						    impl.options.extended_robustness.constant_lut && !elementptr_shift &&
+						    address_space == DXIL::AddressSpace::Thread)
 						{
 							// Robustness for constant LUTs.
 							if (!impl.glsl_std450_ext)
@@ -1768,13 +2063,15 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 
 							impl.handle_to_robustness[instruction] = is_in_bounds->id;
 						}
-						else if (address_space == DXIL::AddressSpace::GroupShared && impl.options.extended_robustness.group_shared)
+						else if (address_space == DXIL::AddressSpace::GroupShared &&
+						         impl.options.extended_robustness.group_shared)
 						{
 							// Need to handle atomics as well, and it'll be a mess to add support for that.
 							LOGW("Robust group shared GEP not yet implemented.\n");
 						}
 						else if (impl.options.instruction_instrumentation.enabled &&
-						         impl.options.instruction_instrumentation.type == InstructionInstrumentationType::ExpectAssume)
+						         impl.options.instruction_instrumentation.type ==
+						             InstructionInstrumentationType::ExpectAssume)
 						{
 							// Fallback expect-assume case.
 							unsigned num_elements = array_type->getArrayNumElements();
@@ -1831,8 +2128,7 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 static bool needs_group_shared_auto_barrier(Converter::Impl &impl, const llvm::Value *ptr_value)
 {
 	return impl.shader_analysis.needs_auto_group_shared_barriers &&
-	       DXIL::AddressSpace(ptr_value->getType()->getPointerAddressSpace()) ==
-	       DXIL::AddressSpace::GroupShared;
+	       DXIL::AddressSpace(ptr_value->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared;
 }
 
 static bool vkmm_requires_auto_visibility(Converter::Impl &impl, const llvm::Value *ptr)
@@ -1871,12 +2167,11 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	// We need to get the ID here as the constexpr chain could set our type.
 	spv::Id value_id = impl.get_id_for_value(instruction->getPointerOperand());
 
-	spv::Id remapped_type_id = resolve_llvm_actual_value_type(impl, nullptr,
-	                                                          instruction->getPointerOperand(), 0);
+	spv::Id remapped_type_id = resolve_llvm_actual_value_type(impl, nullptr, instruction->getPointerOperand(), 0);
 
 	auto addr_space = DXIL::AddressSpace(instruction->getPointerOperand()->getType()->getPointerAddressSpace());
-	bool non_private = addr_space != DXIL::AddressSpace::Thread &&
-	                   impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
+	bool non_private =
+	    addr_space != DXIL::AddressSpace::Thread && impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
 
 	if (remapped_type_id != 0)
 	{
@@ -1895,7 +2190,8 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	else
 	{
 		auto robust_itr = impl.handle_to_robustness.find(instruction->getPointerOperand());
-		Operation *op = impl.allocate(robust_itr != impl.handle_to_robustness.end() ? spv::PseudoOpMaskedLoad : spv::OpLoad, instruction);
+		Operation *op = impl.allocate(
+		    robust_itr != impl.handle_to_robustness.end() ? spv::PseudoOpMaskedLoad : spv::OpLoad, instruction);
 		op->add_id(value_id);
 
 		if (needs_group_shared_auto_barrier(impl, instruction->getPointerOperand()))
@@ -1963,7 +2259,8 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 		return true;
 
 	auto robust_itr = impl.handle_to_robustness.find(instruction->getOperand(1));
-	Operation *op = impl.allocate(robust_itr != impl.handle_to_robustness.end() ? spv::PseudoOpMaskedStore : spv::OpStore);
+	Operation *op =
+	    impl.allocate(robust_itr != impl.handle_to_robustness.end() ? spv::PseudoOpMaskedStore : spv::OpStore);
 
 	if (needs_group_shared_auto_barrier(impl, instruction->getOperand(1)))
 		op->flags |= Operation::AutoGroupSharedBarrier;
@@ -1996,7 +2293,7 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 		// TODO: Properly track aligned size based on the GEP, but for now, just assume scalar.
 		op->add_literal(spv::MemoryAccessAlignedMask);
 		auto size_alignment = impl.get_physical_size_for_type(
-			impl.builder().getContainedTypeId(impl.get_type_id(instruction->getOperand(1)->getType(), true)));
+		    impl.builder().getContainedTypeId(impl.get_type_id(instruction->getOperand(1)->getType(), true)));
 		op->add_literal(size_alignment.alignment);
 
 		auto_visibility = vkmm_requires_auto_visibility(impl, instruction->getOperand(1));
@@ -2193,9 +2490,7 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 
 	auto itr = impl.llvm_composite_meta.find(instruction->getAggregateOperand());
 
-	if (itr != impl.llvm_composite_meta.end() &&
-	    itr->second.components == 1 &&
-	    !itr->second.forced_composite)
+	if (itr != impl.llvm_composite_meta.end() && itr->second.components == 1 && !itr->second.forced_composite)
 	{
 		// Forward the ID. The composite was originally emitted as a scalar.
 		spv::Id rewrite_id = impl.get_id_for_value(instruction->getAggregateOperand());
@@ -2373,7 +2668,8 @@ bool emit_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgIn
 		cmp_op->add_ids({ atomic_op->id, impl.get_id_for_value(instruction->getCompareOperand()) });
 		impl.add(cmp_op);
 
-		spv::Id cmpxchg_type = impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, 0, "CmpXchgResult");
+		spv::Id cmpxchg_type =
+		    impl.get_struct_type({ builder.makeUintType(bits), builder.makeBoolType() }, 0, "CmpXchgResult");
 
 		Operation *op = impl.allocate(spv::OpCompositeConstruct, instruction, cmpxchg_type);
 		op->add_ids({ atomic_op->id, cmp_op->id });
@@ -2547,7 +2843,8 @@ bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *inst)
 		impl.masked_alloca_forward_gep.erase(llvm::cast<llvm::GetElementPtrInst>(inst->getPointerOperand()));
 	}
 
-	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) ==
+	    DXIL::AddressSpace::GroupShared)
 		impl.shader_analysis.has_group_shared_access = true;
 
 	if (auto *const_expr = llvm::dyn_cast<llvm::ConstantExpr>(inst->getPointerOperand()))
@@ -2571,10 +2868,8 @@ bool analyze_load_instruction(Converter::Impl &impl, const llvm::LoadInst *inst)
 	return true;
 }
 
-static bool analyze_alloca_store(Converter::Impl &impl,
-                                 const llvm::AllocaInst *alloca_inst,
-                                 AllocaCBVForwardingTracking &tracking,
-                                 const llvm::Value *index,
+static bool analyze_alloca_store(Converter::Impl &impl, const llvm::AllocaInst *alloca_inst,
+                                 AllocaCBVForwardingTracking &tracking, const llvm::Value *index,
                                  const llvm::Value *store_value)
 {
 	// If we observe store after load, invalidate.
@@ -2609,8 +2904,7 @@ static bool analyze_alloca_store(Converter::Impl &impl,
 	if (!cbv_index)
 		return false;
 
-	uint32_t scalar_index_offset =
-		cbv_index->getUniqueInteger().getZExtValue() * 4 + extract_value->getIndices()[0];
+	uint32_t scalar_index_offset = cbv_index->getUniqueInteger().getZExtValue() * 4 + extract_value->getIndices()[0];
 
 	// Don't want negative word offsets, that does not make much sense.
 	if (scalar_index_offset < store_index)
@@ -2669,7 +2963,7 @@ static void register_ray_query_mapping(Converter::Impl &impl, const llvm::Value 
 		{
 			auto &mappings = impl.shader_analysis.ray_query.alloca_mappings;
 			auto itr = std::find_if(mappings.begin(), mappings.end(),
-									[&](const auto &mapping) { return mapping.alloca == alloca; });
+			                        [&](const auto &mapping) { return mapping.alloca == alloca; });
 
 			if (itr == mappings.end())
 			{
@@ -2702,9 +2996,8 @@ bool analyze_phi_instruction(Converter::Impl &impl, const llvm::PHINode *instruc
 bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *inst)
 {
 	auto tracked = gep_pointer_to_alloca_tracked_inst(impl, inst->getOperand(1));
-	if (tracked.index && !analyze_alloca_store(
-		impl, tracked.alloca_inst,
-		tracked.itr->second, tracked.index, inst->getOperand(0)))
+	if (tracked.index &&
+	    !analyze_alloca_store(impl, tracked.alloca_inst, tracked.itr->second, tracked.index, inst->getOperand(0)))
 	{
 		impl.alloca_tracking.erase(tracked.itr);
 	}
@@ -2730,14 +3023,16 @@ bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *ins
 
 bool analyze_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *inst)
 {
-	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) ==
+	    DXIL::AddressSpace::GroupShared)
 		impl.shader_analysis.has_group_shared_access = true;
 	return true;
 }
 
 bool analyze_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgInst *inst)
 {
-	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) ==
+	    DXIL::AddressSpace::GroupShared)
 		impl.shader_analysis.has_group_shared_access = true;
 	return true;
 }
@@ -2776,17 +3071,15 @@ bool analyze_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *i
 	return true;
 }
 
-static void analyze_extractvalue_instruction(
-    Converter::Impl &impl, const llvm::Value *aggregate, unsigned index)
+static void analyze_extractvalue_instruction(Converter::Impl &impl, const llvm::Value *aggregate, unsigned index)
 {
 	auto &meta = impl.llvm_composite_meta[aggregate];
 	bool forward_progress = false;
 	const auto *phi = llvm::dyn_cast<llvm::PHINode>(aggregate);
 
 	bool is_fake_struct =
-	    std::find(impl.llvm_dxil_op_fake_struct_types.begin(),
-	              impl.llvm_dxil_op_fake_struct_types.end(), aggregate->getType()) !=
-	    impl.llvm_dxil_op_fake_struct_types.end();
+	    std::find(impl.llvm_dxil_op_fake_struct_types.begin(), impl.llvm_dxil_op_fake_struct_types.end(),
+		          aggregate->getType()) != impl.llvm_dxil_op_fake_struct_types.end();
 
 	bool splat_composite_access = phi && index < 4 && is_fake_struct;
 
@@ -2882,8 +3175,7 @@ bool analyze_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *ins
 	return true;
 }
 
-bool can_optimize_conditional_branch_to_static(
-    Converter::Impl &impl, const llvm::Value *value, bool &static_cond)
+bool can_optimize_conditional_branch_to_static(Converter::Impl &impl, const llvm::Value *value, bool &static_cond)
 {
 	// Can be expanded as needed.
 	// For now, search for common exhaustive loop unrolling patterns that DXC farts out.
@@ -2917,10 +3209,8 @@ bool can_optimize_conditional_branch_to_static(
 	if (!value_is_dx_op_instrinsic(lhs->getOperand(1), DXIL::Op::WaveGetLaneCount))
 		return false;
 
-	uint64_t upper_bound =
-	    num->getUniqueInteger().getZExtValue() / impl.options.subgroup_size.implementation_minimum;
-	uint64_t lower_bound =
-		num->getUniqueInteger().getZExtValue() / impl.options.subgroup_size.implementation_maximum;
+	uint64_t upper_bound = num->getUniqueInteger().getZExtValue() / impl.options.subgroup_size.implementation_minimum;
+	uint64_t lower_bound = num->getUniqueInteger().getZExtValue() / impl.options.subgroup_size.implementation_maximum;
 
 	if (lower_bound > rhs_value)
 	{
