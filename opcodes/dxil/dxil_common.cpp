@@ -211,13 +211,12 @@ bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
 			return false;
 	}
 
-	const llvm::ConstantInt *scale = nullptr;
 	const llvm::ConstantInt *bias = nullptr;
-	bool scale_log2 = false;
 	bool bias_is_add = false;
 	bool bias_negate = false;
+	uint64_t scale_factor = 1;
 
-	while (!scale && llvm::isa<llvm::BinaryOperator>(index))
+	while (scale_factor == 1 && llvm::isa<llvm::BinaryOperator>(index))
 	{
 		auto *binop = llvm::cast<llvm::BinaryOperator>(index);
 		auto *lhs = binop->getOperand(0);
@@ -227,12 +226,16 @@ bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
 		              binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Or ||
 		              binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Xor))
 		{
-			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
+			const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs);
+			const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs);
+
+			// Negative scaling factors is not something we want to deal with.
+			if (const_lhs && binop->getOpcode() != llvm::BinaryOperator::BinaryOps::Sub)
 			{
 				bias = const_lhs;
 				index = rhs;
 			}
-			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
+			else if (const_rhs)
 			{
 				bias = const_rhs;
 				index = lhs;
@@ -251,36 +254,32 @@ bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
 		{
 			if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
 			{
-				scale = const_rhs;
+				scale_factor = 1ull << const_rhs->getUniqueInteger().getZExtValue();
 				index = lhs;
 			}
 			else
 				break;
-
-			scale_log2 = true;
 		}
 		else if (binop->getOpcode() == llvm::BinaryOperator::BinaryOps::Mul)
 		{
 			if (const auto *const_lhs = llvm::dyn_cast<llvm::ConstantInt>(lhs))
 			{
-				scale = const_lhs;
+				scale_factor = const_lhs->getUniqueInteger().getZExtValue();
 				index = rhs;
 			}
 			else if (const auto *const_rhs = llvm::dyn_cast<llvm::ConstantInt>(rhs))
 			{
-				scale = const_rhs;
+				scale_factor = const_rhs->getUniqueInteger().getZExtValue();
 				index = lhs;
 			}
 			else
 				break;
-
-			scale_log2 = false;
 		}
 		else
 			break;
 	}
 
-	if (!scale && !bias)
+	if (scale_factor == 1 && !bias)
 	{
 		// We cannot split anything, but we might be able to vectorize if the stride alone carries us.
 		if (stride % element_size == 0)
@@ -294,12 +293,6 @@ bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
 			return false;
 	}
 
-	uint64_t scale_factor = 1;
-	if (scale)
-		scale_factor = scale->getUniqueInteger().getZExtValue();
-	if (scale_log2)
-		scale_factor = 1ull << scale_factor;
-
 	int64_t bias_factor = 0;
 	if (bias)
 		bias_factor = bias->getUniqueInteger().getSExtValue();
@@ -308,7 +301,9 @@ bool extract_raw_buffer_access_split(const llvm::Value *index, unsigned stride,
 
 	// If there is no bit overlap between scale_factor and bias_factor
 	// then the bitwise OR is equivalent to add.
-	if (!bias_is_add && (scale_factor & bias_factor) != 0)
+	// The bias factor also cannot be larger than the scale factor since for some multiples of scale factor,
+	// there will be bit-overlap.
+	if (!bias_is_add && ((scale_factor & bias_factor) != 0 || bias_factor > int64_t(scale_factor)))
 		return false;
 
 	scale_factor *= stride;

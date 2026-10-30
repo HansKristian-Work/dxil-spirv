@@ -1,0 +1,165 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_samplerless_texture_functions : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform usamplerBuffer _8;
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _12[];
+
+void main()
+{
+    imageStore(_12[0u], int(gl_GlobalInvocationID.x), uvec4(texelFetch(_8, int(63u - gl_GlobalInvocationID.x)).x));
+    imageStore(_12[1u], int(gl_GlobalInvocationID.x), uvec4(texelFetch(_8, int(gl_GlobalInvocationID.x + 4294967233u)).x));
+    imageStore(_12[2u], int(gl_GlobalInvocationID.x), uvec4(texelFetch(_8, int((gl_GlobalInvocationID.x | 2u) + 0u)).x));
+    imageStore(_12[3u], int(gl_GlobalInvocationID.x), uvec4(texelFetch(_8, int(((gl_GlobalInvocationID.x << 1u) | 2u) + 0u)).x));
+    imageStore(_12[4u], int(gl_GlobalInvocationID.x), uvec4(texelFetch(_8, int((gl_GlobalInvocationID.x * 4u) + 2u)).x));
+    imageStore(_12[5u], int(gl_GlobalInvocationID.x), uvec4(texelFetch(_8, int((gl_GlobalInvocationID.x ^ 32u) + 0u)).x));
+    imageStore(_12[6u], int(gl_GlobalInvocationID.x), uvec4(texelFetch(_8, int(((gl_GlobalInvocationID.x << 5u) ^ 32u) + 0u)).x));
+    imageStore(_12[7u], int(gl_GlobalInvocationID.x), uvec4(texelFetch(_8, int((gl_GlobalInvocationID.x * 64u) + 32u)).x));
+    imageStore(_12[8u], int(gl_GlobalInvocationID.x), uvec4(texelFetch(_8, int((gl_GlobalInvocationID.x * 48u) + 4u)).x));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 107
+; Schema: 0
+OpCapability Shader
+OpCapability SampledBuffer
+OpCapability ImageBuffer
+OpCapability RuntimeDescriptorArray
+OpCapability StorageTexelBufferArrayDynamicIndexing
+OpCapability VulkanMemoryModel
+OpExtension "SPV_EXT_descriptor_indexing"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12 %16
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 0
+OpDecorate %12 NonReadable
+OpDecorate %16 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 1 Unknown
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%10 = OpTypeRuntimeArray %9
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%14 = OpTypeVector %5 3
+%15 = OpTypePointer Input %14
+%16 = OpVariable %15 Input
+%17 = OpTypePointer Input %5
+%19 = OpConstant %5 0
+%22 = OpConstant %5 63
+%23 = OpTypeVector %5 4
+%26 = OpTypePointer UniformConstant %9
+%31 = OpConstant %5 4294967233
+%36 = OpConstant %5 1
+%40 = OpConstant %5 2
+%53 = OpConstant %5 3
+%59 = OpConstant %5 4
+%67 = OpConstant %5 32
+%72 = OpConstant %5 5
+%81 = OpConstant %5 6
+%87 = OpConstant %5 64
+%92 = OpConstant %5 7
+%96 = OpConstant %5 48
+%103 = OpConstant %5 8
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %106
+%106 = OpLabel
+%13 = OpLoad %6 %8
+%18 = OpAccessChain %17 %16 %19
+%20 = OpLoad %5 %18
+%21 = OpISub %5 %22 %20
+%24 = OpImageFetch %23 %13 %21
+%25 = OpCompositeExtract %5 %24 0
+%27 = OpAccessChain %26 %12 %19
+%28 = OpLoad %9 %27
+%29 = OpCompositeConstruct %23 %25 %25 %25 %25
+OpImageWrite %28 %20 %29 NonPrivateTexel
+%30 = OpIAdd %5 %20 %31
+%32 = OpIAdd %5 %20 %31
+%33 = OpImageFetch %23 %13 %32
+%34 = OpCompositeExtract %5 %33 0
+%35 = OpAccessChain %26 %12 %36
+%37 = OpLoad %9 %35
+%38 = OpCompositeConstruct %23 %34 %34 %34 %34
+OpImageWrite %37 %20 %38 NonPrivateTexel
+%39 = OpBitwiseOr %5 %20 %40
+%41 = OpIAdd %5 %39 %19
+%42 = OpImageFetch %23 %13 %41
+%43 = OpCompositeExtract %5 %42 0
+%44 = OpAccessChain %26 %12 %40
+%45 = OpLoad %9 %44
+%46 = OpCompositeConstruct %23 %43 %43 %43 %43
+OpImageWrite %45 %20 %46 NonPrivateTexel
+%47 = OpShiftLeftLogical %5 %20 %36
+%48 = OpBitwiseOr %5 %47 %40
+%49 = OpIAdd %5 %48 %19
+%50 = OpImageFetch %23 %13 %49
+%51 = OpCompositeExtract %5 %50 0
+%52 = OpAccessChain %26 %12 %53
+%54 = OpLoad %9 %52
+%55 = OpCompositeConstruct %23 %51 %51 %51 %51
+OpImageWrite %54 %20 %55 NonPrivateTexel
+%56 = OpShiftLeftLogical %5 %20 %40
+%57 = OpBitwiseOr %5 %56 %40
+%58 = OpIMul %5 %20 %59
+%60 = OpIAdd %5 %58 %40
+%61 = OpImageFetch %23 %13 %60
+%62 = OpCompositeExtract %5 %61 0
+%63 = OpAccessChain %26 %12 %59
+%64 = OpLoad %9 %63
+%65 = OpCompositeConstruct %23 %62 %62 %62 %62
+OpImageWrite %64 %20 %65 NonPrivateTexel
+%66 = OpBitwiseXor %5 %20 %67
+%68 = OpIAdd %5 %66 %19
+%69 = OpImageFetch %23 %13 %68
+%70 = OpCompositeExtract %5 %69 0
+%71 = OpAccessChain %26 %12 %72
+%73 = OpLoad %9 %71
+%74 = OpCompositeConstruct %23 %70 %70 %70 %70
+OpImageWrite %73 %20 %74 NonPrivateTexel
+%75 = OpShiftLeftLogical %5 %20 %72
+%76 = OpBitwiseXor %5 %75 %67
+%77 = OpIAdd %5 %76 %19
+%78 = OpImageFetch %23 %13 %77
+%79 = OpCompositeExtract %5 %78 0
+%80 = OpAccessChain %26 %12 %81
+%82 = OpLoad %9 %80
+%83 = OpCompositeConstruct %23 %79 %79 %79 %79
+OpImageWrite %82 %20 %83 NonPrivateTexel
+%84 = OpShiftLeftLogical %5 %20 %81
+%85 = OpBitwiseOr %5 %84 %67
+%86 = OpIMul %5 %20 %87
+%88 = OpIAdd %5 %86 %67
+%89 = OpImageFetch %23 %13 %88
+%90 = OpCompositeExtract %5 %89 0
+%91 = OpAccessChain %26 %12 %92
+%93 = OpLoad %9 %91
+%94 = OpCompositeConstruct %23 %90 %90 %90 %90
+OpImageWrite %93 %20 %94 NonPrivateTexel
+%95 = OpIMul %5 %20 %96
+%97 = OpBitwiseOr %5 %95 %59
+%98 = OpIMul %5 %20 %96
+%99 = OpIAdd %5 %98 %59
+%100 = OpImageFetch %23 %13 %99
+%101 = OpCompositeExtract %5 %100 0
+%102 = OpAccessChain %26 %12 %103
+%104 = OpLoad %9 %102
+%105 = OpCompositeConstruct %23 %101 %101 %101 %101
+OpImageWrite %104 %20 %105 NonPrivateTexel
+OpReturn
+OpFunctionEnd
+#endif
