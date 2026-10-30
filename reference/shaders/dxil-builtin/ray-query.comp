@@ -157,28 +157,28 @@ void main()
     uint _215 = rayQueryGetRayFlagsEXT(_26);
     imageStore(_12, int((_401 | 9u) + 0u), uvec4(_215));
     vec3 _220 = rayQueryGetWorldRayOriginEXT(_26);
-    imageStore(_13, int(_401 + 10u), uvec4(floatBitsToUint(_220.x)));
+    imageStore(_13, int((_401 | 10u) + 0u), uvec4(floatBitsToUint(_220.x)));
     vec3 _226 = rayQueryGetWorldRayDirectionEXT(_26);
     imageStore(_13, int((_401 | 11u) + 0u), uvec4(floatBitsToUint(_226.y)));
     float _233 = rayQueryGetRayTMinEXT(_26);
-    imageStore(_13, int(_401 + 12u), uvec4(floatBitsToUint(_233)));
+    imageStore(_13, int((_401 | 12u) + 0u), uvec4(floatBitsToUint(_233)));
     uint _238 = rayQueryGetIntersectionTypeEXT(_26, bool(1u));
     if (!(_238 == 0u))
     {
         uint _240 = rayQueryGetIntersectionInstanceIdEXT(_26, bool(1u));
-        imageStore(_12, int(_401 + 32u), uvec4(_240));
+        imageStore(_12, int((_401 | 32u) + 0u), uvec4(_240));
         uint _245 = rayQueryGetIntersectionInstanceCustomIndexEXT(_26, bool(1u));
         imageStore(_12, int((_401 | 33u) + 0u), uvec4(_245));
         uint _250 = rayQueryGetIntersectionGeometryIndexEXT(_26, bool(1u));
-        imageStore(_12, int(_401 + 34u), uvec4(_250));
+        imageStore(_12, int((_401 | 34u) + 0u), uvec4(_250));
         uint _255 = rayQueryGetIntersectionPrimitiveIndexEXT(_26, bool(1u));
         imageStore(_12, int((_401 | 35u) + 0u), uvec4(_255));
         vec3 _260 = rayQueryGetIntersectionObjectRayOriginEXT(_26, bool(1u));
-        imageStore(_13, int(_401 + 36u), uvec4(floatBitsToUint(_260.x)));
+        imageStore(_13, int((_401 | 36u) + 0u), uvec4(floatBitsToUint(_260.x)));
         vec3 _267 = rayQueryGetIntersectionObjectRayDirectionEXT(_26, bool(1u));
         imageStore(_13, int((_401 | 37u) + 0u), uvec4(floatBitsToUint(_267.y)));
         uint _274 = rayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetEXT(_26, bool(1u));
-        imageStore(_12, int(_401 + 38u), uvec4(_274));
+        imageStore(_12, int((_401 | 38u) + 0u), uvec4(_274));
         mat4x3 _279 = rayQueryGetIntersectionWorldToObjectEXT(_26, bool(1u));
         mat4x3 _281 = rayQueryGetIntersectionWorldToObjectEXT(_26, bool(1u));
         mat4x3 _283 = rayQueryGetIntersectionWorldToObjectEXT(_26, bool(1u));
@@ -220,7 +220,7 @@ void main()
     {
         imageStore(_12, int((_401 | 13u) + 0u), uvec4(_402));
         vec2 _387 = rayQueryGetIntersectionBarycentricsEXT(_26, bool(1u));
-        imageStore(_13, int(_401 + 44u), uvec4(floatBitsToUint(_387.y)));
+        imageStore(_13, int((_401 | 44u) + 0u), uvec4(floatBitsToUint(_387.y)));
         bool _394 = rayQueryGetIntersectionFrontFaceEXT(_26, bool(1u));
         imageStore(_12, int((_401 | 45u) + 0u), uvec4(_394 ? 100u : 10u));
     }
@@ -228,7 +228,7 @@ void main()
     {
         if (_372 == 2u)
         {
-            imageStore(_12, int(_401 + 14u), uvec4(_403));
+            imageStore(_12, int((_401 | 14u) + 0u), uvec4(_403));
         }
         else
         {
@@ -617,7 +617,7 @@ OpImageWrite %19 %218 %219 NonPrivateTexel
 %220 = OpRayQueryGetWorldRayOriginKHR %36 %26
 %221 = OpCompositeExtract %29 %220 0
 %222 = OpBitwiseOr %9 %211 %203
-%223 = OpIAdd %9 %211 %203
+%223 = OpIAdd %9 %222 %47
 %224 = OpBitcast %9 %221
 %225 = OpCompositeConstruct %56 %224 %224 %224 %224
 OpImageWrite %18 %223 %225 NonPrivateTexel
@@ -630,7 +630,7 @@ OpImageWrite %18 %223 %225 NonPrivateTexel
 OpImageWrite %18 %230 %232 NonPrivateTexel
 %233 = OpRayQueryGetRayTMinKHR %29 %26
 %234 = OpBitwiseOr %9 %211 %155
-%235 = OpIAdd %9 %211 %155
+%235 = OpIAdd %9 %234 %47
 %236 = OpBitcast %9 %233
 %237 = OpCompositeConstruct %56 %236 %236 %236 %236
 OpImageWrite %18 %235 %237 NonPrivateTexel
@@ -641,7 +641,7 @@ OpBranchConditional %239 %428 %427
 %427 = OpLabel
 %240 = OpRayQueryGetIntersectionInstanceIdKHR %9 %26 %60
 %241 = OpBitwiseOr %9 %211 %242
-%243 = OpIAdd %9 %211 %242
+%243 = OpIAdd %9 %241 %47
 %244 = OpCompositeConstruct %56 %240 %240 %240 %240
 OpImageWrite %19 %243 %244 NonPrivateTexel
 %245 = OpRayQueryGetIntersectionInstanceCustomIndexKHR %9 %26 %60
@@ -651,7 +651,7 @@ OpImageWrite %19 %243 %244 NonPrivateTexel
 OpImageWrite %19 %248 %249 NonPrivateTexel
 %250 = OpRayQueryGetIntersectionGeometryIndexKHR %9 %26 %60
 %251 = OpBitwiseOr %9 %211 %252
-%253 = OpIAdd %9 %211 %252
+%253 = OpIAdd %9 %251 %47
 %254 = OpCompositeConstruct %56 %250 %250 %250 %250
 OpImageWrite %19 %253 %254 NonPrivateTexel
 %255 = OpRayQueryGetIntersectionPrimitiveIndexKHR %9 %26 %60
@@ -662,7 +662,7 @@ OpImageWrite %19 %258 %259 NonPrivateTexel
 %260 = OpRayQueryGetIntersectionObjectRayOriginKHR %36 %26 %60
 %261 = OpCompositeExtract %29 %260 0
 %262 = OpBitwiseOr %9 %211 %263
-%264 = OpIAdd %9 %211 %263
+%264 = OpIAdd %9 %262 %47
 %265 = OpBitcast %9 %261
 %266 = OpCompositeConstruct %56 %265 %265 %265 %265
 OpImageWrite %18 %264 %266 NonPrivateTexel
@@ -675,7 +675,7 @@ OpImageWrite %18 %264 %266 NonPrivateTexel
 OpImageWrite %18 %271 %273 NonPrivateTexel
 %274 = OpRayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetKHR %9 %26 %60
 %275 = OpBitwiseOr %9 %211 %276
-%277 = OpIAdd %9 %211 %276
+%277 = OpIAdd %9 %275 %47
 %278 = OpCompositeConstruct %56 %274 %274 %274 %274
 OpImageWrite %19 %277 %278 NonPrivateTexel
 %279 = OpRayQueryGetIntersectionWorldToObjectKHR %98 %26 %60
@@ -795,7 +795,7 @@ OpImageWrite %19 %377 %378 NonPrivateTexel
 OpBranch %432
 %431 = OpLabel
 %379 = OpBitwiseOr %9 %211 %380
-%381 = OpIAdd %9 %211 %380
+%381 = OpIAdd %9 %379 %47
 %382 = OpCompositeConstruct %56 %213 %213 %213 %213
 OpImageWrite %19 %381 %382 NonPrivateTexel
 OpBranch %432
@@ -809,7 +809,7 @@ OpImageWrite %19 %385 %386 NonPrivateTexel
 %387 = OpRayQueryGetIntersectionBarycentricsKHR %191 %26 %60
 %388 = OpCompositeExtract %29 %387 1
 %389 = OpBitwiseOr %9 %211 %390
-%391 = OpIAdd %9 %211 %390
+%391 = OpIAdd %9 %389 %47
 %392 = OpBitcast %9 %388
 %393 = OpCompositeConstruct %56 %392 %392 %392 %392
 OpImageWrite %18 %391 %393 NonPrivateTexel

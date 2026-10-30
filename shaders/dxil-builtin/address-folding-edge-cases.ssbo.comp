@@ -1,0 +1,18 @@
+StructuredBuffer<uint> A;
+RWStructuredBuffer<uint> O[];
+
+[numthreads(64, 1, 1)]
+void main(uint i : SV_DispatchThreadID)
+{
+	O[0][i] = A[63 - i];
+	O[1][i] = A[i - 63];
+	O[2][i] = A[i | 2];
+	O[3][i] = A[(2 * i) | 2];
+	O[4][i] = A[(4 * i) | 2];
+	O[5][i] = A[i ^ 32];
+	O[6][i] = A[(32 * i) ^ 32];
+	O[7][i] = A[(64 * i) ^ 32];
+	O[8][i] = A[(48 * i) ^ 4];
+	O[9][i] = A[(i << 5) ^ 32];
+	O[10][i] = A[(i << 6) ^ 32];
+}
