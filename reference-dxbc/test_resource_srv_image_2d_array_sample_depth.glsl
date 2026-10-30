@@ -1,5 +1,6 @@
 GLSL:
 #version 460
+#extension GL_EXT_texture_shadow_lod : require
 
 layout(set = 0, binding = 0) uniform texture2DArray _8;
 layout(set = 0, binding = 0) uniform samplerShadow _11;
@@ -18,7 +19,7 @@ void main()
 {
     SV_TARGET = vec4(texture(sampler2DArrayShadow(_8, _11), vec4(vec3(TEXCOORD.x, TEXCOORD.y, LAYER), DEPTH_REF))).x;
     SV_TARGET_1 = vec4(textureOffset(sampler2DArrayShadow(_8, _11), vec4(vec3(TEXCOORD.x, TEXCOORD.y, LAYER), DEPTH_REF), ivec2(-1, 0))).x;
-    SV_TARGET_2 = vec4(textureGrad(sampler2DArrayShadow(_8, _11), vec4(vec3(TEXCOORD.x, TEXCOORD.y, LAYER), DEPTH_REF), vec2(0.0), vec2(0.0))).x;
+    SV_TARGET_2 = vec4(textureLod(sampler2DArrayShadow(_8, _11), vec4(vec3(TEXCOORD.x, TEXCOORD.y, LAYER), DEPTH_REF), 0.0)).x;
 }
 
 

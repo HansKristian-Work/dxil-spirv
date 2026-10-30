@@ -2,6 +2,7 @@ GLSL:
 #version 460
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_texture_shadow_lod : require
 
 layout(set = 0, binding = 0, scalar) uniform _13_15
 {
@@ -26,7 +27,7 @@ void main()
     uint _39 = floatBitsToUint(_15._m0[0u]);
     SV_TARGET = vec4(texture(nonuniformEXT(sampler2DArrayShadow(_9[_39], _19[_39])), vec4(vec3(TEXCOORD.x, TEXCOORD.y, LAYER), DEPTH_REF))).x;
     SV_TARGET_1 = vec4(textureOffset(nonuniformEXT(sampler2DArrayShadow(_9[_39], _19[_39])), vec4(vec3(TEXCOORD.x, TEXCOORD.y, LAYER), DEPTH_REF), ivec2(-1, 0))).x;
-    SV_TARGET_2 = vec4(textureGrad(nonuniformEXT(sampler2DArrayShadow(_9[_39], _19[_39])), vec4(vec3(TEXCOORD.x, TEXCOORD.y, LAYER), DEPTH_REF), vec2(0.0), vec2(0.0))).x;
+    SV_TARGET_2 = vec4(textureLod(nonuniformEXT(sampler2DArrayShadow(_9[_39], _19[_39])), vec4(vec3(TEXCOORD.x, TEXCOORD.y, LAYER), DEPTH_REF), 0.0)).x;
 }
 
 

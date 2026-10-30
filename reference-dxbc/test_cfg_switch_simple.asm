@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 37
+; Bound: 36
 ; Schema: 0
                OpCapability Shader
                OpCapability SignedZeroInfNanPreserve
@@ -33,10 +33,10 @@ SPIR-V:
   %SV_TARGET = OpVariable %_ptr_Output_float Output
        %uint = OpTypeInt 32 0
 %_ptr_Input_float = OpTypePointer Input %float
-     %uint_3 = OpConstant %uint 3
-     %uint_0 = OpConstant %uint 0
-     %uint_1 = OpConstant %uint 1
      %uint_2 = OpConstant %uint 2
+     %uint_1 = OpConstant %uint 1
+     %uint_0 = OpConstant %uint 0
+     %uint_3 = OpConstant %uint 3
        %main = OpFunction %void None %2
 
           %4 = OpLabel
@@ -48,26 +48,26 @@ SPIR-V:
                  OpSelectionMerge %35 None
                  OpSwitch %16 %34 3 %33 6 %32 7 %32 9 %31
 
-         %34 =     OpLabel
-         %18 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_3
+         %31 =     OpLabel
+         %18 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_2
          %20 =       OpLoad %float %18
                      OpStore %SV_TARGET %20
                      OpBranch %35
 
-         %33 =     OpLabel
-         %21 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_0
+         %32 =     OpLabel
+         %21 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_1
          %23 =       OpLoad %float %21
                      OpStore %SV_TARGET %23
                      OpBranch %35
 
-         %32 =     OpLabel
-         %24 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_1
+         %33 =     OpLabel
+         %24 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_0
          %26 =       OpLoad %float %24
                      OpStore %SV_TARGET %26
                      OpBranch %35
 
-         %31 =     OpLabel
-         %27 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_2
+         %34 =     OpLabel
+         %27 =       OpAccessChain %_ptr_Input_float %SV_POSITION %uint_3
          %29 =       OpLoad %float %27
                      OpStore %SV_TARGET %29
                      OpBranch %35

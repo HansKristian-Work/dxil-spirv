@@ -34,10 +34,10 @@ layout(location = 3) out float SV_TARGET_3;
 
 void main()
 {
-    uint _89;
-    vec4 _90;
-    _89 = sparseTexelFetchARB(_8, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(1u), _90);
-    SparseTexel _31 = SparseTexel(_89, _90);
+    uint _88;
+    vec4 _89;
+    _88 = sparseTexelFetchARB(_8, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(1u), _89);
+    SparseTexel _31 = SparseTexel(_88, _89);
     vec4 _34 = _31._m1;
     _39 _40 = _39(_34.x, _34.y, _34.z, _34.w, _31._m0);
     float _42 = _40._m0;
@@ -49,10 +49,10 @@ void main()
     SV_TARGET.z = _44;
     SV_TARGET.w = _45;
     SV_TARGET_1 = float(sparseTexelsResidentARB(int(_40._m4)));
-    uint _91;
-    vec4 _92;
-    _91 = sparseTexelFetchOffsetARB(_8, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(1u), ivec2(-1, 0), _92);
-    SparseTexel _63 = SparseTexel(_91, _92);
+    uint _90;
+    vec4 _91;
+    _90 = sparseTexelFetchOffsetARB(_8, ivec2(uvec2(TEXCOORD.x, TEXCOORD.y)), int(1u), ivec2(-1, 0), _91);
+    SparseTexel _63 = SparseTexel(_90, _91);
     vec4 _68 = _63._m1;
     _39 _73 = _39(_68.x, _68.y, _68.z, _68.w, _63._m0);
     float _75 = _73._m0;

@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 29
+; Bound: 28
 ; Schema: 0
                OpCapability Shader
                OpCapability SignedZeroInfNanPreserve
@@ -44,16 +44,16 @@ SPIR-V:
                  OpSelectionMerge %27 None
                  OpBranchConditional %20 %26 %25
 
-         %26 =     OpLabel
-         %21 =       OpFDiv %float %15 %18
+         %25 =     OpLabel
+         %21 =       OpFDiv %float %18 %15
                      OpBranch %27
 
-         %25 =     OpLabel
-         %22 =       OpFDiv %float %18 %15
+         %26 =     OpLabel
+         %22 =       OpFDiv %float %15 %18
                      OpBranch %27
 
          %27 = OpLabel
-         %23 =   OpPhi %float %21 %26 %22 %25
+         %23 =   OpPhi %float %22 %26 %21 %25
                  OpStore %SV_TARGET %23
                  OpReturn
                OpFunctionEnd

@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 42
+; Bound: 41
 ; Schema: 0
                OpCapability Shader
                OpCapability StorageImageArrayDynamicIndexing

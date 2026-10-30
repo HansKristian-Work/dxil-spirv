@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 43
+; Bound: 41
 ; Schema: 0
                OpCapability Shader
                OpCapability SignedZeroInfNanPreserve
@@ -61,9 +61,9 @@ SPIR-V:
          %13 = OpFunctionParameter %float
 
          %15 = OpLabel
-                 OpBranch %41
+                 OpBranch %40
 
-         %41 = OpLabel
+         %40 = OpLabel
          %16 =   OpFMul %float %10 %13
          %17 =   OpFMul %float %11 %13
          %18 =   OpFMul %float %12 %13

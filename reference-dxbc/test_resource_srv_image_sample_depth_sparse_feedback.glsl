@@ -39,18 +39,18 @@ layout(location = 3) out float SV_TARGET_3;
 
 void main()
 {
-    uint _81;
-    vec4 _82;
-    _81 = sparseTextureARB(sampler2DArray(_8, _11), vec3(TEXCOORD.x, TEXCOORD.y, LAYER), _82);
-    SparseTexel _47 = SparseTexel(_81, _82);
+    uint _80;
+    vec4 _81;
+    _80 = sparseTextureARB(sampler2DArray(_8, _11), vec3(TEXCOORD.x, TEXCOORD.y, LAYER), _81);
+    SparseTexel _47 = SparseTexel(_80, _81);
     vec4 _50 = _47._m1;
     _55 _56 = _55(_50.x, _50.y, _50.z, _50.w, _47._m0);
     SV_TARGET = _56._m0;
     SV_TARGET_1 = float(sparseTexelsResidentARB(int(_56._m4)));
-    uint _83;
-    vec4 _84;
-    _83 = sparseTextureLodARB(sampler2DArray(_8, _11), vec3(TEXCOORD.x, TEXCOORD.y, LAYER), 0.0, _84);
-    SparseTexel _65 = SparseTexel(_83, _84);
+    uint _82;
+    vec4 _83;
+    _82 = sparseTextureLodARB(sampler2DArray(_8, _11), vec3(TEXCOORD.x, TEXCOORD.y, LAYER), 0.0, _83);
+    SparseTexel _65 = SparseTexel(_82, _83);
     vec4 _68 = _65._m1;
     _55 _73 = _55(_68.x, _68.y, _68.z, _68.w, _65._m0);
     SV_TARGET_2 = _73._m0;

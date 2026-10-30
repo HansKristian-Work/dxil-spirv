@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 130
+; Bound: 127
 ; Schema: 0
                OpCapability Shader
                OpCapability SignedZeroInfNanPreserve
@@ -63,7 +63,7 @@ SPIR-V:
        %bool = OpTypeBool
          %71 = OpConstantNull %uint
     %uint_11 = OpConstant %uint 11
-         %86 = OpConstantNull %uint
+         %85 = OpConstantNull %uint
     %uint_12 = OpConstant %uint 12
     %uint_13 = OpConstant %uint 13
     %uint_14 = OpConstant %uint 14
@@ -76,9 +76,9 @@ SPIR-V:
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %128
+                 OpBranch %126
 
-        %128 = OpLabel
+        %126 = OpLabel
          %16 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_0
          %17 =   OpLoad %uint %16
          %19 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_1
@@ -113,39 +113,39 @@ SPIR-V:
          %57 =   OpShiftRightLogical %uint %53 %56
          %59 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_10
          %60 =   OpLoad %uint %59
-         %75 =   OpFunctionCall %uint %UDiv %57 %60
-         %77 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_11
-         %78 =   OpLoad %uint %77
-         %90 =   OpFunctionCall %uint %UMod %75 %78
-         %92 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_12
-         %93 =   OpLoad %uint %92
-         %94 =   OpExtInst %uint %40 UMin %90 %93
-         %96 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_13
-         %97 =   OpLoad %uint %96
-         %98 =   OpExtInst %uint %40 UMax %94 %97
-        %100 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_14
-        %101 =   OpLoad %uint %100
-        %103 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_15
-        %104 =   OpLoad %uint %103
-        %105 =   OpExtInst %uint %40 UClamp %98 %101 %104
-        %107 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_16
-        %108 =   OpLoad %uint %107
-        %110 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_17
-        %111 =   OpLoad %uint %110
-        %113 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_18
-        %114 =   OpLoad %uint %113
-        %115 =   OpBitFieldInsert %uint %105 %108 %111 %114
-        %117 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_19
-        %118 =   OpLoad %uint %117
-        %120 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_20
-        %121 =   OpLoad %uint %120
-        %122 =   OpBitFieldUExtract %uint %115 %118 %121
-        %123 =   OpBitCount %uint %122
-        %124 =   OpBitReverse %uint %123
-        %125 =   OpExtInst %uint %40 FindILsb %124
-        %126 =   OpExtInst %uint %40 FindUMsb %125
-        %127 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
-                 OpStore %127 %126 NonPrivatePointer
+         %74 =   OpFunctionCall %uint %UDiv %57 %60
+         %76 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_11
+         %77 =   OpLoad %uint %76
+         %88 =   OpFunctionCall %uint %UMod %74 %77
+         %90 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_12
+         %91 =   OpLoad %uint %90
+         %92 =   OpExtInst %uint %40 UMin %88 %91
+         %94 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_13
+         %95 =   OpLoad %uint %94
+         %96 =   OpExtInst %uint %40 UMax %92 %95
+         %98 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_14
+         %99 =   OpLoad %uint %98
+        %101 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_15
+        %102 =   OpLoad %uint %101
+        %103 =   OpExtInst %uint %40 UClamp %96 %99 %102
+        %105 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_16
+        %106 =   OpLoad %uint %105
+        %108 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_17
+        %109 =   OpLoad %uint %108
+        %111 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_18
+        %112 =   OpLoad %uint %111
+        %113 =   OpBitFieldInsert %uint %103 %106 %109 %112
+        %115 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_19
+        %116 =   OpLoad %uint %115
+        %118 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_20
+        %119 =   OpLoad %uint %118
+        %120 =   OpBitFieldUExtract %uint %113 %116 %119
+        %121 =   OpBitCount %uint %120
+        %122 =   OpBitReverse %uint %121
+        %123 =   OpExtInst %uint %40 FindILsb %122
+        %124 =   OpExtInst %uint %40 FindUMsb %123
+        %125 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
+                 OpStore %125 %124 NonPrivatePointer
                  OpReturn
                OpFunctionEnd
        %UDiv = OpFunction %uint None %61
@@ -169,17 +169,17 @@ SPIR-V:
       %num_0 = OpFunctionParameter %uint
       %den_0 = OpFunctionParameter %uint
 
-         %82 = OpLabel
-         %85 =   OpIEqual %bool %den_0 %86
-                 OpSelectionMerge %84 Flatten
-                 OpBranchConditional %85 %84 %83
+         %81 = OpLabel
+         %84 =   OpIEqual %bool %den_0 %85
+                 OpSelectionMerge %83 Flatten
+                 OpBranchConditional %84 %83 %82
 
-         %83 =     OpLabel
-         %87 =       OpUMod %uint %num_0 %den_0
-                     OpBranch %84
+         %82 =     OpLabel
+         %86 =       OpUMod %uint %num_0 %den_0
+                     OpBranch %83
 
-         %84 = OpLabel
-         %88 =   OpPhi %uint %uint_4294967295 %82 %87 %83
-                 OpReturnValue %88
+         %83 = OpLabel
+         %87 =   OpPhi %uint %uint_4294967295 %81 %86 %82
+                 OpReturnValue %87
                OpFunctionEnd
 

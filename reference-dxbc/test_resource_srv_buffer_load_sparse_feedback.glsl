@@ -31,10 +31,10 @@ layout(location = 1) out float SV_TARGET_1;
 
 void main()
 {
-    uint _50;
-    vec4 _51;
-    _50 = sparseTexelFetchARB(_8, int(12345u), _51);
-    SparseTexel _18 = SparseTexel(_50, _51);
+    uint _49;
+    vec4 _50;
+    _49 = sparseTexelFetchARB(_8, int(12345u), _50);
+    SparseTexel _18 = SparseTexel(_49, _50);
     vec4 _20 = _18._m1;
     _25 _26 = _25(_20.x, _20.y, _20.z, _20.w, _18._m0);
     float _28 = _26._m0;

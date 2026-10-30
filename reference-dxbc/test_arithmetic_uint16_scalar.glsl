@@ -43,17 +43,17 @@ uint16_t UDiv(uint16_t num, uint16_t den)
 
 uint16_t UMod(uint16_t num, uint16_t den)
 {
-    uint16_t _101;
+    uint16_t _100;
     SPIRV_CROSS_FLATTEN
     if (den == 0us)
     {
-        _101 = 65535us;
+        _100 = 65535us;
     }
     else
     {
-        _101 = num % den;
+        _100 = num % den;
     }
-    return _101;
+    return _100;
 }
 
 void main()

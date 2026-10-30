@@ -39,10 +39,10 @@ layout(location = 5) out float SV_TARGET_5;
 void main()
 {
     vec2 _54 = vec2(TEXCOORD.x, TEXCOORD.y);
-    uint _136;
-    vec4 _137;
-    _136 = sparseTextureGatherARB(sampler2DShadow(_8, _11), _54, DEPTH_REF, _137);
-    SparseTexel _56 = SparseTexel(_136, _137);
+    uint _135;
+    vec4 _136;
+    _135 = sparseTextureGatherARB(sampler2DShadow(_8, _11), _54, DEPTH_REF, _136);
+    SparseTexel _56 = SparseTexel(_135, _136);
     vec4 _58 = _56._m1;
     _63 _64 = _63(_58.x, _58.y, _58.z, _58.w, _56._m0);
     float _66 = _64._m0;
@@ -55,10 +55,10 @@ void main()
     SV_TARGET.w = _69;
     SV_TARGET_1 = float(sparseTexelsResidentARB(int(_64._m4)));
     vec2 _84 = vec2(TEXCOORD.x, TEXCOORD.y);
-    uint _138;
-    vec4 _139;
-    _138 = sparseTextureGatherOffsetARB(sampler2DShadow(_8, _11), _84, DEPTH_REF, ivec2(-1, 0), _139);
-    SparseTexel _87 = SparseTexel(_138, _139);
+    uint _137;
+    vec4 _138;
+    _137 = sparseTextureGatherOffsetARB(sampler2DShadow(_8, _11), _84, DEPTH_REF, ivec2(-1, 0), _138);
+    SparseTexel _87 = SparseTexel(_137, _138);
     vec4 _90 = _87._m1;
     _63 _95 = _63(_90.x, _90.y, _90.z, _90.w, _87._m0);
     float _97 = _95._m0;
@@ -71,10 +71,10 @@ void main()
     SV_TARGET_2.w = _100;
     SV_TARGET_3 = float(sparseTexelsResidentARB(int(_95._m4)));
     vec2 _109 = vec2(TEXCOORD.x, TEXCOORD.y);
-    uint _140;
-    vec4 _141;
-    _140 = sparseTextureGatherOffsetARB(sampler2DShadow(_8, _11), _109, DEPTH_REF, ivec2(int(uint(OFFSET.x)), int(uint(OFFSET.y))), _141);
-    SparseTexel _112 = SparseTexel(_140, _141);
+    uint _139;
+    vec4 _140;
+    _139 = sparseTextureGatherOffsetARB(sampler2DShadow(_8, _11), _109, DEPTH_REF, ivec2(int(uint(OFFSET.x)), int(uint(OFFSET.y))), _140);
+    SparseTexel _112 = SparseTexel(_139, _140);
     vec4 _115 = _112._m1;
     _63 _120 = _63(_115.x, _115.y, _115.z, _115.w, _112._m0);
     float _122 = _120._m0;

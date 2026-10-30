@@ -41,17 +41,17 @@ uint UDiv(uint num, uint den)
 
 uint UMod(uint num, uint den)
 {
-    uint _88;
+    uint _87;
     SPIRV_CROSS_FLATTEN
     if (den == 0u)
     {
-        _88 = 4294967295u;
+        _87 = 4294967295u;
     }
     else
     {
-        _88 = num % den;
+        _87 = num % den;
     }
-    return _88;
+    return _87;
 }
 
 void main()

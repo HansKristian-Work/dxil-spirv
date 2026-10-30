@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 20
+; Bound: 19
 ; Schema: 0
                OpCapability Shader
                OpCapability Image1D

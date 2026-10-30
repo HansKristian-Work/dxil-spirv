@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 127
+; Bound: 124
 ; Schema: 0
                OpCapability Shader
                OpCapability Int16
@@ -65,7 +65,7 @@ SPIR-V:
        %bool = OpTypeBool
          %83 = OpConstantNull %ushort
     %uint_11 = OpConstant %uint 11
-         %99 = OpConstantNull %ushort
+         %98 = OpConstantNull %ushort
     %uint_12 = OpConstant %uint 12
     %uint_13 = OpConstant %uint 13
     %uint_14 = OpConstant %uint 14
@@ -73,9 +73,9 @@ SPIR-V:
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-                 OpBranch %125
+                 OpBranch %123
 
-        %125 = OpLabel
+        %123 = OpLabel
          %16 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_0
          %17 =   OpLoad %uint %16
          %19 =   OpUConvert %ushort %17
@@ -121,29 +121,29 @@ SPIR-V:
          %70 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_10
          %71 =   OpLoad %uint %70
          %72 =   OpUConvert %ushort %71
-         %87 =   OpFunctionCall %ushort %UDiv %68 %72
-         %89 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_11
-         %90 =   OpLoad %uint %89
-         %91 =   OpUConvert %ushort %90
-        %103 =   OpFunctionCall %ushort %UMod %87 %91
-        %105 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_12
-        %106 =   OpLoad %uint %105
-        %107 =   OpUConvert %ushort %106
-        %108 =   OpExtInst %ushort %47 UMin %103 %107
-        %110 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_13
-        %111 =   OpLoad %uint %110
-        %112 =   OpUConvert %ushort %111
-        %113 =   OpExtInst %ushort %47 UMax %108 %112
-        %115 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_14
-        %116 =   OpLoad %uint %115
-        %117 =   OpUConvert %ushort %116
-        %119 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_15
-        %120 =   OpLoad %uint %119
-        %121 =   OpUConvert %ushort %120
-        %122 =   OpExtInst %ushort %47 UClamp %113 %117 %121
-        %123 =   OpUConvert %uint %122
-        %124 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
-                 OpStore %124 %123 NonPrivatePointer
+         %86 =   OpFunctionCall %ushort %UDiv %68 %72
+         %88 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_11
+         %89 =   OpLoad %uint %88
+         %90 =   OpUConvert %ushort %89
+        %101 =   OpFunctionCall %ushort %UMod %86 %90
+        %103 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_12
+        %104 =   OpLoad %uint %103
+        %105 =   OpUConvert %ushort %104
+        %106 =   OpExtInst %ushort %47 UMin %101 %105
+        %108 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_13
+        %109 =   OpLoad %uint %108
+        %110 =   OpUConvert %ushort %109
+        %111 =   OpExtInst %ushort %47 UMax %106 %110
+        %113 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_14
+        %114 =   OpLoad %uint %113
+        %115 =   OpUConvert %ushort %114
+        %117 =   OpAccessChain %_ptr_StorageBuffer_uint %9 %uint_0 %uint_15
+        %118 =   OpLoad %uint %117
+        %119 =   OpUConvert %ushort %118
+        %120 =   OpExtInst %ushort %47 UClamp %111 %115 %119
+        %121 =   OpUConvert %uint %120
+        %122 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %uint_0
+                 OpStore %122 %121 NonPrivatePointer
                  OpReturn
                OpFunctionEnd
        %UDiv = OpFunction %ushort None %73
@@ -167,17 +167,17 @@ SPIR-V:
       %num_0 = OpFunctionParameter %ushort
       %den_0 = OpFunctionParameter %ushort
 
-         %95 = OpLabel
-         %98 =   OpIEqual %bool %den_0 %99
-                 OpSelectionMerge %97 Flatten
-                 OpBranchConditional %98 %97 %96
+         %94 = OpLabel
+         %97 =   OpIEqual %bool %den_0 %98
+                 OpSelectionMerge %96 Flatten
+                 OpBranchConditional %97 %96 %95
 
-         %96 =     OpLabel
-        %100 =       OpUMod %ushort %num_0 %den_0
-                     OpBranch %97
+         %95 =     OpLabel
+         %99 =       OpUMod %ushort %num_0 %den_0
+                     OpBranch %96
 
-         %97 = OpLabel
-        %101 =   OpPhi %ushort %ushort_65535 %95 %100 %96
-                 OpReturnValue %101
+         %96 = OpLabel
+        %100 =   OpPhi %ushort %ushort_65535 %94 %99 %95
+                 OpReturnValue %100
                OpFunctionEnd
 
