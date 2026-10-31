@@ -354,6 +354,12 @@ bool emit_inner_coverage_instruction(Converter::Impl &impl, const llvm::CallInst
 
 bool emit_is_helper_lane_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
+	if (impl.execution_model != spv::ExecutionModelFragment)
+	{
+		impl.rewrite_value(instruction, impl.builder().makeBoolConstant(false));
+		return true;
+	}
+
 	auto *op = impl.allocate(spv::OpIsHelperInvocationEXT, instruction);
 	impl.add(op);
 	return true;
