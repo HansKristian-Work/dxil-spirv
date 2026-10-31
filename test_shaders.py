@@ -114,6 +114,8 @@ def cross_compile_dxil(shader, args, paths, is_asm):
             dxil_cmd += ['-denorm', 'preserve']
         if '.no-legacy-cbuf-layout.' in shader:
             dxil_cmd += ['-no-legacy-cbuf-layout']
+        if '.Od.' in shader:
+            dxil_cmd += ['-Od']
         subprocess.check_call(dxil_cmd)
     else:
         dxil_path = shader
