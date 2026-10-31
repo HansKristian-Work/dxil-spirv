@@ -227,6 +227,7 @@ static spv::Dim image_dimension_from_resource_kind(DXIL::ResourceKind kind)
 	case DXIL::ResourceKind::TypedBuffer:
 	case DXIL::ResourceKind::StructuredBuffer:
 	case DXIL::ResourceKind::RawBuffer:
+	case DXIL::ResourceKind::TBuffer:
 		return spv::DimBuffer;
 
 	default:
@@ -729,6 +730,7 @@ spv::Id Converter::Impl::create_bindless_heap_variable(const BindlessInfo &info)
 				break;
 
 			case DXIL::ResourceKind::TypedBuffer:
+			case DXIL::ResourceKind::TBuffer:
 				name += "_TypedBuffer_";
 				name += component_type_name;
 				break;
@@ -1361,7 +1363,9 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 				builder.addCapability(spv::CapabilityStorageBufferArrayDynamicIndexing);
 			}
 			else if (resource_kind == DXIL::ResourceKind::StructuredBuffer ||
-			         resource_kind == DXIL::ResourceKind::RawBuffer || resource_kind == DXIL::ResourceKind::TypedBuffer)
+			         resource_kind == DXIL::ResourceKind::RawBuffer ||
+			         resource_kind == DXIL::ResourceKind::TypedBuffer ||
+			         resource_kind == DXIL::ResourceKind::TBuffer)
 			{
 				builder.addExtension("SPV_EXT_descriptor_indexing");
 				builder.addCapability(spv::CapabilityUniformTexelBufferArrayDynamicIndexingEXT);
