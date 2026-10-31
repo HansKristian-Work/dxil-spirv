@@ -368,7 +368,7 @@ spv::Id Converter::Impl::create_ubo_variable(const RawDeclaration &raw_decl, uin
 	auto &builder = spirv_module.get_builder();
 
 	unsigned element_size = raw_width_to_bits(raw_decl.width) * raw_decl.vecsize / 8;
-	unsigned array_length = (cbv_size + element_size - 1) / element_size;
+	unsigned array_length = std::max(1u, (cbv_size + element_size - 1) / element_size);
 
 	// It seems like we will have to bitcast ourselves away from vec4 here after loading.
 	spv::Id size_id = builder.makeUintConstant(array_length, false);
@@ -1007,7 +1007,7 @@ spv::Id Converter::Impl::get_physical_pointer_block_type(spv::Id base_type_id, c
 		}
 		else
 		{
-			type_id = builder().makeArrayType(type_id, builder().makeUintConstant(meta.size / meta.stride),
+			type_id = builder().makeArrayType(type_id, builder().makeUintConstant(std::max(1u, meta.size / meta.stride)),
 			                                  meta.stride);
 			type += "CBVArray";
 		}
@@ -2471,6 +2471,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 		}
 
 		auto &access_meta = cbv_access_tracking[index];
+		cbv_size = std::max(cbv_size, access_meta.max_accessed_size);
 		AliasedAccess aliased_access;
 		if (!analyze_aliased_access(access_meta, VulkanDescriptorType::UBO, aliased_access))
 			return false;

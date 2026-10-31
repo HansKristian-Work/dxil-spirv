@@ -186,6 +186,7 @@ struct AccessTracking
 	bool has_nvapi_atomic_fp16bit = false;
 	bool has_counter = false;
 	bool dynamically_indexed_cbv = false;
+	uint32_t max_accessed_size = 0;
 
 	enum { MaxVecSize = 32 };
 

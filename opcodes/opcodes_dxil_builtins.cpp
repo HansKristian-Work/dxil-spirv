@@ -730,6 +730,9 @@ bool analyze_alloca_cbv_forwarding_pre_resource_emit(Converter::Impl &impl, cons
 	{
 		auto raw_type = scalar_type->isFloatingPointTy() ? RawType::Float : RawType::Integer;
 		cbv_tracking->add_accessed_vecsize(raw_type, RawWidth::B32, 1);
+		uint64_t end_byte = (uint64_t(tracking.highest_store_index) + 1) * tracking.stride;
+		if (end_byte <= UINT32_MAX && end_byte > cbv_tracking->max_accessed_size)
+			cbv_tracking->max_accessed_size = uint32_t(end_byte);
 	}
 
 	return true;
@@ -770,6 +773,25 @@ static void analyze_dxil_cbuffer_load(Converter::Impl &impl, const llvm::CallIns
 		// We can work around it robustly since it's legal code in Vulkan (if dynamically uniform).
 		if (!llvm::isa<llvm::ConstantInt>(instruction->getOperand(2)))
 			tracking->dynamically_indexed_cbv = true;
+		else
+		{
+			auto *constant_offset = llvm::cast<llvm::ConstantInt>(instruction->getOperand(2));
+			uint64_t val = constant_offset->getUniqueInteger().getZExtValue();
+			uint64_t end_byte = 0;
+			if (type_is_composite_return_value(instruction->getType()))
+			{
+				// Legacy float4 model (row index, each row is 16 bytes)
+				end_byte = (val + 1) * 16;
+			}
+			else
+			{
+				unsigned scalar_bytes = get_type_scalar_alignment(impl, instruction->getType());
+				end_byte = val + scalar_bytes;
+			}
+
+			if (end_byte <= UINT32_MAX && end_byte > tracking->max_accessed_size)
+				tracking->max_accessed_size = uint32_t(end_byte);
+		}
 
 		if (type_is_composite_return_value(instruction->getType()))
 		{
