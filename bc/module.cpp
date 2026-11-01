@@ -1819,6 +1819,21 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::DEBUG_LOC:
+	{
+		// No instruction added; just check the number of ops matched: [line, col, scope, ia]
+		if (entry.ops.size() != 4)
+			return false;
+		break;
+	}
+
+	case FunctionRecord::DEBUG_LOC_AGAIN:
+	{
+		if (entry.ops.size() != 0)
+			return false;
+		break;
+	}
+
 	default:
 		LOGE("Unhandled instruction!\n");
 		return false;
