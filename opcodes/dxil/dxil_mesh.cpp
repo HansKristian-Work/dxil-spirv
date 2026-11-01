@@ -339,8 +339,43 @@ bool emit_dispatch_mesh_instruction(Converter::Impl &impl, const llvm::CallInst 
 {
 	Operation *op = impl.allocate(spv::OpEmitMeshTasksEXT);
 
-	for (unsigned i = 1; i <= 4; i++)
+	for (unsigned i = 1; i <= 3; i++)
 		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
+
+	if (instruction->getNumOperands() > 4)
+	{
+		auto *payload_value = instruction->getOperand(4);
+		spv::Id payload_id = impl.get_id_for_value(payload_value);
+
+		bool is_direct_payload_var = false;
+		if (llvm::isa<llvm::GlobalVariable>(payload_value) || llvm::isa<llvm::AllocaInst>(payload_value))
+		{
+			auto itr = impl.handle_to_storage_class.find(payload_value);
+			if (itr != impl.handle_to_storage_class.end() && itr->second == spv::StorageClassTaskPayloadWorkgroupEXT)
+				is_direct_payload_var = true;
+		}
+
+		if (!is_direct_payload_var)
+		{
+			auto *pointer_type = llvm::cast<llvm::PointerType>(payload_value->getType());
+			auto *pointee_type = pointer_type->getPointerElementType();
+			spv::Id type_id = impl.get_type_id(pointee_type);
+			spv::Id var_id = impl.get_temp_payload(type_id, spv::StorageClassTaskPayloadWorkgroupEXT);
+
+			auto *load_op = impl.allocate(spv::OpLoad, type_id);
+			load_op->add_id(payload_id);
+			impl.add(load_op);
+
+			auto *store_op = impl.allocate(spv::OpStore);
+			store_op->add_id(var_id);
+			store_op->add_id(load_op->id);
+			impl.add(store_op);
+
+			payload_id = var_id;
+		}
+
+		op->add_id(payload_id);
+	}
 
 	impl.add(op);
 	return true;

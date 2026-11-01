@@ -1413,7 +1413,11 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 		break;
 
 	case DXIL::Op::DispatchMesh:
-		impl.handle_to_storage_class[instruction->getOperand(4)] = spv::StorageClassTaskPayloadWorkgroupEXT;
+		if (llvm::isa<llvm::AllocaInst>(instruction->getOperand(4)) ||
+		    llvm::isa<llvm::GlobalVariable>(instruction->getOperand(4)))
+		{
+			impl.handle_to_storage_class[instruction->getOperand(4)] = spv::StorageClassTaskPayloadWorkgroupEXT;
+		}
 		break;
 
 	case DXIL::Op::Barrier:
