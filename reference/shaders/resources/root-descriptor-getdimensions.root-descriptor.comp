@@ -1,0 +1,85 @@
+#version 460
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_buffer_reference_uvec2 : require
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(buffer_reference) buffer PhysicalPointerUintArray;
+
+uint _22;
+
+layout(buffer_reference, buffer_reference_align = 4, std430) buffer PhysicalPointerUintArray
+{
+    uint value[];
+};
+
+layout(push_constant, std430) uniform RootConstants
+{
+    uvec2 _m0;
+    uvec2 _m1;
+    uvec2 _m2;
+    uvec2 _m3;
+} registers;
+
+void main()
+{
+    uint _14 = 0u;
+    PhysicalPointerUintArray(registers._m2).value[0u] = _14;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 24
+; Schema: 0
+OpCapability Shader
+OpCapability ImageQuery
+OpCapability VulkanMemoryModel
+OpCapability PhysicalStorageBufferAddresses
+OpExtension "SPV_KHR_physical_storage_buffer"
+OpMemoryModel PhysicalStorageBuffer64 Vulkan
+OpEntryPoint GLCompute %3 "main" %9
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpName %7 "RootConstants"
+OpName %9 "registers"
+OpName %17 "PhysicalPointerUintArray"
+OpMemberName %17 0 "value"
+OpDecorate %7 Block
+OpMemberDecorate %7 0 Offset 0
+OpMemberDecorate %7 1 Offset 8
+OpMemberDecorate %7 2 Offset 16
+OpMemberDecorate %7 3 Offset 24
+OpDecorate %16 ArrayStride 4
+OpMemberDecorate %17 0 Offset 0
+OpDecorate %17 Block
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeVector %5 2
+%7 = OpTypeStruct %6 %6 %6 %6
+%8 = OpTypePointer PushConstant %7
+%9 = OpVariable %8 PushConstant
+%10 = OpTypePointer PushConstant %6
+%12 = OpConstant %5 2
+%15 = OpConstant %5 0
+%16 = OpTypeRuntimeArray %5
+%17 = OpTypeStruct %16
+%18 = OpTypePointer PhysicalStorageBuffer %17
+%20 = OpTypePointer PhysicalStorageBuffer %5
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%22 = OpUndef %5
+OpBranch %23
+%23 = OpLabel
+%11 = OpAccessChain %10 %9 %12
+%13 = OpLoad %6 %11
+%14 = OpCopyObject %5 %15
+%19 = OpBitcast %18 %13
+%21 = OpInBoundsAccessChain %20 %19 %15 %15
+OpStore %21 %14 Aligned|NonPrivatePointer 4
+OpReturn
+OpFunctionEnd
+#endif

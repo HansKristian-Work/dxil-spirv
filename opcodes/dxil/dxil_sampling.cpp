@@ -1025,6 +1025,13 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		impl.add(dimensions_op);
 		num_coords = 1;
 	}
+	else if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
+	{
+		dimensions_op = impl.allocate(spv::OpCopyObject, builder.makeUintType(32));
+		dimensions_op->add_id(builder.makeUintConstant(0));
+		impl.add(dimensions_op);
+		num_coords = 1;
+	}
 	else
 	{
 		if (!get_image_dimensions_query_size(impl, builder, image_id, &num_coords))
@@ -1093,7 +1100,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 			num_coords = 0;
 	}
 
-	if (meta.kind == DXIL::ResourceKind::RawBuffer)
+	if (meta.storage != spv::StorageClassPhysicalStorageBuffer && meta.kind == DXIL::ResourceKind::RawBuffer)
 	{
 		if (divider != 1 && ssbo_element_size % divider == 0)
 		{
@@ -1118,7 +1125,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 			dimensions_op = elements_op;
 		}
 	}
-	else if (meta.kind == DXIL::ResourceKind::StructuredBuffer)
+	else if (meta.storage != spv::StorageClassPhysicalStorageBuffer && meta.kind == DXIL::ResourceKind::StructuredBuffer)
 	{
 		Operation *elem_count_op = impl.allocate(spv::OpUDiv, builder.makeUintType(32));
 
