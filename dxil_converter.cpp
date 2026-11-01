@@ -5704,6 +5704,11 @@ bool Converter::Impl::emit_stage_input_variables()
 		// Allow certain system values that are synthesized however.
 		if (execution_model == spv::ExecutionModelTessellationEvaluation && system_value != DXIL::Semantic::DomainLocation)
 			system_value = DXIL::Semantic::User;
+		else if (execution_model == spv::ExecutionModelTessellationControl &&
+		         (system_value == DXIL::Semantic::RenderTargetArrayIndex ||
+		          system_value == DXIL::Semantic::ViewPortArrayIndex ||
+		          system_value == DXIL::Semantic::ShadingRate))
+			system_value = DXIL::Semantic::User;
 
 		bool masked_input = false;
 		if (system_value == DXIL::Semantic::ShadingRate && options.quirks.ignore_primitive_shading_rate)
