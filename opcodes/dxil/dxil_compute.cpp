@@ -29,6 +29,22 @@
 
 namespace dxil_spv
 {
+static bool execution_model_supports_workgroup_scope(spv::ExecutionModel model)
+{
+	switch (model)
+	{
+	case spv::ExecutionModelGLCompute:
+	case spv::ExecutionModelTaskNV:
+	case spv::ExecutionModelMeshNV:
+	case spv::ExecutionModelTaskEXT:
+	case spv::ExecutionModelMeshEXT:
+	case spv::ExecutionModelTessellationControl:
+		return true;
+	default:
+		return false;
+	}
+}
+
 bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -45,7 +61,10 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 	// We might only need to ensure coherency within the workgroup, in which case we can narrow the scope.
 	// DXC emits AccessUAVGlobal all the time, so try to demote to UAVThreadGroup when appropriate.
-	spv::Scope memory_scope = spv::ScopeWorkgroup;
+	// If the execution model does not support workgroup scope (e.g. pixel shader / graphics stages),
+	// we must use device scope to satisfy VUID-StandaloneSpirv-None-07321.
+	spv::Scope memory_scope = execution_model_supports_workgroup_scope(impl.execution_model) ?
+	                          spv::ScopeWorkgroup : spv::ScopeDevice;
 
 	bool needs_device_scope_uav =
 	    (operation & DXIL::AccessUAVGlobal) != 0 && impl.execution_mode_meta.declares_globallycoherent_uav;
@@ -55,6 +74,9 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	// and we only need acquire release to ensure ordering.
 	if (impl.execution_mode_meta.memory_model == spv::MemoryModelGLSL450 && needs_device_scope_uav)
 		memory_scope = spv::ScopeDevice;
+
+	if (memory_scope == spv::ScopeDevice && impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+		builder.addCapability(spv::CapabilityVulkanMemoryModelDeviceScopeKHR);
 
 	op->add_id(builder.makeUintConstant(memory_scope));
 
