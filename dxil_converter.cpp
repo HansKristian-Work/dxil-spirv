@@ -8303,9 +8303,18 @@ Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_and_re
 	return bbs;
 }
 
+static inline String get_function_name(const llvm::Function *func)
+{
+#ifdef HAVE_LLVMBC
+	return func->getName();
+#else
+	return func->getName().str();
+#endif
+}
+
 Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order(llvm::Function *func)
 {
-	if (!func)
+	if (!func || func->empty())
 		return {};
 
 	UnorderedSet<llvm::BasicBlock *> visited;
@@ -8382,6 +8391,12 @@ bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
 	{
 		if (leaf_func == func || leaf_func == execution_mode_meta.patch_constant_function)
 			continue;
+
+		if (leaf_func->empty())
+		{
+			LOGE("Function '%s' is declared but has no definition.\n", get_function_name(leaf_func).c_str());
+			return false;
+		}
 
 		Vector<spv::Id> arg_types;
 		spv::Block *spv_entry;
@@ -9026,6 +9041,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	spirv_module.set_instruction_instrumentation_info(options.instruction_instrumentation);
 
 	llvm::Function *func = get_entry_point_function(entry_point_meta);
+	if (!func || func->empty())
+	{
+		LOGE("Entry point function '%s' is declared but has no definition.\n",
+		     func ? get_function_name(func).c_str() : "unknown");
+		return result;
+	}
+
 	auto visit_order = build_function_bb_visit_order_and_register(func, pool);
 	Vector<llvm::BasicBlock *> patch_visit_order;
 
@@ -9069,7 +9091,15 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 
 	if (execution_mode_meta.patch_constant_function)
+	{
+		if (execution_mode_meta.patch_constant_function->empty())
+		{
+			LOGE("Patch constant function '%s' is declared but has no definition.\n",
+			     get_function_name(execution_mode_meta.patch_constant_function).c_str());
+			return result;
+		}
 		patch_visit_order = build_function_bb_visit_order_and_register(execution_mode_meta.patch_constant_function, pool);
+	}
 
 	Vector<llvm::Function *> callees;
 	if (func)
@@ -9082,6 +9112,12 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	{
 		if (leaf_func != func)
 		{
+			if (leaf_func->empty())
+			{
+				LOGE("Function '%s' is declared but has no definition.\n",
+				     get_function_name(leaf_func).c_str());
+				return result;
+			}
 			auto visit = build_function_bb_visit_order(leaf_func);
 			if (!analyze_instructions(leaf_func, visit))
 				return result;

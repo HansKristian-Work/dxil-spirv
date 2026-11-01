@@ -107,6 +107,10 @@ public:
 	const String &getName() const;
 
 	void set_basic_blocks(Vector<BasicBlock *> basic_blocks);
+	bool empty() const
+	{
+		return basic_blocks.empty();
+	}
 	IteratorAdaptor<BasicBlock, Vector<BasicBlock *>::const_iterator> begin() const;
 	IteratorAdaptor<BasicBlock, Vector<BasicBlock *>::const_iterator> end() const;
 	FunctionType *getFunctionType() const;
