@@ -1334,6 +1334,14 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			}
 		}
 
+		if (!vulkan_binding.buffer_binding.bindless.use_heap &&
+		    (int(vulkan_binding.buffer_binding.binding) < 0 || int(vulkan_binding.buffer_binding.descriptor_set) < 0))
+		{
+			LOGE("SRV '%s' (space %u, register %u) has unassigned binding and was not remapped.\n",
+			     name.c_str(), bind_space, bind_register);
+			return false;
+		}
+
 		auto &access_meta = srv_access_tracking[index];
 		bool force_scalar_alignment = vulkan_binding.buffer_binding.force_scalar_alignment;
 
@@ -1932,6 +1940,14 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			}
 		}
 
+		if (!vulkan_binding.buffer_binding.bindless.use_heap &&
+		    (int(vulkan_binding.buffer_binding.binding) < 0 || int(vulkan_binding.buffer_binding.descriptor_set) < 0))
+		{
+			LOGE("UAV '%s' (space %u, register %u) has unassigned binding and was not remapped.\n",
+			     name.c_str(), bind_space, bind_register);
+			return false;
+		}
+
 		bool force_scalar_alignment = vulkan_binding.buffer_binding.force_scalar_alignment;
 
 		AliasedAccess aliased_access;
@@ -2470,6 +2486,14 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			}
 		}
 
+		if (!vulkan_binding.buffer.bindless.use_heap &&
+		    (int(vulkan_binding.buffer.binding) < 0 || int(vulkan_binding.buffer.descriptor_set) < 0))
+		{
+			LOGE("CBV '%s' (space %u, register %u) has unassigned binding and was not remapped.\n",
+			     name.c_str(), bind_space, bind_register);
+			return false;
+		}
+
 		auto &access_meta = cbv_access_tracking[index];
 		AliasedAccess aliased_access;
 		if (!analyze_aliased_access(access_meta, VulkanDescriptorType::UBO, aliased_access))
@@ -2741,6 +2765,14 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 				LOGE("Failed to remap sampler %u:%u.\n", bind_space, bind_register);
 				return false;
 			}
+		}
+
+		if (!vulkan_binding.bindless.use_heap &&
+		    (int(vulkan_binding.binding) < 0 || int(vulkan_binding.descriptor_set) < 0))
+		{
+			LOGE("Sampler '%s' (space %u, register %u) has unassigned binding and was not remapped.\n",
+			     name.c_str(), bind_space, bind_register);
+			return false;
 		}
 
 		sampler_index_to_reference.resize(std::max(sampler_index_to_reference.size(), size_t(index + 1)));
