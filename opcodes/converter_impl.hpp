@@ -568,6 +568,7 @@ struct Converter::Impl
 	Vector<TempPayloadEntry> temp_payloads;
 
 	spv::StorageClass get_effective_storage_class(const llvm::Value *value, spv::StorageClass fallback) const;
+	spv::StorageClass get_storage_class(spv::Id id, spv::StorageClass fallback = spv::StorageClassFunction) const;
 	bool get_needs_temp_storage_copy(const llvm::Value *value) const;
 	spv::Id get_temp_payload(spv::Id type, spv::StorageClass storage);
 

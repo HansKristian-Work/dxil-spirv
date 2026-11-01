@@ -1530,7 +1530,19 @@ static spv::Id build_constant_getelementptr(Converter::Impl &impl, const llvm::C
 	// If we're trying to getelementptr into a bitcasted pointer to array, we have to rewrite the pointer type.
 	type_id = resolve_llvm_actual_value_type(impl, cexpr, cexpr->getOperand(0), type_id);
 
-	auto storage = impl.get_effective_storage_class(cexpr->getOperand(0), builder.getStorageClass(ptr_id));
+	spv::StorageClass storage;
+	auto storage_itr = impl.handle_to_storage_class.find(cexpr->getOperand(0));
+	if (storage_itr != impl.handle_to_storage_class.end())
+	{
+		storage = storage_itr->second;
+	}
+	else
+	{
+		auto address_space = DXIL::AddressSpace(cexpr->getOperand(0)->getType()->getPointerAddressSpace());
+		spv::StorageClass fallback = (address_space == DXIL::AddressSpace::GroupShared) ?
+			spv::StorageClassWorkgroup : spv::StorageClassFunction;
+		storage = impl.get_storage_class(ptr_id, fallback);
+	}
 	type_id = builder.makePointer(storage, type_id);
 
 	Operation *op = impl.allocate(spv::OpAccessChain, type_id);
@@ -1700,10 +1712,22 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	ags_getelementptr_filter(impl, instruction, type_id);
 
 	spv::StorageClass storage;
-	if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::PhysicalNodeIO)
+	auto storage_itr = impl.handle_to_storage_class.find(instruction->getOperand(0));
+	if (storage_itr != impl.handle_to_storage_class.end())
+	{
+		storage = storage_itr->second;
+	}
+	else if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::PhysicalNodeIO)
+	{
 		storage = spv::StorageClassPhysicalStorageBuffer;
+	}
 	else
-		storage = impl.get_effective_storage_class(instruction->getOperand(0), builder.getStorageClass(ptr_id));
+	{
+		auto address_space = DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace());
+		spv::StorageClass fallback = (address_space == DXIL::AddressSpace::GroupShared) ?
+			spv::StorageClassWorkgroup : spv::StorageClassFunction;
+		storage = impl.get_storage_class(ptr_id, fallback);
+	}
 
 	type_id = builder.makePointer(storage, type_id);
 

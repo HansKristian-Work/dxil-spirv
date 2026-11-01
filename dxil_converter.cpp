@@ -9327,6 +9327,21 @@ spv::StorageClass Converter::Impl::get_effective_storage_class(const llvm::Value
 		return fallback;
 }
 
+spv::StorageClass Converter::Impl::get_storage_class(spv::Id id, spv::StorageClass fallback) const
+{
+	auto &builder_ref = const_cast<Converter::Impl *>(this)->builder();
+	auto *instr = builder_ref.getInstruction(id);
+	if (!instr)
+		return fallback;
+	auto type_id = instr->getTypeId();
+	if (type_id == 0)
+		return fallback;
+	auto *type_instr = builder_ref.getInstruction(type_id);
+	if (!type_instr || type_instr->getOpCode() != spv::OpTypePointer)
+		return fallback;
+	return static_cast<spv::StorageClass>(type_instr->getImmediateOperand(0));
+}
+
 bool Converter::Impl::get_needs_temp_storage_copy(const llvm::Value *value) const
 {
 	// We always need a temp storage copy if this isn't
