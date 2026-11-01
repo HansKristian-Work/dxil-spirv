@@ -67,6 +67,7 @@ IteratorAdaptor<BasicBlock, Vector<BasicBlock *>::const_iterator> Function::end(
 
 BasicBlock &Function::getEntryBlock() const
 {
+	assert(!basic_blocks.empty());
 	return *basic_blocks.front();
 }
 
