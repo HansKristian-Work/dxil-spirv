@@ -1379,7 +1379,11 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 
 		for (unsigned i = 0; i < num_params; i++)
 		{
-			auto *arg = get_value(entry.ops[index + i], function_type->getParamType(i));
+			auto *expected_type = function_type->getParamType(i);
+			if (expected_type && expected_type->getTypeID() == Type::TypeID::MetadataTyID)
+				continue;
+
+			auto *arg = get_value(entry.ops[index + i], expected_type);
 			if (!arg)
 				return false;
 			params.push_back(arg);
