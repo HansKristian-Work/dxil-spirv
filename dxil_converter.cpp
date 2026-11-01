@@ -4915,10 +4915,12 @@ bool Converter::Impl::emit_stage_output_variables()
 		}
 		else if (execution_model == spv::ExecutionModelTessellationControl ||
 		         (execution_model == spv::ExecutionModelTessellationEvaluation &&
-		          system_value == DXIL::Semantic::ShadingRate))
+		          system_value == DXIL::Semantic::ShadingRate) ||
+		         system_value == DXIL::Semantic::IsFrontFace)
 		{
 			// For HS <-> DS, ignore system values.
 			// Shading rate is also ignored in DS. RE4 hits this case. Just treat it as a normal user varying.
+			// SV_IsFrontFace cannot be output in SPIR-V (BuiltIn FrontFacing is Fragment input only).
 			system_value = DXIL::Semantic::User;
 		}
 
@@ -5249,8 +5251,11 @@ void Converter::Impl::emit_builtin_decoration(spv::Id id, DXIL::Semantic semanti
 		break;
 
 	case DXIL::Semantic::IsFrontFace:
-		builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFrontFacing);
-		spirv_module.register_builtin_shader_input(id, spv::BuiltInFrontFacing);
+		if (storage == spv::StorageClassInput)
+		{
+			builder.addDecoration(id, spv::DecorationBuiltIn, spv::BuiltInFrontFacing);
+			spirv_module.register_builtin_shader_input(id, spv::BuiltInFrontFacing);
+		}
 		break;
 
 	case DXIL::Semantic::ClipDistance:
