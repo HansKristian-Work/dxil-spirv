@@ -1282,7 +1282,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		unsigned bind_register = get_constant_metadata(srv, 4);
 		unsigned range_size = get_constant_metadata(srv, 5);
 
-		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		if (bind_register == UINT32_MAX || bind_space == UINT32_MAX)
 		{
 			// This seems to be possible in RT shaders when explicit register() is missing?
 			LOGE("Nonsensical SRV binding detected.\n");
@@ -1820,7 +1820,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		unsigned bind_register = get_constant_metadata(uav, 4);
 		unsigned range_size = get_constant_metadata(uav, 5);
 
-		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		if (bind_register == UINT32_MAX || bind_space == UINT32_MAX)
 		{
 			// This seems to be possible in RT shaders when explicit register() is missing?
 			LOGE("Nonsensical UAV binding detected.\n");
@@ -2441,7 +2441,7 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
-		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		if (bind_register == UINT32_MAX || bind_space == UINT32_MAX)
 		{
 			// This seems to be possible in RT shaders when explicit register() is missing?
 			LOGE("Nonsensical CBV binding detected.\n");
@@ -2703,7 +2703,7 @@ bool Converter::Impl::emit_samplers(const llvm::MDNode *samplers, const llvm::MD
 		unsigned bind_register = get_constant_metadata(sampler, 4);
 		unsigned range_size = get_constant_metadata(sampler, 5);
 
-		if (bind_register == UINT32_MAX && bind_space == UINT32_MAX)
+		if (bind_register == UINT32_MAX || bind_space == UINT32_MAX)
 		{
 			// This seems to be possible in RT shaders when explicit register() is missing?
 			LOGE("Nonsensical Sampler binding detected.\n");
