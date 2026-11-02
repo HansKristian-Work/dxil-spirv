@@ -4919,13 +4919,18 @@ bool Converter::Impl::emit_stage_output_variables()
 
 		spv::Id type_id = get_type_id(effective_element_type, rows, cols);
 
+		// DXC seems to allow SV_IsFrontFace even though it gets ignored.
+		// https://github.com/microsoft/hlsl-specs/issues/309 suggests this is a historical wart.
+		bool is_nonsense_semantic =
+				execution_model == spv::ExecutionModelTessellationControl ||
+				(execution_model == spv::ExecutionModelGeometry && system_value == DXIL::Semantic::IsFrontFace) ||
+				(execution_model == spv::ExecutionModelTessellationEvaluation && system_value == DXIL::Semantic::ShadingRate);
+
 		if (options.quirks.ignore_primitive_shading_rate && system_value == DXIL::Semantic::ShadingRate)
 		{
 			masked_output = true;
 		}
-		else if (execution_model == spv::ExecutionModelTessellationControl ||
-		         (execution_model == spv::ExecutionModelTessellationEvaluation &&
-		          system_value == DXIL::Semantic::ShadingRate))
+		else if (is_nonsense_semantic)
 		{
 			// For HS <-> DS, ignore system values.
 			// Shading rate is also ignored in DS. RE4 hits this case. Just treat it as a normal user varying.
