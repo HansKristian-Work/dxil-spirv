@@ -370,6 +370,10 @@ spv::Id Converter::Impl::create_ubo_variable(const RawDeclaration &raw_decl, uin
 	unsigned element_size = raw_width_to_bits(raw_decl.width) * raw_decl.vecsize / 8;
 	unsigned array_length = (cbv_size + element_size - 1) / element_size;
 
+	// Broken compiler case. Just infer the maximum 64K since there isn't much we can infer and it doesn't hurt anything.
+	if (array_length == 0)
+		array_length = 64 * 1024 / element_size;
+
 	// It seems like we will have to bitcast ourselves away from vec4 here after loading.
 	spv::Id size_id = builder.makeUintConstant(array_length, false);
 
