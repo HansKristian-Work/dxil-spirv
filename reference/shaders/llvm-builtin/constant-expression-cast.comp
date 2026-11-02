@@ -53,7 +53,7 @@ OpBranch %24
 %24 = OpLabel
 %13 = OpLoad %6 %8
 %15 = OpAccessChain %14 %12 %16
-%17 = OpLoad %5 %15 NonPrivatePointer
+%17 = OpLoad %5 %15 MakePointerVisible|NonPrivatePointer %16
 %19 = OpBitcast %18 %17
 %21 = OpBitcast %5 %19
 %23 = OpCompositeConstruct %22 %21 %21 %21 %21

@@ -47,7 +47,8 @@ void main()
             _54 = _109;
             _58 = (_54 << 8u) + gl_LocalInvocationIndex;
             _61 = _9._m0[_58];
-            groupMemoryBarrier();
+            memoryBarrierBuffer();
+            memoryBarrierImage();
             barrier();
             _64 = _61 < 256u;
             if (_64)
@@ -171,7 +172,7 @@ OpDecorate %35 BuiltIn LocalInvocationIndex
 %57 = OpConstant %5 8
 %59 = OpTypePointer StorageBuffer %5
 %62 = OpConstant %5 2
-%63 = OpConstant %5 26696
+%63 = OpConstant %5 2120
 %65 = OpConstant %5 256
 %108 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
@@ -203,7 +204,7 @@ OpBranch %112
 %58 = OpIAdd %5 %56 %36
 %60 = OpAccessChain %59 %9 %45 %58
 %61 = OpLoad %5 %60
-OpControlBarrier %62 %62 %63
+OpControlBarrier %62 %46 %63
 %64 = OpULessThan %52 %61 %65
 OpLoopMerge %117 %116 None
 OpBranch %113

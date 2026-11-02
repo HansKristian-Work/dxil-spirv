@@ -49,13 +49,13 @@ OpDecorate %8 NonReadable
 %11 = OpConstant %5 5
 %12 = OpTypeVector %5 4
 %14 = OpConstant %5 2
-%15 = OpConstant %5 24840
+%15 = OpConstant %5 264
 %16 = OpConstant %5 10
-%18 = OpConstant %5 26952
+%18 = OpConstant %5 2376
 %19 = OpConstant %5 15
 %21 = OpConstant %5 20
 %23 = OpConstant %5 30
-%25 = OpConstant %5 26696
+%25 = OpConstant %5 2120
 %26 = OpConstant %5 40
 %3 = OpFunction %1 None %2
 %4 = OpLabel

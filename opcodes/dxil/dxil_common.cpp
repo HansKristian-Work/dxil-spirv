@@ -702,7 +702,7 @@ void add_vkmm_access_qualifiers(Converter::Impl &impl, Operation *op, const Refe
 			op->add_literal(mm_flags);
 
 		if (vkmm.auto_visibility)
-			op->add_id(impl.builder().makeUintConstant(spv::ScopeQueueFamily));
+			op->add_id(impl.builder().makeUintConstant(vkmm.scope));
 	}
 }
 
@@ -733,5 +733,19 @@ uint32_t log2i_floor(uint32_t value)
 			return uint32_t(i);
 	return 32;
 #endif
+}
+
+bool stage_supports_workgroups(Converter::Impl &impl)
+{
+	switch (impl.execution_model)
+	{
+	case spv::ExecutionModelGLCompute:
+	case spv::ExecutionModelMeshEXT:
+	case spv::ExecutionModelTaskEXT:
+		return true;
+
+	default:
+		return false;
+	}
 }
 } // namespace dxil_spv

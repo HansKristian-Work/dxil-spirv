@@ -64,7 +64,7 @@ OpDecorate %16 BuiltIn GlobalInvocationId
 %27 = OpTypePointer Workgroup %5
 %32 = OpConstant %5 3
 %33 = OpConstant %5 10
-%34 = OpConstant %5 24840
+%34 = OpConstant %5 264
 %39 = OpTypeBool
 %41 = OpTypeStruct %5 %39
 %47 = OpTypeVector %5 4
@@ -97,11 +97,11 @@ OpControlBarrier %25 %25 %34
 %43 = OpCompositeExtract %5 %42 0
 %44 = OpBitwiseAnd %5 %23 %32
 %45 = OpAccessChain %27 %12 %44
-%46 = OpLoad %5 %45 NonPrivatePointer
+%46 = OpLoad %5 %45 MakePointerVisible|NonPrivatePointer %25
 %48 = OpCompositeConstruct %47 %46 %46 %46 %46
 OpImageWrite %13 %20 %48 NonPrivateTexel
 %49 = OpAccessChain %27 %12 %22
-%50 = OpLoad %5 %49 NonPrivatePointer
+%50 = OpLoad %5 %49 MakePointerVisible|NonPrivatePointer %25
 %51 = OpIAdd %5 %50 %43
 %52 = OpCompositeConstruct %47 %51 %51 %51 %51
 OpImageWrite %13 %26 %52 NonPrivateTexel

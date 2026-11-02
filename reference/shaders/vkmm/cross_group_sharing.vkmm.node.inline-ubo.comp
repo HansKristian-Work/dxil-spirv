@@ -103,7 +103,7 @@ void node_main()
     uint _59 = atomicAdd(_54.data._m1, 1u);
     uint _61 = _54.data._m1;
     _54.data._m1 = _61 + 3u;
-    groupMemoryBarrier();
+    memoryBarrierBuffer();
     barrier();
     uint64_t _83 = NodeInputPayloadBDA;
     bool _86 = FinishCrossGroupSharing(_83 + 8ul);
@@ -425,7 +425,7 @@ OpDecorate %165 BuiltIn GlobalInvocationId
 %60 = OpConstant %5 2
 %62 = OpConstant %5 5
 %64 = OpConstant %5 3
-%65 = OpConstant %5 24648
+%65 = OpConstant %5 72
 %66 = OpTypeFunction %28 %7
 %72 = OpTypePointer Input %5
 %73 = OpVariable %72 Input
@@ -752,7 +752,7 @@ OpBranch %302
 %61 = OpLoad %5 %58 Aligned|MakePointerVisible|NonPrivatePointer 4 %62
 %63 = OpIAdd %5 %61 %64
 OpStore %58 %63 Aligned|MakePointerAvailable|NonPrivatePointer 4 %62
-OpControlBarrier %60 %60 %65
+OpControlBarrier %60 %62 %65
 %83 = OpLoad %7 %9
 %84 = OpIAdd %7 %83 %85
 %86 = OpFunctionCall %28 %68 %84

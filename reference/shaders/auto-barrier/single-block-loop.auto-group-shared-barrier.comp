@@ -21,7 +21,7 @@ void main()
         imageStore(_8, int(gl_LocalInvocationIndex), uvec4(_12[gl_LocalInvocationIndex ^ 15u]));
         subgroupMemoryBarrierShared();
         subgroupBarrier();
-        uint _34 = atomicAdd(_12[gl_LocalInvocationIndex], 1u);
+        uint _35 = atomicAdd(_12[gl_LocalInvocationIndex], 1u);
         uint _37 = atomicOr(_12[gl_LocalInvocationIndex], 1u);
         uint _38 = atomicXor(_12[gl_LocalInvocationIndex], 1u);
         _19 = _17 + 1u;
@@ -78,10 +78,10 @@ OpDecorate %15 BuiltIn LocalInvocationIndex
 %18 = OpConstant %5 0
 %20 = OpTypePointer Workgroup %5
 %22 = OpConstant %5 40
-%24 = OpConstant %5 31
-%27 = OpTypeVector %5 4
-%30 = OpConstant %5 15
-%35 = OpConstant %5 2
+%23 = OpConstant %5 2
+%25 = OpConstant %5 31
+%28 = OpTypeVector %5 4
+%31 = OpConstant %5 15
 %36 = OpConstant %5 1
 %39 = OpTypeBool
 %41 = OpConstant %5 4
@@ -100,22 +100,22 @@ OpBranch %45
 %45 = OpLabel
 %17 = OpLoad %5 %43
 %21 = OpAccessChain %20 %12 %16
-OpStore %21 %22 NonPrivatePointer
-%23 = OpBitwiseXor %5 %16 %24
-%25 = OpAccessChain %20 %12 %23
+OpStore %21 %22 MakePointerAvailable|NonPrivatePointer %23
+%24 = OpBitwiseXor %5 %16 %25
+%26 = OpAccessChain %20 %12 %24
 OpControlBarrier %50 %50 %51
-%26 = OpLoad %5 %25 NonPrivatePointer
-%28 = OpCompositeConstruct %27 %26 %26 %26 %26
-OpImageWrite %13 %16 %28 NonPrivateTexel
-%29 = OpBitwiseXor %5 %16 %30
-%31 = OpAccessChain %20 %12 %29
-%32 = OpLoad %5 %31 NonPrivatePointer
-%33 = OpCompositeConstruct %27 %32 %32 %32 %32
-OpImageWrite %13 %16 %33 NonPrivateTexel
+%27 = OpLoad %5 %26 MakePointerVisible|NonPrivatePointer %23
+%29 = OpCompositeConstruct %28 %27 %27 %27 %27
+OpImageWrite %13 %16 %29 NonPrivateTexel
+%30 = OpBitwiseXor %5 %16 %31
+%32 = OpAccessChain %20 %12 %30
+%33 = OpLoad %5 %32 MakePointerVisible|NonPrivatePointer %23
+%34 = OpCompositeConstruct %28 %33 %33 %33 %33
+OpImageWrite %13 %16 %34 NonPrivateTexel
 OpControlBarrier %50 %50 %51
-%34 = OpAtomicIAdd %5 %21 %35 %18 %36
-%37 = OpAtomicOr %5 %21 %35 %18 %36
-%38 = OpAtomicXor %5 %21 %35 %18 %36
+%35 = OpAtomicIAdd %5 %21 %23 %18 %36
+%37 = OpAtomicOr %5 %21 %23 %18 %36
+%38 = OpAtomicXor %5 %21 %23 %18 %36
 %19 = OpIAdd %5 %17 %36
 %40 = OpIEqual %39 %19 %41
 OpControlBarrier %50 %50 %51

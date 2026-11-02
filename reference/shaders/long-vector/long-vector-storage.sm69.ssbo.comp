@@ -290,7 +290,7 @@ OpDecorate %45 BuiltIn LocalInvocationIndex
 %346 = OpConstant %23 4
 %355 = OpTypePointer Workgroup %24
 %359 = OpTypePointer Workgroup %29
-%388 = OpConstant %5 24840
+%388 = OpConstant %5 264
 %583 = OpConstant %5 7
 %3 = OpFunction %1 None %2
 %4 = OpLabel
@@ -593,45 +593,45 @@ OpStore %350 %349
 %357 = OpIMul %5 %354 %28
 %358 = OpIAdd %5 %43 %357
 %360 = OpAccessChain %359 %37 %358
-OpStore %360 %351 NonPrivatePointer
+OpStore %360 %351 MakePointerAvailable|NonPrivatePointer %28
 %361 = OpIMul %5 %354 %28
 %362 = OpIAdd %5 %59 %361
 %363 = OpAccessChain %359 %37 %362
-OpStore %363 %352 NonPrivatePointer
-OpStore %356 %353 NonPrivatePointer
+OpStore %363 %352 MakePointerAvailable|NonPrivatePointer %28
+OpStore %356 %353 MakePointerAvailable|NonPrivatePointer %28
 %364 = OpBitwiseOr %5 %354 %59
 %365 = OpAccessChain %355 %27 %364
 %366 = OpIMul %5 %364 %28
 %367 = OpIAdd %5 %43 %366
 %368 = OpAccessChain %359 %37 %367
-OpStore %368 %151 NonPrivatePointer
+OpStore %368 %151 MakePointerAvailable|NonPrivatePointer %28
 %369 = OpIMul %5 %364 %28
 %370 = OpIAdd %5 %59 %369
 %371 = OpAccessChain %359 %37 %370
-OpStore %371 %175 NonPrivatePointer
-OpStore %365 %196 NonPrivatePointer
+OpStore %371 %175 MakePointerAvailable|NonPrivatePointer %28
+OpStore %365 %196 MakePointerAvailable|NonPrivatePointer %28
 %372 = OpBitwiseOr %5 %354 %28
 %373 = OpAccessChain %355 %27 %372
 %374 = OpIMul %5 %372 %28
 %375 = OpIAdd %5 %43 %374
 %376 = OpAccessChain %359 %37 %375
-OpStore %376 %216 NonPrivatePointer
+OpStore %376 %216 MakePointerAvailable|NonPrivatePointer %28
 %377 = OpIMul %5 %372 %28
 %378 = OpIAdd %5 %59 %377
 %379 = OpAccessChain %359 %37 %378
-OpStore %379 %237 NonPrivatePointer
-OpStore %373 %255 NonPrivatePointer
+OpStore %379 %237 MakePointerAvailable|NonPrivatePointer %28
+OpStore %373 %255 MakePointerAvailable|NonPrivatePointer %28
 %380 = OpBitwiseOr %5 %354 %66
 %381 = OpAccessChain %355 %27 %380
 %382 = OpIMul %5 %380 %28
 %383 = OpIAdd %5 %43 %382
 %384 = OpAccessChain %359 %37 %383
-OpStore %384 %276 NonPrivatePointer
+OpStore %384 %276 MakePointerAvailable|NonPrivatePointer %28
 %385 = OpIMul %5 %380 %28
 %386 = OpIAdd %5 %59 %385
 %387 = OpAccessChain %359 %37 %386
-OpStore %387 %298 NonPrivatePointer
-OpStore %381 %317 NonPrivatePointer
+OpStore %387 %298 MakePointerAvailable|NonPrivatePointer %28
+OpStore %381 %317 MakePointerAvailable|NonPrivatePointer %28
 OpControlBarrier %28 %28 %388
 %389 = OpIMul %5 %44 %53
 %390 = OpBitcast %76 %351
@@ -711,12 +711,12 @@ OpStore %443 %435 NonPrivatePointer
 %447 = OpIMul %5 %445 %28
 %448 = OpIAdd %5 %43 %447
 %449 = OpAccessChain %359 %37 %448
-%450 = OpLoad %29 %449 NonPrivatePointer
+%450 = OpLoad %29 %449 MakePointerVisible|NonPrivatePointer %28
 %451 = OpIMul %5 %445 %28
 %452 = OpIAdd %5 %59 %451
 %453 = OpAccessChain %359 %37 %452
-%454 = OpLoad %29 %453 NonPrivatePointer
-%455 = OpLoad %24 %446 NonPrivatePointer
+%454 = OpLoad %29 %453 MakePointerVisible|NonPrivatePointer %28
+%455 = OpLoad %24 %446 MakePointerVisible|NonPrivatePointer %28
 %456 = OpIMul %5 %44 %53
 %457 = OpFunctionCall %5 %127 %456 %70
 %458 = OpBitcast %76 %450
@@ -798,12 +798,12 @@ OpStore %513 %505 NonPrivatePointer
 %517 = OpIMul %5 %515 %28
 %518 = OpIAdd %5 %43 %517
 %519 = OpAccessChain %359 %37 %518
-%520 = OpLoad %29 %519 NonPrivatePointer
+%520 = OpLoad %29 %519 MakePointerVisible|NonPrivatePointer %28
 %521 = OpIMul %5 %515 %28
 %522 = OpIAdd %5 %59 %521
 %523 = OpAccessChain %359 %37 %522
-%524 = OpLoad %29 %523 NonPrivatePointer
-%525 = OpLoad %24 %516 NonPrivatePointer
+%524 = OpLoad %29 %523 MakePointerVisible|NonPrivatePointer %28
+%525 = OpLoad %24 %516 MakePointerVisible|NonPrivatePointer %28
 %526 = OpIMul %5 %44 %53
 %527 = OpBitcast %76 %520
 %528 = OpCompositeExtract %5 %527 0
@@ -882,12 +882,12 @@ OpStore %580 %572 NonPrivatePointer
 %585 = OpIMul %5 %582 %28
 %586 = OpIAdd %5 %43 %585
 %587 = OpAccessChain %359 %37 %586
-%588 = OpLoad %29 %587 NonPrivatePointer
+%588 = OpLoad %29 %587 MakePointerVisible|NonPrivatePointer %28
 %589 = OpIMul %5 %582 %28
 %590 = OpIAdd %5 %59 %589
 %591 = OpAccessChain %359 %37 %590
-%592 = OpLoad %29 %591 NonPrivatePointer
-%593 = OpLoad %24 %584 NonPrivatePointer
+%592 = OpLoad %29 %591 MakePointerVisible|NonPrivatePointer %28
+%593 = OpLoad %24 %584 MakePointerVisible|NonPrivatePointer %28
 %594 = OpIMul %5 %44 %53
 %595 = OpFunctionCall %5 %127 %594 %70
 %596 = OpBitcast %76 %588

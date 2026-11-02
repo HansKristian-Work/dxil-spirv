@@ -23,25 +23,25 @@ void main()
         imageStore(_8, int(gl_LocalInvocationIndex), uvec4(_12[gl_LocalInvocationIndex ^ 31u]));
         imageStore(_8, int(gl_LocalInvocationIndex), uvec4(_12[gl_LocalInvocationIndex ^ 15u]));
         _46 = 0u;
-        uint _35;
+        uint _36;
         bool _42;
         for (;;)
         {
-            uint _34 = _46;
+            uint _35 = _46;
             subgroupMemoryBarrierShared();
             subgroupBarrier();
-            uint _36 = atomicAdd(_12[gl_LocalInvocationIndex], 1u);
-            uint _39 = atomicOr(_12[gl_LocalInvocationIndex], _36);
+            uint _37 = atomicAdd(_12[gl_LocalInvocationIndex], 1u);
+            uint _39 = atomicOr(_12[gl_LocalInvocationIndex], _37);
             uint _40 = atomicXor(_12[gl_LocalInvocationIndex], _39);
-            _35 = _34 + 1u;
-            _42 = _35 == 4u;
+            _36 = _35 + 1u;
+            _42 = _36 == 4u;
             if (_42)
             {
                 break;
             }
             else
             {
-                _46 = _35;
+                _46 = _36;
                 continue;
             }
         }
@@ -96,10 +96,10 @@ OpDecorate %15 BuiltIn LocalInvocationIndex
 %18 = OpConstant %5 0
 %20 = OpTypePointer Workgroup %5
 %22 = OpConstant %5 40
-%24 = OpConstant %5 31
-%27 = OpTypeVector %5 4
-%30 = OpConstant %5 15
-%37 = OpConstant %5 2
+%23 = OpConstant %5 2
+%25 = OpConstant %5 31
+%28 = OpTypeVector %5 4
+%31 = OpConstant %5 15
 %38 = OpConstant %5 1
 %41 = OpTypeBool
 %43 = OpConstant %5 4
@@ -120,29 +120,29 @@ OpBranch %49
 %17 = OpLoad %5 %47
 OpControlBarrier %57 %57 %58
 %21 = OpAccessChain %20 %12 %16
-OpStore %21 %22 NonPrivatePointer
-%23 = OpBitwiseXor %5 %16 %24
-%25 = OpAccessChain %20 %12 %23
+OpStore %21 %22 MakePointerAvailable|NonPrivatePointer %23
+%24 = OpBitwiseXor %5 %16 %25
+%26 = OpAccessChain %20 %12 %24
 OpControlBarrier %57 %57 %58
-%26 = OpLoad %5 %25 NonPrivatePointer
-%28 = OpCompositeConstruct %27 %26 %26 %26 %26
-OpImageWrite %13 %16 %28 NonPrivateTexel
-%29 = OpBitwiseXor %5 %16 %30
-%31 = OpAccessChain %20 %12 %29
-%32 = OpLoad %5 %31 NonPrivatePointer
-%33 = OpCompositeConstruct %27 %32 %32 %32 %32
-OpImageWrite %13 %16 %33 NonPrivateTexel
+%27 = OpLoad %5 %26 MakePointerVisible|NonPrivatePointer %23
+%29 = OpCompositeConstruct %28 %27 %27 %27 %27
+OpImageWrite %13 %16 %29 NonPrivateTexel
+%30 = OpBitwiseXor %5 %16 %31
+%32 = OpAccessChain %20 %12 %30
+%33 = OpLoad %5 %32 MakePointerVisible|NonPrivatePointer %23
+%34 = OpCompositeConstruct %28 %33 %33 %33 %33
+OpImageWrite %13 %16 %34 NonPrivateTexel
 OpStore %46 %18
 OpLoopMerge %55 %54 None
 OpBranch %50
 %50 = OpLabel
-%34 = OpLoad %5 %46
+%35 = OpLoad %5 %46
 OpControlBarrier %57 %57 %58
-%36 = OpAtomicIAdd %5 %21 %37 %18 %38
-%39 = OpAtomicOr %5 %21 %37 %18 %36
-%40 = OpAtomicXor %5 %21 %37 %18 %39
-%35 = OpIAdd %5 %34 %38
-%42 = OpIEqual %41 %35 %43
+%37 = OpAtomicIAdd %5 %21 %23 %18 %38
+%39 = OpAtomicOr %5 %21 %23 %18 %37
+%40 = OpAtomicXor %5 %21 %23 %18 %39
+%36 = OpIAdd %5 %35 %38
+%42 = OpIEqual %41 %36 %43
 OpLoopMerge %53 %52 None
 OpBranch %51
 %51 = OpLabel
@@ -151,7 +151,7 @@ OpBranchConditional %42 %53 %52
 %59 = OpLabel
 OpUnreachable
 %52 = OpLabel
-OpStore %46 %35
+OpStore %46 %36
 OpBranch %50
 %53 = OpLabel
 %19 = OpIAdd %5 %17 %38

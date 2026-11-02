@@ -1,0 +1,12 @@
+groupshared uint G[64];
+RWStructuredBuffer<uint> R;
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_GroupIndex)
+{
+	R[thr] = 10;
+	Barrier(UAV_MEMORY, GROUP_SYNC | GROUP_SCOPE);
+	G[thr] += R[thr ^ 1];
+	Barrier(UAV_MEMORY, GROUP_SYNC | GROUP_SCOPE);
+	R[thr] += G[thr ^ 1];
+}
