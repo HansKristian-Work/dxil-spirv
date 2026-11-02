@@ -29,6 +29,20 @@
 
 namespace dxil_spv
 {
+static bool stage_supports_workgroups(Converter::Impl &impl)
+{
+	switch (impl.execution_model)
+	{
+	case spv::ExecutionModelGLCompute:
+	case spv::ExecutionModelMeshEXT:
+	case spv::ExecutionModelTaskEXT:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -45,7 +59,9 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 	// We might only need to ensure coherency within the workgroup, in which case we can narrow the scope.
 	// DXC emits AccessUAVGlobal all the time, so try to demote to UAVThreadGroup when appropriate.
-	spv::Scope memory_scope = spv::ScopeWorkgroup;
+	// For non-compute, we want Invocation, but spec specifically bans that for anything other than Relaxed.
+	// Subgroup is technically fine for our needs.
+	spv::Scope memory_scope = stage_supports_workgroups(impl) ? spv::ScopeWorkgroup : spv::ScopeSubgroup;
 
 	bool needs_device_scope_uav =
 	    (operation & DXIL::AccessUAVGlobal) != 0 && impl.execution_mode_meta.declares_globallycoherent_uav;
@@ -73,15 +89,22 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	if (has_uav_barrier)
 		semantics |= spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask;
 
-	if ((operation & DXIL::AccessGroupShared) != 0)
-		semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
+	if (stage_supports_workgroups(impl))
+	{
+		if ((operation & DXIL::AccessGroupShared) != 0)
+			semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
 
-	if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
-		semantics |= spv::MemorySemanticsMakeAvailableMask | spv::MemorySemanticsMakeVisibleMask;
+		// We never implicitly need to make things visible in VkMM in non-compute stages.
+		// globallycoherent is handled per-op.
+		if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+			semantics |= spv::MemorySemanticsMakeAvailableMask | spv::MemorySemanticsMakeVisibleMask;
+	}
 
 	op->add_id(builder.makeUintConstant(semantics));
 
-	impl.add(op);
+	if (semantics != spv::MemorySemanticsAcquireReleaseMask || is_sync)
+		impl.add(op);
+
 	return true;
 }
 
