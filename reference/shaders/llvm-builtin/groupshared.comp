@@ -66,7 +66,7 @@ OpDecorate %20 BuiltIn LocalInvocationIndex
 %29 = OpConstant %5 0
 %32 = OpTypePointer Workgroup %10
 %52 = OpConstant %5 3
-%60 = OpConstant %5 24840
+%60 = OpConstant %5 264
 %90 = OpConstant %5 4
 %104 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
@@ -83,13 +83,13 @@ OpBranch %108
 %30 = OpIMul %5 %28 %27
 %31 = OpIAdd %5 %29 %30
 %33 = OpAccessChain %32 %13 %31
-OpStore %33 %22 NonPrivatePointer
+OpStore %33 %22 MakePointerAvailable|NonPrivatePointer %27
 %34 = OpIMul %5 %21 %27
 %35 = OpIAdd %5 %29 %34
 %36 = OpIMul %5 %35 %27
 %37 = OpIAdd %5 %24 %36
 %38 = OpAccessChain %32 %13 %37
-OpStore %38 %25 NonPrivatePointer
+OpStore %38 %25 MakePointerAvailable|NonPrivatePointer %27
 %39 = OpIAdd %5 %21 %27
 %40 = OpConvertUToF %10 %39
 %41 = OpIMul %5 %21 %27
@@ -97,23 +97,23 @@ OpStore %38 %25 NonPrivatePointer
 %43 = OpIMul %5 %42 %27
 %44 = OpIAdd %5 %29 %43
 %45 = OpAccessChain %32 %13 %44
-OpStore %45 %25 NonPrivatePointer
+OpStore %45 %25 MakePointerAvailable|NonPrivatePointer %27
 %46 = OpIMul %5 %21 %27
 %47 = OpIAdd %5 %24 %46
 %48 = OpIMul %5 %47 %27
 %49 = OpIAdd %5 %24 %48
 %50 = OpAccessChain %32 %13 %49
-OpStore %50 %40 NonPrivatePointer
+OpStore %50 %40 MakePointerAvailable|NonPrivatePointer %27
 %51 = OpIAdd %5 %21 %52
 %53 = OpConvertUToF %10 %51
 %54 = OpIMul %5 %21 %27
 %55 = OpIAdd %5 %29 %54
 %56 = OpAccessChain %32 %17 %55
-OpStore %56 %40 NonPrivatePointer
+OpStore %56 %40 MakePointerAvailable|NonPrivatePointer %27
 %57 = OpIMul %5 %21 %27
 %58 = OpIAdd %5 %24 %57
 %59 = OpAccessChain %32 %17 %58
-OpStore %59 %53 NonPrivatePointer
+OpStore %59 %53 MakePointerAvailable|NonPrivatePointer %27
 OpControlBarrier %27 %27 %60
 %61 = OpBitwiseXor %5 %21 %24
 %62 = OpIMul %5 %61 %27
@@ -121,37 +121,37 @@ OpControlBarrier %27 %27 %60
 %64 = OpIMul %5 %63 %27
 %65 = OpIAdd %5 %29 %64
 %66 = OpAccessChain %32 %13 %65
-%67 = OpLoad %10 %66 NonPrivatePointer
+%67 = OpLoad %10 %66 MakePointerVisible|NonPrivatePointer %27
 %68 = OpIMul %5 %61 %27
 %69 = OpIAdd %5 %29 %68
 %70 = OpIMul %5 %69 %27
 %71 = OpIAdd %5 %24 %70
 %72 = OpAccessChain %32 %13 %71
-%73 = OpLoad %10 %72 NonPrivatePointer
+%73 = OpLoad %10 %72 MakePointerVisible|NonPrivatePointer %27
 %74 = OpBitwiseXor %5 %21 %27
 %75 = OpIMul %5 %74 %27
 %76 = OpIAdd %5 %24 %75
 %77 = OpIMul %5 %76 %27
 %78 = OpIAdd %5 %29 %77
 %79 = OpAccessChain %32 %13 %78
-%80 = OpLoad %10 %79 NonPrivatePointer
+%80 = OpLoad %10 %79 MakePointerVisible|NonPrivatePointer %27
 %81 = OpIMul %5 %74 %27
 %82 = OpIAdd %5 %24 %81
 %83 = OpIMul %5 %82 %27
 %84 = OpIAdd %5 %24 %83
 %85 = OpAccessChain %32 %13 %84
-%86 = OpLoad %10 %85 NonPrivatePointer
+%86 = OpLoad %10 %85 MakePointerVisible|NonPrivatePointer %27
 %87 = OpFMul %10 %80 %67
 %88 = OpFMul %10 %86 %73
 %89 = OpBitwiseXor %5 %21 %90
 %91 = OpIMul %5 %89 %27
 %92 = OpIAdd %5 %29 %91
 %93 = OpAccessChain %32 %17 %92
-%94 = OpLoad %10 %93 NonPrivatePointer
+%94 = OpLoad %10 %93 MakePointerVisible|NonPrivatePointer %27
 %95 = OpIMul %5 %89 %27
 %96 = OpIAdd %5 %24 %95
 %97 = OpAccessChain %32 %17 %96
-%98 = OpLoad %10 %97 NonPrivatePointer
+%98 = OpLoad %10 %97 MakePointerVisible|NonPrivatePointer %27
 %99 = OpFMul %10 %87 %94
 %100 = OpFMul %10 %88 %98
 %101 = OpIMul %5 %21 %27

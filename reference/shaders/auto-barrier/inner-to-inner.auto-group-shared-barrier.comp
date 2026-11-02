@@ -39,7 +39,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 56
+; Bound: 57
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -73,58 +73,59 @@ OpDecorate %17 BuiltIn LocalInvocationIndex
 %25 = OpTypeVector %5 4
 %29 = OpConstant %5 1
 %30 = OpTypePointer Workgroup %5
-%39 = OpConstant %5 50
-%41 = OpConstant %5 31
-%54 = OpConstant %5 3
-%55 = OpConstant %5 24840
+%32 = OpConstant %5 2
+%40 = OpConstant %5 50
+%42 = OpConstant %5 31
+%55 = OpConstant %5 3
+%56 = OpConstant %5 24840
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %45
-%45 = OpLabel
+OpBranch %46
+%46 = OpLabel
 %14 = OpLoad %6 %9
 %15 = OpLoad %6 %8
 %18 = OpLoad %5 %17
 %20 = OpULessThan %19 %18 %21
 %22 = OpIAdd %5 %18 %23
-OpSelectionMerge %48 None
-OpBranchConditional %20 %47 %46
-%46 = OpLabel
+OpSelectionMerge %49 None
+OpBranchConditional %20 %48 %47
+%47 = OpLabel
 %24 = OpIAdd %5 %18 %23
 %26 = OpImageRead %25 %14 %24 NonPrivateTexel
 %27 = OpCompositeExtract %5 %26 0
 %28 = OpBitwiseXor %5 %18 %29
 %31 = OpAccessChain %30 %13 %28
-OpStore %31 %27 NonPrivatePointer
-OpBranch %48
-%47 = OpLabel
-%32 = OpIAdd %5 %18 %23
-%33 = OpImageRead %25 %15 %32 NonPrivateTexel
-%34 = OpCompositeExtract %5 %33 0
-%35 = OpAccessChain %30 %13 %18
-OpStore %35 %34 NonPrivatePointer
-OpBranch %48
+OpStore %31 %27 MakePointerAvailable|NonPrivatePointer %32
+OpBranch %49
 %48 = OpLabel
-OpControlBarrier %54 %54 %55
-OpSelectionMerge %52 None
-OpBranchConditional %20 %49 %52
+%33 = OpIAdd %5 %18 %23
+%34 = OpImageRead %25 %15 %33 NonPrivateTexel
+%35 = OpCompositeExtract %5 %34 0
+%36 = OpAccessChain %30 %13 %18
+OpStore %36 %35 MakePointerAvailable|NonPrivatePointer %32
+OpBranch %49
 %49 = OpLabel
-%36 = OpImageRead %25 %15 %18 NonPrivateTexel
-%37 = OpCompositeExtract %5 %36 0
-%38 = OpIEqual %19 %37 %39
-OpSelectionMerge %51 None
-OpBranchConditional %38 %50 %51
+OpControlBarrier %55 %55 %56
+OpSelectionMerge %53 None
+OpBranchConditional %20 %50 %53
 %50 = OpLabel
-%40 = OpBitwiseXor %5 %18 %41
-%42 = OpAccessChain %30 %13 %40
-%43 = OpLoad %5 %42 NonPrivatePointer
-%44 = OpCompositeConstruct %25 %43 %43 %43 %43
-OpImageWrite %15 %18 %44 NonPrivateTexel
-OpBranch %51
+%37 = OpImageRead %25 %15 %18 NonPrivateTexel
+%38 = OpCompositeExtract %5 %37 0
+%39 = OpIEqual %19 %38 %40
+OpSelectionMerge %52 None
+OpBranchConditional %39 %51 %52
 %51 = OpLabel
+%41 = OpBitwiseXor %5 %18 %42
+%43 = OpAccessChain %30 %13 %41
+%44 = OpLoad %5 %43 MakePointerVisible|NonPrivatePointer %32
+%45 = OpCompositeConstruct %25 %44 %44 %44 %44
+OpImageWrite %15 %18 %45 NonPrivateTexel
 OpBranch %52
 %52 = OpLabel
 OpBranch %53
 %53 = OpLabel
+OpBranch %54
+%54 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

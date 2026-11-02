@@ -1881,9 +1881,11 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 
 	if (remapped_type_id != 0)
 	{
+		bool auto_visibility = addr_space == DXIL::AddressSpace::GroupShared;
+
 		Operation *load_op = impl.allocate(spv::OpLoad, remapped_type_id);
 		load_op->add_id(value_id);
-		add_vkmm_access_qualifiers(impl, load_op, { non_private });
+		add_vkmm_access_qualifiers(impl, load_op, { non_private, auto_visibility, spv::ScopeWorkgroup });
 		impl.add(load_op);
 
 		if (needs_group_shared_auto_barrier(impl, instruction->getPointerOperand()))
@@ -1916,6 +1918,7 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 		}
 
 		bool auto_visibility = false;
+		spv::Scope auto_scope = spv::ScopeQueueFamily;
 
 		// For NodeIO, we always have to tag with aligned mask.
 		if (addr_space == DXIL::AddressSpace::PhysicalNodeIO)
@@ -1928,8 +1931,13 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 
 			auto_visibility = vkmm_requires_auto_visibility(impl, instruction->getPointerOperand());
 		}
+		else if (addr_space == DXIL::AddressSpace::GroupShared)
+		{
+			auto_visibility = true;
+			auto_scope = spv::ScopeWorkgroup;
+		}
 
-		add_vkmm_access_qualifiers(impl, op, { non_private, auto_visibility });
+		add_vkmm_access_qualifiers(impl, op, { non_private, auto_visibility, auto_scope });
 
 		if (op->op == spv::PseudoOpMaskedLoad)
 		{
@@ -1990,6 +1998,7 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 	                   storage != spv::StorageClassTaskPayloadWorkgroupEXT &&
 	                   impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
 	bool auto_visibility = false;
+	spv::Scope auto_scope = spv::ScopeQueueFamily;
 
 	// For NodeIO, we always have to tag with aligned mask.
 	if (addr_space == DXIL::AddressSpace::PhysicalNodeIO)
@@ -2002,8 +2011,14 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 
 		auto_visibility = vkmm_requires_auto_visibility(impl, instruction->getOperand(1));
 	}
+	else if (storage == spv::StorageClassWorkgroup)
+	{
+		// Groupshared is implicitly coherent.
+		auto_visibility = true;
+		auto_scope = spv::ScopeWorkgroup;
+	}
 
-	add_vkmm_access_qualifiers(impl, op, { non_private, auto_visibility });
+	add_vkmm_access_qualifiers(impl, op, { non_private, auto_visibility, auto_scope });
 
 	if (op->op == spv::PseudoOpMaskedStore)
 	{

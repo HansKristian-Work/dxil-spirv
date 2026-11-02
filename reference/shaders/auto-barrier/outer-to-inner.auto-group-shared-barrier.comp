@@ -30,7 +30,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 45
+; Bound: 46
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -57,16 +57,17 @@ OpDecorate %15 BuiltIn LocalInvocationIndex
 %18 = OpConstant %5 1024
 %20 = OpTypeVector %5 4
 %23 = OpTypePointer Workgroup %5
-%25 = OpTypeBool
-%27 = OpConstant %5 16
-%31 = OpConstant %5 50
-%33 = OpConstant %5 31
-%43 = OpConstant %5 3
-%44 = OpConstant %5 24840
+%25 = OpConstant %5 2
+%26 = OpTypeBool
+%28 = OpConstant %5 16
+%32 = OpConstant %5 50
+%34 = OpConstant %5 31
+%44 = OpConstant %5 3
+%45 = OpConstant %5 24840
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %37
-%37 = OpLabel
+OpBranch %38
+%38 = OpLabel
 %13 = OpLoad %6 %8
 %16 = OpLoad %5 %15
 %17 = OpIAdd %5 %16 %18
@@ -74,29 +75,29 @@ OpBranch %37
 %21 = OpImageRead %20 %13 %19 NonPrivateTexel
 %22 = OpCompositeExtract %5 %21 0
 %24 = OpAccessChain %23 %12 %16
-OpStore %24 %22 NonPrivatePointer
-%26 = OpULessThan %25 %16 %27
-OpControlBarrier %43 %43 %44
-OpSelectionMerge %41 None
-OpBranchConditional %26 %38 %41
-%38 = OpLabel
-%28 = OpImageRead %20 %13 %16 NonPrivateTexel
-%29 = OpCompositeExtract %5 %28 0
-%30 = OpIEqual %25 %29 %31
-OpSelectionMerge %40 None
-OpBranchConditional %30 %39 %40
+OpStore %24 %22 MakePointerAvailable|NonPrivatePointer %25
+%27 = OpULessThan %26 %16 %28
+OpControlBarrier %44 %44 %45
+OpSelectionMerge %42 None
+OpBranchConditional %27 %39 %42
 %39 = OpLabel
-%32 = OpBitwiseXor %5 %16 %33
-%34 = OpAccessChain %23 %12 %32
-%35 = OpLoad %5 %34 NonPrivatePointer
-%36 = OpCompositeConstruct %20 %35 %35 %35 %35
-OpImageWrite %13 %16 %36 NonPrivateTexel
-OpBranch %40
+%29 = OpImageRead %20 %13 %16 NonPrivateTexel
+%30 = OpCompositeExtract %5 %29 0
+%31 = OpIEqual %26 %30 %32
+OpSelectionMerge %41 None
+OpBranchConditional %31 %40 %41
 %40 = OpLabel
+%33 = OpBitwiseXor %5 %16 %34
+%35 = OpAccessChain %23 %12 %33
+%36 = OpLoad %5 %35 MakePointerVisible|NonPrivatePointer %25
+%37 = OpCompositeConstruct %20 %36 %36 %36 %36
+OpImageWrite %13 %16 %37 NonPrivateTexel
 OpBranch %41
 %41 = OpLabel
 OpBranch %42
 %42 = OpLabel
+OpBranch %43
+%43 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

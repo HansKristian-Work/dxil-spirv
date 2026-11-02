@@ -385,18 +385,16 @@ static bool emit_barrier(Converter::Impl &impl, uint32_t memory_flags, uint32_t 
 	if (is_sync)
 		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
 
-	bool needs_device_memory_scope = false;
-	if ((semantic_flags & DXIL::DeviceScopeBit) != 0)
-		needs_device_memory_scope = true;
+	// Unless we observe device scoped barrier, keep the scope narrow.
+	spv::Scope memory_scope = stage_supports_workgroups(impl) ? spv::ScopeWorkgroup : spv::ScopeInvocation;
 
-	// We only ever need explicit Vis/Avail in workgroup scope for VkMM.
-	// globallycoherent is handled per-operation,
-	// and we only need acquire release to ensure ordering.
-	spv::Scope memory_scope;
-	if (needs_device_memory_scope && impl.execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
-		memory_scope = spv::ScopeDevice;
-	else
-		memory_scope = spv::ScopeWorkgroup;
+	if ((semantic_flags & DXIL::DeviceScopeBit) != 0)
+	{
+		memory_scope =
+				impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan
+					? spv::ScopeQueueFamily
+					: spv::ScopeDevice;
+	}
 
 	op->add_id(builder.makeUintConstant(memory_scope));
 
@@ -405,14 +403,14 @@ static bool emit_barrier(Converter::Impl &impl, uint32_t memory_flags, uint32_t 
 		semantics |= spv::MemorySemanticsUniformMemoryMask;
 	if ((memory_flags & DXIL::MemoryTypeUavBit) != 0)
 		semantics |= spv::MemorySemanticsImageMemoryMask;
-	if ((memory_flags & DXIL::MemoryTypeGroupSharedBit) != 0)
+
+	if (stage_supports_workgroups(impl) && (memory_flags & DXIL::MemoryTypeGroupSharedBit) != 0)
 		semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
 
-	if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
-		semantics |= spv::MemorySemanticsMakeAvailableMask | spv::MemorySemanticsMakeVisibleMask;
-
 	op->add_id(builder.makeUintConstant(semantics));
-	impl.add(op);
+
+	if (memory_scope != spv::ScopeInvocation || is_sync)
+		impl.add(op);
 
 	return true;
 }

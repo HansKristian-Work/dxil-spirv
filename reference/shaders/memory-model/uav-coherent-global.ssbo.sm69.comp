@@ -1,0 +1,93 @@
+#version 460
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) buffer SSBO
+{
+    uint _m0[];
+} _9;
+
+shared uint _13[64];
+
+void main()
+{
+    _9._m0[gl_LocalInvocationIndex] = 10u;
+    memoryBarrierBuffer();
+    memoryBarrierImage();
+    barrier();
+    uint _24 = gl_LocalInvocationIndex ^ 1u;
+    _13[gl_LocalInvocationIndex] += _9._m0[_24 + 0u];
+    memoryBarrierBuffer();
+    memoryBarrierImage();
+    barrier();
+    _9._m0[gl_LocalInvocationIndex] += _13[_24];
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 40
+; Schema: 0
+OpCapability Shader
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %9 %13 %15
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %7 "SSBO"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %15 BuiltIn LocalInvocationIndex
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpConstant %5 64
+%11 = OpTypeArray %5 %10
+%12 = OpTypePointer Workgroup %11
+%13 = OpVariable %12 Workgroup
+%14 = OpTypePointer Input %5
+%15 = OpVariable %14 Input
+%17 = OpConstant %5 10
+%18 = OpTypePointer StorageBuffer %5
+%20 = OpConstant %5 0
+%21 = OpConstant %5 5
+%22 = OpConstant %5 2
+%23 = OpConstant %5 2120
+%25 = OpConstant %5 1
+%29 = OpTypePointer Workgroup %5
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %39
+%39 = OpLabel
+%16 = OpLoad %5 %15
+%19 = OpAccessChain %18 %9 %20 %16
+OpStore %19 %17 MakePointerAvailable|NonPrivatePointer %21
+OpControlBarrier %22 %21 %23
+%24 = OpBitwiseXor %5 %16 %25
+%26 = OpIAdd %5 %24 %20
+%27 = OpAccessChain %18 %9 %20 %26
+%28 = OpLoad %5 %27 MakePointerVisible|NonPrivatePointer %21
+%30 = OpAccessChain %29 %13 %16
+%31 = OpLoad %5 %30 MakePointerVisible|NonPrivatePointer %22
+%32 = OpIAdd %5 %31 %28
+OpStore %30 %32 MakePointerAvailable|NonPrivatePointer %22
+OpControlBarrier %22 %21 %23
+%33 = OpAccessChain %29 %13 %24
+%34 = OpLoad %5 %33 MakePointerVisible|NonPrivatePointer %22
+%35 = OpAccessChain %18 %9 %20 %16
+%36 = OpLoad %5 %35 MakePointerVisible|NonPrivatePointer %21
+%37 = OpIAdd %5 %36 %34
+%38 = OpAccessChain %18 %9 %20 %16
+OpStore %38 %37 MakePointerAvailable|NonPrivatePointer %21
+OpReturn
+OpFunctionEnd
+#endif

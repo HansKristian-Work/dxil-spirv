@@ -337,7 +337,7 @@ OpDecorate %340 NonUniform
 %110 = OpConstant %5 4
 %113 = OpConstant %5 100
 %119 = OpTypePointer StorageBuffer %31
-%121 = OpConstant %5 24840
+%121 = OpConstant %5 264
 %144 = OpTypePointer UniformConstant %18
 %147 = OpConstant %5 3
 %157 = OpTypePointer Uniform %59

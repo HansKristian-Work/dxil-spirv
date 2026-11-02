@@ -49,7 +49,7 @@ OpDecorate %18 BuiltIn GlobalInvocationId
 %40 = OpConstant %12 6
 %54 = OpTypeVector %5 4
 %66 = OpTypeVector %12 2
-%78 = OpConstant %12 26696
+%78 = OpConstant %12 2120
 %80 = OpTypePointer Function %5
 %131 = OpTypeVector %12 4
 %143 = OpTypePointer Function %12
@@ -91,37 +91,37 @@ OpBranchConditional %38 %147 %146
 %52 = OpLoad %9 %11
 %53 = OpCompositeConstruct %16 %33 %34 %35
 %55 = OpCompositeConstruct %54 %45 %45 %45 %45
-OpImageWrite %52 %53 %55 Sample|NonPrivateTexel %21
+OpImageWrite %52 %53 %55 Sample|MakeTexelAvailable|NonPrivateTexel %21 %27
 %56 = OpLoad %9 %11
 %57 = OpCompositeConstruct %16 %33 %34 %35
 %58 = OpCompositeConstruct %54 %47 %47 %47 %47
-OpImageWrite %56 %57 %58 Sample|NonPrivateTexel %24
+OpImageWrite %56 %57 %58 Sample|MakeTexelAvailable|NonPrivateTexel %24 %27
 %59 = OpLoad %9 %11
 %60 = OpCompositeConstruct %16 %33 %34 %35
 %61 = OpCompositeConstruct %54 %49 %49 %49 %49
-OpImageWrite %59 %60 %61 Sample|NonPrivateTexel %27
+OpImageWrite %59 %60 %61 Sample|MakeTexelAvailable|NonPrivateTexel %27 %27
 %62 = OpLoad %9 %11
 %63 = OpCompositeConstruct %16 %33 %34 %35
 %64 = OpCompositeConstruct %54 %51 %51 %51 %51
-OpImageWrite %62 %63 %64 Sample|NonPrivateTexel %36
+OpImageWrite %62 %63 %64 Sample|MakeTexelAvailable|NonPrivateTexel %36 %27
 OpBranch %148
 %147 = OpLabel
 %65 = OpLoad %6 %8
 %67 = OpCompositeConstruct %66 %33 %34
 %68 = OpCompositeConstruct %54 %45 %45 %45 %45
-OpImageWrite %65 %67 %68 Sample|NonPrivateTexel %21
+OpImageWrite %65 %67 %68 Sample|MakeTexelAvailable|NonPrivateTexel %21 %27
 %69 = OpLoad %6 %8
 %70 = OpCompositeConstruct %66 %33 %34
 %71 = OpCompositeConstruct %54 %47 %47 %47 %47
-OpImageWrite %69 %70 %71 Sample|NonPrivateTexel %24
+OpImageWrite %69 %70 %71 Sample|MakeTexelAvailable|NonPrivateTexel %24 %27
 %72 = OpLoad %6 %8
 %73 = OpCompositeConstruct %66 %33 %34
 %74 = OpCompositeConstruct %54 %49 %49 %49 %49
-OpImageWrite %72 %73 %74 Sample|NonPrivateTexel %27
+OpImageWrite %72 %73 %74 Sample|MakeTexelAvailable|NonPrivateTexel %27 %27
 %75 = OpLoad %6 %8
 %76 = OpCompositeConstruct %66 %33 %34
 %77 = OpCompositeConstruct %54 %51 %51 %51 %51
-OpImageWrite %75 %76 %77 Sample|NonPrivateTexel %36
+OpImageWrite %75 %76 %77 Sample|MakeTexelAvailable|NonPrivateTexel %36 %27
 OpBranch %148
 %148 = OpLabel
 OpControlBarrier %27 %27 %78
@@ -132,7 +132,7 @@ OpBranchConditional %79 %154 %149
 %149 = OpLabel
 %82 = OpLoad %9 %11
 %84 = OpCompositeConstruct %16 %22 %25 %28
-%83 = OpImageRead %54 %82 %84 Sample|NonPrivateTexel %21
+%83 = OpImageRead %54 %82 %84 Sample|MakeTexelVisible|NonPrivateTexel %21 %27
 %85 = OpCompositeExtract %5 %83 0
 OpStore %81 %85
 OpStore %144 %24
@@ -141,7 +141,7 @@ OpBranch %150
 %86 = OpLoad %12 %144
 %88 = OpLoad %9 %11
 %90 = OpCompositeConstruct %16 %22 %25 %28
-%89 = OpImageRead %54 %88 %90 Sample|NonPrivateTexel %86
+%89 = OpImageRead %54 %88 %90 Sample|MakeTexelVisible|NonPrivateTexel %86 %27
 %91 = OpCompositeExtract %5 %89 0
 %92 = OpAccessChain %80 %32 %86
 OpStore %92 %91
@@ -173,21 +173,21 @@ OpBranch %155
 %154 = OpLabel
 %101 = OpLoad %6 %8
 %103 = OpCompositeConstruct %66 %22 %25
-%102 = OpImageRead %54 %101 %103 Sample|NonPrivateTexel %21
+%102 = OpImageRead %54 %101 %103 Sample|MakeTexelVisible|NonPrivateTexel %21 %27
 %104 = OpCompositeExtract %5 %102 0
 OpStore %81 %104
 %106 = OpCompositeConstruct %66 %22 %25
-%105 = OpImageRead %54 %101 %106 Sample|NonPrivateTexel %24
+%105 = OpImageRead %54 %101 %106 Sample|MakeTexelVisible|NonPrivateTexel %24 %27
 %107 = OpCompositeExtract %5 %105 0
 %108 = OpAccessChain %80 %32 %24
 OpStore %108 %107
 %110 = OpCompositeConstruct %66 %22 %25
-%109 = OpImageRead %54 %101 %110 Sample|NonPrivateTexel %27
+%109 = OpImageRead %54 %101 %110 Sample|MakeTexelVisible|NonPrivateTexel %27 %27
 %111 = OpCompositeExtract %5 %109 0
 %112 = OpAccessChain %80 %32 %27
 OpStore %112 %111
 %114 = OpCompositeConstruct %66 %22 %25
-%113 = OpImageRead %54 %101 %114 Sample|NonPrivateTexel %36
+%113 = OpImageRead %54 %101 %114 Sample|MakeTexelVisible|NonPrivateTexel %36 %27
 %115 = OpCompositeExtract %5 %113 0
 %116 = OpAccessChain %80 %32 %36
 OpStore %116 %115

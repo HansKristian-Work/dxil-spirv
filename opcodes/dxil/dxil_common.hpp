@@ -89,4 +89,6 @@ void add_vkmm_access_qualifiers(Converter::Impl &impl, Operation *op, const Refe
 unsigned access_mask_to_vecsize(unsigned mask);
 
 uint32_t log2i_floor(uint32_t value);
+
+bool stage_supports_workgroups(Converter::Impl &impl);
 }

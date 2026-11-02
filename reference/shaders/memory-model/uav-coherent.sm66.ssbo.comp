@@ -43,7 +43,8 @@ void main()
             _58 = _112;
             _62 = (_58 << 8u) + gl_LocalInvocationIndex;
             _65 = _20._m0[_62];
-            groupMemoryBarrier();
+            memoryBarrierBuffer();
+            memoryBarrierImage();
             barrier();
             _67 = _65 < 256u;
             if (_67)
@@ -161,7 +162,7 @@ OpDecorate %33 BuiltIn LocalInvocationIndex
 %56 = OpTypeBool
 %61 = OpConstant %5 8
 %63 = OpTypePointer StorageBuffer %5
-%66 = OpConstant %5 26696
+%66 = OpConstant %5 2120
 %68 = OpConstant %5 256
 %111 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
@@ -196,7 +197,7 @@ OpBranch %115
 %62 = OpIAdd %5 %60 %34
 %64 = OpAccessChain %63 %20 %37 %62
 %65 = OpLoad %5 %64
-OpControlBarrier %41 %41 %66
+OpControlBarrier %41 %50 %66
 %67 = OpULessThan %56 %65 %68
 OpLoopMerge %120 %119 None
 OpBranch %116
@@ -250,7 +251,7 @@ OpBranch %121
 OpBranch %122
 %122 = OpLabel
 %98 = OpAccessChain %48 %39 %37 %34
-%99 = OpLoad %6 %98 NonPrivatePointer
+%99 = OpLoad %6 %98 MakePointerVisible|NonPrivatePointer %41
 %100 = OpBitcast %27 %99
 %101 = OpCompositeExtract %26 %100 0
 %102 = OpCompositeExtract %26 %100 1
@@ -262,7 +263,7 @@ OpBranch %122
 %108 = OpBitcast %5 %104
 %109 = OpCompositeConstruct %6 %105 %106 %107 %108
 %110 = OpAccessChain %48 %40 %37 %34
-OpStore %110 %109 NonPrivatePointer
+OpStore %110 %109 MakePointerAvailable|NonPrivatePointer %41
 OpReturn
 OpFunctionEnd
 #endif

@@ -104,7 +104,7 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %24 = OpTypePointer Workgroup %5
 %26 = OpConstant %5 0
 %27 = OpConstant %10 2
-%28 = OpConstant %10 24840
+%28 = OpConstant %10 264
 %30 = OpConstant %10 3
 %43 = OpConstant %5 10
 %45 = OpTypeStruct %5 %22
@@ -124,7 +124,7 @@ OpSelectionMerge %70 None
 OpBranchConditional %23 %69 %70
 %69 = OpLabel
 %25 = OpAccessChain %24 %14 %21
-OpStore %25 %26 NonPrivatePointer
+OpStore %25 %26 MakePointerAvailable|NonPrivatePointer %27
 OpBranch %70
 %70 = OpLabel
 OpControlBarrier %27 %27 %28
@@ -153,7 +153,7 @@ OpSelectionMerge %72 None
 OpBranchConditional %23 %71 %72
 %71 = OpLabel
 %53 = OpAccessChain %24 %14 %21
-%54 = OpLoad %5 %53 NonPrivatePointer
+%54 = OpLoad %5 %53 MakePointerVisible|NonPrivatePointer %27
 %55 = OpShiftLeftLogical %10 %21 %30
 %64 = OpFunctionCall %10 %59 %21 %65
 %67 = OpAccessChain %66 %9 %20 %64

@@ -33,13 +33,13 @@ void main()
     barrier();
     subgroupMemoryBarrierShared();
     subgroupBarrier();
-    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _44;
-    coopMatLoad(_44, _24, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _45;
+    coopMatLoad(_45, _24, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
     subgroupMemoryBarrierShared();
     subgroupBarrier();
     if (gl_LocalInvocationIndex == 0u)
     {
-        _20._m0[ByteAddressMask(gl_WorkGroupID.x, 4u)] = floatBitsToUint((coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(_44))[0]);
+        _20._m0[ByteAddressMask(gl_WorkGroupID.x, 4u)] = floatBitsToUint((coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(_45))[0]);
     }
 }
 
@@ -50,7 +50,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 67
+; Bound: 68
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -69,9 +69,9 @@ OpExecutionMode %15 LocalSize 32 1 1
 OpExecutionMode %15 DenormPreserve 16
 OpName %15 "main"
 OpName %18 "SSBO"
-OpName %54 "ByteAddressMask"
-OpName %52 "index"
-OpName %53 "stride"
+OpName %55 "ByteAddressMask"
+OpName %53 "index"
+OpName %54 "stride"
 OpDecorate %17 ArrayStride 4
 OpMemberDecorate %18 0 Offset 0
 OpDecorate %18 Block
@@ -110,16 +110,17 @@ OpDecorate %30 BuiltIn WorkgroupId
 %34 = OpTypeInt 8 0
 %39 = OpTypePointer Workgroup %2
 %41 = OpConstant %2 32
-%42 = OpConstant %2 24840
-%48 = OpTypeBool
-%51 = OpTypeFunction %2 %2 %2
-%57 = OpConstant %2 4294967295
-%60 = OpConstant %2 4
-%61 = OpTypePointer StorageBuffer %2
+%42 = OpConstant %2 264
+%44 = OpConstant %2 24840
+%49 = OpTypeBool
+%52 = OpTypeFunction %2 %2 %2
+%58 = OpConstant %2 4294967295
+%61 = OpConstant %2 4
+%62 = OpTypePointer StorageBuffer %2
 %15 = OpFunction %13 None %14
 %16 = OpLabel
-OpBranch %63
-%63 = OpLabel
+OpBranch %64
+%64 = OpLabel
 %27 = OpLoad %2 %26
 %31 = OpAccessChain %25 %30 %3
 %32 = OpLoad %2 %31
@@ -131,32 +132,32 @@ OpBranch %63
 OpCooperativeMatrixStoreKHR %40 %38 %3 %41 NonPrivatePointer
 OpControlBarrier %9 %9 %42
 %43 = OpAccessChain %39 %24 %3
-OpControlBarrier %6 %6 %42
-%44 = OpCooperativeMatrixLoadKHR %10 %43 %3 %41 NonPrivatePointer
-OpControlBarrier %6 %6 %42
-%45 = OpFConvert %12 %44
-%46 = OpCompositeExtract %11 %45 0
-%47 = OpBitcast %2 %46
-%49 = OpIEqual %48 %27 %3
-OpSelectionMerge %65 None
-OpBranchConditional %49 %64 %65
-%64 = OpLabel
-%50 = OpShiftLeftLogical %2 %32 %9
-%59 = OpFunctionCall %2 %54 %32 %60
-%62 = OpAccessChain %61 %20 %3 %59
-OpStore %62 %47 NonPrivatePointer
-OpBranch %65
+OpControlBarrier %6 %6 %44
+%45 = OpCooperativeMatrixLoadKHR %10 %43 %3 %41 NonPrivatePointer
+OpControlBarrier %6 %6 %44
+%46 = OpFConvert %12 %45
+%47 = OpCompositeExtract %11 %46 0
+%48 = OpBitcast %2 %47
+%50 = OpIEqual %49 %27 %3
+OpSelectionMerge %66 None
+OpBranchConditional %50 %65 %66
 %65 = OpLabel
+%51 = OpShiftLeftLogical %2 %32 %9
+%60 = OpFunctionCall %2 %55 %32 %61
+%63 = OpAccessChain %62 %20 %3 %60
+OpStore %63 %48 NonPrivatePointer
 OpBranch %66
 %66 = OpLabel
+OpBranch %67
+%67 = OpLabel
 OpReturn
 OpFunctionEnd
-%54 = OpFunction %2 None %51
-%52 = OpFunctionParameter %2
+%55 = OpFunction %2 None %52
 %53 = OpFunctionParameter %2
-%55 = OpLabel
-%56 = OpUDiv %2 %57 %53
-%58 = OpBitwiseAnd %2 %52 %56
-OpReturnValue %58
+%54 = OpFunctionParameter %2
+%56 = OpLabel
+%57 = OpUDiv %2 %58 %54
+%59 = OpBitwiseAnd %2 %53 %57
+OpReturnValue %59
 OpFunctionEnd
 #endif

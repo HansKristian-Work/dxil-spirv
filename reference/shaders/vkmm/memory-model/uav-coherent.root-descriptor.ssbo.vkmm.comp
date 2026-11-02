@@ -63,7 +63,8 @@ void main()
             _57 = _116;
             _61 = (_57 << 8u) + gl_LocalInvocationIndex;
             _68 = PhysicalPointerUintNonWriteArray(registers._m1).value[_61];
-            groupMemoryBarrier();
+            memoryBarrierBuffer();
+            memoryBarrierImage();
             barrier();
             _70 = _68 < 256u;
             if (_70)
@@ -192,7 +193,7 @@ OpDecorate %100 Block
 %63 = OpTypeStruct %62
 %64 = OpTypePointer PhysicalStorageBuffer %63
 %66 = OpTypePointer PhysicalStorageBuffer %5
-%69 = OpConstant %5 26696
+%69 = OpConstant %5 2120
 %71 = OpConstant %5 256
 %72 = OpTypePointer StorageBuffer %10
 %99 = OpTypeRuntimeArray %36
@@ -234,7 +235,7 @@ OpBranch %119
 %65 = OpBitcast %64 %28
 %67 = OpInBoundsAccessChain %66 %65 %30 %61
 %68 = OpLoad %5 %67 Aligned 4
-OpControlBarrier %24 %24 %69
+OpControlBarrier %24 %45 %69
 %70 = OpULessThan %55 %68 %71
 OpLoopMerge %124 %123 None
 OpBranch %120

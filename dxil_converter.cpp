@@ -1838,6 +1838,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 
 		// ROV implies coherent in Vulkan memory models.
 		bool globally_coherent = get_constant_metadata(uav, 7) != 0 || is_rov;
+		bool locally_coherent = false;
 
 		llvm::MDNode *tags = nullptr;
 		if (uav->getNumOperands() >= 11 && uav->getOperand(10))
@@ -1860,23 +1861,17 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			has_counter = true;
 
 		// If the shader has device-memory memory barriers, we need to support this.
-		// GLSL450 memory model does not do this for us by default.
+		// GLSL450 or Vulkan memory model does not do this for us by default.
 		//   coherent: memory variable where reads and writes are coherent with reads and
 		//             writes from other shader invocations
-		// We have two options:
-		// - slap Coherent on it.
-		// - Use Vulkan memory model and make use of MakeVisibleKHR/MakeAvailableKHR flags in a OpMemoryBarrier.
-		//   This would flush and invalidate any incoherent caches as necessary.
-		// For now, slapping coherent on all UAVs is good enough.
-		// When we move to full Vulkan memory model we can do a slightly better job.
-		// If no UAV actually needs globallycoherent we can demote any barriers to workgroup barriers,
-		// which is hopefully more optimal if the compiler understands the intent ...
-		// Only promote resources which actually need some kind of coherence.
-		if (shader_analysis.require_uav_thread_group_coherence &&
-		    access_meta.has_written && access_meta.has_read &&
-		    execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
+		// For VkMM, always use MakeVisible/MakeAvailable when accessing these resources,
+		// and use either QueueFamily or Workgroup scope for the auto-visibility.
+		if (shader_analysis.require_uav_thread_group_coherence && access_meta.has_written && access_meta.has_read)
 		{
-			globally_coherent = true;
+			if (execution_mode_meta.memory_model == spv::MemoryModelGLSL450)
+				globally_coherent = true;
+			else if (execution_mode_meta.memory_model == spv::MemoryModelVulkan && !globally_coherent)
+				locally_coherent = true;
 		}
 
 		if (resource_kind == DXIL::ResourceKind::FeedbackTexture2D ||
@@ -2046,7 +2041,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		{
 			// For UAV we just slap it on everything.
 			vkmm.non_private = true;
-			vkmm.auto_visibility = globally_coherent || is_rov;
+			vkmm.auto_visibility = globally_coherent || locally_coherent || is_rov;
+			vkmm.scope = locally_coherent ? spv::ScopeWorkgroup : spv::ScopeQueueFamily;
 		}
 
 		if (local_root_signature_entry >= 0)
@@ -3664,10 +3660,20 @@ bool Converter::Impl::emit_global_heaps()
 		annotation->reference.coherent = annotation->coherent || annotation->rov;
 		annotation->reference.rov = annotation->rov;
 
+		bool locally_coherent = false;
+		if (execution_mode_meta.memory_model == spv::MemoryModelVulkan &&
+		    info.type == DXIL::ResourceType::UAV &&
+		    !annotation->coherent && !annotation->rov &&
+		    shader_analysis.require_uav_thread_group_coherence)
+		{
+			locally_coherent = true;
+		}
+
 		if (execution_mode_meta.memory_model == spv::MemoryModelVulkan)
 		{
 			annotation->reference.vkmm.non_private = info.type == DXIL::ResourceType::UAV;
-			annotation->reference.vkmm.auto_visibility = annotation->coherent || annotation->rov;
+			annotation->reference.vkmm.auto_visibility = annotation->coherent || annotation->rov || locally_coherent;
+			annotation->reference.vkmm.scope = locally_coherent ? spv::ScopeWorkgroup : spv::ScopeQueueFamily;
 		}
 
 		if (aliased_access.requires_alias_decoration)

@@ -34,17 +34,17 @@ void main()
     barrier();
     subgroupMemoryBarrierShared();
     subgroupBarrier();
-    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _38;
-    coopMatLoad(_38, _28, 0u, 32u, gl_CooperativeMatrixLayoutColumnMajor);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _39;
+    coopMatLoad(_39, _28, 0u, 32u, gl_CooperativeMatrixLayoutColumnMajor);
     subgroupMemoryBarrierShared();
     subgroupBarrier();
     subgroupMemoryBarrierShared();
     subgroupBarrier();
-    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _40;
-    coopMatLoad(_40, _28, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
+    coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _41;
+    coopMatLoad(_41, _28, 0u, 32u, gl_CooperativeMatrixLayoutRowMajor);
     subgroupMemoryBarrierShared();
     subgroupBarrier();
-    coopMatStore(coopMatMulAdd(_38, _40, coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0.0), 0), _24._m0, 0u, 64u, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(coopMatMulAdd(_39, _41, coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0.0), 0), _24._m0, 0u, 64u, gl_CooperativeMatrixLayoutRowMajor);
 }
 
 
@@ -54,7 +54,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 47
+; Bound: 48
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -115,30 +115,31 @@ OpDecorate %24 NonReadable
 %30 = OpTypePointer StorageBuffer %16
 %32 = OpConstant %2 32
 %34 = OpTypePointer Workgroup %2
-%36 = OpConstant %2 24840
-%41 = OpConstant %9 0
-%42 = OpConstantComposite %11 %41
-%45 = OpConstant %2 64
+%36 = OpConstant %2 264
+%38 = OpConstant %2 24840
+%42 = OpConstant %9 0
+%43 = OpConstantComposite %11 %42
+%46 = OpConstant %2 64
 %14 = OpFunction %12 None %13
 %15 = OpLabel
-OpBranch %46
-%46 = OpLabel
+OpBranch %47
+%47 = OpLabel
 %31 = OpAccessChain %30 %20 %3 %3
 %33 = OpCooperativeMatrixLoadKHR %5 %31 %3 %32 NonPrivatePointer
 %35 = OpAccessChain %34 %28 %3
 OpCooperativeMatrixStoreKHR %35 %33 %3 %32 NonPrivatePointer
 OpControlBarrier %10 %10 %36
 %37 = OpAccessChain %34 %28 %3
-OpControlBarrier %6 %6 %36
-%38 = OpCooperativeMatrixLoadKHR %5 %37 %7 %32 NonPrivatePointer
-OpControlBarrier %6 %6 %36
-%39 = OpAccessChain %34 %28 %3
-OpControlBarrier %6 %6 %36
-%40 = OpCooperativeMatrixLoadKHR %8 %39 %3 %32 NonPrivatePointer
-OpControlBarrier %6 %6 %36
-%43 = OpCooperativeMatrixMulAddKHR %11 %38 %40 %42
-%44 = OpAccessChain %30 %24 %3 %3
-OpCooperativeMatrixStoreKHR %44 %43 %3 %45 NonPrivatePointer
+OpControlBarrier %6 %6 %38
+%39 = OpCooperativeMatrixLoadKHR %5 %37 %7 %32 NonPrivatePointer
+OpControlBarrier %6 %6 %38
+%40 = OpAccessChain %34 %28 %3
+OpControlBarrier %6 %6 %38
+%41 = OpCooperativeMatrixLoadKHR %8 %40 %3 %32 NonPrivatePointer
+OpControlBarrier %6 %6 %38
+%44 = OpCooperativeMatrixMulAddKHR %11 %39 %41 %43
+%45 = OpAccessChain %30 %24 %3 %3
+OpCooperativeMatrixStoreKHR %45 %44 %3 %46 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

@@ -29,20 +29,6 @@
 
 namespace dxil_spv
 {
-static bool stage_supports_workgroups(Converter::Impl &impl)
-{
-	switch (impl.execution_model)
-	{
-	case spv::ExecutionModelGLCompute:
-	case spv::ExecutionModelMeshEXT:
-	case spv::ExecutionModelTaskEXT:
-		return true;
-
-	default:
-		return false;
-	}
-}
-
 bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -57,24 +43,17 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 	if (is_sync)
 		op->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
 
-	// We might only need to ensure coherency within the workgroup, in which case we can narrow the scope.
-	// DXC emits AccessUAVGlobal all the time, so try to demote to UAVThreadGroup when appropriate.
-	// For non-compute, we want Invocation, but spec specifically bans that for anything other than Relaxed.
-	// Subgroup is technically fine for our needs.
-	spv::Scope memory_scope = stage_supports_workgroups(impl) ? spv::ScopeWorkgroup : spv::ScopeSubgroup;
+	// Unless we observe device scoped barrier, keep the scope narrow.
+	spv::Scope memory_scope = stage_supports_workgroups(impl) ? spv::ScopeWorkgroup : spv::ScopeInvocation;
 
 	bool needs_device_scope_uav =
 	    (operation & DXIL::AccessUAVGlobal) != 0 && impl.execution_mode_meta.declares_globallycoherent_uav;
 
-	// We only ever need explicit Vis/Avail in workgroup scope for VkMM.
-	// globallycoherent is handled per-operation,
-	// and we only need acquire release to ensure ordering.
-	if (impl.execution_mode_meta.memory_model == spv::MemoryModelGLSL450 && needs_device_scope_uav)
-		memory_scope = spv::ScopeDevice;
+	if (needs_device_scope_uav)
+		memory_scope = impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan ? spv::ScopeQueueFamily : spv::ScopeDevice;
 
 	op->add_id(builder.makeUintConstant(memory_scope));
 
-	// AcquireReleaseMask doesn't care about scope.
 	uint32_t semantics = spv::MemorySemanticsAcquireReleaseMask;
 
 	// Game workaround. Sometimes a game might forget to insert device memory barrier in the proper place ._.
@@ -88,21 +67,12 @@ bool emit_barrier_instruction(Converter::Impl &impl, const llvm::CallInst *instr
 
 	if (has_uav_barrier)
 		semantics |= spv::MemorySemanticsImageMemoryMask | spv::MemorySemanticsUniformMemoryMask;
-
-	if (stage_supports_workgroups(impl))
-	{
-		if ((operation & DXIL::AccessGroupShared) != 0)
-			semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
-
-		// We never implicitly need to make things visible in VkMM in non-compute stages.
-		// globallycoherent is handled per-op.
-		if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
-			semantics |= spv::MemorySemanticsMakeAvailableMask | spv::MemorySemanticsMakeVisibleMask;
-	}
+	if (stage_supports_workgroups(impl) && (operation & DXIL::AccessGroupShared) != 0)
+		semantics |= spv::MemorySemanticsWorkgroupMemoryMask;
 
 	op->add_id(builder.makeUintConstant(semantics));
 
-	if (semantics != spv::MemorySemanticsAcquireReleaseMask || is_sync)
+	if (memory_scope != spv::ScopeInvocation || is_sync)
 		impl.add(op);
 
 	return true;

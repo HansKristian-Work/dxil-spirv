@@ -180,7 +180,7 @@ OpMemberDecorate %62 0 NonWritable
 %62 = OpTypeStruct %61
 %63 = OpTypePointer PhysicalStorageBuffer %62
 %65 = OpTypePointer PhysicalStorageBuffer %5
-%68 = OpConstant %5 26696
+%68 = OpConstant %5 2120
 %70 = OpConstant %5 256
 %71 = OpTypePointer StorageBuffer %10
 %111 = OpTypePointer Function %5
@@ -201,7 +201,7 @@ OpBranch %113
 %40 = OpBitcast %39 %25
 %42 = OpInBoundsAccessChain %41 %40 %30 %34
 %44 = OpCompositeConstruct %36 %43 %43 %43 %43
-OpStore %42 %44 Aligned|NonPrivatePointer 4
+OpStore %42 %44 Aligned|MakePointerAvailable|NonPrivatePointer 4 %24
 %49 = OpBitcast %48 %31
 %51 = OpInBoundsAccessChain %50 %49 %30 %30
 %52 = OpLoad %10 %51 Aligned 16
@@ -236,7 +236,7 @@ OpBranchConditional %69 %117 %118
 %78 = OpCompositeExtract %35 %74 3
 %79 = OpBitcast %39 %25
 %80 = OpInBoundsAccessChain %41 %79 %30 %67
-%81 = OpLoad %36 %80 Aligned|NonPrivatePointer 4
+%81 = OpLoad %36 %80 Aligned|MakePointerVisible|NonPrivatePointer 4 %24
 %82 = OpCompositeExtract %35 %81 0
 %83 = OpCompositeExtract %35 %81 1
 %84 = OpCompositeExtract %35 %81 2
@@ -248,7 +248,7 @@ OpBranchConditional %69 %117 %118
 %90 = OpBitcast %39 %25
 %91 = OpInBoundsAccessChain %41 %90 %30 %67
 %92 = OpCompositeConstruct %36 %86 %87 %88 %89
-OpStore %91 %92 Aligned|NonPrivatePointer 4
+OpStore %91 %92 Aligned|MakePointerAvailable|NonPrivatePointer 4 %24
 OpBranch %118
 %118 = OpLabel
 %57 = OpIAdd %5 %56 %27

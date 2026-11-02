@@ -89,6 +89,7 @@ struct ReferenceVkMemoryModel
 {
 	bool non_private = false;
 	bool auto_visibility = false;
+	spv::Scope scope = spv::ScopeQueueFamily;
 };
 
 static inline DXIL::ComponentType raw_width_to_component_type(RawType type, RawWidth raw_width)
