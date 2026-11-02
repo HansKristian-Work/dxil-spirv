@@ -996,6 +996,14 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 	bool has_samples = false;
 	bool has_lod = false;
 
+	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
+	{
+		// Undefined what happens, but we must not crash.
+		access_meta.forced_composite = false;
+		impl.rewrite_value(instruction, builder.makeUintConstant(UINT32_MAX));
+		return true;
+	}
+
 	if (meta.storage == spv::StorageClassStorageBuffer)
 	{
 		if (meta.index_offset_id)
