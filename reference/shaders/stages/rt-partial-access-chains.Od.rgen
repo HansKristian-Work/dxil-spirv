@@ -1,0 +1,150 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+const uint _15[1] = uint[](0u);
+
+struct _19
+{
+    float _m0;
+};
+
+struct _20
+{
+    _19 _m0;
+    float _m1;
+};
+
+struct _21
+{
+    _20 _m0;
+    float _m1;
+};
+
+layout(set = 0, binding = 0) uniform accelerationStructureEXT RTAS;
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer O;
+layout(location = 0) rayPayloadEXT _21 _23;
+
+void main()
+{
+    _23._m0._m0._m0 = 0.0;
+    _23._m0._m1 = 0.0;
+    _23._m1 = 0.0;
+    traceRayEXT(RTAS, 0u, 255u, 0u, 1u, 0u, vec3(0.0), 0.0, vec3(0.0, 0.0, 1.0), 1.0, 0);
+    imageStore(O, int(0u), uvec4(floatBitsToUint(_23._m0._m0._m0 + _23._m0._m1)));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 70
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability ImageBuffer
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpMemoryModel Logical Vulkan
+OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %17 %23
+OpName %3 "main"
+OpName %8 "RTAS"
+OpName %12 "O"
+OpName %19 ""
+OpName %20 ""
+OpName %21 ""
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 0
+OpDecorate %12 NonReadable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 1
+%6 = OpTypeAccelerationStructureKHR
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeInt 32 0
+%10 = OpTypeImage %9 Buffer 0 0 0 2 R32ui
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpConstant %9 1
+%14 = OpTypeArray %9 %13
+%15 = OpConstantNull %14
+%16 = OpTypePointer Private %14
+%17 = OpVariable %16 Private %15
+%18 = OpTypeFloat 32
+%19 = OpTypeStruct %18
+%20 = OpTypeStruct %19 %18
+%21 = OpTypeStruct %20 %18
+%22 = OpTypePointer RayPayloadKHR %21
+%23 = OpVariable %22 RayPayloadKHR
+%24 = OpTypePointer Private %9
+%26 = OpConstant %9 0
+%41 = OpTypePointer RayPayloadKHR %20
+%43 = OpTypePointer RayPayloadKHR %18
+%45 = OpConstant %18 0
+%48 = OpConstant %9 255
+%49 = OpConstant %18 1
+%50 = OpTypeVector %18 3
+%65 = OpTypeVector %9 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %69
+%69 = OpLabel
+%25 = OpAccessChain %24 %17 %26
+%27 = OpLoad %9 %25
+%28 = OpAccessChain %24 %17 %26
+%29 = OpLoad %9 %28
+%30 = OpAccessChain %24 %17 %26
+%31 = OpLoad %9 %30
+%32 = OpAccessChain %24 %17 %26
+%33 = OpLoad %9 %32
+%34 = OpAccessChain %24 %17 %26
+%35 = OpLoad %9 %34
+%36 = OpAccessChain %24 %17 %26
+%37 = OpLoad %9 %36
+%38 = OpAccessChain %24 %17 %26
+%39 = OpLoad %9 %38
+%40 = OpLoad %6 %8
+%42 = OpInBoundsAccessChain %41 %23 %26
+%44 = OpInBoundsAccessChain %43 %42 %26 %26
+OpStore %44 %45
+%46 = OpInBoundsAccessChain %43 %42 %13
+OpStore %46 %45
+%47 = OpInBoundsAccessChain %43 %23 %13
+OpStore %47 %45
+%51 = OpCompositeConstruct %50 %45 %45 %45
+%52 = OpCompositeConstruct %50 %45 %45 %49
+OpTraceRayKHR %40 %26 %48 %26 %13 %26 %51 %45 %52 %49 %23
+%53 = OpInBoundsAccessChain %41 %23 %26
+%54 = OpInBoundsAccessChain %43 %53 %26 %26
+%55 = OpLoad %18 %54
+%56 = OpInBoundsAccessChain %43 %53 %13
+%57 = OpLoad %18 %56
+%58 = OpAccessChain %24 %17 %26
+%59 = OpLoad %9 %58
+%60 = OpFAdd %18 %55 %57
+%61 = OpAccessChain %24 %17 %26
+%62 = OpLoad %9 %61
+%63 = OpLoad %10 %12
+%64 = OpBitcast %9 %60
+%66 = OpCompositeConstruct %65 %64 %64 %64 %64
+OpImageWrite %63 %26 %66 NonPrivateTexel
+%67 = OpAccessChain %24 %17 %26
+%68 = OpLoad %9 %67
+OpReturn
+OpFunctionEnd
+#endif

@@ -5617,7 +5617,7 @@ bool Converter::Impl::emit_global_variables()
 		spv::StorageClass storage_class = address_space == DXIL::AddressSpace::GroupShared
 		                                  ? spv::StorageClassWorkgroup : spv::StorageClassPrivate;
 		spv::Id var_id = create_variable_with_initializer(
-			get_effective_storage_class(&global, storage_class),
+			get_effective_storage_class_fixed(&global, storage_class),
 			pointee_type_id, initializer_id);
 
 		decorate_relaxed_precision(global.getType()->getPointerElementType(), var_id, false);
@@ -9369,13 +9369,23 @@ spv::Id Converter::Impl::create_variable_with_initializer(spv::StorageClass stor
 	return spirv_module.create_variable_with_initializer(storage, type_id, initializer, name);
 }
 
-spv::StorageClass Converter::Impl::get_effective_storage_class(const llvm::Value *value, spv::StorageClass fallback) const
+spv::StorageClass Converter::Impl::get_effective_storage_class_fixed(const llvm::Value *value, spv::StorageClass fallback) const
 {
 	auto itr = handle_to_storage_class.find(value);
 	if (itr != handle_to_storage_class.end())
 		return itr->second;
 	else
 		return fallback;
+}
+
+spv::StorageClass Converter::Impl::get_effective_storage_class_ptr_derived(const llvm::Value *value, spv::Id ptr_id) const
+{
+	// ptr_id may not be registered in the builder yet if it's an intermediate expression.
+	auto itr = handle_to_storage_class.find(value);
+	if (itr != handle_to_storage_class.end())
+		return itr->second;
+	else
+		return spirv_module.get_builder().getStorageClass(ptr_id);
 }
 
 bool Converter::Impl::get_needs_temp_storage_copy(const llvm::Value *value) const

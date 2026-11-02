@@ -1390,7 +1390,7 @@ static spv::Id emit_cast_instruction_impl(Converter::Impl &impl, const Instructi
 		else
 			fallback_storage = spv::StorageClassFunction;
 
-		spv::StorageClass storage = impl.get_effective_storage_class(instruction->getOperand(0), fallback_storage);
+		spv::StorageClass storage = impl.get_effective_storage_class_fixed(instruction->getOperand(0), fallback_storage);
 
 		spv::Id id = impl.get_id_for_value(instruction->getOperand(0));
 
@@ -1530,7 +1530,7 @@ static spv::Id build_constant_getelementptr(Converter::Impl &impl, const llvm::C
 	// If we're trying to getelementptr into a bitcasted pointer to array, we have to rewrite the pointer type.
 	type_id = resolve_llvm_actual_value_type(impl, cexpr, cexpr->getOperand(0), type_id);
 
-	auto storage = impl.get_effective_storage_class(cexpr->getOperand(0), builder.getStorageClass(ptr_id));
+	auto storage = impl.get_effective_storage_class_ptr_derived(cexpr->getOperand(0), ptr_id);
 	type_id = builder.makePointer(storage, type_id);
 
 	Operation *op = impl.allocate(spv::OpAccessChain, type_id);
@@ -1700,10 +1700,11 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	ags_getelementptr_filter(impl, instruction, type_id);
 
 	spv::StorageClass storage;
+
 	if (DXIL::AddressSpace(instruction->getOperand(0)->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::PhysicalNodeIO)
 		storage = spv::StorageClassPhysicalStorageBuffer;
 	else
-		storage = impl.get_effective_storage_class(instruction->getOperand(0), builder.getStorageClass(ptr_id));
+		storage = impl.get_effective_storage_class_ptr_derived(instruction->getOperand(0), ptr_id);
 
 	type_id = builder.makePointer(storage, type_id);
 
@@ -1984,7 +1985,7 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 		op->add_id(impl.get_id_for_value(instruction->getOperand(0)));
 
 	auto addr_space = DXIL::AddressSpace(instruction->getOperand(1)->getType()->getPointerAddressSpace());
-	auto storage = impl.get_effective_storage_class(instruction->getOperand(1), spv::StorageClassFunction);
+	auto storage = impl.get_effective_storage_class_fixed(instruction->getOperand(1), spv::StorageClassFunction);
 	bool non_private = addr_space != DXIL::AddressSpace::Thread &&
 	                   storage != spv::StorageClassTaskPayloadWorkgroupEXT &&
 	                   impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
@@ -2253,7 +2254,7 @@ bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *inst
 	if (!ags_alloca_or_global_filter(impl, instruction, pointee_type_id))
 		return false;
 
-	auto storage = impl.get_effective_storage_class(instruction, spv::StorageClassFunction);
+	auto storage = impl.get_effective_storage_class_fixed(instruction, spv::StorageClassFunction);
 	spv::Id var_id = impl.create_variable(storage, pointee_type_id);
 	impl.rewrite_value(instruction, var_id);
 	impl.handle_to_storage_class[instruction] = storage;

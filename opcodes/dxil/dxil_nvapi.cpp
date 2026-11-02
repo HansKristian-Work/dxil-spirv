@@ -1451,7 +1451,7 @@ static void mark_alloca_variable(Converter::Impl &impl, const llvm::Value *varia
 	const auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(variable);
 	if (alloca_inst != nullptr)
 	{
-		auto storage = impl.get_effective_storage_class(alloca_inst, spv::StorageClassFunction);
+		auto storage = impl.get_effective_storage_class_fixed(alloca_inst, spv::StorageClassFunction);
 		if (storage != spv::StorageClassFunction && storage != storage_class)
 		{
 			impl.handle_to_storage_class[alloca_inst] = spv::StorageClassFunction;
