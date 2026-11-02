@@ -1253,6 +1253,12 @@ void Converter::Impl::emit_root_parameter_index_from_push_index(const char *tag,
 	b.addExternal(std::move(inst));
 }
 
+// TBuffer is a legacy relic from SM4 days.
+static DXIL::ResourceKind normalize_resource_kind(DXIL::ResourceKind kind)
+{
+	return kind == DXIL::ResourceKind::TBuffer ? DXIL::ResourceKind::TypedBuffer : kind;
+}
+
 bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *refl)
 {
 	auto &builder = spirv_module.get_builder();
@@ -1279,7 +1285,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 			return false;
 		}
 
-		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6));
+		auto resource_kind = normalize_resource_kind(static_cast<DXIL::ResourceKind>(get_constant_metadata(srv, 6)));
 
 		llvm::MDNode *tags = nullptr;
 		if (srv->getNumOperands() >= 9 && srv->getOperand(8))
