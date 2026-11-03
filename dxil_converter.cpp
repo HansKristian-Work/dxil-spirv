@@ -1891,6 +1891,16 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 				// This is also the case for signed components. Always use R64UI here.
 				actual_component_type = DXIL::ComponentType::U64;
 			}
+			else if (access_meta.has_atomic && !access_meta.has_nvapi_atomic_float &&
+			         actual_component_type == DXIL::ComponentType::F32)
+			{
+				// We cannot lean on float atomics, since we need to support bitwise compare-exchange in this mode.
+				// SM 6.6 float atomics only support bitwise operations like (bit-compare) exchange, etc.
+				// This is a bit out of spec since we're interpreting F32 descriptor as U32,
+				// but in practice it should be "fine", and this code pattern is only known to happen
+				// in targeted tests anyway ...
+				actual_component_type = DXIL::ComponentType::U32;
+			}
 			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 		}
 		else
@@ -6265,7 +6275,8 @@ spv::Id Converter::Impl::fixup_store_type_atomic(DXIL::ComponentType component_t
 	return value;
 }
 
-spv::Id Converter::Impl::fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components, spv::Id value)
+spv::Id Converter::Impl::fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components,
+                                                spv::Id value, const llvm::Type *element_type)
 {
 	if (component_type == DXIL::ComponentType::U64)
 	{
@@ -6300,6 +6311,10 @@ spv::Id Converter::Impl::fixup_store_type_typed(DXIL::ComponentType component_ty
 		if (input_component_type == DXIL::ComponentType::F16 && !support_native_fp16_operations())
 			input_component_type = convert_16bit_component_to_32bit(input_component_type);
 		input_component_type = convert_component_to_unsigned(input_component_type);
+
+		// To deal with load-store on float atomic images which we have cast to U32.
+		if (element_type->getTypeID() == llvm::Type::TypeID::FloatTyID)
+			input_component_type = DXIL::ComponentType::F32;
 
 		if (output_component_type != input_component_type)
 			value = build_value_cast(value, input_component_type, output_component_type, components);

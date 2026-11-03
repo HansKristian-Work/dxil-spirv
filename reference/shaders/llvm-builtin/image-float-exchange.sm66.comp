@@ -1,0 +1,112 @@
+#version 460
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
+layout(set = 0, binding = 1, r32ui) uniform uimage2D _11;
+
+void main()
+{
+    uint _32 = imageAtomicExchange(_8, int(gl_GlobalInvocationID.x), floatBitsToUint(uintBitsToFloat(imageLoad(_8, int(gl_GlobalInvocationID.y))).x));
+    uint _38 = imageAtomicExchange(_11, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), 1086324736u);
+    uint _42 = imageAtomicCompSwap(_8, int(gl_GlobalInvocationID.x), _38, 1088421888u);
+    uint _47 = imageAtomicCompSwap(_11, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), _38, 1090519040u);
+    uint _51 = imageAtomicCompSwap(_8, int(gl_GlobalInvocationID.x), _38, 1091567616u);
+    uint _56 = imageAtomicCompSwap(_11, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), _51, 1092616192u);
+    float _58 = uintBitsToFloat(_56);
+    imageStore(_8, int(gl_GlobalInvocationID.x), floatBitsToUint(vec4(_58)));
+    imageStore(_11, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), floatBitsToUint(vec4(_58)));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 67
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability StorageImageWriteWithoutFormat
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %11 %14
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %11 DescriptorSet 0
+OpDecorate %11 Binding 1
+OpDecorate %14 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeImage %5 2D 0 0 0 2 R32ui
+%10 = OpTypePointer UniformConstant %9
+%11 = OpVariable %10 UniformConstant
+%12 = OpTypeVector %5 3
+%13 = OpTypePointer Input %12
+%14 = OpVariable %13 Input
+%15 = OpTypePointer Input %5
+%17 = OpConstant %5 0
+%20 = OpConstant %5 1
+%23 = OpTypeVector %5 4
+%25 = OpTypeFloat 32
+%26 = OpTypeVector %25 4
+%30 = OpTypePointer Image %5
+%33 = OpConstant %5 5
+%35 = OpTypeVector %5 2
+%39 = OpConstant %5 1086324736
+%43 = OpConstant %5 1088421888
+%48 = OpConstant %5 1090519040
+%52 = OpConstant %5 1091567616
+%57 = OpConstant %5 1092616192
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %66
+%66 = OpLabel
+%16 = OpAccessChain %15 %14 %17
+%18 = OpLoad %5 %16
+%19 = OpAccessChain %15 %14 %20
+%21 = OpLoad %5 %19
+%22 = OpLoad %6 %8
+%24 = OpImageRead %23 %22 %21 NonPrivateTexel
+%27 = OpBitcast %26 %24
+%28 = OpCompositeExtract %25 %27 0
+%29 = OpBitcast %5 %28
+%31 = OpImageTexelPointer %30 %8 %18 %17
+%32 = OpAtomicExchange %5 %31 %33 %17 %29
+%34 = OpLoad %9 %11
+%36 = OpCompositeConstruct %35 %18 %21
+%37 = OpImageTexelPointer %30 %11 %36 %17
+%38 = OpAtomicExchange %5 %37 %33 %17 %39
+%40 = OpLoad %6 %8
+%41 = OpImageTexelPointer %30 %8 %18 %17
+%42 = OpAtomicCompareExchange %5 %41 %33 %17 %17 %43 %38
+%44 = OpLoad %9 %11
+%45 = OpCompositeConstruct %35 %18 %21
+%46 = OpImageTexelPointer %30 %11 %45 %17
+%47 = OpAtomicCompareExchange %5 %46 %33 %17 %17 %48 %38
+%49 = OpLoad %6 %8
+%50 = OpImageTexelPointer %30 %8 %18 %17
+%51 = OpAtomicCompareExchange %5 %50 %33 %17 %17 %52 %38
+%53 = OpLoad %9 %11
+%54 = OpCompositeConstruct %35 %18 %21
+%55 = OpImageTexelPointer %30 %11 %54 %17
+%56 = OpAtomicCompareExchange %5 %55 %33 %17 %17 %57 %51
+%58 = OpBitcast %25 %56
+%59 = OpLoad %6 %8
+%60 = OpCompositeConstruct %26 %58 %58 %58 %58
+%61 = OpBitcast %23 %60
+OpImageWrite %59 %18 %61 NonPrivateTexel
+%62 = OpLoad %9 %11
+%63 = OpCompositeConstruct %35 %18 %21
+%64 = OpCompositeConstruct %26 %58 %58 %58 %58
+%65 = OpBitcast %23 %64
+OpImageWrite %62 %63 %65 NonPrivateTexel
+OpReturn
+OpFunctionEnd
+#endif

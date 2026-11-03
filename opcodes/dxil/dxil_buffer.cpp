@@ -1732,7 +1732,7 @@ bool emit_buffer_store_instruction(Converter::Impl &impl, const llvm::CallInst *
 		Operation *op = impl.allocate(spv::OpImageWrite);
 		op->add_ids(
 		    { image_id, access.index_id,
-		      impl.fixup_store_type_typed(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4)) });
+		      impl.fixup_store_type_typed(meta.component_type, 4, impl.build_vector(element_type_id, store_values, 4), element_type) });
 
 		add_vkmm_access_qualifiers(impl, op, meta.vkmm);
 		impl.add(op, meta.rov);

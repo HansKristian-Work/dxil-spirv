@@ -1,0 +1,20 @@
+RWBuffer<float> T : register(u0);
+RWTexture2D<float> T2 : register(u1);
+
+[numthreads(64, 1, 1)]
+void main(uint2 i : SV_DispatchThreadID)
+{
+	float c;
+
+	InterlockedExchange(T[i.x], T[i.y], c);
+	InterlockedExchange(T2[i], 6.0, c);
+
+	InterlockedCompareStoreFloatBitwise(T[i.x], c, 7.0);
+	InterlockedCompareStoreFloatBitwise(T2[i], c, 8.0);
+
+	InterlockedCompareExchangeFloatBitwise(T[i.x], c, 9.0, c);
+	InterlockedCompareExchangeFloatBitwise(T2[i], c, 10.0, c);
+
+	T[i.x] = c;
+	T2[i] = c;
+}

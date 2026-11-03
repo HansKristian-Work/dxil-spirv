@@ -1239,7 +1239,7 @@ bool emit_texture_store_instruction_dispatch(Converter::Impl &impl, const llvm::
 	op->add_id(impl.build_vector(builder.makeUintType(32), coord, num_coords_full));
 
 	spv::Id store_id = impl.build_vector(impl.get_type_id(instruction->getOperand(5)->getType()), write_values, 4);
-	store_id = impl.fixup_store_type_typed(meta.component_type, 4, store_id);
+	store_id = impl.fixup_store_type_typed(meta.component_type, 4, store_id, instruction->getOperand(5)->getType());
 	op->add_id(store_id);
 	builder.addCapability(spv::CapabilityStorageImageWriteWithoutFormat);
 

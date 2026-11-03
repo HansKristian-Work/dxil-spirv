@@ -1622,6 +1622,7 @@ void analyze_nvapi_buffer_store(Converter::Impl &impl, const llvm::CallInst *ins
 			{
 				tracking.has_read = true;
 				tracking.has_atomic = true;
+				tracking.has_nvapi_atomic_float = true;
 
 				if (opcode == NV_EXTN_OP_FP16_ATOMIC)
 					tracking.has_nvapi_atomic_fp16bit = true;

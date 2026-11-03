@@ -185,6 +185,7 @@ struct AccessTracking
 	bool has_atomic = false;
 	bool has_atomic_64bit = false;
 	bool has_nvapi_atomic_fp16bit = false;
+	bool has_nvapi_atomic_float = false;
 	bool has_counter = false;
 	bool dynamically_indexed_cbv = false;
 
@@ -677,7 +678,7 @@ struct Converter::Impl
 	                            const llvm::Type *target_type, spv::Id override_value = 0);
 	spv::Id fixup_store_type_io(DXIL::ComponentType component_type, unsigned components, spv::Id value);
 	spv::Id fixup_store_type_atomic(DXIL::ComponentType component_type, unsigned components, spv::Id value);
-	spv::Id fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components, spv::Id value);
+	spv::Id fixup_store_type_typed(DXIL::ComponentType component_type, unsigned components, spv::Id value, const llvm::Type *element_type);
 	spv::Id build_value_cast(spv::Id value_id, DXIL::ComponentType input_type, DXIL::ComponentType output_type,
 	                         unsigned components);
 	bool support_native_fp16_operations() const;
