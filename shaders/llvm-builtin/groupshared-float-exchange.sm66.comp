@@ -1,0 +1,28 @@
+RWStructuredBuffer<float> S : register(u0);
+RWBuffer<float> T : register(u1);
+groupshared float G[64];
+groupshared float GSingle;
+
+[numthreads(64, 1, 1)]
+void main(uint i : SV_DispatchThreadID)
+{
+	float c;
+	G[i] = 2.0;
+	GroupMemoryBarrierWithGroupSync();
+	InterlockedExchange(G[i], G[i ^ 2], c);
+
+	// constexpr chains.
+	InterlockedExchange(G[0], 5.0, c);
+	InterlockedExchange(G[5], 5.0, c);
+
+	// Non-arrayed chains.
+	InterlockedExchange(GSingle, 7.0, c);
+
+	c = G[i ^ 3] + GSingle + G[0] + G[5];
+	float orig;
+	InterlockedCompareStoreFloatBitwise(G[i], c, 5.0);
+	InterlockedCompareExchangeFloatBitwise(G[i], c, 5.0, orig);
+
+	T[i] = G[i];
+	S[i] = G[i];
+}

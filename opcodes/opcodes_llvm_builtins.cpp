@@ -1519,6 +1519,17 @@ static bool emit_getelementptr_resource(Converter::Impl &impl, const Inst *instr
 	return true;
 }
 
+template <typename Inst>
+static void get_float_pointer_gep_fixup(Converter::Impl &impl, const Inst *instruction, spv::Id &type_id)
+{
+	auto *base = llvm::dyn_cast<llvm::GlobalVariable>(instruction->getOperand(0));
+	if (base && impl.group_shared_raw_u32.count(base))
+	{
+		type_id = impl.build_equivalent_u32_raw_type(instruction->getType()->getPointerElementType());
+		impl.llvm_value_actual_type[instruction] = type_id;
+	}
+}
+
 static spv::Id build_constant_getelementptr(Converter::Impl &impl, const llvm::ConstantExpr *cexpr)
 {
 	auto &builder = impl.builder();
@@ -1529,6 +1540,8 @@ static spv::Id build_constant_getelementptr(Converter::Impl &impl, const llvm::C
 
 	// If we're trying to getelementptr into a bitcasted pointer to array, we have to rewrite the pointer type.
 	type_id = resolve_llvm_actual_value_type(impl, cexpr, cexpr->getOperand(0), type_id);
+
+	get_float_pointer_gep_fixup(impl, cexpr, type_id);
 
 	auto storage = impl.get_effective_storage_class_ptr_derived(cexpr->getOperand(0), ptr_id);
 	type_id = builder.makePointer(storage, type_id);
@@ -1698,6 +1711,7 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 	resolve_llvm_actual_value_type(impl, instruction, instruction->getOperand(0), type_id);
 
 	ags_getelementptr_filter(impl, instruction, type_id);
+	get_float_pointer_gep_fixup(impl, instruction, type_id);
 
 	spv::StorageClass storage;
 
@@ -2760,17 +2774,58 @@ bool analyze_store_instruction(Converter::Impl &impl, const llvm::StoreInst *ins
 	return true;
 }
 
+static void analyze_float_atomic_types(Converter::Impl &impl, const llvm::Value *ptr)
+{
+	if (auto *c = llvm::dyn_cast<llvm::CastInst>(ptr))
+		ptr = c->getOperand(0);
+	if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(ptr))
+		if (cexpr->getOpcode() == llvm::Instruction::BitCast)
+			ptr = cexpr->getOperand(0);
+
+	// Peel the GEP.
+	if (auto *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(ptr))
+		ptr = gep->getOperand(0);
+	if (auto *cexpr = llvm::dyn_cast<llvm::ConstantExpr>(ptr))
+		if (cexpr->getOpcode() == llvm::Instruction::GetElementPtr)
+			ptr = cexpr->getOperand(0);
+
+	if (auto *var = llvm::dyn_cast<llvm::GlobalVariable>(ptr))
+	{
+		auto *elem = var->getType()->getPointerElementType();
+		if (elem->getTypeID() == llvm::Type::TypeID::ArrayTyID)
+			elem = elem->getArrayElementType();
+		if (elem->getTypeID() == llvm::Type::TypeID::VectorTyID)
+			elem = elem->getVectorElementType();
+
+		if (elem->getTypeID() == llvm::Type::TypeID::FloatTyID)
+			impl.group_shared_raw_u32.insert(var);
+	}
+}
+
 bool analyze_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *inst)
 {
 	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+	{
 		impl.shader_analysis.has_group_shared_access = true;
+
+		// Check if we're doing float atomics on the groupshared.
+		// If so, demote the groupshared array to a u32 instead and bitcasts on load-store.
+		// It's not practical to use untyped pointers since it requires rewriting everything to explicit layout.
+
+		// Peel any bitcasts. DXIL bitcasts float to uint before doing the RMW.
+		analyze_float_atomic_types(impl, inst->getPointerOperand());
+	}
 	return true;
 }
 
 bool analyze_cmpxchg_instruction(Converter::Impl &impl, const llvm::AtomicCmpXchgInst *inst)
 {
 	if (DXIL::AddressSpace(inst->getPointerOperand()->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared)
+	{
 		impl.shader_analysis.has_group_shared_access = true;
+		analyze_float_atomic_types(impl, inst->getPointerOperand());
+	}
+
 	return true;
 }
 

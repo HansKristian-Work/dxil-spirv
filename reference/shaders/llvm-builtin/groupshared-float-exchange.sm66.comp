@@ -1,0 +1,148 @@
+#version 460
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct CmpXchgResult
+{
+    uint _m0;
+    bool _m1;
+};
+
+layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
+layout(set = 0, binding = 1) uniform writeonly imageBuffer _12;
+
+shared uint _16[64];
+shared uint _18;
+
+void main()
+{
+    _16[gl_GlobalInvocationID.x] = floatBitsToUint(2.0);
+    barrier();
+    uint _37 = atomicExchange(_16[gl_GlobalInvocationID.x], floatBitsToUint(uintBitsToFloat(_16[gl_GlobalInvocationID.x ^ 2u])));
+    uint _38 = atomicExchange(_16[0u], 1084227584u);
+    uint _41 = atomicExchange(_16[5u], 1084227584u);
+    uint _44 = atomicExchange(_18, 1088421888u);
+    uint _49 = _16[gl_GlobalInvocationID.x ^ 3u];
+    uint _51 = _18;
+    uint _55 = _16[0u];
+    uint _59 = _16[5u];
+    uint _62 = floatBitsToUint(((uintBitsToFloat(_51) + uintBitsToFloat(_49)) + uintBitsToFloat(_55)) + uintBitsToFloat(_59));
+    uint _63 = atomicCompSwap(_16[gl_GlobalInvocationID.x], _62, 1084227584u);
+    uint _68 = atomicCompSwap(_16[gl_GlobalInvocationID.x], _62, 1084227584u);
+    imageStore(_12, int(gl_GlobalInvocationID.x), vec4(uintBitsToFloat(_16[gl_GlobalInvocationID.x])));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(floatBitsToUint(uintBitsToFloat(_16[gl_GlobalInvocationID.x]))));
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 83
+; Schema: 0
+OpCapability Shader
+OpCapability ImageBuffer
+OpCapability StorageImageWriteWithoutFormat
+OpCapability VulkanMemoryModel
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %8 %12 %16 %18 %21
+OpExecutionMode %3 LocalSize 64 1 1
+OpName %3 "main"
+OpName %66 "CmpXchgResult"
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %8 NonReadable
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 1
+OpDecorate %12 NonReadable
+OpDecorate %21 BuiltIn GlobalInvocationId
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeFloat 32
+%10 = OpTypeImage %9 Buffer 0 0 0 2 Unknown
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpConstant %5 64
+%14 = OpTypeArray %5 %13
+%15 = OpTypePointer Workgroup %14
+%16 = OpVariable %15 Workgroup
+%17 = OpTypePointer Workgroup %5
+%18 = OpVariable %17 Workgroup
+%19 = OpTypeVector %5 3
+%20 = OpTypePointer Input %19
+%21 = OpVariable %20 Input
+%22 = OpTypePointer Input %5
+%24 = OpConstant %5 0
+%28 = OpConstant %9 2
+%29 = OpConstant %5 2
+%30 = OpConstant %5 264
+%40 = OpConstant %5 1084227584
+%43 = OpConstant %5 5
+%45 = OpConstant %5 1088421888
+%47 = OpConstant %5 3
+%64 = OpTypeBool
+%66 = OpTypeStruct %5 %64
+%74 = OpTypeVector %9 4
+%80 = OpTypeVector %5 4
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %82
+%82 = OpLabel
+%23 = OpAccessChain %22 %21 %24
+%25 = OpLoad %5 %23
+%26 = OpAccessChain %17 %16 %25
+%27 = OpBitcast %5 %28
+OpStore %26 %27 MakePointerAvailable|NonPrivatePointer %29
+OpControlBarrier %29 %29 %30
+%31 = OpBitwiseXor %5 %25 %29
+%32 = OpAccessChain %17 %16 %31
+%33 = OpLoad %5 %32 MakePointerVisible|NonPrivatePointer %29
+%34 = OpBitcast %9 %33
+%35 = OpBitcast %5 %34
+%36 = OpCopyObject %17 %26
+%37 = OpAtomicExchange %5 %36 %29 %24 %35
+%39 = OpAccessChain %17 %16 %24
+%38 = OpAtomicExchange %5 %39 %29 %24 %40
+%42 = OpAccessChain %17 %16 %43
+%41 = OpAtomicExchange %5 %42 %29 %24 %40
+%44 = OpAtomicExchange %5 %18 %29 %24 %45
+%46 = OpBitwiseXor %5 %25 %47
+%48 = OpAccessChain %17 %16 %46
+%49 = OpLoad %5 %48 MakePointerVisible|NonPrivatePointer %29
+%50 = OpBitcast %9 %49
+%51 = OpLoad %5 %18 MakePointerVisible|NonPrivatePointer %29
+%52 = OpBitcast %9 %51
+%53 = OpFAdd %9 %52 %50
+%54 = OpAccessChain %17 %16 %24
+%55 = OpLoad %5 %54 MakePointerVisible|NonPrivatePointer %29
+%56 = OpBitcast %9 %55
+%57 = OpFAdd %9 %53 %56
+%58 = OpAccessChain %17 %16 %43
+%59 = OpLoad %5 %58 MakePointerVisible|NonPrivatePointer %29
+%60 = OpBitcast %9 %59
+%61 = OpFAdd %9 %57 %60
+%62 = OpBitcast %5 %61
+%63 = OpAtomicCompareExchange %5 %36 %29 %24 %24 %40 %62
+%65 = OpIEqual %64 %63 %62
+%67 = OpCompositeConstruct %66 %63 %65
+%68 = OpAtomicCompareExchange %5 %36 %29 %24 %24 %40 %62
+%69 = OpIEqual %64 %68 %62
+%70 = OpCompositeConstruct %66 %68 %69
+%71 = OpLoad %5 %26 MakePointerVisible|NonPrivatePointer %29
+%72 = OpBitcast %9 %71
+%73 = OpLoad %10 %12
+%75 = OpCompositeConstruct %74 %72 %72 %72 %72
+OpImageWrite %73 %25 %75 NonPrivateTexel
+%76 = OpLoad %5 %26 MakePointerVisible|NonPrivatePointer %29
+%77 = OpBitcast %9 %76
+%78 = OpLoad %6 %8
+%79 = OpBitcast %5 %77
+%81 = OpCompositeConstruct %80 %79 %79 %79 %79
+OpImageWrite %78 %25 %81 NonPrivateTexel
+OpReturn
+OpFunctionEnd
+#endif

@@ -282,6 +282,8 @@ struct Converter::Impl
 	void emit_interpolation_decorations(spv::Id variable_id, DXIL::InterpolationMode mode);
 	void emit_builtin_interpolation_decorations(spv::Id variable_id, DXIL::Semantic semantic, DXIL::InterpolationMode mode);
 
+	spv::Id build_equivalent_u32_raw_type(const llvm::Type *type);
+
 	spv::ExecutionModel execution_model = spv::ExecutionModelMax;
 	bool execution_model_lib_target = false;
 	bool emit_execution_modes();
@@ -559,6 +561,7 @@ struct Converter::Impl
 	UnorderedMap<const llvm::Value *, spv::StorageClass> handle_to_storage_class;
 	UnorderedMap<const llvm::Value *, spv::Id> handle_to_robustness;
 	UnorderedSet<const llvm::Value *> needs_temp_storage_copy;
+	UnorderedSet<const llvm::GlobalVariable *> group_shared_raw_u32;
 
 	struct TempPayloadEntry
 	{

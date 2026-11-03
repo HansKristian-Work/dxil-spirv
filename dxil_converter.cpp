@@ -5506,6 +5506,31 @@ bool Converter::Impl::emit_hit_attribute()
 	return true;
 }
 
+spv::Id Converter::Impl::build_equivalent_u32_raw_type(const llvm::Type *type)
+{
+	auto &b = builder();
+	spv::Id type_id = b.makeUintType(32);
+
+	spv::Id array_size_id = 0;
+	unsigned vecsize = 0;
+
+	if (type->getTypeID() == llvm::Type::TypeID::ArrayTyID)
+	{
+		array_size_id = b.makeUintConstant(type->getArrayNumElements());
+		type = type->getArrayElementType();
+	}
+
+	if (type->getTypeID() == llvm::Type::TypeID::VectorTyID)
+		vecsize = type->getVectorNumElements();
+
+	if (vecsize)
+		type_id = b.makeVectorType(type_id, vecsize);
+	if (array_size_id)
+		type_id = b.makeArrayType(type_id, array_size_id, 0);
+
+	return type_id;
+}
+
 bool Converter::Impl::emit_global_variables()
 {
 	auto &module = bitcode_parser.get_module();
@@ -5578,6 +5603,12 @@ bool Converter::Impl::emit_global_variables()
 				complex_composite = true;
 		}
 
+		if (!pointee_type_id && group_shared_raw_u32.count(&global))
+		{
+			pointee_type_id = build_equivalent_u32_raw_type(global.getType()->getPointerElementType());
+			llvm_value_actual_type[&global] = pointee_type_id;
+		}
+
 		if (!pointee_type_id)
 			pointee_type_id = get_type_id(global.getType()->getPointerElementType());
 
@@ -5593,15 +5624,9 @@ bool Converter::Impl::emit_global_variables()
 		if (initializer && llvm::isa<llvm::UndefValue>(initializer))
 			initializer = nullptr;
 
+		// This isn't allowed in DXIL, but was left in as a legacy quirk.
 		if (address_space == DXIL::AddressSpace::GroupShared)
-		{
-			if (initializer)
-			{
-				// FIXME: Is this even legal DXIL?
-				LOGW("Global variable address space cannot have initializer! Ignoring ...\n");
-				initializer = nullptr;
-			}
-		}
+			initializer = nullptr;
 
 		if (initializer)
 		{
