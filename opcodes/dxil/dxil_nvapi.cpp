@@ -895,6 +895,18 @@ static bool emit_nvapi_extn_op_hit_object_get_bool(Converter::Impl &impl, uint32
 		op = spv::OpHitObjectIsEmptyNV;
 		break;
 
+	case NV_EXTN_OP_HIT_OBJECT_IS_SPHERE_HIT:
+		builder.addExtension("SPV_NV_linear_swept_spheres");
+		builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+		op = spv::OpHitObjectIsSphereHitNV;
+		break;
+
+	case NV_EXTN_OP_HIT_OBJECT_IS_LSS_HIT:
+		builder.addExtension("SPV_NV_linear_swept_spheres");
+		builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+		op = spv::OpHitObjectIsLSSHitNV;
+		break;
+
 	default:
 		return false;
 	}
@@ -1148,6 +1160,352 @@ static bool emit_nvapi_extn_op_rt_get_intersection_cluster_id(Converter::Impl &i
 	return false;
 }
 
+static void emit_nvapi_sphere_position_and_radius(Converter::Impl &impl, spv::Id position, spv::Id radius)
+{
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+	auto uint32 = builder.makeUintType(32);
+
+	for (uint32_t i = 0; i < 3; i++)
+	{
+		auto *extract_op = impl.allocate(spv::OpCompositeExtract, float32);
+		extract_op->add_id(position);
+		extract_op->add_literal(i);
+		impl.add(extract_op);
+
+		auto *cast_op = impl.allocate(spv::OpBitcast, uint32);
+		cast_op->add_id(extract_op->id);
+		impl.add(cast_op);
+		impl.nvapi.fake_doorbell_outputs[i] = cast_op->id;
+	}
+
+	auto *cast_op = impl.allocate(spv::OpBitcast, uint32);
+	cast_op->add_id(radius);
+	impl.add(cast_op);
+	impl.nvapi.fake_doorbell_outputs[3] = cast_op->id;
+}
+
+static bool emit_nvapi_extn_op_hit_object_get_sphere_position_and_radius(Converter::Impl &impl)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+
+	builder.addExtension("SPV_NV_linear_swept_spheres");
+	builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+
+	auto *position = impl.allocate(spv::OpHitObjectGetSpherePositionNV, builder.makeVectorType(float32, 3));
+	position->add_id(hit_object);
+	impl.add(position);
+
+	auto *radius = impl.allocate(spv::OpHitObjectGetSphereRadiusNV, float32);
+	radius->add_id(hit_object);
+	impl.add(radius);
+
+	emit_nvapi_sphere_position_and_radius(impl, position->id, radius->id);
+	return true;
+}
+
+static bool emit_nvapi_extn_op_rt_sphere_position_and_radius(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+
+	builder.addExtension("SPV_NV_linear_swept_spheres");
+	builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+
+	auto *position = impl.allocate(spv::OpLoad, builder.makeVectorType(float32, 3));
+	position->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInHitSpherePositionNV));
+	impl.add(position);
+
+	auto *radius = impl.allocate(spv::OpLoad, float32);
+	radius->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInHitSphereRadiusNV));
+	impl.add(radius);
+
+	emit_nvapi_sphere_position_and_radius(impl, position->id, radius->id);
+	return true;
+}
+
+static bool emit_nvapi_extn_op_rt_intersection_sphere_position_and_radius(Converter::Impl &impl,
+                                                                          spv::RayQueryIntersection intersection)
+{
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (!ray_flags)
+		return false;
+
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+		return false;
+
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+	builder.addExtension("SPV_NV_linear_swept_spheres");
+	builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+
+	auto *position = impl.allocate(spv::OpRayQueryGetIntersectionSpherePositionNV, builder.makeVectorType(float32, 3));
+	position->add_id(ray_object_id);
+	position->add_id(builder.makeUintConstant(intersection));
+	impl.add(position);
+
+	auto *radius = impl.allocate(spv::OpRayQueryGetIntersectionSphereRadiusNV, float32);
+	radius->add_id(ray_object_id);
+	radius->add_id(builder.makeUintConstant(intersection));
+	impl.add(radius);
+
+	emit_nvapi_sphere_position_and_radius(impl, position->id, radius->id);
+	return true;
+}
+
+static void emit_nvapi_lss_positions_and_radii(Converter::Impl &impl, spv::Id positions, spv::Id radii)
+{
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+	auto uint32 = builder.makeUintType(32);
+
+	auto o = 0U;
+	for (auto i = 0U; i < 2; i++)
+	{
+		for (auto j = 0U; j < 3; j++)
+		{
+			auto *pos_extract_op = impl.allocate(spv::OpCompositeExtract, float32);
+			pos_extract_op->add_id(positions);
+			pos_extract_op->add_literal(i);
+			pos_extract_op->add_literal(j);
+			impl.add(pos_extract_op);
+
+			auto *pos_bitcast_op = impl.allocate(spv::OpBitcast, uint32);
+			pos_bitcast_op->add_id(pos_extract_op->id);
+			impl.add(pos_bitcast_op);
+
+			impl.nvapi.fake_doorbell_outputs[o++] = pos_bitcast_op->id;
+		}
+
+		auto *rad_extract_op = impl.allocate(spv::OpCompositeExtract, float32);
+		rad_extract_op->add_id(radii);
+		rad_extract_op->add_literal(i);
+		impl.add(rad_extract_op);
+
+		auto *rad_bitcast_op = impl.allocate(spv::OpBitcast, uint32);
+		rad_bitcast_op->add_id(rad_extract_op->id);
+		impl.add(rad_bitcast_op);
+
+		impl.nvapi.fake_doorbell_outputs[o++] = rad_bitcast_op->id;
+	}
+}
+
+static bool emit_nvapi_extn_op_hit_object_get_lss_positions_and_radii(Converter::Impl &impl)
+{
+	spv::Id hit_object = get_argument(impl, NVAPI_ARGUMENT_SRC0U + 0);
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+	auto vec3float32 = builder.makeVectorType(float32, 3);
+	auto array2vec3float32 = builder.makeArrayType(vec3float32, builder.makeUintConstant(2), 0);
+	auto array2float32 = builder.makeArrayType(float32, builder.makeUintConstant(2), 0);
+
+	builder.addExtension("SPV_NV_linear_swept_spheres");
+	builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+
+	auto *positions = impl.allocate(spv::OpHitObjectGetLSSPositionsNV, array2vec3float32);
+	positions->add_id(hit_object);
+	impl.add(positions);
+
+	auto *radii = impl.allocate(spv::OpHitObjectGetLSSRadiiNV, array2float32);
+	radii->add_id(hit_object);
+	impl.add(radii);
+
+	emit_nvapi_lss_positions_and_radii(impl, positions->id, radii->id);
+	return true;
+}
+
+static bool emit_nvapi_extn_op_rt_lss_positions_and_radii(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+
+	auto float32 = builder.makeFloatType(32);
+	auto vec3float32 = builder.makeVectorType(float32, 3);
+	auto array2vec3float32 = builder.makeArrayType(vec3float32, builder.makeUintConstant(2), 0);
+	auto array2float32 = builder.makeArrayType(float32, builder.makeUintConstant(2), 0);
+
+	builder.addExtension("SPV_NV_linear_swept_spheres");
+	builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+
+	spv::Id positions = impl.spirv_module.get_builtin_shader_input(spv::BuiltInHitLSSPositionsNV);
+	auto *load_positions = impl.allocate(spv::OpLoad, array2vec3float32);
+	load_positions->add_id(positions);
+	impl.add(load_positions);
+
+	spv::Id radii = impl.spirv_module.get_builtin_shader_input(spv::BuiltInHitLSSRadiiNV);
+	auto *load_radii = impl.allocate(spv::OpLoad, array2float32);
+	load_radii->add_id(radii);
+	impl.add(load_radii);
+
+	emit_nvapi_lss_positions_and_radii(impl, load_positions->id, load_radii->id);
+
+	return true;
+}
+
+static bool emit_nvapi_extn_op_rt_get_position_and_radii(Converter::Impl &impl, spv::RayQueryIntersection intersection)
+{
+	auto &builder = impl.builder();
+
+	auto float32 = builder.makeFloatType(32);
+	auto vec3float32 = builder.makeVectorType(float32, 3);
+	auto array2vec3float32 = builder.makeArrayType(vec3float32, builder.makeUintConstant(2), 0);
+	auto array2float32 = builder.makeArrayType(float32, builder.makeUintConstant(2), 0);
+
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (ray_flags != nullptr)
+	{
+		spv::Id ray_object_id = 0;
+		if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+			return false;
+
+		builder.addExtension("SPV_NV_linear_swept_spheres");
+		builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+
+		auto *positions_op = impl.allocate(spv::OpRayQueryGetIntersectionLSSPositionsNV, array2vec3float32);
+		positions_op->add_id(ray_object_id);
+		positions_op->add_id(builder.makeUintConstant(intersection));
+		impl.add(positions_op);
+
+		auto *radii_op = impl.allocate(spv::OpRayQueryGetIntersectionLSSRadiiNV, array2float32);
+		radii_op->add_id(ray_object_id);
+		radii_op->add_id(builder.makeUintConstant(intersection));
+		impl.add(radii_op);
+
+		emit_nvapi_lss_positions_and_radii(impl, positions_op->id, radii_op->id);
+	}
+
+	return true;
+}
+
+static bool emit_nvapi_extn_op_rt_is_primitive_hit(Converter::Impl &impl, spv::BuiltIn builtin)
+{
+	auto &builder = impl.builder();
+
+	builder.addExtension("SPV_NV_linear_swept_spheres");
+	switch (builtin)
+	{
+	case spv::BuiltInHitIsLSSNV:
+		builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+		break;
+
+	case spv::BuiltInHitIsSphereNV:
+		builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+		break;
+
+	default:
+		return false;
+	}
+
+	spv::Id hit = impl.spirv_module.get_builtin_shader_input(builtin);
+	auto *load_op = impl.allocate(spv::OpLoad, builder.makeBoolType());
+	load_op->add_id(hit);
+	impl.add(load_op);
+
+	auto *select_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+	select_op->add_id(load_op->id);
+	select_op->add_id(builder.makeUintConstant(1));
+	select_op->add_id(builder.makeUintConstant(0));
+	impl.add(select_op);
+
+	impl.nvapi.fake_doorbell_outputs[0] = select_op->id;
+	return true;
+}
+
+static bool emit_nvapi_extn_op_rt_is_primitive(Converter::Impl &impl, spv::Op opcode,
+                                               spv::RayQueryIntersection intersection)
+{
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (ray_flags != nullptr)
+	{
+		auto &builder = impl.builder();
+		spv::Id ray_object_id = 0;
+		if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+			return false;
+
+		builder.addExtension("SPV_NV_linear_swept_spheres");
+		switch (opcode)
+		{
+		case spv::OpRayQueryIsLSSHitNV:
+			builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+			break;
+
+		case spv::OpRayQueryIsSphereHitNV:
+			builder.addCapability(spv::CapabilityRayTracingSpheresGeometryNV);
+			break;
+
+		default:
+			return false;
+		}
+
+		auto *op = impl.allocate(opcode, builder.makeBoolType());
+		op->add_id(ray_object_id);
+		op->add_id(builder.makeUintConstant(intersection));
+		impl.add(op);
+
+		auto *select_op = impl.allocate(spv::OpSelect, builder.makeUintType(32));
+		select_op->add_id(op->id);
+		select_op->add_id(builder.makeUintConstant(1));
+		select_op->add_id(builder.makeUintConstant(0));
+		impl.add(select_op);
+
+		impl.nvapi.fake_doorbell_outputs[0] = select_op->id;
+		return true;
+	}
+
+	return false;
+}
+
+static bool emit_nvapi_extn_op_rt_intersection_float(Converter::Impl &impl, spv::Op opcode,
+                                                     spv::RayQueryIntersection intersection)
+{
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (!ray_flags)
+		return false;
+
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+		return false;
+
+	auto &builder = impl.builder();
+	if (opcode == spv::OpRayQueryGetIntersectionLSSHitValueNV)
+	{
+		builder.addExtension("SPV_NV_linear_swept_spheres");
+		builder.addCapability(spv::CapabilityRayTracingLinearSweptSpheresGeometryNV);
+	}
+
+	auto *op = impl.allocate(opcode, builder.makeFloatType(32));
+	op->add_id(ray_object_id);
+	op->add_id(builder.makeUintConstant(intersection));
+	impl.add(op);
+
+	auto *cast_op = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+	cast_op->add_id(op->id);
+	impl.add(cast_op);
+	impl.nvapi.fake_doorbell_outputs[0] = cast_op->id;
+	return true;
+}
+
+static bool emit_nvapi_extn_op_rt_commit_builtin_primitive(Converter::Impl &impl)
+{
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (!ray_flags)
+		return false;
+
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+		return false;
+
+	auto *op = impl.allocate(spv::OpRayQueryConfirmIntersectionKHR);
+	op->add_id(ray_object_id);
+	impl.add(op);
+
+	// The NVAPI wrapper clocks out an unused value even though the intrinsic returns void.
+	impl.nvapi.fake_doorbell_outputs[0] = impl.builder().makeUintConstant(0);
+	return true;
+}
+
 bool NVAPIState::can_commit_opcode()
 {
 	if (!fake_doorbell_inputs[NVAPI_ARGUMENT_OPCODE])
@@ -1217,6 +1575,8 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
 		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+		case NV_EXTN_OP_HIT_OBJECT_IS_SPHERE_HIT:
+		case NV_EXTN_OP_HIT_OBJECT_IS_LSS_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_ID:
 		case NV_EXTN_OP_HIT_OBJECT_GET_INSTANCE_INDEX:
 		case NV_EXTN_OP_HIT_OBJECT_GET_PRIMITIVE_INDEX:
@@ -1226,6 +1586,8 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_HIT_OBJECT_GET_ATTRIBUTES:
 		case NV_EXTN_OP_HIT_OBJECT_GET_SHADER_TABLE_INDEX:
 		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
+		case NV_EXTN_OP_HIT_OBJECT_GET_SPHERE_OBJECT_POSITION_AND_RADIUS:
+		case NV_EXTN_OP_HIT_OBJECT_GET_LSS_OBJECT_POSITIONS_AND_RADII:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		case NV_EXTN_OP_HIT_OBJECT_LOAD_LOCAL_ROOT_TABLE_CONSTANT:
@@ -1238,6 +1600,30 @@ bool NVAPIState::can_commit_opcode()
 
 		case NV_EXTN_OP_RT_GET_CANDIDATE_CLUSTER_ID:
 		case NV_EXTN_OP_RT_GET_COMMITTED_CLUSTER_ID:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
+
+		case NV_EXTN_OP_RT_SPHERE_OBJECT_POSITION_AND_RADIUS:
+		case NV_EXTN_OP_RT_LSS_OBJECT_POSITIONS_AND_RADII:
+			return true;
+
+		case NV_EXTN_OP_RT_CANDIDATE_SPHERE_OBJECT_POSITION_AND_RADIUS:
+		case NV_EXTN_OP_RT_COMMITTED_SPHERE_OBJECT_POSITION_AND_RADIUS:
+		case NV_EXTN_OP_RT_CANDIDATE_LSS_OBJECT_POSITIONS_AND_RADII:
+		case NV_EXTN_OP_RT_COMMITTED_LSS_OBJECT_POSITIONS_AND_RADII:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
+
+		case NV_EXTN_OP_RT_IS_SPHERE_HIT:
+		case NV_EXTN_OP_RT_IS_LSS_HIT:
+			return true;
+
+		case NV_EXTN_OP_RT_CANDIDATE_IS_NONOPAQUE_SPHERE:
+		case NV_EXTN_OP_RT_COMMITTED_IS_SPHERE:
+		case NV_EXTN_OP_RT_CANDIDATE_IS_NONOPAQUE_LSS:
+		case NV_EXTN_OP_RT_COMMITTED_IS_LSS:
+		case NV_EXTN_OP_RT_CANDIDATE_LSS_HIT_PARAMETER:
+		case NV_EXTN_OP_RT_COMMITTED_LSS_HIT_PARAMETER:
+		case NV_EXTN_OP_RT_CANDIDATE_BUILTIN_PRIMITIVE_RAY_T:
+		case NV_EXTN_OP_RT_COMMIT_NONOPAQUE_BUILTIN_PRIMITIVE_HIT:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
 		default:
@@ -1321,6 +1707,8 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_HIT_OBJECT_IS_MISS:
 		case NV_EXTN_OP_HIT_OBJECT_IS_HIT:
 		case NV_EXTN_OP_HIT_OBJECT_IS_NOP:
+		case NV_EXTN_OP_HIT_OBJECT_IS_SPHERE_HIT:
+		case NV_EXTN_OP_HIT_OBJECT_IS_LSS_HIT:
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_get_bool(impl, opcode))
 				return false;
@@ -1335,6 +1723,18 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 		case NV_EXTN_OP_HIT_OBJECT_GET_CLUSTER_ID:
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_hit_object_get_uint(impl, opcode))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_GET_SPHERE_OBJECT_POSITION_AND_RADIUS:
+			impl.nvapi.num_expected_clock_outputs = 4;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_get_sphere_position_and_radius(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_HIT_OBJECT_GET_LSS_OBJECT_POSITIONS_AND_RADII:
+			impl.nvapi.num_expected_clock_outputs = 8;
+			if (!analysis && !emit_nvapi_extn_op_hit_object_get_lss_positions_and_radii(impl))
 				return false;
 			break;
 
@@ -1375,6 +1775,134 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_rt_get_intersection_cluster_id(impl, spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_SPHERE_OBJECT_POSITION_AND_RADIUS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 4;
+			if (!analysis && !emit_nvapi_extn_op_rt_sphere_position_and_radius(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_CANDIDATE_SPHERE_OBJECT_POSITION_AND_RADIUS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 4;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_sphere_position_and_radius(impl,
+			                                                                   spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_COMMITTED_SPHERE_OBJECT_POSITION_AND_RADIUS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 4;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_sphere_position_and_radius(impl,
+			                                                                   spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_LSS_OBJECT_POSITIONS_AND_RADII:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 8;
+			if (!analysis && !emit_nvapi_extn_op_rt_lss_positions_and_radii(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_CANDIDATE_LSS_OBJECT_POSITIONS_AND_RADII:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 8;
+			if (!analysis && !emit_nvapi_extn_op_rt_get_position_and_radii(impl, spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_COMMITTED_LSS_OBJECT_POSITIONS_AND_RADII:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 8;
+			if (!analysis && !emit_nvapi_extn_op_rt_get_position_and_radii(impl, spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_IS_SPHERE_HIT:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_is_primitive_hit(impl, spv::BuiltInHitIsSphereNV))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_IS_LSS_HIT:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_is_primitive_hit(impl, spv::BuiltInHitIsLSSNV))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_CANDIDATE_IS_NONOPAQUE_SPHERE:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_is_primitive(impl, spv::OpRayQueryIsSphereHitNV,
+			                                        spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_COMMITTED_IS_SPHERE:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_is_primitive(impl, spv::OpRayQueryIsSphereHitNV,
+			                                        spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_CANDIDATE_IS_NONOPAQUE_LSS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_is_primitive(impl, spv::OpRayQueryIsLSSHitNV,
+			                                        spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_COMMITTED_IS_LSS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_is_primitive(impl, spv::OpRayQueryIsLSSHitNV,
+			                                        spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_CANDIDATE_LSS_HIT_PARAMETER:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_float(impl, spv::OpRayQueryGetIntersectionLSSHitValueNV,
+			                                              spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_COMMITTED_LSS_HIT_PARAMETER:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_float(impl, spv::OpRayQueryGetIntersectionLSSHitValueNV,
+			                                              spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_CANDIDATE_BUILTIN_PRIMITIVE_RAY_T:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_float(impl, spv::OpRayQueryGetIntersectionTKHR,
+			                                              spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_COMMIT_NONOPAQUE_BUILTIN_PRIMITIVE_HIT:
+			impl.nvapi.num_expected_clock_outputs = 1;
+			if (!analysis && !emit_nvapi_extn_op_rt_commit_builtin_primitive(impl))
 				return false;
 			break;
 

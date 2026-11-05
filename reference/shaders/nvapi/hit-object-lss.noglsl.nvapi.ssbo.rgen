@@ -1,0 +1,205 @@
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 134
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
+OpCapability ShaderInvocationReorderNV
+OpCapability RayTracingSpheresGeometryNV
+OpCapability RayTracingLinearSweptSpheresGeometryNV
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpExtension "SPV_NV_linear_swept_spheres"
+OpExtension "SPV_NV_shader_invocation_reorder"
+OpMemoryModel Logical Vulkan
+OpEntryPoint RayGenerationKHR %3 "main" %8 %13 %17 %20
+OpName %3 "main"
+OpName %8 "AS"
+OpName %11 "RWFloatSSBO"
+OpName %13 "RWFloat"
+OpName %15 "RWUintSSBO"
+OpName %17 "RWUint"
+OpName %18 ""
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %10 ArrayStride 4
+OpMemberDecorate %11 0 Offset 0
+OpDecorate %11 Block
+OpDecorate %13 DescriptorSet 0
+OpDecorate %13 Binding 1
+OpDecorate %13 NonReadable
+OpDecorate %14 ArrayStride 4
+OpMemberDecorate %15 0 Offset 0
+OpDecorate %15 Block
+OpDecorate %17 DescriptorSet 0
+OpDecorate %17 Binding 2
+OpDecorate %17 NonReadable
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 1
+%6 = OpTypeAccelerationStructureKHR
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeInt 32 0
+%10 = OpTypeRuntimeArray %9
+%11 = OpTypeStruct %10
+%12 = OpTypePointer StorageBuffer %11
+%13 = OpVariable %12 StorageBuffer
+%14 = OpTypeRuntimeArray %9
+%15 = OpTypeStruct %14
+%16 = OpTypePointer StorageBuffer %15
+%17 = OpVariable %16 StorageBuffer
+%18 = OpTypeStruct %9
+%19 = OpTypePointer RayPayloadKHR %18
+%20 = OpVariable %19 RayPayloadKHR
+%23 = OpConstant %9 0
+%24 = OpConstant %9 255
+%25 = OpTypeFloat 32
+%26 = OpConstant %25 1
+%27 = OpConstant %25 4
+%28 = OpConstant %25 2
+%29 = OpConstant %25 5
+%30 = OpConstant %25 3
+%31 = OpConstant %25 6
+%32 = OpConstant %25 7
+%33 = OpConstant %25 8
+%34 = OpTypeVector %25 3
+%37 = OpTypeHitObjectNV
+%38 = OpTypePointer Function %37
+%40 = OpTypeBool
+%43 = OpConstant %9 1
+%49 = OpTypePointer StorageBuffer %9
+%70 = OpConstant %9 2
+%73 = OpConstant %9 3
+%76 = OpTypeArray %34 %70
+%77 = OpTypeArray %25 %70
+%104 = OpConstant %9 4
+%107 = OpConstant %9 5
+%110 = OpConstant %9 6
+%113 = OpConstant %9 7
+%116 = OpConstant %9 8
+%119 = OpConstant %9 9
+%122 = OpConstant %9 10
+%125 = OpConstant %9 11
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%39 = OpVariable %38 Function
+OpBranch %128
+%128 = OpLabel
+%22 = OpLoad %6 %8
+%35 = OpCompositeConstruct %34 %26 %28 %30
+%36 = OpCompositeConstruct %34 %27 %29 %31
+OpHitObjectTraceRayNV %39 %22 %23 %24 %23 %23 %23 %35 %32 %36 %33 %20
+%41 = OpHitObjectIsSphereHitNV %40 %39
+%42 = OpSelect %9 %41 %43 %23
+%44 = OpINotEqual %40 %42 %23
+%45 = OpHitObjectIsLSSHitNV %40 %39
+%46 = OpSelect %9 %45 %43 %23
+%47 = OpINotEqual %40 %46 %23
+%48 = OpSelect %9 %44 %43 %23
+%50 = OpAccessChain %49 %17 %23 %23
+OpStore %50 %48 NonPrivatePointer
+%51 = OpSelect %9 %47 %43 %23
+%52 = OpAccessChain %49 %17 %23 %43
+OpStore %52 %51 NonPrivatePointer
+OpSelectionMerge %130 None
+OpBranchConditional %44 %129 %130
+%129 = OpLabel
+%53 = OpHitObjectGetSpherePositionNV %34 %39
+%54 = OpHitObjectGetSphereRadiusNV %25 %39
+%55 = OpCompositeExtract %25 %53 0
+%56 = OpBitcast %9 %55
+%57 = OpCompositeExtract %25 %53 1
+%58 = OpBitcast %9 %57
+%59 = OpCompositeExtract %25 %53 2
+%60 = OpBitcast %9 %59
+%61 = OpBitcast %9 %54
+%62 = OpBitcast %25 %56
+%63 = OpBitcast %25 %58
+%64 = OpBitcast %25 %60
+%65 = OpBitcast %25 %61
+%66 = OpBitcast %9 %62
+%67 = OpAccessChain %49 %13 %23 %23
+OpStore %67 %66 NonPrivatePointer
+%68 = OpBitcast %9 %63
+%69 = OpAccessChain %49 %13 %23 %43
+OpStore %69 %68 NonPrivatePointer
+%71 = OpBitcast %9 %64
+%72 = OpAccessChain %49 %13 %23 %70
+OpStore %72 %71 NonPrivatePointer
+%74 = OpBitcast %9 %65
+%75 = OpAccessChain %49 %13 %23 %73
+OpStore %75 %74 NonPrivatePointer
+OpBranch %130
+%130 = OpLabel
+OpSelectionMerge %132 None
+OpBranchConditional %47 %131 %132
+%131 = OpLabel
+%78 = OpHitObjectGetLSSPositionsNV %76 %39
+%79 = OpHitObjectGetLSSRadiiNV %77 %39
+%80 = OpCompositeExtract %25 %78 0 0
+%81 = OpBitcast %9 %80
+%82 = OpCompositeExtract %25 %78 0 1
+%83 = OpBitcast %9 %82
+%84 = OpCompositeExtract %25 %78 0 2
+%85 = OpBitcast %9 %84
+%86 = OpCompositeExtract %25 %79 0
+%87 = OpBitcast %9 %86
+%88 = OpCompositeExtract %25 %78 1 0
+%89 = OpBitcast %9 %88
+%90 = OpCompositeExtract %25 %78 1 1
+%91 = OpBitcast %9 %90
+%92 = OpCompositeExtract %25 %78 1 2
+%93 = OpBitcast %9 %92
+%94 = OpCompositeExtract %25 %79 1
+%95 = OpBitcast %9 %94
+%96 = OpBitcast %25 %81
+%97 = OpBitcast %25 %83
+%98 = OpBitcast %25 %85
+%99 = OpBitcast %25 %87
+%100 = OpBitcast %25 %89
+%101 = OpBitcast %25 %91
+%102 = OpBitcast %25 %93
+%103 = OpBitcast %25 %95
+%105 = OpBitcast %9 %96
+%106 = OpAccessChain %49 %13 %23 %104
+OpStore %106 %105 NonPrivatePointer
+%108 = OpBitcast %9 %97
+%109 = OpAccessChain %49 %13 %23 %107
+OpStore %109 %108 NonPrivatePointer
+%111 = OpBitcast %9 %98
+%112 = OpAccessChain %49 %13 %23 %110
+OpStore %112 %111 NonPrivatePointer
+%114 = OpBitcast %9 %99
+%115 = OpAccessChain %49 %13 %23 %113
+OpStore %115 %114 NonPrivatePointer
+%117 = OpBitcast %9 %100
+%118 = OpAccessChain %49 %13 %23 %116
+OpStore %118 %117 NonPrivatePointer
+%120 = OpBitcast %9 %101
+%121 = OpAccessChain %49 %13 %23 %119
+OpStore %121 %120 NonPrivatePointer
+%123 = OpBitcast %9 %102
+%124 = OpAccessChain %49 %13 %23 %122
+OpStore %124 %123 NonPrivatePointer
+%126 = OpBitcast %9 %103
+%127 = OpAccessChain %49 %13 %23 %125
+OpStore %127 %126 NonPrivatePointer
+OpBranch %132
+%132 = OpLabel
+OpBranch %133
+%133 = OpLabel
+OpReturn
+OpFunctionEnd
+

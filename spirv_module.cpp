@@ -251,10 +251,12 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 	case spv::BuiltInWorldRayOriginKHR:
 	case spv::BuiltInObjectRayDirectionKHR:
 	case spv::BuiltInWorldRayDirectionKHR:
+	case spv::BuiltInHitSpherePositionNV:
 		return builder.makeVectorType(builder.makeFloatType(32), 3);
 
 	case spv::BuiltInRayTminKHR:
 	case spv::BuiltInRayTmaxKHR:
+	case spv::BuiltInHitSphereRadiusNV:
 		return builder.makeFloatType(32);
 
 	case spv::BuiltInWorldToObjectKHR:
@@ -275,6 +277,16 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 
 	case spv::BuiltInClusterIDNV:
 		return builder.makeUintType(32);
+
+	case spv::BuiltInHitLSSPositionsNV:
+		return builder.makeArrayType(builder.makeVectorType(builder.makeFloatType(32), 3), builder.makeUintConstant(2), 0);
+
+	case spv::BuiltInHitLSSRadiiNV:
+		return builder.makeArrayType(builder.makeFloatType(32), builder.makeUintConstant(2), 0);
+
+	case spv::BuiltInHitIsLSSNV:
+	case spv::BuiltInHitIsSphereNV:
+		return builder.makeBoolType();
 
 	default:
 		return 0;

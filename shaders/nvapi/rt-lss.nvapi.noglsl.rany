@@ -1,0 +1,24 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+struct Payload
+{
+	bool lss;
+	bool spherical;
+	float4 sphere0;
+	float4 sphere1;
+	float4 sphere;
+};
+
+[shader("anyhit")]
+void RayHit(inout Payload payload, BuiltInTriangleIntersectionAttributes attr)
+{
+	payload.lss = NvRtIsLssHit();
+	payload.spherical = NvRtIsSphereHit();
+
+	float2x4 spheres = NvRtLssObjectPositionsAndRadii();
+	payload.sphere0 = spheres[0];
+	payload.sphere1 = spheres[1];
+	payload.sphere = NvRtSphereObjectPositionAndRadius();
+}
