@@ -639,9 +639,10 @@ void add_vkmm_access_qualifiers(Converter::Impl &impl, Operation *op, const Refe
 	uint32_t mm_argument_index = 0;
 	uint32_t mm_flags = 0;
 
-	switch (op->op)
+	switch (uint32_t(op->op))
 	{
 	case spv::OpLoad:
+	case spv::PseudoOpMaskedLoad:
 		if (vkmm.non_private)
 			mm_flags |= spv::MemoryAccessNonPrivatePointerMask;
 		if (vkmm.auto_visibility)
@@ -650,11 +651,25 @@ void add_vkmm_access_qualifiers(Converter::Impl &impl, Operation *op, const Refe
 		break;
 
 	case spv::OpStore:
+	case spv::PseudoOpMaskedStore:
 		if (vkmm.non_private)
 			mm_flags |= spv::MemoryAccessNonPrivatePointerMask;
 		if (vkmm.auto_visibility)
 			mm_flags |= spv::MemoryAccessMakePointerAvailableMask;
 		mm_argument_index = 2;
+		break;
+
+	case spv::OpCopyMemory:
+	case spv::PseudoOpMaskedCopyMemory:
+		if (vkmm.non_private)
+			mm_flags |= spv::MemoryAccessNonPrivatePointerMask;
+		if (vkmm.auto_visibility)
+		{
+			mm_flags |= op->num_arguments() == 2
+				            ? spv::MemoryAccessMakePointerAvailableMask
+				            : spv::MemoryAccessMakePointerVisibleMask;
+		}
+		mm_argument_index = op->num_arguments();
 		break;
 
 	case spv::OpCooperativeMatrixLoadKHR:

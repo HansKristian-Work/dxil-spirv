@@ -1413,8 +1413,14 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 		break;
 
 	case DXIL::Op::DispatchMesh:
-		impl.handle_to_storage_class[instruction->getOperand(4)] = spv::StorageClassTaskPayloadWorkgroupEXT;
+	{
+		// It's allowed for Dispatch to take a pointer into groupshared somehow.
+		// We have no way to deal with that other than copying it separately.
+		auto *payload = instruction->getOperand(4);
+		if (llvm::isa<llvm::GlobalVariable>(payload))
+			impl.handle_to_storage_class[payload] = spv::StorageClassTaskPayloadWorkgroupEXT;
 		break;
+	}
 
 	case DXIL::Op::Barrier:
 	{

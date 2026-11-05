@@ -1,0 +1,81 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+layout(local_size_x = 2, local_size_y = 1, local_size_z = 1) in;
+
+struct _7
+{
+    uint _m0;
+};
+
+shared _7 _10[2];
+taskPayloadSharedEXT _7 _20;
+
+void main()
+{
+    _10[gl_LocalInvocationIndex]._m0 = gl_LocalInvocationIndex;
+    barrier();
+    barrier();
+    if (gl_LocalInvocationIndex == 0u)
+    {
+        _20 = _10[1u];
+    }
+    EmitMeshTasksEXT(1u, 1u, 1u);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 29
+; Schema: 0
+OpCapability Shader
+OpCapability MeshShadingEXT
+OpCapability VulkanMemoryModel
+OpExtension "SPV_EXT_mesh_shader"
+OpMemoryModel Logical Vulkan
+OpEntryPoint TaskEXT %3 "main" %10 %12 %20
+OpExecutionMode %3 LocalSize 2 1 1
+OpName %3 "main"
+OpName %7 ""
+OpDecorate %12 BuiltIn LocalInvocationIndex
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpConstant %5 2
+%7 = OpTypeStruct %5
+%8 = OpTypeArray %7 %6
+%9 = OpTypePointer Workgroup %8
+%10 = OpVariable %9 Workgroup
+%11 = OpTypePointer Input %5
+%12 = OpVariable %11 Input
+%14 = OpTypePointer Workgroup %5
+%16 = OpConstant %5 0
+%17 = OpConstant %5 264
+%18 = OpConstant %5 1
+%19 = OpTypePointer TaskPayloadWorkgroupEXT %7
+%20 = OpVariable %19 TaskPayloadWorkgroupEXT
+%22 = OpTypeBool
+%24 = OpTypePointer Workgroup %7
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %26
+%26 = OpLabel
+%13 = OpLoad %5 %12
+%15 = OpAccessChain %14 %10 %13 %16
+OpStore %15 %13 MakePointerAvailable|NonPrivatePointer %6
+OpControlBarrier %6 %6 %17
+OpControlBarrier %6 %6 %17
+%21 = OpLoad %5 %12
+%23 = OpIEqual %22 %21 %16
+%25 = OpAccessChain %24 %10 %18
+OpSelectionMerge %28 None
+OpBranchConditional %23 %27 %28
+%27 = OpLabel
+OpCopyMemory %20 %25 None MakePointerVisible|NonPrivatePointer %6
+OpBranch %28
+%28 = OpLabel
+OpEmitMeshTasksEXT %18 %18 %18 %20
+OpFunctionEnd
+#endif

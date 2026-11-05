@@ -339,8 +339,58 @@ bool emit_dispatch_mesh_instruction(Converter::Impl &impl, const llvm::CallInst 
 {
 	Operation *op = impl.allocate(spv::OpEmitMeshTasksEXT);
 
-	for (unsigned i = 1; i <= 4; i++)
+	for (unsigned i = 1; i <= 3; i++)
 		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
+
+	auto *payload = instruction->getOperand(4);
+
+	if (llvm::isa<llvm::GlobalVariable>(payload))
+	{
+		// Direct forwarding.
+		op->add_id(impl.get_id_for_value(payload));
+	}
+	else
+	{
+		auto &builder = impl.builder();
+
+		auto *barrier = impl.allocate(spv::OpControlBarrier);
+		barrier->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+		barrier->add_id(builder.makeUintConstant(spv::ScopeWorkgroup));
+		barrier->add_id(builder.makeUintConstant(spv::MemorySemanticsAcquireReleaseMask | spv::MemorySemanticsWorkgroupMemoryMask));
+		impl.add(barrier);
+
+		auto *data_type = payload->getType()->getPointerElementType();
+		// Indirect forwarding.
+		spv::Id var_id = impl.get_temp_payload(impl.get_type_id(data_type), spv::StorageClassTaskPayloadWorkgroupEXT);
+
+		spv::Id local_id = impl.spirv_module.get_builtin_shader_input(spv::BuiltInLocalInvocationIndex);
+		auto *lane_id = impl.allocate(spv::OpLoad, builder.makeUintType(32));
+		lane_id->add_id(local_id);
+		impl.add(lane_id);
+
+		auto *is_first_lane = impl.allocate(spv::OpIEqual, builder.makeBoolType());
+		is_first_lane->add_id(lane_id->id);
+		is_first_lane->add_id(builder.makeUintConstant(0));
+		impl.add(is_first_lane);
+
+		// Potentially very inefficient if the payload is large, but assumption is that if GEP is used like this, the payload is small.
+		// This never happens in the wild anyway.
+		auto *masked_copy = impl.allocate(spv::PseudoOpMaskedCopyMemory);
+		masked_copy->add_id(var_id);
+		masked_copy->add_id(impl.get_id_for_value(payload));
+
+		if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+		{
+			masked_copy->add_literal(0);
+			add_vkmm_access_qualifiers(impl, masked_copy, { true, true, spv::ScopeWorkgroup });
+		}
+
+		masked_copy->add_id(is_first_lane->id);
+
+		impl.add(masked_copy);
+
+		op->add_id(var_id);
+	}
 
 	impl.add(op);
 	return true;

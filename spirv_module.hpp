@@ -36,10 +36,11 @@ class Function;
 class Builder;
 class Instruction;
 
-static constexpr spv::Op PseudoOpReturnCond = spv::Op(0x100000);
-static constexpr spv::Op PseudoOpInstrumentExternallyVisibleStore = spv::Op(0x100001);
-static constexpr spv::Op PseudoOpMaskedLoad = spv::Op(0x100002);
-static constexpr spv::Op PseudoOpMaskedStore = spv::Op(0x100003);
+static constexpr Op PseudoOpReturnCond = Op(0x100000);
+static constexpr Op PseudoOpInstrumentExternallyVisibleStore = Op(0x100001);
+static constexpr Op PseudoOpMaskedLoad = Op(0x100002);
+static constexpr Op PseudoOpMaskedStore = Op(0x100003);
+static constexpr Op PseudoOpMaskedCopyMemory = Op(0x100004);
 } // namespace spv
 
 namespace dxil_spv

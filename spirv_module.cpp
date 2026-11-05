@@ -3720,6 +3720,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		}
 		else if (op->op == spv::PseudoOpReturnCond ||
 		         op->op == spv::PseudoOpMaskedLoad ||
+		         op->op == spv::PseudoOpMaskedCopyMemory ||
 		         op->op == spv::PseudoOpMaskedStore)
 		{
 			// Have to ensure we emit loop header before we replace block.
@@ -3757,6 +3758,10 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 				if (op->op == spv::PseudoOpMaskedStore)
 				{
 					inst = std::make_unique<spv::Instruction>(spv::OpStore);
+				}
+				else if (op->op == spv::PseudoOpMaskedCopyMemory)
+				{
+					inst = std::make_unique<spv::Instruction>(spv::OpCopyMemory);
 				}
 				else
 				{
