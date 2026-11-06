@@ -1109,6 +1109,7 @@ public:
 	void add_non_semantic_debug_info(const NonSemanticDebugInfo &info);
 
 	void set_patch_location_offset(uint32_t offset);
+	void set_can_feed_rasterizer(bool enable);
 
 	// After compilation, query CS workgroup size.
 	void get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) const;

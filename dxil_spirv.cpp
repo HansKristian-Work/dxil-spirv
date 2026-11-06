@@ -209,6 +209,7 @@ static void print_help()
 	     "\t[--view-index-to-view-instance-spec-id <id>]\n"
 	     "\t[--meta-descriptor descriptor kind set binding]\n"
 	     "\t[--ray-query-force-opacity-micromap]\n"
+	     "\t[--disable-feed-rasterizer]\n"
 	     "\t[--legacy-structurizer]\n");
 }
 
@@ -235,6 +236,7 @@ struct Arguments
 	bool debug_all_entry_points = false;
 	bool storage_input_output_16bit = false;
 	bool emit_source_name = false;
+	bool can_feed_rasterizer = true;
 	std::vector<unsigned> swizzles;
 
 	unsigned root_constant_inline_ubo_desc_set = 0;
@@ -957,6 +959,7 @@ int main(int argc, char **argv)
 	});
 	cbs.add("--legacy-structurizer", [&](CLIParser &) { args.legacy_structurizer = true; });
 	cbs.add("--emit-source-name", [&](CLIParser &) { args.emit_source_name = true; });
+	cbs.add("--disable-feed-rasterizer", [&](CLIParser &) { args.can_feed_rasterizer = false; });
 	cbs.error_handler = [] { print_help(); };
 	cbs.default_handler = [&](const char *arg) { args.input_path = arg; };
 	CLIParser cli_parser(std::move(cbs), argc - 1, argv + 1);
@@ -1392,6 +1395,8 @@ int main(int argc, char **argv)
 		                                              args.input_path.c_str() };
 		dxil_spv_converter_add_option(converter, &source.base);
 	}
+
+	dxil_spv_converter_set_can_feed_rasterizer(converter, args.can_feed_rasterizer);
 
 	dxil_spv_converter_add_option(converter, &args.offset_buffer_layout.base);
 

@@ -93,6 +93,11 @@ void Converter::set_patch_location_offset(uint32_t offset)
 	impl->patch_location_offset = offset;
 }
 
+void Converter::set_can_feed_rasterizer(bool enable)
+{
+	impl->can_feed_rasterizer = enable;
+}
+
 void Converter::get_workgroup_dimensions(uint32_t &x, uint32_t &y, uint32_t &z) const
 {
 	x = impl->execution_mode_meta.workgroup_threads[0];
@@ -4873,6 +4878,19 @@ static void build_geometry_stream_row_offsets(unsigned offsets[4], const llvm::M
 			offsets[row] += row_count_for_geometry_stream[i];
 }
 
+static bool system_value_is_rasterizer_feeding_only(DXIL::Semantic semantic)
+{
+	switch (semantic)
+	{
+	case DXIL::Semantic::ViewPortArrayIndex:
+	case DXIL::Semantic::RenderTargetArrayIndex:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 bool Converter::Impl::emit_stage_output_variables()
 {
 	auto *node = entry_point_meta;
@@ -4941,6 +4959,15 @@ bool Converter::Impl::emit_stage_output_variables()
 				execution_model == spv::ExecutionModelTessellationControl ||
 				(execution_model == spv::ExecutionModelGeometry && system_value == DXIL::Semantic::IsFrontFace) ||
 				(execution_model == spv::ExecutionModelTessellationEvaluation && system_value == DXIL::Semantic::ShadingRate);
+
+		// If we're not feeding the rasterizer, we have to demote it to a user variable since
+		// subsequent stage will not be able to read it with a Builtin decoration.
+	    // dxbc-spirv already does this transform by duplicating, so skip any hackery.
+		if (system_value_is_rasterizer_feeding_only(system_value) && !can_feed_rasterizer &&
+		    !module_is_dxbc_spirv(bitcode_parser.get_module()))
+		{
+		    is_nonsense_semantic = true;
+		}
 
 		if (options.quirks.ignore_primitive_shading_rate && system_value == DXIL::Semantic::ShadingRate)
 		{
@@ -5759,6 +5786,9 @@ bool Converter::Impl::emit_stage_input_variables()
 		// For HS <-> DS, ignore system values.
 		// Allow certain system values that are synthesized however.
 		if (execution_model == spv::ExecutionModelTessellationEvaluation && system_value != DXIL::Semantic::DomainLocation)
+			system_value = DXIL::Semantic::User;
+
+		if (system_value_is_rasterizer_feeding_only(system_value) && execution_model != spv::ExecutionModelFragment)
 			system_value = DXIL::Semantic::User;
 
 		bool masked_input = false;

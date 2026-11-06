@@ -502,6 +502,7 @@ struct Converter::Impl
 	unsigned root_descriptor_count = 0;
 	unsigned root_constant_num_words = 0;
 	bool root_constant_arrayed = false;
+	bool can_feed_rasterizer = true;
 	unsigned patch_location_offset = ~0u;
 	unsigned descriptor_qa_counter = 0;
 	spv::Id primitive_index_array_id = 0;
@@ -883,6 +884,8 @@ struct Converter::Impl
 			bool enable = false;
 
 			// If false and multiview is enabled, it only means we're interested in ViewID potentially ...
+			// This is somewhat deprecated by the global set_can_feed_rasterizer() call.
+			// For sane behavior, match the two enable bits if possible.
 			bool last_pre_rasterization_stage = false;
 
 			// One u32 spec constant mapping 16 ViewIndices back to ViewID.

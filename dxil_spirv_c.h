@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define DXIL_SPV_API_VERSION_MAJOR 2
-#define DXIL_SPV_API_VERSION_MINOR 77
+#define DXIL_SPV_API_VERSION_MINOR 78
 #define DXIL_SPV_API_VERSION_PATCH 0
 
 #define DXIL_SPV_DESCRIPTOR_QA_INTERFACE_VERSION 2
@@ -1089,6 +1089,11 @@ DXIL_SPV_PUBLIC_API void dxil_spv_converter_add_non_semantic_debug_info(
 /* For domain shader, when linking with hull shader. */
 DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_patch_location_offset(
 	dxil_spv_converter converter, unsigned offset);
+
+/* Default true. If forced to false, the shader may be fixed up to be compatible
+ * with some edge cases where e.g. builtins cannot be used. */
+DXIL_SPV_PUBLIC_API void dxil_spv_converter_set_can_feed_rasterizer(
+	dxil_spv_converter converter, dxil_spv_bool enable);
 
 /* After setting up converter, runs the converted to SPIR-V. */
 DXIL_SPV_PUBLIC_API dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter);

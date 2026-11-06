@@ -424,6 +424,7 @@ struct dxil_spv_converter_s
 	bool uses_subgroup_size = false;
 	bool is_multiview_compatible = false;
 	bool legacy_structurizer = false;
+	bool can_feed_rasterizer = true;
 	uint32_t workgroup_size[3] = {};
 	uint32_t patch_vertex_count = 0;
     uint32_t patch_location_offset = UINT32_MAX;
@@ -765,6 +766,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 
 	if (converter->patch_location_offset != UINT32_MAX)
 		dxil_converter.set_patch_location_offset(converter->patch_location_offset);
+	dxil_converter.set_can_feed_rasterizer(converter->can_feed_rasterizer);
 
 	for (auto &mapping : converter->root_parameter_mappings)
 		dxil_converter.add_root_parameter_mapping(mapping.first, mapping.second);
@@ -1669,6 +1671,12 @@ void dxil_spv_converter_set_patch_location_offset(
 		dxil_spv_converter converter, unsigned offset)
 {
 	converter->patch_location_offset = offset;
+}
+
+void dxil_spv_converter_set_can_feed_rasterizer(
+		dxil_spv_converter converter, dxil_spv_bool enable)
+{
+	converter->can_feed_rasterizer = enable == DXIL_SPV_TRUE;
 }
 
 unsigned dxil_spv_parsed_blob_get_num_rdat_subobjects(dxil_spv_parsed_blob blob)
