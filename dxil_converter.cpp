@@ -8550,7 +8550,19 @@ bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
 
 		arg_types.reserve(leaf_func->getFunctionType()->getNumParams());
 		for (uint32_t i = 0; i < leaf_func->getFunctionType()->getNumParams(); i++)
-			arg_types.push_back(get_type_id(leaf_func->getFunctionType()->getParamType(i)));
+		{
+			auto *param_type = leaf_func->getFunctionType()->getParamType(i);
+			if (param_type->getTypeID() == llvm::Type::TypeID::PointerTyID &&
+			    DXIL::AddressSpace(param_type->getPointerAddressSpace()) == DXIL::AddressSpace::Thread)
+			{
+				// Thread pointer parameters are always Function pointers since address space 0 cannot
+				// distinguish Function from Private.
+				arg_types.push_back(
+				    builder().makePointer(spv::StorageClassFunction, get_type_id(param_type->getPointerElementType())));
+			}
+			else
+				arg_types.push_back(get_type_id(param_type));
+		}
 
 		auto *spv_func =
 		    builder().makeFunctionEntry(spv::NoPrecision, get_type_id(leaf_func->getFunctionType()->getReturnType()),
@@ -8565,7 +8577,14 @@ bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
 
 		auto arg_iter = leaf_func->arg_begin();
 		for (uint32_t i = 0, n = leaf_func->getFunctionType()->getNumParams(); i < n; i++, ++arg_iter)
+		{
 			rewrite_value(&*arg_iter, spv_func->getParamId(i));
+			if (arg_iter->getType()->getTypeID() == llvm::Type::TypeID::PointerTyID &&
+			    DXIL::AddressSpace(arg_iter->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::Thread)
+			{
+				handle_to_storage_class[&*arg_iter] = spv::StorageClassFunction;
+			}
+		}
 
 		auto visit_order = build_function_bb_visit_order_and_register(leaf_func, pool);
 
