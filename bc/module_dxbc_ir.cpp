@@ -4005,7 +4005,7 @@ Module *parseDXBCBinary(LLVMContext &context, const void* data, size_t size)
 
 	options.bufferOptions.useTypedForRaw = false;
 	options.bufferOptions.useTypedForStructured = false;
-	options.bufferOptions.useTypedForSparseFeedback = true;
+	options.bufferOptions.useTypedForSparseFeedback = false;
 	options.bufferOptions.useRawForTypedAtomic = false;
 
 	options.scalarizeOptions.subDwordVectors = true;
