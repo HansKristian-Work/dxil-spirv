@@ -794,8 +794,15 @@ static bool emit_physical_buffer_load_instruction(Converter::Impl &impl, const l
 
 	impl.rewrite_value(instruction, loaded_id);
 
+	// Sparse feedback for root descriptors is always undefined.
+	auto &access_meta = impl.llvm_composite_meta[instruction];
+	if (is_vector)
+		access_meta.access_mask_is_undef = 0x2;
+	else
+		access_meta.access_mask_is_undef = 0x10;
+
 	if (vecsize == 1 || is_vector)
-		impl.llvm_composite_meta[instruction].forced_composite = false;
+		access_meta.forced_composite = false;
 
 	return true;
 }
@@ -1029,12 +1036,6 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 	if (meta.storage == spv::StorageClassPhysicalStorageBuffer)
 	{
-		if (sparse)
-		{
-			LOGE("Cannot use BDA and sparse feedback. >:(\n");
-			return false;
-		}
-
 		// We don't know more about alignment in SM 5.1 BufferStore.
 		// We know the type must be 32-bit however ...
 		// Might be possible to do some fancy analysis to deduce a better alignment.
@@ -1103,8 +1104,9 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 
 		if (ssbo && sparse)
 		{
-			LOGE("Cannot use SSBOs and sparse feedback. >:(\n");
-			return false;
+			LOGW("Cannot use SSBOs and sparse feedback. >:( Fallback back to dummy code.\n");
+			sparse = false;
+			access_meta.access_mask_is_undef = is_vector ? 0x2 : 0x10;
 		}
 
 		if (ssbo)

@@ -1352,6 +1352,36 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		auto &access_meta = srv_access_tracking[index];
 		bool force_scalar_alignment = vulkan_binding.buffer_binding.force_scalar_alignment;
 
+		// Vulkan does not support this as-is.
+		// Need to either fallback to the texel buffer alias (for heap descriptor),
+		// or hallucinate. Root descriptors don't support sparse feedback.
+		bool raw_sparse_feedback_fallback =
+				(resource_kind == DXIL::ResourceKind::RawBuffer ||
+				 resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
+				vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO &&
+				access_meta.prefers_texel_buffer_alias();
+
+		if (raw_sparse_feedback_fallback)
+		{
+			// Try to find a sibling and use the sibling texel buffer instead.
+			// It would be possible in theory to use dual descriptors, but the amount of work
+			// to plumb that through is prohibitively annoying.
+			// No known content actually uses raw buffers + feedback, since we have failed that call for 6+ years.
+			// NVIDIA d3d12 drivers also don't seem to deal with it correctly, so we can probably
+			// justify being a little loose with it.
+			// 16-bit and 64-bit load-store would break if it were combined with feedback,
+			// but that's even less likely to come up in practice ...
+			auto d3d_texel_binding = d3d_binding;
+			d3d_texel_binding.kind = DXIL::ResourceKind::TypedBuffer;
+			d3d_texel_binding.alignment = 0;
+			VulkanSRVBinding vulkan_texel_binding = {};
+			if (need_resource_remapping && resource_mapping_iface &&
+			    resource_mapping_iface->remap_srv(d3d_texel_binding, vulkan_texel_binding))
+			{
+				vulkan_binding = vulkan_texel_binding;
+			}
+		}
+
 		AliasedAccess aliased_access;
 		if (!analyze_aliased_access(access_meta,
 		                            need_resource_remapping ?
@@ -1949,6 +1979,29 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			{
 				LOGE("Failed to remap UAV %u:%u.\n", bind_space, bind_register);
 				return false;
+			}
+		}
+
+		// Vulkan does not support this as-is.
+		// Need to either fallback to the texel buffer alias (for heap descriptor),
+		// or hallucinate. Root descriptors don't support sparse feedback.
+		bool raw_sparse_feedback_fallback =
+				!has_counter &&
+				(resource_kind == DXIL::ResourceKind::RawBuffer ||
+				 resource_kind == DXIL::ResourceKind::StructuredBuffer) &&
+				vulkan_binding.buffer_binding.descriptor_type == VulkanDescriptorType::SSBO &&
+				access_meta.prefers_texel_buffer_alias();
+
+		if (raw_sparse_feedback_fallback)
+		{
+			auto d3d_texel_binding = d3d_binding;
+			d3d_texel_binding.binding.kind = DXIL::ResourceKind::TypedBuffer;
+			d3d_texel_binding.binding.alignment = 0;
+			VulkanUAVBinding vulkan_texel_binding = {};
+			if (need_resource_remapping && resource_mapping_iface &&
+				resource_mapping_iface->remap_uav(d3d_texel_binding, vulkan_texel_binding))
+			{
+				vulkan_binding = vulkan_texel_binding;
 			}
 		}
 

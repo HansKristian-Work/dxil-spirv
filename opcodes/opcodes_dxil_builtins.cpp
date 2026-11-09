@@ -880,11 +880,13 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 			if (composite_itr != impl.llvm_composite_meta.end())
 				access_mask = composite_itr->second.access_mask & 0xfu;
 
+			bool sparse_feedback;
 			unsigned vecsize;
 
 			if (opcode == DXIL::Op::RawBufferVectorLoad)
 			{
 				vecsize = get_composite_element_count(instruction->getType());
+				sparse_feedback = (composite_itr->second.access_mask & 2) != 0;
 			}
 			else
 			{
@@ -896,7 +898,11 @@ static void analyze_dxil_buffer_load(Converter::Impl &impl, const llvm::CallInst
 					return;
 
 				vecsize = access_mask_to_vecsize(access_mask);
+				sparse_feedback = (composite_itr->second.access_mask & 0x10) != 0;
 			}
+
+			if (sparse_feedback)
+				tracking->has_buffer_sparse_feedback = true;
 
 			if (meta.kind == DXIL::ResourceKind::RawBuffer)
 			{

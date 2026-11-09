@@ -188,6 +188,7 @@ struct AccessTracking
 	bool has_nvapi_atomic_float = false;
 	bool has_counter = false;
 	bool dynamically_indexed_cbv = false;
+	bool has_buffer_sparse_feedback = false;
 
 	enum { MaxVecSize = 32 };
 
@@ -201,6 +202,22 @@ struct AccessTracking
 	{
 		assert(vecsize <= MaxVecSize && vecsize >= 1);
 		return (raw_access_buffer_declarations_vecsize[int(type)][int(width)] & 1u << (vecsize - 1)) != 0;
+	}
+
+	bool uses_raw_width(RawWidth width) const
+	{
+		for (auto &per_type : raw_access_buffer_declarations_vecsize)
+			if (per_type[unsigned(width)])
+				return true;
+		return false;
+	}
+
+	bool prefers_texel_buffer_alias() const
+	{
+		return has_buffer_sparse_feedback &&
+		       !uses_raw_width(RawWidth::B8) &&
+		       !uses_raw_width(RawWidth::B16) &&
+		       !uses_raw_width(RawWidth::B64);
 	}
 
 private:
@@ -347,6 +364,8 @@ struct Converter::Impl
 		unsigned access_mask = 0;
 		// Effectively findMSB(access_mask) + 1
 		unsigned components = 0;
+		// For sparse feedback on root descriptors or SSBOs (when fallback is not available).
+		unsigned access_mask_is_undef = 0;
 		// If true, the composite was loaded as a vector, i.e. typed buffer or texture read.
 		bool forced_composite = true;
 	};

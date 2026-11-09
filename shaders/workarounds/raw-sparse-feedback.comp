@@ -1,0 +1,29 @@
+RWByteAddressBuffer RWBuf : register(u0);
+ByteAddressBuffer RBuf : register(t0);
+
+struct Results
+{
+	uint t1;
+	uint2 t2;
+	uint u1;
+	uint2 u2;
+	uint4 s;
+};
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	uint4 fb;
+
+	Results r = (Results)0;
+    r.t1 = RBuf.Load<uint>(thr * 4, fb.x);
+    r.t2 = RBuf.Load<uint2>(thr * 8, fb.y);
+    r.u1 = RWBuf.Load<uint>(thr * 4, fb.z);
+    r.u2 = RWBuf.Load<uint2>(thr * 8, fb.w);
+    r.s.x = CheckAccessFullyMapped(fb.x) ? 1 : 0;
+    r.s.y = CheckAccessFullyMapped(fb.y) ? 1 : 0;
+    r.s.z = CheckAccessFullyMapped(fb.z) ? 1 : 0;
+    r.s.w = CheckAccessFullyMapped(fb.w) ? 1 : 0;
+
+    RWBuf.Store<Results>(sizeof(Results) * thr, r);
+}

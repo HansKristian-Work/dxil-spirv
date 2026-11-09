@@ -2223,8 +2223,19 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 
 	auto itr = impl.llvm_composite_meta.find(instruction->getAggregateOperand());
 
+	// If we read a sparse code that doesn't exist. Rewrite it as poison.
 	if (itr != impl.llvm_composite_meta.end() &&
-	    itr->second.components == 1 &&
+		((1u << instruction->getIndices()[0]) & itr->second.access_mask_is_undef) != 0)
+	{
+		impl.rewrite_value(instruction, impl.builder().createUndefinedConstant(
+			                   impl.get_type_id(instruction->getType())));
+		return true;
+	}
+
+	uint32_t effective_access_mask = itr->second.access_mask & ~itr->second.access_mask_is_undef;
+
+	if (itr != impl.llvm_composite_meta.end() &&
+	    (effective_access_mask == 0x1 || itr->second.components == 1) &&
 	    !itr->second.forced_composite)
 	{
 		// Forward the ID. The composite was originally emitted as a scalar.
