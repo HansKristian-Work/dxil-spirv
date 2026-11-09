@@ -3050,13 +3050,56 @@ static bool emit_composite_construct_instruction(Converter::Impl &impl, const ll
 }
 #endif
 
+static void emit_copy_memory(Converter::Impl &impl, spv::Id target, spv::Id source)
+{
+	auto *copy = impl.allocate(spv::OpCopyMemory);
+	copy->add_id(target);
+	copy->add_id(source);
+	impl.add(copy);
+}
+
 bool emit_call_instruction(Converter::Impl &impl, const llvm::CallInst &inst)
 {
+	struct WriteBack
+	{
+		spv::Id pointer;
+		spv::Id temp;
+	};
+	Vector<WriteBack> write_backs;
+	Vector<spv::Id> args;
+
+	// SPIR-V requires pointer arguments to be variables or function parameters. Thread pointers that are
+	// not a Function variable or parameter are copied into a Function temporary before the call and copied
+	// back after it.
+	for (uint32_t i = 0; i < inst.getNumArgOperands(); i++)
+	{
+		const llvm::Value *arg = inst.getArgOperand(i);
+		auto *type = arg->getType();
+		args.push_back(impl.get_id_for_value(arg));
+
+		if (type->getTypeID() != llvm::Type::TypeID::PointerTyID ||
+		    DXIL::AddressSpace(type->getPointerAddressSpace()) != DXIL::AddressSpace::Thread)
+			continue;
+
+		bool declared = llvm::isa<llvm::AllocaInst>(arg) || llvm::isa<llvm::Argument>(arg);
+		if (declared &&
+		    impl.get_effective_storage_class_fixed(arg, spv::StorageClassFunction) == spv::StorageClassFunction)
+			continue;
+
+		spv::Id temp = impl.create_variable(spv::StorageClassFunction, impl.get_type_id(type->getPointerElementType()));
+		emit_copy_memory(impl, temp, args.back());
+		write_backs.push_back({ args.back(), temp });
+		args.back() = temp;
+	}
+
 	auto *call = impl.allocate(spv::OpFunctionCall, &inst);
 	call->add_id(impl.get_id_for_value(inst.getCalledFunction()));
-	for (uint32_t i = 0; i < inst.getNumArgOperands(); i++)
-		call->add_id(impl.get_id_for_value(inst.getArgOperand(i)));
+	for (auto id : args)
+		call->add_id(id);
 	impl.add(call);
+
+	for (auto &write_back : write_backs)
+		emit_copy_memory(impl, write_back.pointer, write_back.temp);
 	return true;
 }
 
