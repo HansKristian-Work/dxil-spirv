@@ -59,18 +59,24 @@ add_library(dxbc-spirv STATIC
         ${DXBC_SPV_SOURCE_DIR}/ir/ir_utils.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_arithmetic.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_arithmetic.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_buffer_indexing.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_buffer_indexing.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_buffer_kind.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_buffer_kind.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_cleanup.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_cleanup.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_convert.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cfg_convert.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_conditions.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_conditions.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cse.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_cse.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_derivative.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_derivative.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_descriptor_indexing.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_descriptor_indexing.h
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_eval.cpp
+        ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_eval.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_function.h
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_function.cpp
         ${DXBC_SPV_SOURCE_DIR}/ir/passes/ir_pass_lower_consume.cpp
