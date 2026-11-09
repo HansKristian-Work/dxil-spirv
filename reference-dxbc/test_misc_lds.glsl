@@ -21,14 +21,14 @@ void main()
     _21[gl_LocalInvocationIndex] = uintBitsToFloat(_9._m0[gl_GlobalInvocationID.x]);
     bool _42;
     float _49;
-    uint _36 = 16u;
+    uint _37 = 16u;
     for (;;)
     {
         barrier();
-        _42 = gl_LocalInvocationIndex < _36;
+        _42 = gl_LocalInvocationIndex < _37;
         if (_42)
         {
-            _49 = _21[gl_LocalInvocationIndex] + _21[gl_LocalInvocationIndex + _36];
+            _49 = _21[gl_LocalInvocationIndex] + _21[gl_LocalInvocationIndex + _37];
         }
         else
         {
@@ -39,10 +39,10 @@ void main()
         {
             _21[gl_LocalInvocationIndex] = _49;
         }
-        uint _38 = _36 >> 1u;
-        if (_38 != 0u)
+        uint _39 = _37 >> 1u;
+        if (_39 != 0u)
         {
-            _36 = _38;
+            _37 = _39;
             continue;
         }
         else

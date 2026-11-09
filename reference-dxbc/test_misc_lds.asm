@@ -56,9 +56,9 @@ SPIR-V:
      %v2uint = OpTypeVector %uint 2
 %_ptr_StorageBuffer_uint = OpTypePointer StorageBuffer %uint
 %_ptr_Workgroup_float = OpTypePointer Workgroup %float
-    %uint_16 = OpConstant %uint 16
      %uint_2 = OpConstant %uint 2
- %uint_24840 = OpConstant %uint 24840
+    %uint_16 = OpConstant %uint 16
+   %uint_264 = OpConstant %uint 264
        %bool = OpTypeBool
      %uint_1 = OpConstant %uint 1
        %main = OpFunction %void None %2
@@ -75,49 +75,49 @@ SPIR-V:
          %32 =   OpLoad %uint %31
          %33 =   OpBitcast %float %32
          %35 =   OpInBoundsAccessChain %_ptr_Workgroup_float %21 %27
-                 OpStore %35 %33 NonPrivatePointer
+                 OpStore %35 %33 MakePointerAvailable|NonPrivatePointer %uint_2
                  OpBranch %60
 
          %60 = OpLabel
-         %36 =   OpPhi %uint %uint_16 %59 %38 %65
+         %37 =   OpPhi %uint %uint_16 %59 %39 %65
                  OpLoopMerge %66 %61 None
                  OpBranch %61
 
          %61 =   OpLabel
-                   OpControlBarrier %uint_2 %uint_2 %uint_24840
-         %42 =     OpULessThan %bool %27 %36
+                   OpControlBarrier %uint_2 %uint_2 %uint_264
+         %42 =     OpULessThan %bool %27 %37
                    OpSelectionMerge %63 None
                    OpBranchConditional %42 %62 %63
 
          %62 =       OpLabel
-         %43 =         OpIAdd %uint %27 %36
+         %43 =         OpIAdd %uint %27 %37
          %44 =         OpInBoundsAccessChain %_ptr_Workgroup_float %21 %43
-         %45 =         OpLoad %float %44 NonPrivatePointer
+         %45 =         OpLoad %float %44 MakePointerVisible|NonPrivatePointer %uint_2
          %46 =         OpInBoundsAccessChain %_ptr_Workgroup_float %21 %27
-         %47 =         OpLoad %float %46 NonPrivatePointer
+         %47 =         OpLoad %float %46 MakePointerVisible|NonPrivatePointer %uint_2
          %48 =         OpFAdd %float %47 %45
                        OpBranch %63
 
          %63 =   OpLabel
          %49 =     OpPhi %float %50 %61 %48 %62
-                   OpControlBarrier %uint_2 %uint_2 %uint_24840
+                   OpControlBarrier %uint_2 %uint_2 %uint_264
                    OpSelectionMerge %65 None
                    OpBranchConditional %42 %64 %65
 
          %64 =       OpLabel
          %51 =         OpInBoundsAccessChain %_ptr_Workgroup_float %21 %27
-                       OpStore %51 %49 NonPrivatePointer
+                       OpStore %51 %49 MakePointerAvailable|NonPrivatePointer %uint_2
                        OpBranch %65
 
          %65 =   OpLabel
-         %38 =     OpShiftRightLogical %uint %36 %uint_1
-         %53 =     OpINotEqual %bool %38 %uint_0
+         %39 =     OpShiftRightLogical %uint %37 %uint_1
+         %53 =     OpINotEqual %bool %39 %uint_0
                    OpBranchConditional %53 %60 %66
 
          %66 = OpLabel
-                 OpControlBarrier %uint_2 %uint_2 %uint_24840
+                 OpControlBarrier %uint_2 %uint_2 %uint_264
          %54 =   OpInBoundsAccessChain %_ptr_Workgroup_float %21 %uint_0
-         %55 =   OpLoad %float %54 NonPrivatePointer
+         %55 =   OpLoad %float %54 MakePointerVisible|NonPrivatePointer %uint_2
          %57 =   OpBitcast %uint %55
          %58 =   OpAccessChain %_ptr_StorageBuffer_uint %13 %uint_0 %25
                  OpStore %58 %57 NonPrivatePointer
