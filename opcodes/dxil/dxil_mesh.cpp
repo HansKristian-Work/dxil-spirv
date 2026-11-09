@@ -344,7 +344,7 @@ bool emit_dispatch_mesh_instruction(Converter::Impl &impl, const llvm::CallInst 
 
 	auto *payload = instruction->getOperand(4);
 
-	if (llvm::isa<llvm::GlobalVariable>(payload))
+	if (llvm::isa<llvm::GlobalVariable>(payload) || llvm::isa<llvm::AllocaInst>(payload))
 	{
 		// Direct forwarding.
 		op->add_id(impl.get_id_for_value(payload));
@@ -379,7 +379,10 @@ bool emit_dispatch_mesh_instruction(Converter::Impl &impl, const llvm::CallInst 
 		masked_copy->add_id(var_id);
 		masked_copy->add_id(impl.get_id_for_value(payload));
 
-		if (impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
+		bool is_group_shared =
+			DXIL::AddressSpace(payload->getType()->getAddressSpace()) == DXIL::AddressSpace::GroupShared;
+
+		if (is_group_shared && impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
 		{
 			masked_copy->add_literal(0);
 			add_vkmm_access_qualifiers(impl, masked_copy, { true, true, spv::ScopeWorkgroup });

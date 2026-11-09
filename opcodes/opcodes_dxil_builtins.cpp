@@ -1422,8 +1422,9 @@ bool analyze_dxil_instruction_primary_pass(Converter::Impl &impl, const llvm::Ca
 	{
 		// It's allowed for Dispatch to take a pointer into groupshared somehow.
 		// We have no way to deal with that other than copying it separately.
+		// GravityMark hits a weird illegal case where alloca is used as argument to mesh dispatch.
 		auto *payload = instruction->getOperand(4);
-		if (llvm::isa<llvm::GlobalVariable>(payload))
+		if (llvm::isa<llvm::GlobalVariable>(payload) || llvm::isa<llvm::AllocaInst>(payload))
 			impl.handle_to_storage_class[payload] = spv::StorageClassTaskPayloadWorkgroupEXT;
 		break;
 	}
