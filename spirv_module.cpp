@@ -1415,11 +1415,11 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records_waterfall(SPIRVModule &mo
 	builder.addName(func->getParamId(4), "AllocationOffset");
 
 	auto *loop_header = func->newBlock(builder.getUniqueId());
-	auto *merge_block = func->newBlock(builder.getUniqueId());
 	auto *body_header = func->newBlock(builder.getUniqueId());
 	auto *body_block = func->newBlock(builder.getUniqueId());
-	auto *continue_block = func->newBlock(builder.getUniqueId());
 	auto *body_merge = func->newBlock(builder.getUniqueId());
+	auto *continue_block = func->newBlock(builder.getUniqueId());
+	auto *merge_block = func->newBlock(builder.getUniqueId());
 
 	builder.setBuildPoint(entry);
 	builder.createBranch(loop_header);
