@@ -39,7 +39,7 @@ SPIR-V:
                  OpBranch %31
 
          %31 = OpLabel
-         %26 =   OpFunctionCall %void %_ %float_1 %float_2 %float_3 %float_4
+         %30 =   OpFunctionCall %void %_ %float_1 %float_2 %float_3 %float_4
                  OpReturn
                OpFunctionEnd
           %_ = OpFunction %void None %9

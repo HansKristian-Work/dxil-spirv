@@ -39,17 +39,17 @@ SPIR-V:
                  OpBranch %39
 
          %39 = OpLabel
-         %20 =   OpFunctionCall %v4float %_ %float_0_200000003 %float_0_5 %float_1 %float_0_800000012
-         %25 =   OpCompositeExtract %float %20 0
+         %24 =   OpFunctionCall %v4float %_ %float_0_200000003 %float_0_5 %float_1 %float_0_800000012
+         %25 =   OpCompositeExtract %float %24 0
          %27 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_0
                  OpStore %27 %25
-         %30 =   OpCompositeExtract %float %20 1
+         %30 =   OpCompositeExtract %float %24 1
          %31 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_1
                  OpStore %31 %30
-         %33 =   OpCompositeExtract %float %20 2
+         %33 =   OpCompositeExtract %float %24 2
          %34 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_2
                  OpStore %34 %33
-         %36 =   OpCompositeExtract %float %20 3
+         %36 =   OpCompositeExtract %float %24 3
          %37 =   OpAccessChain %_ptr_Output_float %SV_TARGET %uint_3
                  OpStore %37 %36
                  OpReturn
