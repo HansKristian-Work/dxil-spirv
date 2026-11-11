@@ -21,7 +21,7 @@ void main()
     _54.x = double(A.x);
     _54.y = double(A.y);
     _54.z = double(A.z);
-    dvec3 _58 = fma(_54, _48, _41);
+    precise dvec3 _58 = fma(_54, _48, _41);
     SV_Target.x = float(_58.x);
     SV_Target.y = float(_58.y);
     SV_Target.z = float(_58.z);
@@ -54,6 +54,7 @@ OpDecorate %8 Location 0
 OpDecorate %9 Location 1
 OpDecorate %10 Location 2
 OpDecorate %12 Location 0
+OpDecorate %58 NoContraction
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

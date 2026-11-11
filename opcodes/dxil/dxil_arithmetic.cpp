@@ -487,6 +487,14 @@ static bool emit_dxil_peephole_iabs(GLSLstd450 opcode, Converter::Impl &impl, co
 	return false;
 }
 
+static bool type_may_require_precise(const llvm::Type *type)
+{
+	type = type->getScalarType();
+	return type->getTypeID() == llvm::Type::TypeID::HalfTyID ||
+		   type->getTypeID() == llvm::Type::TypeID::FloatTyID ||
+		   type->getTypeID() == llvm::Type::TypeID::DoubleTyID;
+}
+
 bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
@@ -496,6 +504,9 @@ bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &imp
 	if (emit_dxil_peephole_iabs(opcode, impl, instruction))
 		return true;
 
+	bool is_precise = type_may_require_precise(instruction->getType()) &&
+					  (instruction->hasMetadata("dx.precise") || impl.options.force_precise);
+
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
 	op->add_literal(opcode);
@@ -504,6 +515,10 @@ bool emit_dxil_std450_binary_instruction(GLSLstd450 opcode, Converter::Impl &imp
 
 	impl.add(op);
 	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
+
+	if (is_precise)
+		add_nocontract_decoration(impl, op->id);
+
 	return true;
 }
 
@@ -665,6 +680,9 @@ bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &im
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
+	bool is_precise = type_may_require_precise(instruction->getType()) &&
+	                  (instruction->hasMetadata("dx.precise") || impl.options.force_precise);
+
 	Operation *op = impl.allocate(spv::OpExtInst, instruction);
 	op->add_id(impl.glsl_std450_ext);
 	op->add_literal(opcode);
@@ -674,6 +692,10 @@ bool emit_dxil_std450_trinary_instruction(GLSLstd450 opcode, Converter::Impl &im
 
 	impl.add(op);
 	impl.decorate_relaxed_precision(instruction->getType(), op->id, false);
+
+	if (is_precise)
+		add_nocontract_decoration(impl, op->id);
+
 	return true;
 }
 

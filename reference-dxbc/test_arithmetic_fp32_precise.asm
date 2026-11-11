@@ -32,8 +32,12 @@ SPIR-V:
                OpDecorate %28 NoContraction
                OpDecorate %34 NoContraction
                OpDecorate %40 NoContraction
+               OpDecorate %50 NoContraction
                OpDecorate %55 NoContraction
                OpDecorate %56 NoContraction
+               OpDecorate %63 NoContraction
+               OpDecorate %68 NoContraction
+               OpDecorate %77 NoContraction
        %void = OpTypeVoid
           %2 = OpTypeFunction %void
        %uint = OpTypeInt 32 0
