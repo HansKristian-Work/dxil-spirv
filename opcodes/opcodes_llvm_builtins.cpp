@@ -1569,6 +1569,8 @@ static spv::Id build_constant_getelementptr(Converter::Impl &impl, const llvm::C
 	for (uint32_t i = 2; i < num_operands; i++)
 		op->add_id(impl.get_id_for_value(cexpr->getOperand(i)));
 
+	impl.handle_to_storage_class[cexpr] = storage;
+
 	impl.add(op);
 	return op->id;
 }

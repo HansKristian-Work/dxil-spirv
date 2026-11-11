@@ -1,0 +1,68 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+struct _9
+{
+    float _m0[4];
+};
+
+taskPayloadSharedEXT _9 _11;
+
+void main()
+{
+    _11._m0[0u] = 0.0;
+    _11._m0[1u] = 1.0;
+    _11._m0[2u] = 0.0;
+    _11._m0[3u] = 1.0;
+    EmitMeshTasksEXT(1u, 1u, 1u);
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 24
+; Schema: 0
+OpCapability Shader
+OpCapability MeshShadingEXT
+OpCapability VulkanMemoryModel
+OpExtension "SPV_EXT_mesh_shader"
+OpMemoryModel Logical Vulkan
+OpEntryPoint TaskEXT %3 "main" %11
+OpExecutionMode %3 LocalSize 1 1 1
+OpName %3 "main"
+OpName %9 ""
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpConstant %5 4
+%7 = OpTypeFloat 32
+%8 = OpTypeArray %7 %6
+%9 = OpTypeStruct %8
+%10 = OpTypePointer TaskPayloadWorkgroupEXT %9
+%11 = OpVariable %10 TaskPayloadWorkgroupEXT
+%12 = OpTypePointer TaskPayloadWorkgroupEXT %7
+%14 = OpConstant %5 0
+%15 = OpConstant %7 0
+%17 = OpConstant %5 1
+%18 = OpConstant %7 1
+%20 = OpConstant %5 2
+%22 = OpConstant %5 3
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %23
+%23 = OpLabel
+%13 = OpInBoundsAccessChain %12 %11 %14 %14
+OpStore %13 %15
+%16 = OpInBoundsAccessChain %12 %11 %14 %17
+OpStore %16 %18
+%19 = OpInBoundsAccessChain %12 %11 %14 %20
+OpStore %19 %15
+%21 = OpInBoundsAccessChain %12 %11 %14 %22
+OpStore %21 %18
+OpEmitMeshTasksEXT %17 %17 %17 %11
+OpFunctionEnd
+#endif
