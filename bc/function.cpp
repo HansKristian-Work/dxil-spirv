@@ -92,7 +92,7 @@ Attribute::Attribute(const String *value_)
 
 Attribute Function::getFnAttribute(const char *attribute) const
 {
-	for (auto &attr : attributes)
+	for (auto &attr : attributes.string_attributes)
 		if (attr.first == attribute)
 			return Attribute(&attr.second);
 	return Attribute(nullptr);
@@ -100,15 +100,24 @@ Attribute Function::getFnAttribute(const char *attribute) const
 
 bool Function::hasFnAttribute(const char *attribute) const
 {
-	for (auto &attr : attributes)
+	for (auto &attr : attributes.string_attributes)
 		if (attr.first == attribute)
 			return true;
 	return false;
 }
 
-void Function::set_attributes(Vector<std::pair<String, String>> attributes_)
+void Function::set_attributes(AttributeList attributes_)
 {
 	attributes = std::move(attributes_);
+}
+
+bool Function::argument_is_no_alias(unsigned argument_number) const
+{
+	for (auto &attr : attributes.no_alias_arguments)
+		if (attr == argument_number)
+			return true;
+
+	return false;
 }
 
 void Function::set_structured_control_flow()
@@ -129,6 +138,11 @@ IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> Function::ar
 IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> Function::arg_end() const
 {
 	return arguments.end();
+}
+
+const Argument *Function::getArg(unsigned index) const
+{
+	return arguments[index];
 }
 
 BasicBlock::BasicBlock(LLVMContext &context_)

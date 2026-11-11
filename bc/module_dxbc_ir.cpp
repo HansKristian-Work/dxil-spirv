@@ -3198,7 +3198,7 @@ MDOperand *ParseContext::create_entry_point_meta(Function *patch_control_func)
 
 void ParseContext::set_function_attributes(Function *func)
 {
-	Vector<std::pair<String, String>> attrs;
+	AttributeList attrs;
 
 	for_all_opcodes(builder, ir::OpCode::eSetFpMode, [&](const ir::Op &op) {
 		auto round = ir::RoundMode(op.getOperand(1));
@@ -3229,14 +3229,14 @@ void ParseContext::set_function_attributes(Function *func)
 		}
 
 		if (round == ir::RoundMode::eZero)
-			attrs.emplace_back(round_mode, "rtz");
+			attrs.string_attributes.emplace_back(round_mode, "rtz");
 		else if (round == ir::RoundMode::eNearestEven)
-			attrs.emplace_back(round_mode, "rte");
+			attrs.string_attributes.emplace_back(round_mode, "rte");
 
 		if (denorm == ir::DenormMode::eFlush)
-			attrs.emplace_back(denorm_mode, "ftz");
+			attrs.string_attributes.emplace_back(denorm_mode, "ftz");
 		else if (denorm == ir::DenormMode::ePreserve)
-			attrs.emplace_back(denorm_mode, "preserve");
+			attrs.string_attributes.emplace_back(denorm_mode, "preserve");
 
 		global_fp_flags |= op.getFlags();
 		return true;
@@ -3721,7 +3721,7 @@ bool ParseContext::emit_function_bodies()
 				func = context.construct<Function>(func_type, ++tween_id, module);
 
 				for (unsigned i = 0; i < op.getOperandCount(); i++)
-					func->add_argument(context.construct<Argument>(types[i], i));
+					func->add_argument(context.construct<Argument>(types[i], i, true));
 
 				func->set_structured_control_flow();
 				function_map[op.getDef()] = func;

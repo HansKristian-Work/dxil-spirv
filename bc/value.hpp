@@ -100,8 +100,9 @@ protected:
 class Argument : public Value
 {
 public:
-	Argument(Type *type, unsigned argument_number);
+	Argument(Type *type, unsigned argument_number, bool has_no_alias);
 	unsigned getArgNo() const;
+	bool hasNoAliasAttr() const;
 
 	static constexpr ValueKind get_value_kind()
 	{
@@ -112,6 +113,7 @@ public:
 
 private:
 	unsigned argument_number;
+	bool has_no_alias;
 };
 
 class APInt

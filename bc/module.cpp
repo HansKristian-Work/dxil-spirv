@@ -60,6 +60,7 @@ enum class AttributeRecord : uint32_t
 	NONE = 0,
 	ALIGNMENT = 1,
 	BY_VAL = 3,
+	NO_ALIAS = 9,
 	STACK_ALIGNMENT = 25,
 	DEREFERENCEABLE = 41,
 	DEREFERENCEABLE_OR_NULL = 42,
@@ -322,8 +323,16 @@ struct ModuleParseContext
 	Vector<Function *> functions_with_bodies;
 	UnorderedMap<uint64_t, MDOperand *> metadata;
 	UnorderedMap<uint64_t, String> metadata_kind_map;
-	Vector<Vector<std::pair<String, String>>> attribute_lists;
-	UnorderedMap<uint64_t, Vector<std::pair<String, String>>> attribute_groups;
+
+	Vector<AttributeList> attribute_lists;
+
+	struct AttributeGroup
+	{
+		Vector<std::pair<String, String>> string_attributes;
+		uint32_t index = 0;
+		bool no_alias = false;
+	};
+	UnorderedMap<uint64_t, AttributeGroup> attribute_groups;
 	Type *constant_type = nullptr;
 	String current_metadata_name;
 	String current_struct_name;
@@ -1137,14 +1146,22 @@ bool ModuleParseContext::parse_paramattr_block(const BlockOrRecord &entry)
 		if (AttributeCodes(child.id) != AttributeCodes::CodeEntry)
 			return false;
 
-		Vector<std::pair<String, String>> pairs;
+		AttributeList attribute_list;
 		for (auto op : child.ops)
 		{
 			auto &grp = attribute_groups[op];
-			for (auto &elem : grp)
-				pairs.push_back(elem);
+			if (grp.index == UINT32_MAX)
+			{
+				attribute_list.string_attributes.insert(
+					attribute_list.string_attributes.end(),
+					grp.string_attributes.begin(), grp.string_attributes.end());
+			}
+			else if (grp.no_alias)
+			{
+				attribute_list.no_alias_arguments.push_back(grp.index);
+			}
 		}
-		attribute_lists.push_back(std::move(pairs));
+		attribute_lists.push_back(std::move(attribute_list));
 	}
 	return true;
 }
@@ -1170,17 +1187,28 @@ bool ModuleParseContext::parse_paramattr_group_block(const BlockOrRecord &entry)
 		uint64_t group_id = child.ops[0];
 		uint64_t index = child.ops[1];
 
-		if (index != ~0u) // Only care about attributes on function scope
+		// Index 0 is likely attribute of return value?
+		// Arguments seem to start counting at 1.
+		if (index == 0)
 			continue;
 
+		// UINT32_MAX is function scope.
+		if (index != UINT32_MAX)
+			index--;
+
 		auto &attr_group = attribute_groups[group_id];
+		attr_group.index = uint32_t(index);
 
 		size_t i = 2;
 		size_t count = child.ops.size();
 		while (i < count)
 		{
-			if (child.ops[i] == 0) // Enum attribute, skip 2 values
+			if (child.ops[i] == 0) // Enum attribute
 			{
+				if (i + 1 >= count)
+					return false;
+				if (AttributeRecord(child.ops[i + 1]) == AttributeRecord::NO_ALIAS)
+					attr_group.no_alias = true;
 				i += 2;
 			}
 			else if (child.ops[i] == 1) // Integer attribute, skip 2 or 3 values
@@ -1222,7 +1250,7 @@ bool ModuleParseContext::parse_paramattr_group_block(const BlockOrRecord &entry)
 						return false;
 					i++;
 				}
-				attr_group.emplace_back(std::move(kind), std::move(value));
+				attr_group.string_attributes.emplace_back(std::move(kind), std::move(value));
 			}
 			else if (child.ops[i] == 5 || child.ops[i] == 6) // Value attribute
 			{
@@ -1904,7 +1932,7 @@ bool ModuleParseContext::parse_function_body(const BlockOrRecord &entry)
 	for (unsigned i = 0; i < func_type->getNumParams(); i++)
 	{
 		auto *param_type = func_type->getParamType(i);
-		auto *arg = context->construct<Argument>(param_type, i);
+		auto *arg = context->construct<Argument>(param_type, i, function->argument_is_no_alias(i));
 		function->add_argument(arg);
 		add_value(arg);
 	}
@@ -2336,7 +2364,7 @@ Vector<MDNode *>::const_iterator Module::unnamed_metadata_end() const
 
 Module *parseIR(LLVMContext &context, const void *data, size_t size)
 {
-	LLVMBC::BitcodeReader reader(static_cast<const uint8_t *>(data), size);
+	BitcodeReader reader(static_cast<const uint8_t *>(data), size);
 	auto toplevel = reader.ReadToplevelBlock();
 
 	// The top-level block must be MODULE_BLOCK.

@@ -58,14 +58,19 @@ ValueKind Value::get_value_kind() const
 	return kind;
 }
 
-Argument::Argument(Type *type, unsigned argument_number_)
-	: Value(type, ValueKind::Argument), argument_number(argument_number_)
+Argument::Argument(Type *type, unsigned argument_number_, bool has_no_alias_)
+	: Value(type, ValueKind::Argument), argument_number(argument_number_), has_no_alias(has_no_alias_)
 {
 }
 
 unsigned Argument::getArgNo() const
 {
 	return argument_number;
+}
+
+bool Argument::hasNoAliasAttr() const
+{
+	return has_no_alias;
 }
 
 bool Constant::is_base_of_value_kind(ValueKind kind)

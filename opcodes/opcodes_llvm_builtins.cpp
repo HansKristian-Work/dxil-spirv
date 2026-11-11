@@ -3073,6 +3073,7 @@ bool emit_call_instruction(Converter::Impl &impl, const llvm::CallInst &inst)
 	// SPIR-V requires pointer arguments to be variables or function parameters. Thread pointers that are
 	// not a Function variable or parameter are copied into a Function temporary before the call and copied
 	// back after it.
+	// This is how at least glslang implements function arguments, so it's expected to work well in practice.
 	for (uint32_t i = 0; i < inst.getNumArgOperands(); i++)
 	{
 		const llvm::Value *arg = inst.getArgOperand(i);
@@ -3082,6 +3083,19 @@ bool emit_call_instruction(Converter::Impl &impl, const llvm::CallInst &inst)
 		if (type->getTypeID() != llvm::Type::TypeID::PointerTyID ||
 		    DXIL::AddressSpace(type->getPointerAddressSpace()) != DXIL::AddressSpace::Thread)
 			continue;
+
+		if (type->getTypeID() == llvm::Type::TypeID::PointerTyID)
+		{
+			// Only allow noalias pointers. We cannot support aliasing in SPIR-V in logical addressing models,
+			// and it would not be possible to implement aliasing model with temporary copies like these.
+			// For non-function pointers, we skip the check. It's unclear if this ever comes up in practice,
+			// but assume it's fine to YOLO it until we see evidence of breakage in the wild.
+			if (!inst.getCalledFunction()->getArg(i)->hasNoAliasAttr())
+			{
+				LOGE("Function calls with pointers must use noalias attribute.\n");
+				return false;
+			}
+		}
 
 		bool declared = llvm::isa<llvm::AllocaInst>(arg) || llvm::isa<llvm::Argument>(arg);
 		if (declared &&

@@ -96,6 +96,12 @@ private:
 	const String *value;
 };
 
+struct AttributeList
+{
+	Vector<std::pair<String, String>> string_attributes;
+	Vector<uint32_t> no_alias_arguments;
+};
+
 class Function : public Constant
 {
 public:
@@ -120,11 +126,14 @@ public:
 	void add_argument(Argument *arg);
 	IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> arg_begin() const;
 	IteratorAdaptor<const Argument, Vector<Argument *>::const_iterator> arg_end() const;
+	const Argument *getArg(unsigned index) const;
 
 	// Bare bones implementation, we only need it for fp32-denorm-mode attribute.
 	Attribute getFnAttribute(const char *attribute) const;
 	bool hasFnAttribute(const char *attribute) const;
-	void set_attributes(Vector<std::pair<String, String>> attributes);
+	void set_attributes(AttributeList attributes);
+
+	bool argument_is_no_alias(unsigned argument_number) const;
 
 	bool get_structured_control_flow() const;
 	void set_structured_control_flow();
@@ -137,7 +146,7 @@ private:
 	FunctionType *function_type;
 	Vector<BasicBlock *> basic_blocks;
 	Vector<Argument *> arguments;
-	Vector<std::pair<String, String>> attributes;
+	AttributeList attributes;
 	bool structured_control_flow = false;
 };
 } // namespace LLVMBC
