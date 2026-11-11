@@ -440,7 +440,7 @@ static spv::Id emit_integer_division_instruction(Converter::Impl &impl, const In
 	{
 		unsigned vecsize = 1;
 		if (auto *vec = llvm::dyn_cast<llvm::VectorType>(instruction->getType()))
-			vecsize = vec->getVectorSize();
+			vecsize = vec->getVectorNumElements();
 
 		spv::Id bool_type = builder.makeBoolType();
 		if (vecsize > 1)

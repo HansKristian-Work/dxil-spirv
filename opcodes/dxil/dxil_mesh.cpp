@@ -380,7 +380,7 @@ bool emit_dispatch_mesh_instruction(Converter::Impl &impl, const llvm::CallInst 
 		masked_copy->add_id(impl.get_id_for_value(payload));
 
 		bool is_group_shared =
-			DXIL::AddressSpace(payload->getType()->getAddressSpace()) == DXIL::AddressSpace::GroupShared;
+			DXIL::AddressSpace(payload->getType()->getPointerAddressSpace()) == DXIL::AddressSpace::GroupShared;
 
 		if (is_group_shared && impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan)
 		{

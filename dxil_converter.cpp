@@ -8452,7 +8452,7 @@ static inline String get_function_name(const llvm::Function *func)
 #ifdef HAVE_LLVMBC
 	return func->getName();
 #else
-	return func->getName().str();
+	return String(func->getName().str().c_str());
 #endif
 }
 

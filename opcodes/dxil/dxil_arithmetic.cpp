@@ -99,7 +99,7 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	return true;
 }
 
-bool emit_isnormal_instruction(Converter::Impl &impl, const LLVMBC::CallInst *instruction)
+bool emit_isnormal_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	auto &builder = impl.builder();
 	auto bool_type = builder.makeBoolType();
