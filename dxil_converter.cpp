@@ -9976,10 +9976,6 @@ void Converter::Impl::set_option(const OptionBase &cap)
 			options.quirks.robust_compute_quad_broadcast = true;
 			break;
 
-		case ShaderQuirk::PreciseFMA:
-			options.quirks.precise_fma = true;
-			break;
-
 		case ShaderQuirk::ClampWaveSizeToThreadGroup32:
 			options.quirks.clamp_wave_size_to_thread_group32 = true;
 			break;

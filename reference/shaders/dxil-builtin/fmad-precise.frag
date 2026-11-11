@@ -5,9 +5,7 @@ layout(location = 0) out float SV_Target;
 
 void main()
 {
-    precise float _22 = A.x * A.y;
-    precise float _23 = _22 + A.z;
-    SV_Target = _23;
+    SV_Target = fma(A.x, A.y, A.z);
 }
 
 
@@ -20,6 +18,7 @@ void main()
 ; Schema: 0
 OpCapability Shader
 OpCapability VulkanMemoryModel
+%22 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %10
 OpExecutionMode %3 OriginUpperLeft
@@ -28,7 +27,6 @@ OpName %8 "A"
 OpName %10 "SV_Target"
 OpDecorate %8 Location 0
 OpDecorate %10 Location 0
-OpDecorate %22 NoContraction
 OpDecorate %23 NoContraction
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
@@ -53,8 +51,7 @@ OpBranch %24
 %18 = OpLoad %5 %16
 %19 = OpAccessChain %11 %8 %20
 %21 = OpLoad %5 %19
-%22 = OpFMul %5 %15 %18
-%23 = OpFAdd %5 %22 %21
+%23 = OpExtInst %5 %22 Fma %15 %18 %21
 OpStore %10 %23
 OpReturn
 OpFunctionEnd

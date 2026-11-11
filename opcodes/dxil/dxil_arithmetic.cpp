@@ -54,46 +54,23 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 
 	bool is_precise = instruction->hasMetadata("dx.precise") || impl.options.force_precise;
 
-	if (!impl.options.quirks.precise_fma && is_precise)
-	{
-		// DXIL docs says to split the expression explicitly.
-		// HLSL docs says it just has to be invariant.
-		// These conflict since we could have used NoContract FMA instead,
-		// but at least Big Navi splits fmac into mul + add when doing nocontract fma(), so ...
-		spv::Id type_id = impl.get_type_id(instruction->getType());
-		Operation *mul_op = impl.allocate(spv::OpFMul, type_id);
-		mul_op->add_id(impl.get_id_for_value(instruction->getOperand(1)));
-		mul_op->add_id(impl.get_id_for_value(instruction->getOperand(2)));
-		impl.add(mul_op);
-		add_nocontract_decoration(impl, mul_op->id);
+	// DXIL docs say that we're supposed to not fuse, but that's a lie.
+	// Just fuse. This matches NVIDIA behavior and is more correct overall.
 
-		impl.decorate_relaxed_precision(instruction->getType(), mul_op->id, false);
+	if (!impl.glsl_std450_ext)
+		impl.glsl_std450_ext = builder.import("GLSL.std.450");
 
-		Operation *add_op = impl.allocate(spv::OpFAdd, instruction);
-		add_op->add_id(mul_op->id);
-		add_op->add_id(impl.get_id_for_value(instruction->getOperand(3)));
-		impl.add(add_op);
-		add_nocontract_decoration(impl, add_op->id);
+	Operation *op = impl.allocate(spv::OpExtInst, instruction);
+	op->add_id(impl.glsl_std450_ext);
+	op->add_literal(GLSLstd450Fma);
+	for (unsigned i = 1; i < 4; i++)
+		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
+	impl.add(op);
 
-		result_id = add_op->id;
-	}
-	else
-	{
-		if (!impl.glsl_std450_ext)
-			impl.glsl_std450_ext = builder.import("GLSL.std.450");
+	if (is_precise)
+		add_nocontract_decoration(impl, op->id);
 
-		Operation *op = impl.allocate(spv::OpExtInst, instruction);
-		op->add_id(impl.glsl_std450_ext);
-		op->add_literal(GLSLstd450Fma);
-		for (unsigned i = 1; i < 4; i++)
-			op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
-		impl.add(op);
-
-		if (is_precise)
-			add_nocontract_decoration(impl, op->id);
-
-		result_id = op->id;
-	}
+	result_id = op->id;
 
 	impl.decorate_relaxed_precision(instruction->getType(), result_id, false);
 	return true;

@@ -861,7 +861,6 @@ struct Converter::Impl
 			bool fixup_rsqrt = false;
 			bool ignore_primitive_shading_rate = false;
 			bool robust_compute_quad_broadcast = false;
-			bool precise_fma = false;
 			bool clamp_wave_size_to_thread_group32 = false;
 			bool non_semantic_signal_concurrent_workgroup = false;
 			bool force_nonuniform = false;
