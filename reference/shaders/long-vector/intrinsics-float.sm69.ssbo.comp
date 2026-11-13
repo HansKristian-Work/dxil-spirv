@@ -69,713 +69,600 @@ void main()
         _964 = subgroupQuadSwapDiagonal(_30);
     }
     vector<float, 8> _960;
-    if (gl_GlobalInvocationID.x == 0u)
+    switch (gl_GlobalInvocationID.x)
     {
-        _960 = abs(_30);
-    }
-    else
-    {
-        if (gl_GlobalInvocationID.x == 1u)
+        case 0u:
+        {
+            _960 = abs(_30);
+            break;
+        }
+        case 1u:
         {
             _960 = spvNClamp(_30, vector<float, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+            break;
         }
-        else
+        case 2u:
         {
-            if (gl_GlobalInvocationID.x == 2u)
-            {
-                vector<bool, 8> _929 = isnan(_30);
-                vector<float, 8> _946;
-                _946[0] = float(_929[0]);
-                _946[1] = float(_929[1]);
-                _946[2] = float(_929[2]);
-                _946[3] = float(_929[3]);
-                _946[4] = float(_929[4]);
-                _946[5] = float(_929[5]);
-                _946[6] = float(_929[6]);
-                _946[7] = float(_929[7]);
-                _960 = _946;
-            }
-            else
-            {
-                if (gl_GlobalInvocationID.x == 3u)
-                {
-                    vector<bool, 8> _904 = isinf(_30);
-                    vector<float, 8> _921;
-                    _921[0] = float(_904[0]);
-                    _921[1] = float(_904[1]);
-                    _921[2] = float(_904[2]);
-                    _921[3] = float(_904[3]);
-                    _921[4] = float(_904[4]);
-                    _921[5] = float(_904[5]);
-                    _921[6] = float(_904[6]);
-                    _921[7] = float(_904[7]);
-                    _960 = _921;
-                }
-                else
-                {
-                    if (gl_GlobalInvocationID.x == 4u)
-                    {
-                        vector<bool, 8> _876 = isnan(_30);
-                        vector<bool, 8> _877 = isinf(_30);
-                        vector<bool, 8> _879 = not(vector<bool, 8>(_876[0] || _877[0], _876[1] || _877[1], _876[2] || _877[2], _876[3] || _877[3], _876[4] || _877[4], _876[5] || _877[5], _876[6] || _877[6], _876[7] || _877[7]));
-                        vector<float, 8> _896;
-                        _896[0] = float(_879[0]);
-                        _896[1] = float(_879[1]);
-                        _896[2] = float(_879[2]);
-                        _896[3] = float(_879[3]);
-                        _896[4] = float(_879[4]);
-                        _896[5] = float(_879[5]);
-                        _896[6] = float(_879[6]);
-                        _896[7] = float(_879[7]);
-                        _960 = _896;
-                    }
-                    else
-                    {
-                        if (gl_GlobalInvocationID.x == 5u)
-                        {
-                            vector<float, 8> _844 = abs(_30);
-                            vector<bool, 8> _849 = greaterThanEqual(_844, vector<float, 8>(1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38));
-                            vector<bool, 8> _850 = lessThan(_844, vector<float, 8>(uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */)));
-                            vector<bool, 8> _851 = vector<bool, 8>(_849[0] && _850[0], _849[1] && _850[1], _849[2] && _850[2], _849[3] && _850[3], _849[4] && _850[4], _849[5] && _850[5], _849[6] && _850[6], _849[7] && _850[7]);
-                            vector<float, 8> _868;
-                            _868[0] = float(_851[0]);
-                            _868[1] = float(_851[1]);
-                            _868[2] = float(_851[2]);
-                            _868[3] = float(_851[3]);
-                            _868[4] = float(_851[4]);
-                            _868[5] = float(_851[5]);
-                            _868[6] = float(_851[6]);
-                            _868[7] = float(_851[7]);
-                            _960 = _868;
-                        }
-                        else
-                        {
-                            if (gl_GlobalInvocationID.x == 6u)
-                            {
-                                _960 = cos(_30);
-                            }
-                            else
-                            {
-                                if (gl_GlobalInvocationID.x == 7u)
-                                {
-                                    _960 = sin(_30);
-                                }
-                                else
-                                {
-                                    if (gl_GlobalInvocationID.x == 8u)
-                                    {
-                                        _960 = tan(_30);
-                                    }
-                                    else
-                                    {
-                                        if (gl_GlobalInvocationID.x == 9u)
-                                        {
-                                            _960 = acos(_30);
-                                        }
-                                        else
-                                        {
-                                            if (gl_GlobalInvocationID.x == 10u)
-                                            {
-                                                _960 = asin(_30);
-                                            }
-                                            else
-                                            {
-                                                if (gl_GlobalInvocationID.x == 11u)
-                                                {
-                                                    _960 = atan(_30);
-                                                }
-                                                else
-                                                {
-                                                    if (gl_GlobalInvocationID.x == 12u)
-                                                    {
-                                                        _960 = cosh(_30);
-                                                    }
-                                                    else
-                                                    {
-                                                        if (gl_GlobalInvocationID.x == 13u)
-                                                        {
-                                                            _960 = sinh(_30);
-                                                        }
-                                                        else
-                                                        {
-                                                            if (gl_GlobalInvocationID.x == 14u)
-                                                            {
-                                                                _960 = tanh(_30);
-                                                            }
-                                                            else
-                                                            {
-                                                                if (gl_GlobalInvocationID.x == 15u)
-                                                                {
-                                                                    _960 = exp2(_30);
-                                                                }
-                                                                else
-                                                                {
-                                                                    if (gl_GlobalInvocationID.x == 16u)
-                                                                    {
-                                                                        _960 = fract(_30);
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        if (gl_GlobalInvocationID.x == 17u)
-                                                                        {
-                                                                            _960 = log2(_30);
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            if (gl_GlobalInvocationID.x == 18u)
-                                                                            {
-                                                                                _960 = sqrt(_30);
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                if (gl_GlobalInvocationID.x == 19u)
-                                                                                {
-                                                                                    _960 = inversesqrt(_30);
-                                                                                }
-                                                                                else
-                                                                                {
-                                                                                    if (gl_GlobalInvocationID.x == 20u)
-                                                                                    {
-                                                                                        _960 = roundEven(_30);
-                                                                                    }
-                                                                                    else
-                                                                                    {
-                                                                                        if (gl_GlobalInvocationID.x == 21u)
-                                                                                        {
-                                                                                            _960 = trunc(_30);
-                                                                                        }
-                                                                                        else
-                                                                                        {
-                                                                                            if (gl_GlobalInvocationID.x == 22u)
-                                                                                            {
-                                                                                                _960 = ceil(_30);
-                                                                                            }
-                                                                                            else
-                                                                                            {
-                                                                                                if (gl_GlobalInvocationID.x == 23u)
-                                                                                                {
-                                                                                                    _960 = floor(_30);
-                                                                                                }
-                                                                                                else
-                                                                                                {
-                                                                                                    if (gl_GlobalInvocationID.x == 24u)
-                                                                                                    {
-                                                                                                        _960 = spvNMax(_30, _37);
-                                                                                                    }
-                                                                                                    else
-                                                                                                    {
-                                                                                                        if (gl_GlobalInvocationID.x == 25u)
-                                                                                                        {
-                                                                                                            _960 = spvNMin(_30, _37);
-                                                                                                        }
-                                                                                                        else
-                                                                                                        {
-                                                                                                            if (gl_GlobalInvocationID.x == 26u)
-                                                                                                            {
-                                                                                                                _960 = fma(_30, _37, _44);
-                                                                                                            }
-                                                                                                            else
-                                                                                                            {
-                                                                                                                if (gl_GlobalInvocationID.x == 27u)
-                                                                                                                {
-                                                                                                                    vector<double, 8> _741;
-                                                                                                                    _741[0] = double(_44[0]);
-                                                                                                                    _741[1] = double(_44[1]);
-                                                                                                                    _741[2] = double(_44[2]);
-                                                                                                                    _741[3] = double(_44[3]);
-                                                                                                                    _741[4] = double(_44[4]);
-                                                                                                                    _741[5] = double(_44[5]);
-                                                                                                                    _741[6] = double(_44[6]);
-                                                                                                                    _741[7] = double(_44[7]);
-                                                                                                                    vector<double, 8> _766;
-                                                                                                                    _766[0] = double(_37[0]);
-                                                                                                                    _766[1] = double(_37[1]);
-                                                                                                                    _766[2] = double(_37[2]);
-                                                                                                                    _766[3] = double(_37[3]);
-                                                                                                                    _766[4] = double(_37[4]);
-                                                                                                                    _766[5] = double(_37[5]);
-                                                                                                                    _766[6] = double(_37[6]);
-                                                                                                                    _766[7] = double(_37[7]);
-                                                                                                                    vector<double, 8> _790;
-                                                                                                                    _790[0] = double(_30[0]);
-                                                                                                                    _790[1] = double(_30[1]);
-                                                                                                                    _790[2] = double(_30[2]);
-                                                                                                                    _790[3] = double(_30[3]);
-                                                                                                                    _790[4] = double(_30[4]);
-                                                                                                                    _790[5] = double(_30[5]);
-                                                                                                                    _790[6] = double(_30[6]);
-                                                                                                                    _790[7] = double(_30[7]);
-                                                                                                                    vector<double, 8> _798 = fma(_790, _766, _741);
-                                                                                                                    vector<float, 8> _815;
-                                                                                                                    _815[0] = float(_798[0]);
-                                                                                                                    _815[1] = float(_798[1]);
-                                                                                                                    _815[2] = float(_798[2]);
-                                                                                                                    _815[3] = float(_798[3]);
-                                                                                                                    _815[4] = float(_798[4]);
-                                                                                                                    _815[5] = float(_798[5]);
-                                                                                                                    _815[6] = float(_798[6]);
-                                                                                                                    _815[7] = float(_798[7]);
-                                                                                                                    _960 = _815;
-                                                                                                                }
-                                                                                                                else
-                                                                                                                {
-                                                                                                                    if (gl_GlobalInvocationID.x == 28u)
-                                                                                                                    {
-                                                                                                                        _960 = _968;
-                                                                                                                    }
-                                                                                                                    else
-                                                                                                                    {
-                                                                                                                        if (gl_GlobalInvocationID.x == 29u)
-                                                                                                                        {
-                                                                                                                            _960 = _967;
-                                                                                                                        }
-                                                                                                                        else
-                                                                                                                        {
-                                                                                                                            if (gl_GlobalInvocationID.x == 30u)
-                                                                                                                            {
-                                                                                                                                _960 = _966;
-                                                                                                                            }
-                                                                                                                            else
-                                                                                                                            {
-                                                                                                                                if (gl_GlobalInvocationID.x == 31u)
-                                                                                                                                {
-                                                                                                                                    _960 = _965;
-                                                                                                                                }
-                                                                                                                                else
-                                                                                                                                {
-                                                                                                                                    if (gl_GlobalInvocationID.x == 32u)
-                                                                                                                                    {
-                                                                                                                                        vector<float, 8> _700 = atan(_30 / _37);
-                                                                                                                                        vector<bool, 8> _707 = lessThan(_37, vector<float, 8>(0));
-                                                                                                                                        vector<bool, 8> _708 = equal(_37, vector<float, 8>(0));
-                                                                                                                                        vector<bool, 8> _709 = greaterThanEqual(_30, vector<float, 8>(0));
-                                                                                                                                        vector<bool, 8> _710 = lessThan(_30, vector<float, 8>(0));
-                                                                                                                                        _960 = mix(mix(mix(mix(_700, _700 + (vector<float, 8>(3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875)), vector<bool, 8>(_707[0] && _709[0], _707[1] && _709[1], _707[2] && _709[2], _707[3] && _709[3], _707[4] && _709[4], _707[5] && _709[5], _707[6] && _709[6], _707[7] && _709[7])), _700 + (vector<float, 8>(-3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875)), vector<bool, 8>(_707[0] && _710[0], _707[1] && _710[1], _707[2] && _710[2], _707[3] && _710[3], _707[4] && _710[4], _707[5] && _710[5], _707[6] && _710[6], _707[7] && _710[7])), vector<float, 8>(-1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375), vector<bool, 8>(_708[0] && _710[0], _708[1] && _710[1], _708[2] && _710[2], _708[3] && _710[3], _708[4] && _710[4], _708[5] && _710[5], _708[6] && _710[6], _708[7] && _710[7])), vector<float, 8>(1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375), vector<bool, 8>(_708[0] && _709[0], _708[1] && _709[1], _708[2] && _709[2], _708[3] && _709[3], _708[4] && _709[4], _708[5] && _709[5], _708[6] && _709[6], _708[7] && _709[7]));
-                                                                                                                                    }
-                                                                                                                                    else
-                                                                                                                                    {
-                                                                                                                                        if (gl_GlobalInvocationID.x == 33u)
-                                                                                                                                        {
-                                                                                                                                            _960 = _30 * (vector<float, 8>(57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625));
-                                                                                                                                        }
-                                                                                                                                        else
-                                                                                                                                        {
-                                                                                                                                            if (gl_GlobalInvocationID.x == 34u)
-                                                                                                                                            {
-                                                                                                                                                _960 = _30 * (vector<float, 8>(0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625));
-                                                                                                                                            }
-                                                                                                                                            else
-                                                                                                                                            {
-                                                                                                                                                if (gl_GlobalInvocationID.x == 35u)
-                                                                                                                                                {
-                                                                                                                                                    _960 = spvNMin(spvNMax(_30, _37), _44);
-                                                                                                                                                }
-                                                                                                                                                else
-                                                                                                                                                {
-                                                                                                                                                    if (gl_GlobalInvocationID.x == 36u)
-                                                                                                                                                    {
-                                                                                                                                                        vector<float, 8> _683 = _30 / _37;
-                                                                                                                                                        vector<float, 8> _687 = fract(abs(_683));
-                                                                                                                                                        _960 = mix((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _687, _687, greaterThanEqual(_683, (vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _683)) * _37;
-                                                                                                                                                    }
-                                                                                                                                                    else
-                                                                                                                                                    {
-                                                                                                                                                        if (gl_GlobalInvocationID.x == 37u)
-                                                                                                                                                        {
-                                                                                                                                                            _960 = (_44 * (_37 - _30)) + _30;
-                                                                                                                                                        }
-                                                                                                                                                        else
-                                                                                                                                                        {
-                                                                                                                                                            if (gl_GlobalInvocationID.x == 38u)
-                                                                                                                                                            {
-                                                                                                                                                                _960 = exp2(log2(_30) * _37);
-                                                                                                                                                            }
-                                                                                                                                                            else
-                                                                                                                                                            {
-                                                                                                                                                                if (gl_GlobalInvocationID.x == 39u)
-                                                                                                                                                                {
-                                                                                                                                                                    _960 = (vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)) / _30;
-                                                                                                                                                                }
-                                                                                                                                                                else
-                                                                                                                                                                {
-                                                                                                                                                                    if (gl_GlobalInvocationID.x == 40u)
-                                                                                                                                                                    {
-                                                                                                                                                                        _960 = vector<float, 8>(vector<int, 8>(mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), greaterThan(_30, vector<float, 8>(0))) - mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), lessThan(_30, vector<float, 8>(0)))));
-                                                                                                                                                                    }
-                                                                                                                                                                    else
-                                                                                                                                                                    {
-                                                                                                                                                                        if (gl_GlobalInvocationID.x == 41u)
-                                                                                                                                                                        {
-                                                                                                                                                                            vector<float, 8> _659 = spvNClamp((_44 - _30) / (_37 - _30), vector<float, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
-                                                                                                                                                                            _960 = (_659 * _659) * ((vector<float, 8>(3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0)) - (_659 * (vector<float, 8>(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0))));
-                                                                                                                                                                        }
-                                                                                                                                                                        else
-                                                                                                                                                                        {
-                                                                                                                                                                            if (gl_GlobalInvocationID.x == 42u)
-                                                                                                                                                                            {
-                                                                                                                                                                                _960 = mix(vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), vector<float, 8>(0), lessThan(_37, _30));
-                                                                                                                                                                            }
-                                                                                                                                                                            else
-                                                                                                                                                                            {
-                                                                                                                                                                                if (gl_GlobalInvocationID.x == 43u)
-                                                                                                                                                                                {
-                                                                                                                                                                                    vector<float, 8> _619 = trunc(_30);
-                                                                                                                                                                                    vector<uint, 8> _623 = vector<uint, 8>(vector<int, 8>(_619));
-                                                                                                                                                                                    vector<float, 8> _640;
-                                                                                                                                                                                    _640[0] = float(int(_623[0]));
-                                                                                                                                                                                    _640[1] = float(int(_623[1]));
-                                                                                                                                                                                    _640[2] = float(int(_623[2]));
-                                                                                                                                                                                    _640[3] = float(int(_623[3]));
-                                                                                                                                                                                    _640[4] = float(int(_623[4]));
-                                                                                                                                                                                    _640[5] = float(int(_623[5]));
-                                                                                                                                                                                    _640[6] = float(int(_623[6]));
-                                                                                                                                                                                    _640[7] = float(int(_623[7]));
-                                                                                                                                                                                    _960 = (_30 + ((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _619)) + ((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _640);
-                                                                                                                                                                                }
-                                                                                                                                                                                else
-                                                                                                                                                                                {
-                                                                                                                                                                                    if (gl_GlobalInvocationID.x == 44u)
-                                                                                                                                                                                    {
-                                                                                                                                                                                        vector<float, 8> _614 = vector<float, 8>(_111, _112, _113, 0.0, 0.0, 0.0, 0.0, 0.0);
-                                                                                                                                                                                        _614[0] = dot(_30, _37);
-                                                                                                                                                                                        _614[1] = dot(_30, _44);
-                                                                                                                                                                                        _614[2] = dot(_37, _44);
-                                                                                                                                                                                        _960 = _614;
-                                                                                                                                                                                    }
-                                                                                                                                                                                    else
-                                                                                                                                                                                    {
-                                                                                                                                                                                        if (gl_GlobalInvocationID.x == 45u)
-                                                                                                                                                                                        {
-                                                                                                                                                                                            vector<uint, 8> _603;
-                                                                                                                                                                                            _603[0] = uint(int(_30[0]));
-                                                                                                                                                                                            _603[1] = uint(int(_30[1]));
-                                                                                                                                                                                            _603[2] = uint(int(_30[2]));
-                                                                                                                                                                                            _603[3] = uint(int(_30[3]));
-                                                                                                                                                                                            _603[4] = uint(int(_30[4]));
-                                                                                                                                                                                            _603[5] = uint(int(_30[5]));
-                                                                                                                                                                                            _603[6] = uint(int(_30[6]));
-                                                                                                                                                                                            _603[7] = uint(int(_30[7]));
-                                                                                                                                                                                            _960 = uintBitsToFloat(bitfieldReverse(_603));
-                                                                                                                                                                                        }
-                                                                                                                                                                                        else
-                                                                                                                                                                                        {
-                                                                                                                                                                                            if (gl_GlobalInvocationID.x == 46u)
-                                                                                                                                                                                            {
-                                                                                                                                                                                                vector<uint, 8> _577;
-                                                                                                                                                                                                _577[0] = uint(int(_30[0]));
-                                                                                                                                                                                                _577[1] = uint(int(_30[1]));
-                                                                                                                                                                                                _577[2] = uint(int(_30[2]));
-                                                                                                                                                                                                _577[3] = uint(int(_30[3]));
-                                                                                                                                                                                                _577[4] = uint(int(_30[4]));
-                                                                                                                                                                                                _577[5] = uint(int(_30[5]));
-                                                                                                                                                                                                _577[6] = uint(int(_30[6]));
-                                                                                                                                                                                                _577[7] = uint(int(_30[7]));
-                                                                                                                                                                                                _960 = uintBitsToFloat(vector<uint, 8>(bitCount(_577)));
-                                                                                                                                                                                            }
-                                                                                                                                                                                            else
-                                                                                                                                                                                            {
-                                                                                                                                                                                                if (gl_GlobalInvocationID.x == 47u)
-                                                                                                                                                                                                {
-                                                                                                                                                                                                    vector<uint, 8> _539;
-                                                                                                                                                                                                    _539[0] = uint(int(_30[0]));
-                                                                                                                                                                                                    _539[1] = uint(int(_30[1]));
-                                                                                                                                                                                                    _539[2] = uint(int(_30[2]));
-                                                                                                                                                                                                    _539[3] = uint(int(_30[3]));
-                                                                                                                                                                                                    _539[4] = uint(int(_30[4]));
-                                                                                                                                                                                                    _539[5] = uint(int(_30[5]));
-                                                                                                                                                                                                    _539[6] = uint(int(_30[6]));
-                                                                                                                                                                                                    _539[7] = uint(int(_30[7]));
-                                                                                                                                                                                                    vector<uint, 8> _547 = vector<uint, 8>(findMSB(vector<int, 8>(_539)));
-                                                                                                                                                                                                    vector<uint, 8> _554 = mix((vector<uint, 8>(31u, 31u, 31u, 31u, 31u, 31u, 31u, 31u)) - _547, vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u), equal(_547, (vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u))));
-                                                                                                                                                                                                    _960 = mix(uintBitsToFloat((vector<uint, 8>(31u, 31u, 31u, 31u, 31u, 31u, 31u, 31u)) - _554), vector<float, 8>(uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */)), equal(_554, (vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u))));
-                                                                                                                                                                                                }
-                                                                                                                                                                                                else
-                                                                                                                                                                                                {
-                                                                                                                                                                                                    if (gl_GlobalInvocationID.x == 48u)
-                                                                                                                                                                                                    {
-                                                                                                                                                                                                        vector<uint, 8> _513;
-                                                                                                                                                                                                        _513[0] = uint(int(_30[0]));
-                                                                                                                                                                                                        _513[1] = uint(int(_30[1]));
-                                                                                                                                                                                                        _513[2] = uint(int(_30[2]));
-                                                                                                                                                                                                        _513[3] = uint(int(_30[3]));
-                                                                                                                                                                                                        _513[4] = uint(int(_30[4]));
-                                                                                                                                                                                                        _513[5] = uint(int(_30[5]));
-                                                                                                                                                                                                        _513[6] = uint(int(_30[6]));
-                                                                                                                                                                                                        _513[7] = uint(int(_30[7]));
-                                                                                                                                                                                                        _960 = uintBitsToFloat(vector<uint, 8>(findLSB(_513)));
-                                                                                                                                                                                                    }
-                                                                                                                                                                                                    else
-                                                                                                                                                                                                    {
-                                                                                                                                                                                                        if (gl_GlobalInvocationID.x == 49u)
-                                                                                                                                                                                                        {
-                                                                                                                                                                                                            vector<float, 8> _475;
-                                                                                                                                                                                                            _475[0] = unpackHalf2x16(uint(int(_30[0]))).x;
-                                                                                                                                                                                                            _475[1] = unpackHalf2x16(uint(int(_30[1]))).x;
-                                                                                                                                                                                                            _475[2] = unpackHalf2x16(uint(int(_30[2]))).x;
-                                                                                                                                                                                                            _475[3] = unpackHalf2x16(uint(int(_30[3]))).x;
-                                                                                                                                                                                                            _475[4] = unpackHalf2x16(uint(int(_30[4]))).x;
-                                                                                                                                                                                                            _475[5] = unpackHalf2x16(uint(int(_30[5]))).x;
-                                                                                                                                                                                                            _475[6] = unpackHalf2x16(uint(int(_30[6]))).x;
-                                                                                                                                                                                                            _475[7] = unpackHalf2x16(uint(int(_30[7]))).x;
-                                                                                                                                                                                                            _960 = _475;
-                                                                                                                                                                                                        }
-                                                                                                                                                                                                        else
-                                                                                                                                                                                                        {
-                                                                                                                                                                                                            if (gl_GlobalInvocationID.x == 50u)
-                                                                                                                                                                                                            {
-                                                                                                                                                                                                                vector<uint, 8> _426;
-                                                                                                                                                                                                                _426[0] = packHalf2x16(vec2(_30[0], 0.0));
-                                                                                                                                                                                                                _426[1] = packHalf2x16(vec2(_30[1], 0.0));
-                                                                                                                                                                                                                _426[2] = packHalf2x16(vec2(_30[2], 0.0));
-                                                                                                                                                                                                                _426[3] = packHalf2x16(vec2(_30[3], 0.0));
-                                                                                                                                                                                                                _426[4] = packHalf2x16(vec2(_30[4], 0.0));
-                                                                                                                                                                                                                _426[5] = packHalf2x16(vec2(_30[5], 0.0));
-                                                                                                                                                                                                                _426[6] = packHalf2x16(vec2(_30[6], 0.0));
-                                                                                                                                                                                                                _426[7] = packHalf2x16(vec2(_30[7], 0.0));
-                                                                                                                                                                                                                _960 = uintBitsToFloat(_426);
-                                                                                                                                                                                                            }
-                                                                                                                                                                                                            else
-                                                                                                                                                                                                            {
-                                                                                                                                                                                                                if (gl_GlobalInvocationID.x == 51u)
-                                                                                                                                                                                                                {
-                                                                                                                                                                                                                    vector<bool, 8> _364;
-                                                                                                                                                                                                                    _364[0] = _37[0] != 0.0;
-                                                                                                                                                                                                                    _364[1] = _37[1] != 0.0;
-                                                                                                                                                                                                                    _364[2] = _37[2] != 0.0;
-                                                                                                                                                                                                                    _364[3] = _37[3] != 0.0;
-                                                                                                                                                                                                                    _364[4] = _37[4] != 0.0;
-                                                                                                                                                                                                                    _364[5] = _37[5] != 0.0;
-                                                                                                                                                                                                                    _364[6] = _37[6] != 0.0;
-                                                                                                                                                                                                                    _364[7] = _37[7] != 0.0;
-                                                                                                                                                                                                                    vector<bool, 8> _388;
-                                                                                                                                                                                                                    _388[0] = _30[0] != 0.0;
-                                                                                                                                                                                                                    _388[1] = _30[1] != 0.0;
-                                                                                                                                                                                                                    _388[2] = _30[2] != 0.0;
-                                                                                                                                                                                                                    _388[3] = _30[3] != 0.0;
-                                                                                                                                                                                                                    _388[4] = _30[4] != 0.0;
-                                                                                                                                                                                                                    _388[5] = _30[5] != 0.0;
-                                                                                                                                                                                                                    _388[6] = _30[6] != 0.0;
-                                                                                                                                                                                                                    _388[7] = _30[7] != 0.0;
-                                                                                                                                                                                                                    vector<bool, 8> _396 = vector<bool, 8>(_364[0] && _388[0], _364[1] && _388[1], _364[2] && _388[2], _364[3] && _388[3], _364[4] && _388[4], _364[5] && _388[5], _364[6] && _388[6], _364[7] && _388[7]);
-                                                                                                                                                                                                                    vector<float, 8> _413;
-                                                                                                                                                                                                                    _413[0] = float(_396[0]);
-                                                                                                                                                                                                                    _413[1] = float(_396[1]);
-                                                                                                                                                                                                                    _413[2] = float(_396[2]);
-                                                                                                                                                                                                                    _413[3] = float(_396[3]);
-                                                                                                                                                                                                                    _413[4] = float(_396[4]);
-                                                                                                                                                                                                                    _413[5] = float(_396[5]);
-                                                                                                                                                                                                                    _413[6] = float(_396[6]);
-                                                                                                                                                                                                                    _413[7] = float(_396[7]);
-                                                                                                                                                                                                                    _960 = _413;
-                                                                                                                                                                                                                }
-                                                                                                                                                                                                                else
-                                                                                                                                                                                                                {
-                                                                                                                                                                                                                    if (gl_GlobalInvocationID.x == 52u)
-                                                                                                                                                                                                                    {
-                                                                                                                                                                                                                        vector<bool, 8> _291;
-                                                                                                                                                                                                                        _291[0] = _37[0] != 0.0;
-                                                                                                                                                                                                                        _291[1] = _37[1] != 0.0;
-                                                                                                                                                                                                                        _291[2] = _37[2] != 0.0;
-                                                                                                                                                                                                                        _291[3] = _37[3] != 0.0;
-                                                                                                                                                                                                                        _291[4] = _37[4] != 0.0;
-                                                                                                                                                                                                                        _291[5] = _37[5] != 0.0;
-                                                                                                                                                                                                                        _291[6] = _37[6] != 0.0;
-                                                                                                                                                                                                                        _291[7] = _37[7] != 0.0;
-                                                                                                                                                                                                                        vector<bool, 8> _315;
-                                                                                                                                                                                                                        _315[0] = _30[0] != 0.0;
-                                                                                                                                                                                                                        _315[1] = _30[1] != 0.0;
-                                                                                                                                                                                                                        _315[2] = _30[2] != 0.0;
-                                                                                                                                                                                                                        _315[3] = _30[3] != 0.0;
-                                                                                                                                                                                                                        _315[4] = _30[4] != 0.0;
-                                                                                                                                                                                                                        _315[5] = _30[5] != 0.0;
-                                                                                                                                                                                                                        _315[6] = _30[6] != 0.0;
-                                                                                                                                                                                                                        _315[7] = _30[7] != 0.0;
-                                                                                                                                                                                                                        vector<bool, 8> _323 = vector<bool, 8>(_291[0] || _315[0], _291[1] || _315[1], _291[2] || _315[2], _291[3] || _315[3], _291[4] || _315[4], _291[5] || _315[5], _291[6] || _315[6], _291[7] || _315[7]);
-                                                                                                                                                                                                                        vector<float, 8> _340;
-                                                                                                                                                                                                                        _340[0] = float(_323[0]);
-                                                                                                                                                                                                                        _340[1] = float(_323[1]);
-                                                                                                                                                                                                                        _340[2] = float(_323[2]);
-                                                                                                                                                                                                                        _340[3] = float(_323[3]);
-                                                                                                                                                                                                                        _340[4] = float(_323[4]);
-                                                                                                                                                                                                                        _340[5] = float(_323[5]);
-                                                                                                                                                                                                                        _340[6] = float(_323[6]);
-                                                                                                                                                                                                                        _340[7] = float(_323[7]);
-                                                                                                                                                                                                                        _960 = _340;
-                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                    else
-                                                                                                                                                                                                                    {
-                                                                                                                                                                                                                        if (gl_GlobalInvocationID.x == 53u)
-                                                                                                                                                                                                                        {
-                                                                                                                                                                                                                            vector<bool, 8> _266;
-                                                                                                                                                                                                                            _266[0] = _30[0] != 0.0;
-                                                                                                                                                                                                                            _266[1] = _30[1] != 0.0;
-                                                                                                                                                                                                                            _266[2] = _30[2] != 0.0;
-                                                                                                                                                                                                                            _266[3] = _30[3] != 0.0;
-                                                                                                                                                                                                                            _266[4] = _30[4] != 0.0;
-                                                                                                                                                                                                                            _266[5] = _30[5] != 0.0;
-                                                                                                                                                                                                                            _266[6] = _30[6] != 0.0;
-                                                                                                                                                                                                                            _266[7] = _30[7] != 0.0;
-                                                                                                                                                                                                                            _960 = mix(_44, _37, _266);
-                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                        else
-                                                                                                                                                                                                                        {
-                                                                                                                                                                                                                            if (gl_GlobalInvocationID.x == 54u)
-                                                                                                                                                                                                                            {
-                                                                                                                                                                                                                                vector<bool, 8> _185;
-                                                                                                                                                                                                                                _185[0] = _30[0] != 0.0;
-                                                                                                                                                                                                                                _185[1] = _30[1] != 0.0;
-                                                                                                                                                                                                                                _185[2] = _30[2] != 0.0;
-                                                                                                                                                                                                                                _185[3] = _30[3] != 0.0;
-                                                                                                                                                                                                                                _185[4] = _30[4] != 0.0;
-                                                                                                                                                                                                                                _185[5] = _30[5] != 0.0;
-                                                                                                                                                                                                                                _185[6] = _30[6] != 0.0;
-                                                                                                                                                                                                                                _185[7] = _30[7] != 0.0;
-                                                                                                                                                                                                                                vector<float, 8> _195 = vector<float, 8>(_111, _112, _113, 0.0, 0.0, 0.0, 0.0, 0.0);
-                                                                                                                                                                                                                                _195[0] = float(all(_185));
-                                                                                                                                                                                                                                vector<bool, 8> _212;
-                                                                                                                                                                                                                                _212[0] = _37[0] != 0.0;
-                                                                                                                                                                                                                                _212[1] = _37[1] != 0.0;
-                                                                                                                                                                                                                                _212[2] = _37[2] != 0.0;
-                                                                                                                                                                                                                                _212[3] = _37[3] != 0.0;
-                                                                                                                                                                                                                                _212[4] = _37[4] != 0.0;
-                                                                                                                                                                                                                                _212[5] = _37[5] != 0.0;
-                                                                                                                                                                                                                                _212[6] = _37[6] != 0.0;
-                                                                                                                                                                                                                                _212[7] = _37[7] != 0.0;
-                                                                                                                                                                                                                                _195[1] = float(all(_212));
-                                                                                                                                                                                                                                vector<bool, 8> _239;
-                                                                                                                                                                                                                                _239[0] = _44[0] != 0.0;
-                                                                                                                                                                                                                                _239[1] = _44[1] != 0.0;
-                                                                                                                                                                                                                                _239[2] = _44[2] != 0.0;
-                                                                                                                                                                                                                                _239[3] = _44[3] != 0.0;
-                                                                                                                                                                                                                                _239[4] = _44[4] != 0.0;
-                                                                                                                                                                                                                                _239[5] = _44[5] != 0.0;
-                                                                                                                                                                                                                                _239[6] = _44[6] != 0.0;
-                                                                                                                                                                                                                                _239[7] = _44[7] != 0.0;
-                                                                                                                                                                                                                                _195[2] = float(all(_239));
-                                                                                                                                                                                                                                _960 = _195;
-                                                                                                                                                                                                                            }
-                                                                                                                                                                                                                            else
-                                                                                                                                                                                                                            {
-                                                                                                                                                                                                                                if (gl_GlobalInvocationID.x == 55u)
-                                                                                                                                                                                                                                {
-                                                                                                                                                                                                                                    vector<bool, 8> _98;
-                                                                                                                                                                                                                                    _98[0] = _30[0] != 0.0;
-                                                                                                                                                                                                                                    _98[1] = _30[1] != 0.0;
-                                                                                                                                                                                                                                    _98[2] = _30[2] != 0.0;
-                                                                                                                                                                                                                                    _98[3] = _30[3] != 0.0;
-                                                                                                                                                                                                                                    _98[4] = _30[4] != 0.0;
-                                                                                                                                                                                                                                    _98[5] = _30[5] != 0.0;
-                                                                                                                                                                                                                                    _98[6] = _30[6] != 0.0;
-                                                                                                                                                                                                                                    _98[7] = _30[7] != 0.0;
-                                                                                                                                                                                                                                    vector<float, 8> _110 = vector<float, 8>(_111, _112, _113, 0.0, 0.0, 0.0, 0.0, 0.0);
-                                                                                                                                                                                                                                    _110[0] = float(any(_98));
-                                                                                                                                                                                                                                    vector<bool, 8> _131;
-                                                                                                                                                                                                                                    _131[0] = _37[0] != 0.0;
-                                                                                                                                                                                                                                    _131[1] = _37[1] != 0.0;
-                                                                                                                                                                                                                                    _131[2] = _37[2] != 0.0;
-                                                                                                                                                                                                                                    _131[3] = _37[3] != 0.0;
-                                                                                                                                                                                                                                    _131[4] = _37[4] != 0.0;
-                                                                                                                                                                                                                                    _131[5] = _37[5] != 0.0;
-                                                                                                                                                                                                                                    _131[6] = _37[6] != 0.0;
-                                                                                                                                                                                                                                    _131[7] = _37[7] != 0.0;
-                                                                                                                                                                                                                                    _110[1] = float(any(_131));
-                                                                                                                                                                                                                                    vector<bool, 8> _158;
-                                                                                                                                                                                                                                    _158[0] = _44[0] != 0.0;
-                                                                                                                                                                                                                                    _158[1] = _44[1] != 0.0;
-                                                                                                                                                                                                                                    _158[2] = _44[2] != 0.0;
-                                                                                                                                                                                                                                    _158[3] = _44[3] != 0.0;
-                                                                                                                                                                                                                                    _158[4] = _44[4] != 0.0;
-                                                                                                                                                                                                                                    _158[5] = _44[5] != 0.0;
-                                                                                                                                                                                                                                    _158[6] = _44[6] != 0.0;
-                                                                                                                                                                                                                                    _158[7] = _44[7] != 0.0;
-                                                                                                                                                                                                                                    _110[2] = float(any(_158));
-                                                                                                                                                                                                                                    _960 = _110;
-                                                                                                                                                                                                                                }
-                                                                                                                                                                                                                                else
-                                                                                                                                                                                                                                {
-                                                                                                                                                                                                                                    if (gl_GlobalInvocationID.x == 56u)
-                                                                                                                                                                                                                                    {
-                                                                                                                                                                                                                                        _960 = _961;
-                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                    else
-                                                                                                                                                                                                                                    {
-                                                                                                                                                                                                                                        if (gl_GlobalInvocationID.x == 57u)
-                                                                                                                                                                                                                                        {
-                                                                                                                                                                                                                                            _960 = _962;
-                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                        else
-                                                                                                                                                                                                                                        {
-                                                                                                                                                                                                                                            if (gl_GlobalInvocationID.x == 58u)
-                                                                                                                                                                                                                                            {
-                                                                                                                                                                                                                                                _960 = _963;
-                                                                                                                                                                                                                                            }
-                                                                                                                                                                                                                                            else
-                                                                                                                                                                                                                                            {
-                                                                                                                                                                                                                                                if (gl_GlobalInvocationID.x == 59u)
-                                                                                                                                                                                                                                                {
-                                                                                                                                                                                                                                                    _960 = _964;
-                                                                                                                                                                                                                                                }
-                                                                                                                                                                                                                                                else
-                                                                                                                                                                                                                                                {
-                                                                                                                                                                                                                                                    _960 = vector<float, 8>(0);
-                                                                                                                                                                                                                                                }
-                                                                                                                                                                                                                                            }
-                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                }
-                                                                                                                                                                                                                            }
-                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                }
-                                                                                                                                                                                                            }
-                                                                                                                                                                                                        }
-                                                                                                                                                                                                    }
-                                                                                                                                                                                                }
-                                                                                                                                                                                            }
-                                                                                                                                                                                        }
-                                                                                                                                                                                    }
-                                                                                                                                                                                }
-                                                                                                                                                                            }
-                                                                                                                                                                        }
-                                                                                                                                                                    }
-                                                                                                                                                                }
-                                                                                                                                                            }
-                                                                                                                                                        }
-                                                                                                                                                    }
-                                                                                                                                                }
-                                                                                                                                            }
-                                                                                                                                        }
-                                                                                                                                    }
-                                                                                                                                }
-                                                                                                                            }
-                                                                                                                        }
-                                                                                                                    }
-                                                                                                                }
-                                                                                                            }
-                                                                                                        }
-                                                                                                    }
-                                                                                                }
-                                                                                            }
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            vector<bool, 8> _929 = isnan(_30);
+            vector<float, 8> _946;
+            _946[0] = float(_929[0]);
+            _946[1] = float(_929[1]);
+            _946[2] = float(_929[2]);
+            _946[3] = float(_929[3]);
+            _946[4] = float(_929[4]);
+            _946[5] = float(_929[5]);
+            _946[6] = float(_929[6]);
+            _946[7] = float(_929[7]);
+            _960 = _946;
+            break;
+        }
+        case 3u:
+        {
+            vector<bool, 8> _904 = isinf(_30);
+            vector<float, 8> _921;
+            _921[0] = float(_904[0]);
+            _921[1] = float(_904[1]);
+            _921[2] = float(_904[2]);
+            _921[3] = float(_904[3]);
+            _921[4] = float(_904[4]);
+            _921[5] = float(_904[5]);
+            _921[6] = float(_904[6]);
+            _921[7] = float(_904[7]);
+            _960 = _921;
+            break;
+        }
+        case 4u:
+        {
+            vector<bool, 8> _876 = isnan(_30);
+            vector<bool, 8> _877 = isinf(_30);
+            vector<bool, 8> _879 = not(vector<bool, 8>(_876[0] || _877[0], _876[1] || _877[1], _876[2] || _877[2], _876[3] || _877[3], _876[4] || _877[4], _876[5] || _877[5], _876[6] || _877[6], _876[7] || _877[7]));
+            vector<float, 8> _896;
+            _896[0] = float(_879[0]);
+            _896[1] = float(_879[1]);
+            _896[2] = float(_879[2]);
+            _896[3] = float(_879[3]);
+            _896[4] = float(_879[4]);
+            _896[5] = float(_879[5]);
+            _896[6] = float(_879[6]);
+            _896[7] = float(_879[7]);
+            _960 = _896;
+            break;
+        }
+        case 5u:
+        {
+            vector<float, 8> _844 = abs(_30);
+            vector<bool, 8> _849 = greaterThanEqual(_844, vector<float, 8>(1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38, 1.1754943508222875079687365372222e-38));
+            vector<bool, 8> _850 = lessThan(_844, vector<float, 8>(uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */), uintBitsToFloat(0x7f800000u /* inf */)));
+            vector<bool, 8> _851 = vector<bool, 8>(_849[0] && _850[0], _849[1] && _850[1], _849[2] && _850[2], _849[3] && _850[3], _849[4] && _850[4], _849[5] && _850[5], _849[6] && _850[6], _849[7] && _850[7]);
+            vector<float, 8> _868;
+            _868[0] = float(_851[0]);
+            _868[1] = float(_851[1]);
+            _868[2] = float(_851[2]);
+            _868[3] = float(_851[3]);
+            _868[4] = float(_851[4]);
+            _868[5] = float(_851[5]);
+            _868[6] = float(_851[6]);
+            _868[7] = float(_851[7]);
+            _960 = _868;
+            break;
+        }
+        case 6u:
+        {
+            _960 = cos(_30);
+            break;
+        }
+        case 7u:
+        {
+            _960 = sin(_30);
+            break;
+        }
+        case 8u:
+        {
+            _960 = tan(_30);
+            break;
+        }
+        case 9u:
+        {
+            _960 = acos(_30);
+            break;
+        }
+        case 10u:
+        {
+            _960 = asin(_30);
+            break;
+        }
+        case 11u:
+        {
+            _960 = atan(_30);
+            break;
+        }
+        case 12u:
+        {
+            _960 = cosh(_30);
+            break;
+        }
+        case 13u:
+        {
+            _960 = sinh(_30);
+            break;
+        }
+        case 14u:
+        {
+            _960 = tanh(_30);
+            break;
+        }
+        case 15u:
+        {
+            _960 = exp2(_30);
+            break;
+        }
+        case 16u:
+        {
+            _960 = fract(_30);
+            break;
+        }
+        case 17u:
+        {
+            _960 = log2(_30);
+            break;
+        }
+        case 18u:
+        {
+            _960 = sqrt(_30);
+            break;
+        }
+        case 19u:
+        {
+            _960 = inversesqrt(_30);
+            break;
+        }
+        case 20u:
+        {
+            _960 = roundEven(_30);
+            break;
+        }
+        case 21u:
+        {
+            _960 = trunc(_30);
+            break;
+        }
+        case 22u:
+        {
+            _960 = ceil(_30);
+            break;
+        }
+        case 23u:
+        {
+            _960 = floor(_30);
+            break;
+        }
+        case 24u:
+        {
+            _960 = spvNMax(_30, _37);
+            break;
+        }
+        case 25u:
+        {
+            _960 = spvNMin(_30, _37);
+            break;
+        }
+        case 26u:
+        {
+            _960 = fma(_30, _37, _44);
+            break;
+        }
+        case 27u:
+        {
+            vector<double, 8> _741;
+            _741[0] = double(_44[0]);
+            _741[1] = double(_44[1]);
+            _741[2] = double(_44[2]);
+            _741[3] = double(_44[3]);
+            _741[4] = double(_44[4]);
+            _741[5] = double(_44[5]);
+            _741[6] = double(_44[6]);
+            _741[7] = double(_44[7]);
+            vector<double, 8> _766;
+            _766[0] = double(_37[0]);
+            _766[1] = double(_37[1]);
+            _766[2] = double(_37[2]);
+            _766[3] = double(_37[3]);
+            _766[4] = double(_37[4]);
+            _766[5] = double(_37[5]);
+            _766[6] = double(_37[6]);
+            _766[7] = double(_37[7]);
+            vector<double, 8> _790;
+            _790[0] = double(_30[0]);
+            _790[1] = double(_30[1]);
+            _790[2] = double(_30[2]);
+            _790[3] = double(_30[3]);
+            _790[4] = double(_30[4]);
+            _790[5] = double(_30[5]);
+            _790[6] = double(_30[6]);
+            _790[7] = double(_30[7]);
+            vector<double, 8> _798 = fma(_790, _766, _741);
+            vector<float, 8> _815;
+            _815[0] = float(_798[0]);
+            _815[1] = float(_798[1]);
+            _815[2] = float(_798[2]);
+            _815[3] = float(_798[3]);
+            _815[4] = float(_798[4]);
+            _815[5] = float(_798[5]);
+            _815[6] = float(_798[6]);
+            _815[7] = float(_798[7]);
+            _960 = _815;
+            break;
+        }
+        case 28u:
+        {
+            _960 = _968;
+            break;
+        }
+        case 29u:
+        {
+            _960 = _967;
+            break;
+        }
+        case 30u:
+        {
+            _960 = _966;
+            break;
+        }
+        case 31u:
+        {
+            _960 = _965;
+            break;
+        }
+        case 32u:
+        {
+            vector<float, 8> _700 = atan(_30 / _37);
+            vector<bool, 8> _707 = lessThan(_37, vector<float, 8>(0));
+            vector<bool, 8> _708 = equal(_37, vector<float, 8>(0));
+            vector<bool, 8> _709 = greaterThanEqual(_30, vector<float, 8>(0));
+            vector<bool, 8> _710 = lessThan(_30, vector<float, 8>(0));
+            _960 = mix(mix(mix(mix(_700, _700 + (vector<float, 8>(3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875)), vector<bool, 8>(_707[0] && _709[0], _707[1] && _709[1], _707[2] && _709[2], _707[3] && _709[3], _707[4] && _709[4], _707[5] && _709[5], _707[6] && _709[6], _707[7] && _709[7])), _700 + (vector<float, 8>(-3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875)), vector<bool, 8>(_707[0] && _710[0], _707[1] && _710[1], _707[2] && _710[2], _707[3] && _710[3], _707[4] && _710[4], _707[5] && _710[5], _707[6] && _710[6], _707[7] && _710[7])), vector<float, 8>(-1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375), vector<bool, 8>(_708[0] && _710[0], _708[1] && _710[1], _708[2] && _710[2], _708[3] && _710[3], _708[4] && _710[4], _708[5] && _710[5], _708[6] && _710[6], _708[7] && _710[7])), vector<float, 8>(1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375), vector<bool, 8>(_708[0] && _709[0], _708[1] && _709[1], _708[2] && _709[2], _708[3] && _709[3], _708[4] && _709[4], _708[5] && _709[5], _708[6] && _709[6], _708[7] && _709[7]));
+            break;
+        }
+        case 33u:
+        {
+            _960 = _30 * (vector<float, 8>(57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625));
+            break;
+        }
+        case 34u:
+        {
+            _960 = _30 * (vector<float, 8>(0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625));
+            break;
+        }
+        case 35u:
+        {
+            _960 = spvNMin(spvNMax(_30, _37), _44);
+            break;
+        }
+        case 36u:
+        {
+            vector<float, 8> _683 = _30 / _37;
+            vector<float, 8> _687 = fract(abs(_683));
+            _960 = mix((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _687, _687, greaterThanEqual(_683, (vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _683)) * _37;
+            break;
+        }
+        case 37u:
+        {
+            _960 = (_44 * (_37 - _30)) + _30;
+            break;
+        }
+        case 38u:
+        {
+            _960 = exp2(log2(_30) * _37);
+            break;
+        }
+        case 39u:
+        {
+            _960 = (vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)) / _30;
+            break;
+        }
+        case 40u:
+        {
+            _960 = vector<float, 8>(vector<int, 8>(mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), greaterThan(_30, vector<float, 8>(0))) - mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), lessThan(_30, vector<float, 8>(0)))));
+            break;
+        }
+        case 41u:
+        {
+            vector<float, 8> _659 = spvNClamp((_44 - _30) / (_37 - _30), vector<float, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+            _960 = (_659 * _659) * ((vector<float, 8>(3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0)) - (_659 * (vector<float, 8>(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0))));
+            break;
+        }
+        case 42u:
+        {
+            _960 = mix(vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), vector<float, 8>(0), lessThan(_37, _30));
+            break;
+        }
+        case 43u:
+        {
+            vector<float, 8> _619 = trunc(_30);
+            vector<uint, 8> _623 = vector<uint, 8>(vector<int, 8>(_619));
+            vector<float, 8> _640;
+            _640[0] = float(int(_623[0]));
+            _640[1] = float(int(_623[1]));
+            _640[2] = float(int(_623[2]));
+            _640[3] = float(int(_623[3]));
+            _640[4] = float(int(_623[4]));
+            _640[5] = float(int(_623[5]));
+            _640[6] = float(int(_623[6]));
+            _640[7] = float(int(_623[7]));
+            _960 = (_30 + ((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _619)) + ((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _640);
+            break;
+        }
+        case 44u:
+        {
+            vector<float, 8> _614 = vector<float, 8>(_111, _112, _113, 0.0, 0.0, 0.0, 0.0, 0.0);
+            _614[0] = dot(_30, _37);
+            _614[1] = dot(_30, _44);
+            _614[2] = dot(_37, _44);
+            _960 = _614;
+            break;
+        }
+        case 45u:
+        {
+            vector<uint, 8> _603;
+            _603[0] = uint(int(_30[0]));
+            _603[1] = uint(int(_30[1]));
+            _603[2] = uint(int(_30[2]));
+            _603[3] = uint(int(_30[3]));
+            _603[4] = uint(int(_30[4]));
+            _603[5] = uint(int(_30[5]));
+            _603[6] = uint(int(_30[6]));
+            _603[7] = uint(int(_30[7]));
+            _960 = uintBitsToFloat(bitfieldReverse(_603));
+            break;
+        }
+        case 46u:
+        {
+            vector<uint, 8> _577;
+            _577[0] = uint(int(_30[0]));
+            _577[1] = uint(int(_30[1]));
+            _577[2] = uint(int(_30[2]));
+            _577[3] = uint(int(_30[3]));
+            _577[4] = uint(int(_30[4]));
+            _577[5] = uint(int(_30[5]));
+            _577[6] = uint(int(_30[6]));
+            _577[7] = uint(int(_30[7]));
+            _960 = uintBitsToFloat(vector<uint, 8>(bitCount(_577)));
+            break;
+        }
+        case 47u:
+        {
+            vector<uint, 8> _539;
+            _539[0] = uint(int(_30[0]));
+            _539[1] = uint(int(_30[1]));
+            _539[2] = uint(int(_30[2]));
+            _539[3] = uint(int(_30[3]));
+            _539[4] = uint(int(_30[4]));
+            _539[5] = uint(int(_30[5]));
+            _539[6] = uint(int(_30[6]));
+            _539[7] = uint(int(_30[7]));
+            vector<uint, 8> _547 = vector<uint, 8>(findMSB(vector<int, 8>(_539)));
+            vector<uint, 8> _554 = mix((vector<uint, 8>(31u, 31u, 31u, 31u, 31u, 31u, 31u, 31u)) - _547, vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u), equal(_547, (vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u))));
+            _960 = mix(uintBitsToFloat((vector<uint, 8>(31u, 31u, 31u, 31u, 31u, 31u, 31u, 31u)) - _554), vector<float, 8>(uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */)), equal(_554, (vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u))));
+            break;
+        }
+        case 48u:
+        {
+            vector<uint, 8> _513;
+            _513[0] = uint(int(_30[0]));
+            _513[1] = uint(int(_30[1]));
+            _513[2] = uint(int(_30[2]));
+            _513[3] = uint(int(_30[3]));
+            _513[4] = uint(int(_30[4]));
+            _513[5] = uint(int(_30[5]));
+            _513[6] = uint(int(_30[6]));
+            _513[7] = uint(int(_30[7]));
+            _960 = uintBitsToFloat(vector<uint, 8>(findLSB(_513)));
+            break;
+        }
+        case 49u:
+        {
+            vector<float, 8> _475;
+            _475[0] = unpackHalf2x16(uint(int(_30[0]))).x;
+            _475[1] = unpackHalf2x16(uint(int(_30[1]))).x;
+            _475[2] = unpackHalf2x16(uint(int(_30[2]))).x;
+            _475[3] = unpackHalf2x16(uint(int(_30[3]))).x;
+            _475[4] = unpackHalf2x16(uint(int(_30[4]))).x;
+            _475[5] = unpackHalf2x16(uint(int(_30[5]))).x;
+            _475[6] = unpackHalf2x16(uint(int(_30[6]))).x;
+            _475[7] = unpackHalf2x16(uint(int(_30[7]))).x;
+            _960 = _475;
+            break;
+        }
+        case 50u:
+        {
+            vector<uint, 8> _426;
+            _426[0] = packHalf2x16(vec2(_30[0], 0.0));
+            _426[1] = packHalf2x16(vec2(_30[1], 0.0));
+            _426[2] = packHalf2x16(vec2(_30[2], 0.0));
+            _426[3] = packHalf2x16(vec2(_30[3], 0.0));
+            _426[4] = packHalf2x16(vec2(_30[4], 0.0));
+            _426[5] = packHalf2x16(vec2(_30[5], 0.0));
+            _426[6] = packHalf2x16(vec2(_30[6], 0.0));
+            _426[7] = packHalf2x16(vec2(_30[7], 0.0));
+            _960 = uintBitsToFloat(_426);
+            break;
+        }
+        case 51u:
+        {
+            vector<bool, 8> _364;
+            _364[0] = _37[0] != 0.0;
+            _364[1] = _37[1] != 0.0;
+            _364[2] = _37[2] != 0.0;
+            _364[3] = _37[3] != 0.0;
+            _364[4] = _37[4] != 0.0;
+            _364[5] = _37[5] != 0.0;
+            _364[6] = _37[6] != 0.0;
+            _364[7] = _37[7] != 0.0;
+            vector<bool, 8> _388;
+            _388[0] = _30[0] != 0.0;
+            _388[1] = _30[1] != 0.0;
+            _388[2] = _30[2] != 0.0;
+            _388[3] = _30[3] != 0.0;
+            _388[4] = _30[4] != 0.0;
+            _388[5] = _30[5] != 0.0;
+            _388[6] = _30[6] != 0.0;
+            _388[7] = _30[7] != 0.0;
+            vector<bool, 8> _396 = vector<bool, 8>(_364[0] && _388[0], _364[1] && _388[1], _364[2] && _388[2], _364[3] && _388[3], _364[4] && _388[4], _364[5] && _388[5], _364[6] && _388[6], _364[7] && _388[7]);
+            vector<float, 8> _413;
+            _413[0] = float(_396[0]);
+            _413[1] = float(_396[1]);
+            _413[2] = float(_396[2]);
+            _413[3] = float(_396[3]);
+            _413[4] = float(_396[4]);
+            _413[5] = float(_396[5]);
+            _413[6] = float(_396[6]);
+            _413[7] = float(_396[7]);
+            _960 = _413;
+            break;
+        }
+        case 52u:
+        {
+            vector<bool, 8> _291;
+            _291[0] = _37[0] != 0.0;
+            _291[1] = _37[1] != 0.0;
+            _291[2] = _37[2] != 0.0;
+            _291[3] = _37[3] != 0.0;
+            _291[4] = _37[4] != 0.0;
+            _291[5] = _37[5] != 0.0;
+            _291[6] = _37[6] != 0.0;
+            _291[7] = _37[7] != 0.0;
+            vector<bool, 8> _315;
+            _315[0] = _30[0] != 0.0;
+            _315[1] = _30[1] != 0.0;
+            _315[2] = _30[2] != 0.0;
+            _315[3] = _30[3] != 0.0;
+            _315[4] = _30[4] != 0.0;
+            _315[5] = _30[5] != 0.0;
+            _315[6] = _30[6] != 0.0;
+            _315[7] = _30[7] != 0.0;
+            vector<bool, 8> _323 = vector<bool, 8>(_291[0] || _315[0], _291[1] || _315[1], _291[2] || _315[2], _291[3] || _315[3], _291[4] || _315[4], _291[5] || _315[5], _291[6] || _315[6], _291[7] || _315[7]);
+            vector<float, 8> _340;
+            _340[0] = float(_323[0]);
+            _340[1] = float(_323[1]);
+            _340[2] = float(_323[2]);
+            _340[3] = float(_323[3]);
+            _340[4] = float(_323[4]);
+            _340[5] = float(_323[5]);
+            _340[6] = float(_323[6]);
+            _340[7] = float(_323[7]);
+            _960 = _340;
+            break;
+        }
+        case 53u:
+        {
+            vector<bool, 8> _266;
+            _266[0] = _30[0] != 0.0;
+            _266[1] = _30[1] != 0.0;
+            _266[2] = _30[2] != 0.0;
+            _266[3] = _30[3] != 0.0;
+            _266[4] = _30[4] != 0.0;
+            _266[5] = _30[5] != 0.0;
+            _266[6] = _30[6] != 0.0;
+            _266[7] = _30[7] != 0.0;
+            _960 = mix(_44, _37, _266);
+            break;
+        }
+        case 54u:
+        {
+            vector<bool, 8> _185;
+            _185[0] = _30[0] != 0.0;
+            _185[1] = _30[1] != 0.0;
+            _185[2] = _30[2] != 0.0;
+            _185[3] = _30[3] != 0.0;
+            _185[4] = _30[4] != 0.0;
+            _185[5] = _30[5] != 0.0;
+            _185[6] = _30[6] != 0.0;
+            _185[7] = _30[7] != 0.0;
+            vector<float, 8> _195 = vector<float, 8>(_111, _112, _113, 0.0, 0.0, 0.0, 0.0, 0.0);
+            _195[0] = float(all(_185));
+            vector<bool, 8> _212;
+            _212[0] = _37[0] != 0.0;
+            _212[1] = _37[1] != 0.0;
+            _212[2] = _37[2] != 0.0;
+            _212[3] = _37[3] != 0.0;
+            _212[4] = _37[4] != 0.0;
+            _212[5] = _37[5] != 0.0;
+            _212[6] = _37[6] != 0.0;
+            _212[7] = _37[7] != 0.0;
+            _195[1] = float(all(_212));
+            vector<bool, 8> _239;
+            _239[0] = _44[0] != 0.0;
+            _239[1] = _44[1] != 0.0;
+            _239[2] = _44[2] != 0.0;
+            _239[3] = _44[3] != 0.0;
+            _239[4] = _44[4] != 0.0;
+            _239[5] = _44[5] != 0.0;
+            _239[6] = _44[6] != 0.0;
+            _239[7] = _44[7] != 0.0;
+            _195[2] = float(all(_239));
+            _960 = _195;
+            break;
+        }
+        case 55u:
+        {
+            vector<bool, 8> _98;
+            _98[0] = _30[0] != 0.0;
+            _98[1] = _30[1] != 0.0;
+            _98[2] = _30[2] != 0.0;
+            _98[3] = _30[3] != 0.0;
+            _98[4] = _30[4] != 0.0;
+            _98[5] = _30[5] != 0.0;
+            _98[6] = _30[6] != 0.0;
+            _98[7] = _30[7] != 0.0;
+            vector<float, 8> _110 = vector<float, 8>(_111, _112, _113, 0.0, 0.0, 0.0, 0.0, 0.0);
+            _110[0] = float(any(_98));
+            vector<bool, 8> _131;
+            _131[0] = _37[0] != 0.0;
+            _131[1] = _37[1] != 0.0;
+            _131[2] = _37[2] != 0.0;
+            _131[3] = _37[3] != 0.0;
+            _131[4] = _37[4] != 0.0;
+            _131[5] = _37[5] != 0.0;
+            _131[6] = _37[6] != 0.0;
+            _131[7] = _37[7] != 0.0;
+            _110[1] = float(any(_131));
+            vector<bool, 8> _158;
+            _158[0] = _44[0] != 0.0;
+            _158[1] = _44[1] != 0.0;
+            _158[2] = _44[2] != 0.0;
+            _158[3] = _44[3] != 0.0;
+            _158[4] = _44[4] != 0.0;
+            _158[5] = _44[5] != 0.0;
+            _158[6] = _44[6] != 0.0;
+            _158[7] = _44[7] != 0.0;
+            _110[2] = float(any(_158));
+            _960 = _110;
+            break;
+        }
+        case 56u:
+        {
+            _960 = _961;
+            break;
+        }
+        case 57u:
+        {
+            _960 = _962;
+            break;
+        }
+        case 58u:
+        {
+            _960 = _963;
+            break;
+        }
+        case 59u:
+        {
+            _960 = _964;
+            break;
+        }
+        default:
+        {
+            _960 = vector<float, 8>(0);
+            break;
         }
     }
     _14._m0[gl_GlobalInvocationID.x] = floatBitsToUint(_960);
@@ -787,7 +674,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 1268
+; Bound: 1037
 ; Schema: 0
 OpCapability Shader
 OpCapability Float64
@@ -895,59 +782,6 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %847 = OpConstant %28 0x1p+128
 %848 = OpConstantComposite %29 %847 %847 %847 %847 %847 %847 %847 %847
 %959 = OpTypePointer Function %29
-%974 = OpConstant %5 4
-%976 = OpConstant %5 5
-%978 = OpConstant %5 6
-%980 = OpConstant %5 7
-%982 = OpConstant %5 8
-%984 = OpConstant %5 9
-%986 = OpConstant %5 10
-%988 = OpConstant %5 11
-%990 = OpConstant %5 12
-%992 = OpConstant %5 13
-%994 = OpConstant %5 14
-%996 = OpConstant %5 15
-%998 = OpConstant %5 16
-%1000 = OpConstant %5 17
-%1002 = OpConstant %5 18
-%1004 = OpConstant %5 19
-%1006 = OpConstant %5 20
-%1008 = OpConstant %5 21
-%1010 = OpConstant %5 22
-%1012 = OpConstant %5 23
-%1014 = OpConstant %5 24
-%1016 = OpConstant %5 25
-%1018 = OpConstant %5 26
-%1020 = OpConstant %5 27
-%1023 = OpConstant %5 29
-%1025 = OpConstant %5 30
-%1028 = OpConstant %5 32
-%1030 = OpConstant %5 33
-%1032 = OpConstant %5 34
-%1034 = OpConstant %5 35
-%1036 = OpConstant %5 36
-%1038 = OpConstant %5 37
-%1040 = OpConstant %5 38
-%1042 = OpConstant %5 39
-%1044 = OpConstant %5 40
-%1046 = OpConstant %5 41
-%1048 = OpConstant %5 42
-%1050 = OpConstant %5 43
-%1052 = OpConstant %5 44
-%1054 = OpConstant %5 45
-%1056 = OpConstant %5 46
-%1058 = OpConstant %5 47
-%1060 = OpConstant %5 48
-%1062 = OpConstant %5 49
-%1064 = OpConstant %5 50
-%1066 = OpConstant %5 51
-%1068 = OpConstant %5 52
-%1070 = OpConstant %5 53
-%1072 = OpConstant %5 54
-%1074 = OpConstant %5 55
-%1077 = OpConstant %5 57
-%1079 = OpConstant %5 58
-%1081 = OpConstant %5 59
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %960 = OpVariable %959 Function
@@ -963,8 +797,8 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %99 = OpUndef %97
 %427 = OpUndef %6
 %742 = OpUndef %740
-OpBranch %1082
-%1082 = OpLabel
+OpBranch %969
+%969 = OpLabel
 %19 = OpAccessChain %18 %17 %20
 %21 = OpLoad %5 %19
 %22 = OpIMul %5 %21 %23
@@ -986,9 +820,9 @@ OpBranch %1082
 %44 = OpBitcast %29 %43
 %46 = OpIEqual %45 %21 %47
 %59 = OpFunctionCall %45 %50 %46
-OpSelectionMerge %1084 None
-OpBranchConditional %59 %1083 %1084
-%1083 = OpLabel
+OpSelectionMerge %971 None
+OpBranchConditional %59 %970 %971
+%970 = OpLabel
 %60 = OpDPdxCoarse %29 %30
 %61 = OpDPdyCoarse %29 %30
 %62 = OpDPdxFine %29 %30
@@ -997,17 +831,17 @@ OpStore %965 %63
 OpStore %966 %62
 OpStore %967 %61
 OpStore %968 %60
-OpBranch %1084
-%1084 = OpLabel
+OpBranch %971
+%971 = OpLabel
 %68 = OpLoad %29 %968
 %67 = OpLoad %29 %967
 %66 = OpLoad %29 %966
 %64 = OpLoad %29 %965
 %69 = OpIEqual %45 %21 %70
 %71 = OpFunctionCall %45 %50 %69
-OpSelectionMerge %1086 None
-OpBranchConditional %71 %1085 %1086
-%1085 = OpLabel
+OpSelectionMerge %973 None
+OpBranchConditional %71 %972 %973
+%972 = OpLabel
 %72 = OpGroupNonUniformQuadBroadcast %29 %23 %30 %32
 %73 = OpGroupNonUniformQuadSwap %29 %23 %30 %20
 %74 = OpGroupNonUniformQuadSwap %29 %23 %30 %32
@@ -1016,275 +850,27 @@ OpStore %961 %72
 OpStore %962 %73
 OpStore %963 %74
 OpStore %964 %75
-OpBranch %1086
-%1086 = OpLabel
+OpBranch %973
+%973 = OpLabel
 %79 = OpLoad %29 %964
 %78 = OpLoad %29 %963
 %77 = OpLoad %29 %962
 %76 = OpLoad %29 %961
-%969 = OpIEqual %45 %21 %20
-OpSelectionMerge %1266 None
-OpBranchConditional %969 %1265 %1087
-%1087 = OpLabel
-%970 = OpIEqual %45 %21 %32
-OpSelectionMerge %1264 None
-OpBranchConditional %970 %1263 %1088
-%1088 = OpLabel
-%971 = OpIEqual %45 %21 %39
-OpSelectionMerge %1262 None
-OpBranchConditional %971 %1261 %1089
-%1089 = OpLabel
-%972 = OpIEqual %45 %21 %23
-OpSelectionMerge %1260 None
-OpBranchConditional %972 %1259 %1090
-%1090 = OpLabel
-%973 = OpIEqual %45 %21 %974
-OpSelectionMerge %1258 None
-OpBranchConditional %973 %1257 %1091
-%1091 = OpLabel
-%975 = OpIEqual %45 %21 %976
-OpSelectionMerge %1256 None
-OpBranchConditional %975 %1255 %1092
-%1092 = OpLabel
-%977 = OpIEqual %45 %21 %978
-OpSelectionMerge %1254 None
-OpBranchConditional %977 %1253 %1093
-%1093 = OpLabel
-%979 = OpIEqual %45 %21 %980
-OpSelectionMerge %1252 None
-OpBranchConditional %979 %1251 %1094
-%1094 = OpLabel
-%981 = OpIEqual %45 %21 %982
-OpSelectionMerge %1250 None
-OpBranchConditional %981 %1249 %1095
-%1095 = OpLabel
-%983 = OpIEqual %45 %21 %984
-OpSelectionMerge %1248 None
-OpBranchConditional %983 %1247 %1096
-%1096 = OpLabel
-%985 = OpIEqual %45 %21 %986
-OpSelectionMerge %1246 None
-OpBranchConditional %985 %1245 %1097
-%1097 = OpLabel
-%987 = OpIEqual %45 %21 %988
-OpSelectionMerge %1244 None
-OpBranchConditional %987 %1243 %1098
-%1098 = OpLabel
-%989 = OpIEqual %45 %21 %990
-OpSelectionMerge %1242 None
-OpBranchConditional %989 %1241 %1099
-%1099 = OpLabel
-%991 = OpIEqual %45 %21 %992
-OpSelectionMerge %1240 None
-OpBranchConditional %991 %1239 %1100
-%1100 = OpLabel
-%993 = OpIEqual %45 %21 %994
-OpSelectionMerge %1238 None
-OpBranchConditional %993 %1237 %1101
-%1101 = OpLabel
-%995 = OpIEqual %45 %21 %996
-OpSelectionMerge %1236 None
-OpBranchConditional %995 %1235 %1102
-%1102 = OpLabel
-%997 = OpIEqual %45 %21 %998
-OpSelectionMerge %1234 None
-OpBranchConditional %997 %1233 %1103
-%1103 = OpLabel
-%999 = OpIEqual %45 %21 %1000
-OpSelectionMerge %1232 None
-OpBranchConditional %999 %1231 %1104
-%1104 = OpLabel
-%1001 = OpIEqual %45 %21 %1002
-OpSelectionMerge %1230 None
-OpBranchConditional %1001 %1229 %1105
-%1105 = OpLabel
-%1003 = OpIEqual %45 %21 %1004
-OpSelectionMerge %1228 None
-OpBranchConditional %1003 %1227 %1106
-%1106 = OpLabel
-%1005 = OpIEqual %45 %21 %1006
-OpSelectionMerge %1226 None
-OpBranchConditional %1005 %1225 %1107
-%1107 = OpLabel
-%1007 = OpIEqual %45 %21 %1008
-OpSelectionMerge %1224 None
-OpBranchConditional %1007 %1223 %1108
-%1108 = OpLabel
-%1009 = OpIEqual %45 %21 %1010
-OpSelectionMerge %1222 None
-OpBranchConditional %1009 %1221 %1109
-%1109 = OpLabel
-%1011 = OpIEqual %45 %21 %1012
-OpSelectionMerge %1220 None
-OpBranchConditional %1011 %1219 %1110
-%1110 = OpLabel
-%1013 = OpIEqual %45 %21 %1014
-OpSelectionMerge %1218 None
-OpBranchConditional %1013 %1217 %1111
-%1111 = OpLabel
-%1015 = OpIEqual %45 %21 %1016
-OpSelectionMerge %1216 None
-OpBranchConditional %1015 %1215 %1112
-%1112 = OpLabel
-%1017 = OpIEqual %45 %21 %1018
-OpSelectionMerge %1214 None
-OpBranchConditional %1017 %1213 %1113
-%1113 = OpLabel
-%1019 = OpIEqual %45 %21 %1020
-OpSelectionMerge %1212 None
-OpBranchConditional %1019 %1211 %1114
-%1114 = OpLabel
-%1021 = OpIEqual %45 %21 %47
-OpSelectionMerge %1210 None
-OpBranchConditional %1021 %1209 %1115
-%1115 = OpLabel
-%1022 = OpIEqual %45 %21 %1023
-OpSelectionMerge %1208 None
-OpBranchConditional %1022 %1207 %1116
-%1116 = OpLabel
-%1024 = OpIEqual %45 %21 %1025
-OpSelectionMerge %1206 None
-OpBranchConditional %1024 %1205 %1117
-%1117 = OpLabel
-%1026 = OpIEqual %45 %21 %552
-OpSelectionMerge %1204 None
-OpBranchConditional %1026 %1203 %1118
-%1118 = OpLabel
-%1027 = OpIEqual %45 %21 %1028
-OpSelectionMerge %1202 None
-OpBranchConditional %1027 %1201 %1119
-%1119 = OpLabel
-%1029 = OpIEqual %45 %21 %1030
-OpSelectionMerge %1200 None
-OpBranchConditional %1029 %1199 %1120
-%1120 = OpLabel
-%1031 = OpIEqual %45 %21 %1032
-OpSelectionMerge %1198 None
-OpBranchConditional %1031 %1197 %1121
-%1121 = OpLabel
-%1033 = OpIEqual %45 %21 %1034
-OpSelectionMerge %1196 None
-OpBranchConditional %1033 %1195 %1122
-%1122 = OpLabel
-%1035 = OpIEqual %45 %21 %1036
-OpSelectionMerge %1194 None
-OpBranchConditional %1035 %1193 %1123
-%1123 = OpLabel
-%1037 = OpIEqual %45 %21 %1038
-OpSelectionMerge %1192 None
-OpBranchConditional %1037 %1191 %1124
-%1124 = OpLabel
-%1039 = OpIEqual %45 %21 %1040
-OpSelectionMerge %1190 None
-OpBranchConditional %1039 %1189 %1125
-%1125 = OpLabel
-%1041 = OpIEqual %45 %21 %1042
-OpSelectionMerge %1188 None
-OpBranchConditional %1041 %1187 %1126
-%1126 = OpLabel
-%1043 = OpIEqual %45 %21 %1044
-OpSelectionMerge %1186 None
-OpBranchConditional %1043 %1185 %1127
-%1127 = OpLabel
-%1045 = OpIEqual %45 %21 %1046
-OpSelectionMerge %1184 None
-OpBranchConditional %1045 %1183 %1128
-%1128 = OpLabel
-%1047 = OpIEqual %45 %21 %1048
-OpSelectionMerge %1182 None
-OpBranchConditional %1047 %1181 %1129
-%1129 = OpLabel
-%1049 = OpIEqual %45 %21 %1050
-OpSelectionMerge %1180 None
-OpBranchConditional %1049 %1179 %1130
-%1130 = OpLabel
-%1051 = OpIEqual %45 %21 %1052
-OpSelectionMerge %1178 None
-OpBranchConditional %1051 %1177 %1131
-%1131 = OpLabel
-%1053 = OpIEqual %45 %21 %1054
-OpSelectionMerge %1176 None
-OpBranchConditional %1053 %1175 %1132
-%1132 = OpLabel
-%1055 = OpIEqual %45 %21 %1056
-OpSelectionMerge %1174 None
-OpBranchConditional %1055 %1173 %1133
-%1133 = OpLabel
-%1057 = OpIEqual %45 %21 %1058
-OpSelectionMerge %1172 None
-OpBranchConditional %1057 %1171 %1134
-%1134 = OpLabel
-%1059 = OpIEqual %45 %21 %1060
-OpSelectionMerge %1170 None
-OpBranchConditional %1059 %1169 %1135
-%1135 = OpLabel
-%1061 = OpIEqual %45 %21 %1062
-OpSelectionMerge %1168 None
-OpBranchConditional %1061 %1167 %1136
-%1136 = OpLabel
-%1063 = OpIEqual %45 %21 %1064
-OpSelectionMerge %1166 None
-OpBranchConditional %1063 %1165 %1137
-%1137 = OpLabel
-%1065 = OpIEqual %45 %21 %1066
-OpSelectionMerge %1164 None
-OpBranchConditional %1065 %1163 %1138
-%1138 = OpLabel
-%1067 = OpIEqual %45 %21 %1068
-OpSelectionMerge %1162 None
-OpBranchConditional %1067 %1161 %1139
-%1139 = OpLabel
-%1069 = OpIEqual %45 %21 %1070
-OpSelectionMerge %1160 None
-OpBranchConditional %1069 %1159 %1140
-%1140 = OpLabel
-%1071 = OpIEqual %45 %21 %1072
-OpSelectionMerge %1158 None
-OpBranchConditional %1071 %1157 %1141
-%1141 = OpLabel
-%1073 = OpIEqual %45 %21 %1074
-OpSelectionMerge %1156 None
-OpBranchConditional %1073 %1155 %1142
-%1142 = OpLabel
-%1075 = OpIEqual %45 %21 %70
-OpSelectionMerge %1154 None
-OpBranchConditional %1075 %1153 %1143
-%1143 = OpLabel
-%1076 = OpIEqual %45 %21 %1077
-OpSelectionMerge %1152 None
-OpBranchConditional %1076 %1151 %1144
-%1144 = OpLabel
-%1078 = OpIEqual %45 %21 %1079
-OpSelectionMerge %1150 None
-OpBranchConditional %1078 %1149 %1145
-%1145 = OpLabel
-%1080 = OpIEqual %45 %21 %1081
-OpSelectionMerge %1148 None
-OpBranchConditional %1080 %1147 %1146
-%1146 = OpLabel
-OpStore %960 %653
-OpBranch %1148
-%1147 = OpLabel
+OpSelectionMerge %1035 None
+OpSwitch %21 %1034 0 %1033 1 %1032 2 %1031 3 %1030 4 %1029 5 %1028 6 %1027 7 %1026 8 %1025 9 %1024 10 %1023 11 %1022 12 %1021 13 %1020 14 %1019 15 %1018 16 %1017 17 %1016 18 %1015 19 %1014 20 %1013 21 %1012 22 %1011 23 %1010 24 %1009 25 %1008 26 %1007 27 %1006 28 %1005 29 %1004 30 %1003 31 %1002 32 %1001 33 %1000 34 %999 35 %998 36 %997 37 %996 38 %995 39 %994 40 %993 41 %992 42 %991 43 %990 44 %989 45 %988 46 %987 47 %986 48 %985 49 %984 50 %983 51 %982 52 %981 53 %980 54 %979 55 %978 56 %977 57 %976 58 %975 59 %974
+%974 = OpLabel
 OpStore %960 %79
-OpBranch %1148
-%1148 = OpLabel
-OpBranch %1150
-%1149 = OpLabel
+OpBranch %1035
+%975 = OpLabel
 OpStore %960 %78
-OpBranch %1150
-%1150 = OpLabel
-OpBranch %1152
-%1151 = OpLabel
+OpBranch %1035
+%976 = OpLabel
 OpStore %960 %77
-OpBranch %1152
-%1152 = OpLabel
-OpBranch %1154
-%1153 = OpLabel
+OpBranch %1035
+%977 = OpLabel
 OpStore %960 %76
-OpBranch %1154
-%1154 = OpLabel
-OpBranch %1156
-%1155 = OpLabel
+OpBranch %1035
+%978 = OpLabel
 %80 = OpCompositeExtract %28 %30 0
 %81 = OpCompositeExtract %28 %30 1
 %82 = OpCompositeExtract %28 %30 2
@@ -1367,10 +953,8 @@ OpBranch %1156
 %167 = OpSelect %28 %166 %108 %89
 %168 = OpCompositeInsert %29 %167 %141 2
 OpStore %960 %168
-OpBranch %1156
-%1156 = OpLabel
-OpBranch %1158
-%1157 = OpLabel
+OpBranch %1035
+%979 = OpLabel
 %169 = OpCompositeExtract %28 %30 0
 %170 = OpCompositeExtract %28 %30 1
 %171 = OpCompositeExtract %28 %30 2
@@ -1453,10 +1037,8 @@ OpBranch %1158
 %248 = OpSelect %28 %247 %108 %89
 %249 = OpCompositeInsert %29 %248 %222 2
 OpStore %960 %249
-OpBranch %1158
-%1158 = OpLabel
-OpBranch %1160
-%1159 = OpLabel
+OpBranch %1035
+%980 = OpLabel
 %250 = OpCompositeExtract %28 %30 0
 %251 = OpCompositeExtract %28 %30 1
 %252 = OpCompositeExtract %28 %30 2
@@ -1483,10 +1065,8 @@ OpBranch %1160
 %273 = OpCompositeInsert %97 %265 %272 7
 %274 = OpSelect %29 %273 %37 %44
 OpStore %960 %274
-OpBranch %1160
-%1160 = OpLabel
-OpBranch %1162
-%1161 = OpLabel
+OpBranch %1035
+%981 = OpLabel
 %275 = OpCompositeExtract %28 %37 0
 %276 = OpCompositeExtract %28 %37 1
 %277 = OpCompositeExtract %28 %37 2
@@ -1561,10 +1141,8 @@ OpBranch %1162
 %346 = OpCompositeInsert %29 %338 %345 6
 %347 = OpCompositeInsert %29 %339 %346 7
 OpStore %960 %347
-OpBranch %1162
-%1162 = OpLabel
-OpBranch %1164
-%1163 = OpLabel
+OpBranch %1035
+%982 = OpLabel
 %348 = OpCompositeExtract %28 %37 0
 %349 = OpCompositeExtract %28 %37 1
 %350 = OpCompositeExtract %28 %37 2
@@ -1639,10 +1217,8 @@ OpBranch %1164
 %419 = OpCompositeInsert %29 %411 %418 6
 %420 = OpCompositeInsert %29 %412 %419 7
 OpStore %960 %420
-OpBranch %1164
-%1164 = OpLabel
-OpBranch %1166
-%1165 = OpLabel
+OpBranch %1035
+%983 = OpLabel
 %421 = OpCompositeExtract %28 %30 0
 %425 = OpCompositeConstruct %424 %421 %89
 %423 = OpExtInst %5 %422 PackHalf2x16 %425
@@ -1677,10 +1253,8 @@ OpBranch %1166
 %455 = OpCompositeInsert %6 %453 %451 7
 %456 = OpBitcast %29 %455
 OpStore %960 %456
-OpBranch %1166
-%1166 = OpLabel
-OpBranch %1168
-%1167 = OpLabel
+OpBranch %1035
+%984 = OpLabel
 %457 = OpCompositeExtract %28 %30 0
 %458 = OpCompositeExtract %28 %30 1
 %459 = OpCompositeExtract %28 %30 2
@@ -1722,10 +1296,8 @@ OpBranch %1168
 %495 = OpCompositeExtract %28 %494 0
 %496 = OpCompositeInsert %29 %495 %493 7
 OpStore %960 %496
-OpBranch %1168
-%1168 = OpLabel
-OpBranch %1170
-%1169 = OpLabel
+OpBranch %1035
+%985 = OpLabel
 %497 = OpCompositeExtract %28 %30 0
 %498 = OpCompositeExtract %28 %30 1
 %499 = OpCompositeExtract %28 %30 2
@@ -1753,10 +1325,8 @@ OpBranch %1170
 %521 = OpExtInst %6 %422 FindILsb %520
 %522 = OpBitcast %29 %521
 OpStore %960 %522
-OpBranch %1170
-%1170 = OpLabel
-OpBranch %1172
-%1171 = OpLabel
+OpBranch %1035
+%986 = OpLabel
 %523 = OpCompositeExtract %28 %30 0
 %524 = OpCompositeExtract %28 %30 1
 %525 = OpCompositeExtract %28 %30 2
@@ -1790,10 +1360,8 @@ OpBranch %1172
 %557 = OpBitcast %29 %555
 %558 = OpSelect %29 %556 %560 %557
 OpStore %960 %558
-OpBranch %1172
-%1172 = OpLabel
-OpBranch %1174
-%1173 = OpLabel
+OpBranch %1035
+%987 = OpLabel
 %561 = OpCompositeExtract %28 %30 0
 %562 = OpCompositeExtract %28 %30 1
 %563 = OpCompositeExtract %28 %30 2
@@ -1821,10 +1389,8 @@ OpBranch %1174
 %585 = OpBitCount %6 %584
 %586 = OpBitcast %29 %585
 OpStore %960 %586
-OpBranch %1174
-%1174 = OpLabel
-OpBranch %1176
-%1175 = OpLabel
+OpBranch %1035
+%988 = OpLabel
 %587 = OpCompositeExtract %28 %30 0
 %588 = OpCompositeExtract %28 %30 1
 %589 = OpCompositeExtract %28 %30 2
@@ -1852,10 +1418,8 @@ OpBranch %1176
 %611 = OpBitReverse %6 %610
 %612 = OpBitcast %29 %611
 OpStore %960 %612
-OpBranch %1176
-%1176 = OpLabel
-OpBranch %1178
-%1177 = OpLabel
+OpBranch %1035
+%989 = OpLabel
 %613 = OpDot %28 %30 %37
 %614 = OpCompositeInsert %29 %613 %114 0
 %615 = OpDot %28 %30 %44
@@ -1863,10 +1427,8 @@ OpBranch %1178
 %617 = OpDot %28 %37 %44
 %618 = OpCompositeInsert %29 %617 %616 2
 OpStore %960 %618
-OpBranch %1178
-%1178 = OpLabel
-OpBranch %1180
-%1179 = OpLabel
+OpBranch %1035
+%990 = OpLabel
 %619 = OpExtInst %29 %422 Trunc %30
 %620 = OpFSub %29 %622 %619
 %623 = OpConvertFToS %6 %619
@@ -1898,17 +1460,13 @@ OpBranch %1180
 %649 = OpFAdd %29 %30 %620
 %650 = OpFAdd %29 %649 %648
 OpStore %960 %650
-OpBranch %1180
-%1180 = OpLabel
-OpBranch %1182
-%1181 = OpLabel
+OpBranch %1035
+%991 = OpLabel
 %651 = OpFOrdLessThan %97 %37 %30
 %652 = OpSelect %29 %651 %653 %654
 OpStore %960 %652
-OpBranch %1182
-%1182 = OpLabel
-OpBranch %1184
-%1183 = OpLabel
+OpBranch %1035
+%992 = OpLabel
 %655 = OpFSub %29 %37 %30
 %656 = OpFSub %29 %44 %30
 %657 = OpFDiv %29 %656 %655
@@ -1918,10 +1476,8 @@ OpBranch %1184
 %666 = OpFMul %29 %659 %659
 %667 = OpFMul %29 %666 %663
 OpStore %960 %667
-OpBranch %1184
-%1184 = OpLabel
-OpBranch %1186
-%1185 = OpLabel
+OpBranch %1035
+%993 = OpLabel
 %668 = OpFOrdGreaterThan %97 %30 %653
 %669 = OpFOrdLessThan %97 %30 %653
 %672 = OpSelect %6 %668 %671 %670
@@ -1929,32 +1485,24 @@ OpBranch %1186
 %674 = OpISub %6 %672 %673
 %675 = OpConvertSToF %29 %674
 OpStore %960 %675
-OpBranch %1186
-%1186 = OpLabel
-OpBranch %1188
-%1187 = OpLabel
+OpBranch %1035
+%994 = OpLabel
 %676 = OpFDiv %29 %654 %30
 OpStore %960 %676
-OpBranch %1188
-%1188 = OpLabel
-OpBranch %1190
-%1189 = OpLabel
+OpBranch %1035
+%995 = OpLabel
 %677 = OpExtInst %29 %422 Log2 %30
 %678 = OpFMul %29 %677 %37
 %679 = OpExtInst %29 %422 Exp2 %678
 OpStore %960 %679
-OpBranch %1190
-%1190 = OpLabel
-OpBranch %1192
-%1191 = OpLabel
+OpBranch %1035
+%996 = OpLabel
 %680 = OpFSub %29 %37 %30
 %681 = OpFMul %29 %44 %680
 %682 = OpFAdd %29 %681 %30
 OpStore %960 %682
-OpBranch %1192
-%1192 = OpLabel
-OpBranch %1194
-%1193 = OpLabel
+OpBranch %1035
+%997 = OpLabel
 %683 = OpFDiv %29 %30 %37
 %684 = OpFSub %29 %622 %683
 %685 = OpFOrdGreaterThanEqual %97 %683 %684
@@ -1964,29 +1512,21 @@ OpBranch %1194
 %689 = OpSelect %29 %685 %687 %688
 %690 = OpFMul %29 %689 %37
 OpStore %960 %690
-OpBranch %1194
-%1194 = OpLabel
-OpBranch %1196
-%1195 = OpLabel
+OpBranch %1035
+%998 = OpLabel
 %691 = OpExtInst %29 %422 NMax %30 %37
 %692 = OpExtInst %29 %422 NMin %691 %44
 OpStore %960 %692
-OpBranch %1196
-%1196 = OpLabel
-OpBranch %1198
-%1197 = OpLabel
+OpBranch %1035
+%999 = OpLabel
 %693 = OpFMul %29 %30 %695
 OpStore %960 %693
-OpBranch %1198
-%1198 = OpLabel
-OpBranch %1200
-%1199 = OpLabel
+OpBranch %1035
+%1000 = OpLabel
 %696 = OpFMul %29 %30 %698
 OpStore %960 %696
-OpBranch %1200
-%1200 = OpLabel
-OpBranch %1202
-%1201 = OpLabel
+OpBranch %1035
+%1001 = OpLabel
 %699 = OpFDiv %29 %30 %37
 %700 = OpExtInst %29 %422 Atan %699
 %701 = OpFAdd %29 %700 %703
@@ -2004,30 +1544,20 @@ OpBranch %1202
 %719 = OpLogicalAnd %97 %708 %709
 %720 = OpSelect %29 %719 %722 %716
 OpStore %960 %720
-OpBranch %1202
-%1202 = OpLabel
-OpBranch %1204
-%1203 = OpLabel
+OpBranch %1035
+%1002 = OpLabel
 OpStore %960 %64
-OpBranch %1204
-%1204 = OpLabel
-OpBranch %1206
-%1205 = OpLabel
+OpBranch %1035
+%1003 = OpLabel
 OpStore %960 %66
-OpBranch %1206
-%1206 = OpLabel
-OpBranch %1208
-%1207 = OpLabel
+OpBranch %1035
+%1004 = OpLabel
 OpStore %960 %67
-OpBranch %1208
-%1208 = OpLabel
-OpBranch %1210
-%1209 = OpLabel
+OpBranch %1035
+%1005 = OpLabel
 OpStore %960 %68
-OpBranch %1210
-%1210 = OpLabel
-OpBranch %1212
-%1211 = OpLabel
+OpBranch %1035
+%1006 = OpLabel
 %723 = OpCompositeExtract %28 %44 0
 %724 = OpCompositeExtract %28 %44 1
 %725 = OpCompositeExtract %28 %44 2
@@ -2126,136 +1656,92 @@ OpBranch %1212
 %821 = OpCompositeInsert %29 %813 %820 6
 %822 = OpCompositeInsert %29 %814 %821 7
 OpStore %960 %822
-OpBranch %1212
-%1212 = OpLabel
-OpBranch %1214
-%1213 = OpLabel
+OpBranch %1035
+%1007 = OpLabel
 %823 = OpExtInst %29 %422 Fma %30 %37 %44
 OpStore %960 %823
-OpBranch %1214
-%1214 = OpLabel
-OpBranch %1216
-%1215 = OpLabel
+OpBranch %1035
+%1008 = OpLabel
 %824 = OpExtInst %29 %422 NMin %30 %37
 OpStore %960 %824
-OpBranch %1216
-%1216 = OpLabel
-OpBranch %1218
-%1217 = OpLabel
+OpBranch %1035
+%1009 = OpLabel
 %825 = OpExtInst %29 %422 NMax %30 %37
 OpStore %960 %825
-OpBranch %1218
-%1218 = OpLabel
-OpBranch %1220
-%1219 = OpLabel
+OpBranch %1035
+%1010 = OpLabel
 %826 = OpExtInst %29 %422 Floor %30
 OpStore %960 %826
-OpBranch %1220
-%1220 = OpLabel
-OpBranch %1222
-%1221 = OpLabel
+OpBranch %1035
+%1011 = OpLabel
 %827 = OpExtInst %29 %422 Ceil %30
 OpStore %960 %827
-OpBranch %1222
-%1222 = OpLabel
-OpBranch %1224
-%1223 = OpLabel
+OpBranch %1035
+%1012 = OpLabel
 %828 = OpExtInst %29 %422 Trunc %30
 OpStore %960 %828
-OpBranch %1224
-%1224 = OpLabel
-OpBranch %1226
-%1225 = OpLabel
+OpBranch %1035
+%1013 = OpLabel
 %829 = OpExtInst %29 %422 RoundEven %30
 OpStore %960 %829
-OpBranch %1226
-%1226 = OpLabel
-OpBranch %1228
-%1227 = OpLabel
+OpBranch %1035
+%1014 = OpLabel
 %830 = OpExtInst %29 %422 InverseSqrt %30
 OpStore %960 %830
-OpBranch %1228
-%1228 = OpLabel
-OpBranch %1230
-%1229 = OpLabel
+OpBranch %1035
+%1015 = OpLabel
 %831 = OpExtInst %29 %422 Sqrt %30
 OpStore %960 %831
-OpBranch %1230
-%1230 = OpLabel
-OpBranch %1232
-%1231 = OpLabel
+OpBranch %1035
+%1016 = OpLabel
 %832 = OpExtInst %29 %422 Log2 %30
 OpStore %960 %832
-OpBranch %1232
-%1232 = OpLabel
-OpBranch %1234
-%1233 = OpLabel
+OpBranch %1035
+%1017 = OpLabel
 %833 = OpExtInst %29 %422 Fract %30
 OpStore %960 %833
-OpBranch %1234
-%1234 = OpLabel
-OpBranch %1236
-%1235 = OpLabel
+OpBranch %1035
+%1018 = OpLabel
 %834 = OpExtInst %29 %422 Exp2 %30
 OpStore %960 %834
-OpBranch %1236
-%1236 = OpLabel
-OpBranch %1238
-%1237 = OpLabel
+OpBranch %1035
+%1019 = OpLabel
 %835 = OpExtInst %29 %422 Tanh %30
 OpStore %960 %835
-OpBranch %1238
-%1238 = OpLabel
-OpBranch %1240
-%1239 = OpLabel
+OpBranch %1035
+%1020 = OpLabel
 %836 = OpExtInst %29 %422 Sinh %30
 OpStore %960 %836
-OpBranch %1240
-%1240 = OpLabel
-OpBranch %1242
-%1241 = OpLabel
+OpBranch %1035
+%1021 = OpLabel
 %837 = OpExtInst %29 %422 Cosh %30
 OpStore %960 %837
-OpBranch %1242
-%1242 = OpLabel
-OpBranch %1244
-%1243 = OpLabel
+OpBranch %1035
+%1022 = OpLabel
 %838 = OpExtInst %29 %422 Atan %30
 OpStore %960 %838
-OpBranch %1244
-%1244 = OpLabel
-OpBranch %1246
-%1245 = OpLabel
+OpBranch %1035
+%1023 = OpLabel
 %839 = OpExtInst %29 %422 Asin %30
 OpStore %960 %839
-OpBranch %1246
-%1246 = OpLabel
-OpBranch %1248
-%1247 = OpLabel
+OpBranch %1035
+%1024 = OpLabel
 %840 = OpExtInst %29 %422 Acos %30
 OpStore %960 %840
-OpBranch %1248
-%1248 = OpLabel
-OpBranch %1250
-%1249 = OpLabel
+OpBranch %1035
+%1025 = OpLabel
 %841 = OpExtInst %29 %422 Tan %30
 OpStore %960 %841
-OpBranch %1250
-%1250 = OpLabel
-OpBranch %1252
-%1251 = OpLabel
+OpBranch %1035
+%1026 = OpLabel
 %842 = OpExtInst %29 %422 Sin %30
 OpStore %960 %842
-OpBranch %1252
-%1252 = OpLabel
-OpBranch %1254
-%1253 = OpLabel
+OpBranch %1035
+%1027 = OpLabel
 %843 = OpExtInst %29 %422 Cos %30
 OpStore %960 %843
-OpBranch %1254
-%1254 = OpLabel
-OpBranch %1256
-%1255 = OpLabel
+OpBranch %1035
+%1028 = OpLabel
 %844 = OpExtInst %29 %422 FAbs %30
 %849 = OpFOrdGreaterThanEqual %97 %844 %846
 %850 = OpFOrdLessThan %97 %844 %848
@@ -2285,10 +1771,8 @@ OpBranch %1256
 %874 = OpCompositeInsert %29 %866 %873 6
 %875 = OpCompositeInsert %29 %867 %874 7
 OpStore %960 %875
-OpBranch %1256
-%1256 = OpLabel
-OpBranch %1258
-%1257 = OpLabel
+OpBranch %1035
+%1029 = OpLabel
 %876 = OpIsNan %97 %30
 %877 = OpIsInf %97 %30
 %878 = OpLogicalOr %97 %876 %877
@@ -2318,10 +1802,8 @@ OpBranch %1258
 %902 = OpCompositeInsert %29 %894 %901 6
 %903 = OpCompositeInsert %29 %895 %902 7
 OpStore %960 %903
-OpBranch %1258
-%1258 = OpLabel
-OpBranch %1260
-%1259 = OpLabel
+OpBranch %1035
+%1030 = OpLabel
 %904 = OpIsInf %97 %30
 %905 = OpCompositeExtract %45 %904 0
 %906 = OpCompositeExtract %45 %904 1
@@ -2348,10 +1830,8 @@ OpBranch %1260
 %927 = OpCompositeInsert %29 %919 %926 6
 %928 = OpCompositeInsert %29 %920 %927 7
 OpStore %960 %928
-OpBranch %1260
-%1260 = OpLabel
-OpBranch %1262
-%1261 = OpLabel
+OpBranch %1035
+%1031 = OpLabel
 %929 = OpIsNan %97 %30
 %930 = OpCompositeExtract %45 %929 0
 %931 = OpCompositeExtract %45 %929 1
@@ -2378,22 +1858,21 @@ OpBranch %1262
 %952 = OpCompositeInsert %29 %944 %951 6
 %953 = OpCompositeInsert %29 %945 %952 7
 OpStore %960 %953
-OpBranch %1262
-%1262 = OpLabel
-OpBranch %1264
-%1263 = OpLabel
+OpBranch %1035
+%1032 = OpLabel
 %954 = OpExtInst %29 %422 NClamp %30 %658 %654
 OpStore %960 %954
-OpBranch %1264
-%1264 = OpLabel
-OpBranch %1266
-%1265 = OpLabel
+OpBranch %1035
+%1033 = OpLabel
 %955 = OpExtInst %29 %422 FAbs %30
 OpStore %960 %955
-OpBranch %1266
-%1266 = OpLabel
-OpBranch %1267
-%1267 = OpLabel
+OpBranch %1035
+%1034 = OpLabel
+OpStore %960 %653
+OpBranch %1035
+%1035 = OpLabel
+OpBranch %1036
+%1036 = OpLabel
 %956 = OpLoad %29 %960
 %957 = OpBitcast %6 %956
 %958 = OpAccessChain %25 %14 %20 %21

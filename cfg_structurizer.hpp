@@ -333,6 +333,7 @@ private:
 
 	void run_common_preamble();
 	void rewrite_switch_blocks();
+	CFGNode *switch_block_trivially_merges(CFGNode *node);
 	void rewrite_complex_loop_successors();
 	void convert_phi_to_variables();
 	void serialize_merge_levels_for_dominated_paths(

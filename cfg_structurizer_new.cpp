@@ -385,6 +385,33 @@ void CFGStructurizer::rewrite_complex_loop_successors()
 		recompute_cfg();
 }
 
+CFGNode *CFGStructurizer::switch_block_trivially_merges(CFGNode *node)
+{
+	if (node->idom_children.empty())
+		return nullptr;
+
+	// A candidate will have the lowest possible post visit order (since all other nodes will reach it).
+	CFGNode *direct_merge_candidate = node->idom_children.front();
+	for (auto *child : node->idom_children)
+		if (child->forward_post_visit_order < direct_merge_candidate->forward_post_visit_order)
+			direct_merge_candidate = child;
+
+	for (auto &c : node->ir.terminator.cases)
+	{
+		if (c.node == direct_merge_candidate)
+			continue;
+
+		if (c.node->dominance_frontier.size() != 1)
+			return nullptr;
+
+		auto *df = c.node->dominance_frontier.front();
+		if (df != direct_merge_candidate)
+			return nullptr;
+	}
+
+	return direct_merge_candidate;
+}
+
 void CFGStructurizer::rewrite_switch_blocks()
 {
 	bool rewrote = false;
@@ -398,6 +425,20 @@ void CFGStructurizer::rewrite_switch_blocks()
 	{
 		if (node->ir.terminator.type == Terminator::Type::Switch)
 		{
+			if (CFGNode *merge = switch_block_trivially_merges(node))
+			{
+				// Do it early, otherwise we lose information about the switch merge target.
+				if (node->pred_back_edge)
+					node = create_helper_succ_block(node);
+
+				// If we have a trivial merge block, it's still possible for other blocks to return early.
+				// Early returns may manifest as breaking out of a loop.
+				node->ir.merge_info.merge_type = MergeType::Selection;
+				node->ir.merge_info.merge_block = merge;
+				rewrote = true;
+				continue;
+			}
+
 			Terminator::Case default_case = {};
 			Vector<Terminator::Case> cases;
 			std::swap(cases, node->ir.terminator.cases);
@@ -734,7 +775,9 @@ void CFGStructurizer::analyze_levels_skippability(CFGNode *node,
 		}
 
 		// Direct branches will either just write a path variable and branch to merge node, or keep iterating.
-		assert(node->ir.terminator.type == Terminator::Type::Condition || node->pred_back_edge);
+		assert(node->ir.terminator.type == Terminator::Type::Condition ||
+			node->ir.terminator.type == Terminator::Type::Switch ||
+			node->pred_back_edge);
 	}
 
 	// Now, analyze if we can reach a level by skipping over previous levels.
@@ -1069,7 +1112,54 @@ void CFGStructurizer::route_branches(CFGNode *node,
 		return;
 	}
 
-	if (node->ir.terminator.type == Terminator::Type::Condition)
+	if (node->ir.terminator.type == Terminator::Type::Switch)
+	{
+		// If we hit this path, we have a trivial setup.
+		assert(node->ir.merge_info.merge_type == MergeType::Selection);
+		assert(node->ir.merge_info.merge_block);
+		assert(node->dominates(node->ir.merge_info.merge_block));
+		// The merge block we found is the frontier we care about.
+		assert(levels.size() == 1 && !levels.back().skippable &&
+		       !levels.back().breaking_branch && levels.back().paths.size() == 1);
+
+		auto break_levels = outer_levels;
+		break_levels.insert(break_levels.end(), levels.begin(), levels.end());
+
+#ifndef NDEBUG
+		for (auto &c : node->ir.terminator.cases)
+		{
+			// The switch must dominate everything. At most, we can break towards the switch merge block.
+			// Or we can do a long break in some special cases, but this would only happen if we
+			// dominate the case block.
+			auto *case_level = find_level_for_block(break_levels, c.node);
+			assert(!case_level || (node->dominates(c.node) && case_level->breaking_branch) ||
+			       case_level == &break_levels.back());
+		}
+#endif
+
+		auto *merge_node = pool.create_node();
+		// Reconvene execution at the merge node.
+		// This is mostly irrelevant, but it avoids special casing some other paths.
+		merge_node->name = node->name + ".merge";
+		merge_node->ir.terminator.type = Terminator::Type::Branch;
+		merge_node->ir.terminator.direct_block = node->ir.merge_info.merge_block;
+		merge_node->add_branch(node->ir.merge_info.merge_block);
+		node->ir.merge_info.merge_block = merge_node;
+
+		// We will never write to write complex path variables here, so can take easy paths.
+		Vector<CFGNode *> handled;
+		for (auto &c : node->ir.terminator.cases)
+		{
+			if (has_element(handled, c.node))
+				continue;
+			handled.push_back(c.node);
+			enter_succ(node, c.node, break_levels, merge_node);
+		}
+
+		// And now traverse post-merge paths.
+		traverse_routes(std::move(break_levels), levels.size(), merge_node, outer_merge);
+	}
+	else if (node->ir.terminator.type == Terminator::Type::Condition)
 	{
 		auto break_levels = outer_levels;
 		break_levels.insert(break_levels.end(), levels.begin(), levels.end());
