@@ -413,6 +413,12 @@ void CFGStructurizer::rewrite_switch_blocks()
 				cases.erase(itr);
 			}
 
+			// If a case label is a duplicate of default, just ignore it. It will be picked up by default path anyway.
+			auto erase_itr = std::remove_if(cases.begin(), cases.end(), [&](const Terminator::Case &c) {
+				return c.node == default_case.node;
+			});
+			cases.erase(erase_itr, cases.end());
+
 			// Pretty sure there must be a default case?
 			assert(default_case.node);
 
