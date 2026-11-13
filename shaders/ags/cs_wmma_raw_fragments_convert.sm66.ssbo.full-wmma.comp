@@ -1,0 +1,39 @@
+RWByteAddressBuffer Outputs : register(u0);
+ByteAddressBuffer Inputs : register(t0);
+RWByteAddressBuffer MAGIC : register(u0, space2147420894);
+
+#include "wmma_ags.h"
+
+WMMA_Matrix LoadRaw(uint offset, uint count)
+{
+	WMMA_Matrix m;
+	[unroll] for (uint i = 0; i < 8; i++)
+		m.v[i] = i < count ? Inputs.Load(offset + 4 * i) : 0u;
+	return m;
+}
+
+[numthreads(32, 1, 1)]
+[WaveSize(32)]
+void main(uint thr : SV_GroupIndex)
+{
+	uint base = thr * 32;
+	WMMA_Type F32Acc = WMMA_MakeType(WaveMatrixDataFormat_F32, WaveMatrixType_Accumulator, WaveMatrixShape_16X16, false);
+	WMMA_Type F16Acc = WMMA_MakeType(WaveMatrixDataFormat_F16, WaveMatrixType_Accumulator, WaveMatrixShape_16X16, false);
+	WMMA_Type FP8B = WMMA_MakeType(WaveMatrixDataFormat_FP8, WaveMatrixType_B, WaveMatrixShape_16X16, false);
+
+	// Values computed by the shader, converted element by element.
+	WMMA_Matrix C;
+	[unroll] for (uint i = 0; i < 8; i++)
+		C.v[i] = asuint(asfloat(Inputs.Load(base + 4 * i)) * 2.0);
+
+	WMMA_Matrix H = WMMA_Convert(F32Acc, F16Acc, C);
+	WMMA_Matrix Q = WMMA_Convert(F32Acc, FP8B, C);
+	WMMA_Matrix F = WMMA_Convert(FP8B, F32Acc, LoadRaw(base + 1024, 2));
+
+	[unroll] for (uint i = 0; i < 4; i++)
+		Outputs.Store(base + 4 * i, H.v[i]);
+	Outputs.Store2(base + 16, uint2(Q.v[0], Q.v[1]));
+	Outputs.Store(base + 24, AGSMagic(0x1c, 0, 1, C.v[0], 0));
+	[unroll] for (uint i = 0; i < 8; i++)
+		Outputs.Store(1024 + base + 4 * i, asuint(asfloat(F.v[i]) + 1.0));
+}
