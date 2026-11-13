@@ -9014,6 +9014,9 @@ bool Converter::Impl::analyze_instructions(llvm::Function *func, const Vector<ll
 		propagate_precise(func);
 
 	for (auto *bb : visit_order)
+		analyze_ags_raw_fragments(*this, bb);
+
+	for (auto *bb : visit_order)
 	{
 		if (options.eliminate_dead_code)
 			mark_used_values(bb->getTerminator());
