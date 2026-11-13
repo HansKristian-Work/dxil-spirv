@@ -2976,6 +2976,12 @@ static bool is_tracked_wmma_operand(const llvm::Value *value)
 
 void analyze_ags_raw_fragments(Converter::Impl &impl, const llvm::BasicBlock *bb)
 {
+	// Phase-0 calls of the sequence being collected. The inputs of a sequence are the last 12 (MulAcc) or 4 (Copy)
+	// of them before its phase-1 call: a Copy can be preceded by dummy calls with constant data, which
+	// analyze_magic_ags_instruction shifts away.
+	Vector<const llvm::CallInst *> phase0;
+	uint32_t sequence_opcode = 0;
+
 	for (auto &inst : *bb)
 	{
 		auto *call = llvm::dyn_cast<llvm::CallInst>(&inst);
@@ -2985,12 +2991,35 @@ void analyze_ags_raw_fragments(Converter::Impl &impl, const llvm::BasicBlock *bb
 			continue;
 
 		auto ags_inst = decode_ags_instruction(code);
-		if (ags_inst.phase != 0 || (ags_inst.opcode != AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixMulAcc &&
-		                            ags_inst.opcode != AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixCopy))
+		if (ags_inst.opcode != AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixMulAcc &&
+		    ags_inst.opcode != AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixCopy)
+		{
+			phase0.clear();
 			continue;
+		}
 
-		if (!is_tracked_wmma_operand(call->getOperand(5)) || !is_tracked_wmma_operand(call->getOperand(6)))
-			impl.ags.raw_fragments = true;
+		if (ags_inst.opcode != sequence_opcode)
+			phase0.clear();
+		sequence_opcode = ags_inst.opcode;
+
+		if (ags_inst.phase == 0)
+		{
+			phase0.push_back(call);
+			if (!is_tracked_wmma_operand(call->getOperand(5)) || !is_tracked_wmma_operand(call->getOperand(6)))
+				impl.ags.raw_fragments = true;
+		}
+		else if (ags_inst.phase == 1)
+		{
+			// Tracked matrices are never constants, so a shader that passes real data as constants is raw too.
+			size_t inputs = ags_inst.opcode == AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixMulAcc ? 12 : 4;
+			for (size_t i = phase0.size() > inputs ? phase0.size() - inputs : 0; i < phase0.size(); i++)
+			{
+				if (llvm::isa<llvm::Constant>(phase0[i]->getOperand(5)) ||
+				    llvm::isa<llvm::Constant>(phase0[i]->getOperand(6)))
+					impl.ags.raw_fragments = true;
+			}
+			phase0.clear();
+		}
 	}
 }
 
