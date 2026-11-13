@@ -1,0 +1,38 @@
+RWByteAddressBuffer Outputs : register(u0);
+ByteAddressBuffer Inputs : register(t0);
+RWByteAddressBuffer MAGIC : register(u0, space2147420894);
+
+#include "wmma_ags.h"
+
+// Signed int8 inputs (four per dword) and int32 accumulators, packed by the shader and used as plain values.
+WMMA_Matrix LoadRaw(uint offset, uint count)
+{
+	WMMA_Matrix m;
+	[unroll] for (uint i = 0; i < 8; i++)
+		m.v[i] = i < count ? Inputs.Load(offset + 4 * i) : 0u;
+	return m;
+}
+
+[numthreads(32, 1, 1)]
+[WaveSize(32)]
+void main(uint thr : SV_GroupIndex)
+{
+	uint base = thr * 32;
+	WMMA_Matrix A = LoadRaw(base, 2);
+	WMMA_Matrix B = LoadRaw(base + 1024, 2);
+
+	WMMA_Matrix Z;
+	[unroll] for (uint i = 0; i < 8; i++)
+		Z.v[i] = 0u;
+
+	WMMA_Matrix D = WMMA_MatMulAcc(WMMA_I32_16X16X16_I8, A, B, Z);
+
+	// A second product on the accumulator shifted left by 7.
+	WMMA_Matrix S;
+	[unroll] for (uint i = 0; i < 8; i++)
+		S.v[i] = D.v[i] << 7;
+	WMMA_Matrix E = WMMA_MatMulAcc(WMMA_I32_16X16X16_I8, LoadRaw(base + 2048, 2), LoadRaw(base + 3072, 2), S);
+
+	[unroll] for (uint i = 0; i < 8; i++)
+		Outputs.Store(base + 4 * i, E.v[i]);
+}

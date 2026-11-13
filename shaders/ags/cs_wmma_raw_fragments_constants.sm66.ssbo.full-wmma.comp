@@ -1,0 +1,31 @@
+RWByteAddressBuffer Outputs : register(u0);
+RWByteAddressBuffer MAGIC : register(u0, space2147420894);
+
+#include "wmma_ags.h"
+
+// Fragments given as compile-time constants are not tracked matrices, so they must be handled as register dwords.
+WMMA_Matrix Splat(uint value, uint count)
+{
+	WMMA_Matrix m;
+	[unroll] for (uint i = 0; i < 8; i++)
+		m.v[i] = i < count ? value : 0u;
+	return m;
+}
+
+[numthreads(32, 1, 1)]
+[WaveSize(32)]
+void main(uint thr : SV_GroupIndex)
+{
+	WMMA_Type F32Acc = WMMA_MakeType(WaveMatrixDataFormat_F32, WaveMatrixType_Accumulator, WaveMatrixShape_16X16, false);
+	WMMA_Type F16Acc = WMMA_MakeType(WaveMatrixDataFormat_F16, WaveMatrixType_Accumulator, WaveMatrixShape_16X16, false);
+
+	// e4m3 1.0 in every byte, accumulator 0.5.
+	WMMA_Matrix D = WMMA_MatMulAcc(WMMA_F32_16X16X16_FP8_FP8, Splat(0x38383838u, 2), Splat(0x38383838u, 2),
+	                               Splat(asuint(0.5), 8));
+	WMMA_Matrix H = WMMA_Convert(F32Acc, F16Acc, D);
+
+	uint base = thr * 48;
+	[unroll] for (uint i = 0; i < 8; i++)
+		Outputs.Store(base + 4 * i, D.v[i]);
+	Outputs.Store4(base + 32, uint4(H.v[0], H.v[1], H.v[2], H.v[3]));
+}

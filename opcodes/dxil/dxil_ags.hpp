@@ -515,6 +515,7 @@ static inline AgsInstruction decode_ags_instruction(uint32_t v)
 
 bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instruction);
 bool analyze_magic_ags_instruction(Converter::Impl &impl);
+void analyze_ags_raw_fragments(Converter::Impl &impl, const llvm::BasicBlock *bb);
 bool analyze_ags_wmma_store(Converter::Impl &impl, const llvm::StoreInst *store);
 spv::Id rewrite_alloca_gep_index(Converter::Impl &impl, const llvm::GetElementPtrInst *gep, spv::Id id);
 bool wmma_store_is_masked(Converter::Impl &impl, const llvm::StoreInst *inst);
@@ -578,6 +579,9 @@ struct AGSState
 	UnorderedMap<const llvm::Value *, AllocaAGSForwardingTracking> alloca_or_global_tracking;
 	spv::Id u8_array_bda_type = 0;
 	spv::Id coopmat_transpose_scratch = 0;
+	// WMMA operands built by the shader from plain dwords (the hardware register layout) rather than taken from
+	// AGS matrix loads, fills or results: every operand is rebuilt from its dwords and every result extracted.
+	bool raw_fragments = false;
 
 	void reset()
 	{
