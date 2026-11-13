@@ -251,6 +251,15 @@ void CFGStructurizer::convert_phi_to_variables()
 			auto *load_phi = module.allocate_op(spv::OpLoad, phi.id, phi.type_id);
 			load_phi->add_id(alloca_id);
 			node->ir.operations.insert(node->ir.operations.begin(), load_phi);
+
+			auto *idom = node->immediate_dominator;
+			if (auto *header = idom && idom->immediate_dominator ? idom->get_immediate_dominator_loop_header() : nullptr)
+			{
+				auto *reset_op = module.allocate_op(spv::OpStore);
+				reset_op->add_id(alloca_id);
+				reset_op->add_id(module.get_builder().createUndefinedConstant(phi.type_id));
+				header->ir.operations.insert(header->ir.operations.begin(), reset_op);
+			}
 		}
 
 		node->ir.phi.clear();
