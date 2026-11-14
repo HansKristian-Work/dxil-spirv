@@ -9,10 +9,7 @@
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 uint _44;
-uint _45;
-uint _49;
-uint _50;
-uvec4 _53;
+uvec4 _50;
 
 layout(set = 0, binding = 0, std430) readonly buffer SSBO
 {
@@ -39,13 +36,13 @@ void main()
     uvec4 _33 = uvec4(findMSB(_10._m0[0u]));
     uvec4 _42 = mix(uvec4(31u) - _33, uvec4(4294967295u), equal(_33, uvec4(4294967295u)));
     _27._m0[0u] = mix(uvec4(31u, 31u, 0u, 0u) - _42, uvec4(4294967295u, 4294967295u, 0u, 0u), equal(_42, uvec4(4294967295u))).xy;
-    uvec2 _60 = uvec2(findMSB(uvec2(_16._m0[0u])));
-    uvec2 _67 = mix(uvec2(15u) - _60, uvec2(4294967295u), equal(_60, uvec2(4294967295u)));
-    _27._m0[1u] = mix(uvec2(15u) - _67, uvec2(4294967295u), equal(_67, uvec2(4294967295u)));
-    uvec4 _77 = uvec4(findMSB((_22._m0[0u])));
-    uvec2 _83 = uvec2(max(ivec2(_77.xz), ivec2(_77.yw | uvec2(32u))));
-    uvec2 _88 = mix(uvec2(63u) - _83, uvec2(4294967295u), equal(_83, uvec2(4294967295u)));
-    _27._m0[2u] = mix(uvec2(63u) - _88, uvec2(4294967295u), equal(_88, uvec2(4294967295u)));
+    uvec2 _57 = uvec2(findMSB(uvec2(_16._m0[0u])));
+    uvec2 _64 = mix(uvec2(15u) - _57, uvec2(4294967295u), equal(_57, uvec2(4294967295u)));
+    _27._m0[1u] = mix(uvec2(15u) - _64, uvec2(4294967295u), equal(_64, uvec2(4294967295u)));
+    uvec4 _74 = uvec4(findMSB((_22._m0[0u])));
+    uvec2 _80 = uvec2(max(ivec2(_74.xz), ivec2(_74.yw | uvec2(32u))));
+    uvec2 _85 = mix(uvec2(63u) - _80, uvec2(4294967295u), equal(_80, uvec2(4294967295u)));
+    _27._m0[2u] = mix(uvec2(63u) - _85, uvec2(4294967295u), equal(_85, uvec2(4294967295u)));
 }
 
 
@@ -54,7 +51,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 95
+; Bound: 92
 ; Schema: 0
 OpCapability Shader
 OpCapability Int64
@@ -128,69 +125,66 @@ OpDecorate %27 NonReadable
 %40 = OpConstant %5 31
 %41 = OpConstantComposite %6 %40 %40 %40 %40
 %44 = OpUndef %5
-%45 = OpUndef %5
-%46 = OpConstantComposite %6 %40 %40 %44 %45
-%49 = OpUndef %5
-%50 = OpUndef %5
-%51 = OpConstantComposite %6 %37 %37 %49 %50
-%54 = OpTypePointer StorageBuffer %23
-%56 = OpTypePointer StorageBuffer %12
-%61 = OpTypeVector %34 2
-%63 = OpConstantComposite %23 %37 %37
-%65 = OpConstant %5 15
-%66 = OpConstantComposite %23 %65 %65
-%71 = OpConstant %5 1
-%73 = OpTypePointer StorageBuffer %18
-%81 = OpConstant %5 32
-%82 = OpConstantComposite %23 %81 %81
-%86 = OpConstant %5 63
-%87 = OpConstantComposite %23 %86 %86
-%92 = OpConstant %5 2
+%45 = OpConstantComposite %6 %40 %40 %44 %44
+%48 = OpConstantComposite %6 %37 %37 %44 %44
+%51 = OpTypePointer StorageBuffer %23
+%53 = OpTypePointer StorageBuffer %12
+%58 = OpTypeVector %34 2
+%60 = OpConstantComposite %23 %37 %37
+%62 = OpConstant %5 15
+%63 = OpConstantComposite %23 %62 %62
+%68 = OpConstant %5 1
+%70 = OpTypePointer StorageBuffer %18
+%78 = OpConstant %5 32
+%79 = OpConstantComposite %23 %78 %78
+%83 = OpConstant %5 63
+%84 = OpConstantComposite %23 %83 %83
+%89 = OpConstant %5 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%53 = OpUndef %6
-OpBranch %94
-%94 = OpLabel
+%50 = OpUndef %6
+OpBranch %91
+%91 = OpLabel
 %30 = OpAccessChain %29 %10 %28 %28
 %31 = OpLoad %6 %30 NonPrivatePointer
 %33 = OpExtInst %6 %32 FindUMsb %31
 %36 = OpIEqual %35 %33 %38
 %39 = OpISub %6 %41 %33
 %42 = OpSelect %6 %36 %38 %39
-%43 = OpISub %6 %46 %42
-%47 = OpIEqual %35 %42 %38
-%48 = OpSelect %6 %47 %51 %43
-%52 = OpVectorShuffle %23 %48 %53 0 1
-%55 = OpAccessChain %54 %27 %28 %28
-OpStore %55 %52 NonPrivatePointer
-%57 = OpAccessChain %56 %16 %28 %28
-%58 = OpLoad %12 %57 NonPrivatePointer
-%59 = OpUConvert %23 %58
-%60 = OpExtInst %23 %32 FindUMsb %59
-%62 = OpIEqual %61 %60 %63
-%64 = OpISub %23 %66 %60
-%67 = OpSelect %23 %62 %63 %64
-%68 = OpISub %23 %66 %67
-%69 = OpIEqual %61 %67 %63
-%70 = OpSelect %23 %69 %63 %68
-%72 = OpAccessChain %54 %27 %28 %71
-OpStore %72 %70 NonPrivatePointer
-%74 = OpAccessChain %73 %22 %28 %28
-%75 = OpLoad %18 %74 NonPrivatePointer
-%76 = OpBitcast %6 %75
-%77 = OpExtInst %6 %32 FindUMsb %76
-%78 = OpVectorShuffle %23 %77 %77 0 2
-%79 = OpVectorShuffle %23 %77 %77 1 3
-%80 = OpBitwiseOr %23 %79 %82
-%83 = OpExtInst %23 %32 SMax %78 %80
-%84 = OpIEqual %61 %83 %63
-%85 = OpISub %23 %87 %83
-%88 = OpSelect %23 %84 %63 %85
-%89 = OpISub %23 %87 %88
-%90 = OpIEqual %61 %88 %63
-%91 = OpSelect %23 %90 %63 %89
-%93 = OpAccessChain %54 %27 %28 %92
-OpStore %93 %91 NonPrivatePointer
+%43 = OpISub %6 %45 %42
+%46 = OpIEqual %35 %42 %38
+%47 = OpSelect %6 %46 %48 %43
+%49 = OpVectorShuffle %23 %47 %50 0 1
+%52 = OpAccessChain %51 %27 %28 %28
+OpStore %52 %49 NonPrivatePointer
+%54 = OpAccessChain %53 %16 %28 %28
+%55 = OpLoad %12 %54 NonPrivatePointer
+%56 = OpUConvert %23 %55
+%57 = OpExtInst %23 %32 FindUMsb %56
+%59 = OpIEqual %58 %57 %60
+%61 = OpISub %23 %63 %57
+%64 = OpSelect %23 %59 %60 %61
+%65 = OpISub %23 %63 %64
+%66 = OpIEqual %58 %64 %60
+%67 = OpSelect %23 %66 %60 %65
+%69 = OpAccessChain %51 %27 %28 %68
+OpStore %69 %67 NonPrivatePointer
+%71 = OpAccessChain %70 %22 %28 %28
+%72 = OpLoad %18 %71 NonPrivatePointer
+%73 = OpBitcast %6 %72
+%74 = OpExtInst %6 %32 FindUMsb %73
+%75 = OpVectorShuffle %23 %74 %74 0 2
+%76 = OpVectorShuffle %23 %74 %74 1 3
+%77 = OpBitwiseOr %23 %76 %79
+%80 = OpExtInst %23 %32 SMax %75 %77
+%81 = OpIEqual %58 %80 %60
+%82 = OpISub %23 %84 %80
+%85 = OpSelect %23 %81 %60 %82
+%86 = OpISub %23 %84 %85
+%87 = OpIEqual %58 %85 %60
+%88 = OpSelect %23 %87 %60 %86
+%90 = OpAccessChain %51 %27 %28 %89
+OpStore %90 %88 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 #endif

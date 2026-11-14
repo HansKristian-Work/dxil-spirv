@@ -1133,7 +1133,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 					component_ids[i] = load_op->id;
 				}
 				else
-					component_ids[i] = builder.createUndefined(extracted_id_type);
+					component_ids[i] = builder.createUndefinedConstant(extracted_id_type);
 			}
 
 			if (vectorized_load)
@@ -1197,7 +1197,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 					first_load = false;
 				}
 				else
-					component_ids[i] = builder.createUndefined(builder.makeUintType(32));
+					component_ids[i] = builder.createUndefinedConstant(builder.makeUintType(32));
 			}
 
 			if (sparse)
@@ -1227,7 +1227,7 @@ bool emit_buffer_load_instruction(Converter::Impl &impl, const llvm::CallInst *i
 					for (unsigned i = 0; i < conservative_num_elements; i++)
 						op->add_id(component_ids[i]);
 					for (unsigned i = conservative_num_elements; i < 4; i++)
-						op->add_id(builder.createUndefined(impl.get_type_id(element_type)));
+						op->add_id(builder.createUndefinedConstant(impl.get_type_id(element_type)));
 				}
 				op->add_id(sparse_code_id);
 				impl.add(op);
