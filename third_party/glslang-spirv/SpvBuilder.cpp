@@ -1421,10 +1421,14 @@ Id Builder::createUndefined(Id type)
 
 Id Builder::createUndefinedConstant(Id type)
 {
-  Instruction* inst = new Instruction(getUniqueId(), type, OpUndef);
-  constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(inst));
-  module.mapInstruction(inst);
-  return inst->getResultId();
+    for (auto &c : constantsTypesGlobals)
+        if (c->getOpCode() == OpUndef && c->getTypeId() == type)
+            return c->getResultId();
+
+    Instruction *inst = new Instruction(getUniqueId(), type, OpUndef);
+    constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(inst));
+    module.mapInstruction(inst);
+    return inst->getResultId();
 }
 
 // Comments in header

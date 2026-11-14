@@ -39,6 +39,11 @@ void main()
         _87 = _32.x;
         _88 = _32.y;
     }
+    else
+    {
+        _87 = _38;
+        _88 = _38;
+    }
     if (gl_FragCoord.x > 1100.0)
     {
         uint _42 = (_88 * 1000u) + _87;
@@ -63,7 +68,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 95
+; Bound: 96
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -123,9 +128,13 @@ OpBranch %89
 %19 = OpFOrdGreaterThan %18 %17 %20
 %21 = OpFOrdGreaterThan %18 %17 %22
 OpBeginInvocationInterlockEXT
-OpSelectionMerge %91 None
-OpBranchConditional %19 %90 %91
+OpSelectionMerge %92 None
+OpBranchConditional %19 %91 %90
 %90 = OpLabel
+OpStore %87 %38
+OpStore %88 %38
+OpBranch %92
+%91 = OpLabel
 %24 = OpImageRead %23 %13 %16 MakeTexelVisible|NonPrivateTexel %25
 %26 = OpCompositeExtract %5 %24 0
 %28 = OpIAdd %5 %16 %29
@@ -138,13 +147,13 @@ OpBranchConditional %19 %90 %91
 OpImageWrite %13 %16 %36 MakeTexelAvailable|NonPrivateTexel %25
 OpStore %87 %33
 OpStore %88 %34
-OpBranch %91
-%91 = OpLabel
+OpBranch %92
+%92 = OpLabel
 %39 = OpLoad %5 %88
 %37 = OpLoad %5 %87
-OpSelectionMerge %93 None
-OpBranchConditional %21 %92 %93
-%92 = OpLabel
+OpSelectionMerge %94 None
+OpBranchConditional %21 %93 %94
+%93 = OpLabel
 %40 = OpIMul %5 %39 %41
 %42 = OpIAdd %5 %40 %37
 %43 = OpShiftLeftLogical %5 %42 %44
@@ -183,10 +192,10 @@ OpImageWrite %13 %83 %82 MakeTexelAvailable|NonPrivateTexel %25
 %84 = OpCompositeConstruct %23 %76 %76 %76 %76
 %85 = OpIAdd %5 %78 %66
 OpImageWrite %13 %85 %84 MakeTexelAvailable|NonPrivateTexel %25
-OpBranch %93
-%93 = OpLabel
 OpBranch %94
 %94 = OpLabel
+OpBranch %95
+%95 = OpLabel
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd
