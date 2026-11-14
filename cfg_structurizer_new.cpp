@@ -1924,6 +1924,10 @@ void CFGStructurizer::cleanup_degenerate_blocks()
 			if (succ->succ_back_edge || succ->pred_back_edge)
 				return;
 
+			// Rewriting PHIs is annoying at this point, and it's extremely unlikely we should remove this block anyway.
+			if (!succ->ir.phi.empty())
+				return;
+
 			if (node->dominates(succ) && !has_element(merge_blocks, succ))
 			{
 				// Cannot fuse operations if it needs to be executed conditionally.
