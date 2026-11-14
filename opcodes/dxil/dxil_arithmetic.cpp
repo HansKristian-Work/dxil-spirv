@@ -52,10 +52,10 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 	auto &builder = impl.builder();
 	spv::Id result_id;
 
-	bool is_precise = instruction->hasMetadata("dx.precise") || impl.options.force_precise;
-
 	// DXIL docs say that we're supposed to not fuse, but that's a lie.
 	// Just fuse. This matches NVIDIA behavior and is more correct overall.
+	// The Fma is always NoContraction: without it, a Vulkan driver may still split it into a multiply and an add
+	// (RADV does), which breaks shaders that rely on mad() rounding once, e.g. Newton-refined exact division.
 
 	if (!impl.glsl_std450_ext)
 		impl.glsl_std450_ext = builder.import("GLSL.std.450");
@@ -67,8 +67,7 @@ bool emit_fmad_instruction(Converter::Impl &impl, const llvm::CallInst *instruct
 		op->add_id(impl.get_id_for_value(instruction->getOperand(i)));
 	impl.add(op);
 
-	if (is_precise)
-		add_nocontract_decoration(impl, op->id);
+	add_nocontract_decoration(impl, op->id);
 
 	result_id = op->id;
 

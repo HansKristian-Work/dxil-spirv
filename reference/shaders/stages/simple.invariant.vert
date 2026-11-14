@@ -8,10 +8,10 @@ layout(location = 2) in vec4 C;
 
 void main()
 {
-    float _44 = fma(A.x, B.x, C.x);
-    float _45 = fma(A.y, B.y, C.y);
-    float _46 = fma(A.z, B.z, C.z);
-    float _47 = fma(A.w, B.w, C.w);
+    precise float _44 = fma(A.x, B.x, C.x);
+    precise float _45 = fma(A.y, B.y, C.y);
+    precise float _46 = fma(A.z, B.z, C.z);
+    precise float _47 = fma(A.w, B.w, C.w);
     gl_Position.x = _44;
     gl_Position.y = _45;
     gl_Position.z = _46;
@@ -41,6 +41,10 @@ OpDecorate %9 Location 1
 OpDecorate %10 Location 2
 OpDecorate %12 BuiltIn Position
 OpDecorate %12 Invariant
+OpDecorate %44 NoContraction
+OpDecorate %45 NoContraction
+OpDecorate %46 NoContraction
+OpDecorate %47 NoContraction
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

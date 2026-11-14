@@ -57,6 +57,12 @@ OpName %9 "payload"
 OpName %11 ""
 OpName %13 "hit"
 OpDecorate %24 BuiltIn ObjectToWorldKHR
+OpDecorate %55 NoContraction
+OpDecorate %56 NoContraction
+OpDecorate %61 NoContraction
+OpDecorate %62 NoContraction
+OpDecorate %66 NoContraction
+OpDecorate %67 NoContraction
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

@@ -30,7 +30,7 @@ void main()
     _46.y = A.y;
     _46.z = A.z;
     _46.w = A.w;
-    vec4 _59 = fma(_46, _34, _18);
+    precise vec4 _59 = fma(_46, _34, _18);
     float _62 = _59.x;
     float _69 = inversesqrt(dot(vec4(_62, _59.yzw), vec4(_62, _59.yzw)));
     vec4 _70;
@@ -68,6 +68,7 @@ OpDecorate %8 Location 0
 OpDecorate %9 Location 1
 OpDecorate %10 Location 2
 OpDecorate %12 Location 0
+OpDecorate %59 NoContraction
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeFloat 32

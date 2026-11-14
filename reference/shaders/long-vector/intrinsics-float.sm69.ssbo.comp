@@ -711,6 +711,7 @@ OpDecorate %14 DescriptorSet 0
 OpDecorate %14 Binding 0
 OpDecorate %14 NonReadable
 OpDecorate %17 BuiltIn GlobalInvocationId
+OpDecorate %823 NoContraction
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
