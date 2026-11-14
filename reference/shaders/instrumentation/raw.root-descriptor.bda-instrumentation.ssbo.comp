@@ -518,6 +518,7 @@ OpDecorate %486 Binding 3
 %458 = OpTypePointer PhysicalStorageBuffer %457
 %462 = OpTypePointer PhysicalStorageBuffer %49
 %466 = OpConstant %49 40
+%474 = OpUndef %49
 %476 = OpTypePointer Private %103
 %477 = OpVariable %476 Private %123
 %478 = OpTypeVector %5 4
@@ -538,7 +539,6 @@ OpDecorate %486 Binding 3
 %526 = OpConstant %5 72
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%474 = OpUndef %49
 OpBranch %475
 %475 = OpLabel
 %34 = OpFunctionCall %5 %24

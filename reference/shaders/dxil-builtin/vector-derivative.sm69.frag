@@ -92,21 +92,21 @@ OpDecorate %10 Location 0
 %20 = OpConstant %13 2
 %23 = OpConstant %13 3
 %25 = OpTypeVector %5 2
+%27 = OpUndef %25
 %35 = OpTypeFloat 16
 %39 = OpTypeVector %35 3
+%41 = OpUndef %39
 %44 = OpTypeVector %5 3
 %57 = OpTypeFloat 64
 %62 = OpTypeVector %57 4
+%64 = OpUndef %62
+%85 = OpUndef %6
 %89 = OpConstant %5 0
 %92 = OpConstant %57 2
 %93 = OpConstantComposite %62 %92 %92 %92 %92
 %108 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%27 = OpUndef %25
-%41 = OpUndef %39
-%64 = OpUndef %62
-%85 = OpUndef %6
 OpBranch %116
 %116 = OpLabel
 %12 = OpAccessChain %11 %8 %14

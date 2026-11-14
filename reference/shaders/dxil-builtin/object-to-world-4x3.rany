@@ -78,9 +78,9 @@ OpDecorate %16 BuiltIn ObjectToWorldKHR
 %26 = OpConstant %19 2
 %41 = OpConstant %19 3
 %47 = OpTypePointer IncomingRayPayloadKHR %6
+%59 = OpUndef %6
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%59 = OpUndef %6
 OpBranch %70
 %70 = OpLabel
 %18 = OpAccessChain %17 %16 %20 %20

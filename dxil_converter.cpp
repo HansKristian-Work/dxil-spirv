@@ -4012,7 +4012,7 @@ spv::Id Converter::Impl::get_padded_constant_array(spv::Id padded_type_id, const
 		{
 			llvm::Constant *c = agg->getOperand(i);
 			if (const auto *undef = llvm::dyn_cast<llvm::UndefValue>(c))
-				constituents.push_back(get_id_for_undef_constant(undef));
+				constituents.push_back(get_id_for_undef(undef));
 			else
 				constituents.push_back(get_id_for_constant(c, 0));
 		}
@@ -4024,7 +4024,7 @@ spv::Id Converter::Impl::get_padded_constant_array(spv::Id padded_type_id, const
 		{
 			llvm::Constant *c = array->getElementAsConstant(i);
 			if (const auto *undef = llvm::dyn_cast<llvm::UndefValue>(c))
-				constituents.push_back(get_id_for_undef_constant(undef));
+				constituents.push_back(get_id_for_undef(undef));
 			else
 				constituents.push_back(get_id_for_constant(c, 0));
 		}
@@ -4106,7 +4106,7 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 			{
 				llvm::Constant *c = agg->getOperand(i);
 				if (const auto *undef = llvm::dyn_cast<llvm::UndefValue>(c))
-					constituents.push_back(get_id_for_undef_constant(undef));
+					constituents.push_back(get_id_for_undef(undef));
 				else
 					constituents.push_back(get_id_for_constant(c, 0));
 			}
@@ -4118,7 +4118,7 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 			{
 				llvm::Constant *c = array->getElementAsConstant(i);
 				if (const auto *undef = llvm::dyn_cast<llvm::UndefValue>(c))
-					constituents.push_back(get_id_for_undef_constant(undef));
+					constituents.push_back(get_id_for_undef(undef));
 				else
 					constituents.push_back(get_id_for_constant(c, 0));
 			}
@@ -4130,7 +4130,7 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 			{
 				llvm::Constant *c = vec->getElementAsConstant(i);
 				if (const auto *undef = llvm::dyn_cast<llvm::UndefValue>(c))
-					constituents.push_back(get_id_for_undef_constant(undef));
+					constituents.push_back(get_id_for_undef(undef));
 				else
 					constituents.push_back(get_id_for_constant(c, 0));
 			}
@@ -4147,15 +4147,6 @@ spv::Id Converter::Impl::get_id_for_constant(const llvm::Constant *constant, uns
 }
 
 spv::Id Converter::Impl::get_id_for_undef(const llvm::UndefValue *undef)
-{
-	auto &builder = spirv_module.get_builder();
-	if (shader_analysis.global_undefs)
-		return builder.createUndefinedConstant(get_type_id(undef->getType()));
-	else
-		return builder.createUndefined(get_type_id(undef->getType()));
-}
-
-spv::Id Converter::Impl::get_id_for_undef_constant(const llvm::UndefValue *undef)
 {
 	auto &builder = spirv_module.get_builder();
 	return builder.createUndefinedConstant(get_type_id(undef->getType()));
@@ -8544,9 +8535,6 @@ bool Converter::Impl::build_callee_functions(CFGNodePool &pool,
 
 		Vector<spv::Id> arg_types;
 		spv::Block *spv_entry;
-
-		// Cannot safely use function-local undefs now.
-		shader_analysis.global_undefs = true;
 
 		arg_types.reserve(leaf_func->getFunctionType()->getNumParams());
 		for (uint32_t i = 0; i < leaf_func->getFunctionType()->getNumParams(); i++)

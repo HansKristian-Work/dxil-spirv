@@ -385,10 +385,10 @@ OpDecorate %381 Block
 %380 = OpTypeRuntimeArray %5
 %381 = OpTypeStruct %380
 %382 = OpTypePointer PhysicalStorageBuffer %381
-%3 = OpFunction %1 None %2
-%4 = OpLabel
 %392 = OpUndef %26
 %398 = OpUndef %17
+%3 = OpFunction %1 None %2
+%4 = OpLabel
 OpBranch %404
 %404 = OpLabel
 %41 = OpAccessChain %40 %16 %11

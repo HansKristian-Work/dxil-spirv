@@ -6,11 +6,6 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 uint _54;
 float _100;
-uint _143;
-float _186;
-uint _229;
-uint _273;
-uint _318;
 
 layout(set = 0, binding = 0) uniform usamplerBuffer _8;
 layout(set = 0, binding = 1) uniform usamplerBuffer _9;
@@ -76,22 +71,22 @@ float WaveMultiPrefixSum(float _96, uvec4 _97)
 
 uint WaveMultiPrefixProduct(uint _139, uvec4 _140)
 {
-    uvec4 _149 = subgroupBallot(true);
-    uvec4 _150 = _149 & _140;
-    bool _153;
-    uint _155;
+    uvec4 _148 = subgroupBallot(true);
+    uvec4 _149 = _148 & _140;
+    bool _152;
+    uint _154;
     for (;;)
     {
-        _153 = all(equal(_150, subgroupBroadcastFirst(_150)));
-        if (_153)
+        _152 = all(equal(_149, subgroupBroadcastFirst(_149)));
+        if (_152)
         {
-            _155 = subgroupExclusiveMul(_139);
+            _154 = subgroupExclusiveMul(_139);
         }
         else
         {
-            _155 = _143;
+            _154 = _54;
         }
-        if (_153)
+        if (_152)
         {
             break;
         }
@@ -100,27 +95,27 @@ uint WaveMultiPrefixProduct(uint _139, uvec4 _140)
             continue;
         }
     }
-    return _155;
+    return _154;
 }
 
-float WaveMultiPrefixProduct(float _182, uvec4 _183)
+float WaveMultiPrefixProduct(float _181, uvec4 _182)
 {
-    uvec4 _192 = subgroupBallot(true);
-    uvec4 _193 = _192 & _183;
-    bool _196;
-    float _198;
+    uvec4 _190 = subgroupBallot(true);
+    uvec4 _191 = _190 & _182;
+    bool _194;
+    float _196;
     for (;;)
     {
-        _196 = all(equal(_193, subgroupBroadcastFirst(_193)));
-        if (_196)
+        _194 = all(equal(_191, subgroupBroadcastFirst(_191)));
+        if (_194)
         {
-            _198 = subgroupExclusiveMul(_182);
+            _196 = subgroupExclusiveMul(_181);
         }
         else
         {
-            _198 = _186;
+            _196 = _100;
         }
-        if (_196)
+        if (_194)
         {
             break;
         }
@@ -129,27 +124,27 @@ float WaveMultiPrefixProduct(float _182, uvec4 _183)
             continue;
         }
     }
-    return _198;
+    return _196;
 }
 
-uint WaveMultiPrefixBitOr(uint _225, uvec4 _226)
+uint WaveMultiPrefixBitOr(uint _223, uvec4 _224)
 {
-    uvec4 _235 = subgroupBallot(true);
-    uvec4 _236 = _235 & _226;
-    bool _239;
-    uint _241;
+    uvec4 _232 = subgroupBallot(true);
+    uvec4 _233 = _232 & _224;
+    bool _236;
+    uint _238;
     for (;;)
     {
-        _239 = all(equal(_236, subgroupBroadcastFirst(_236)));
-        if (_239)
+        _236 = all(equal(_233, subgroupBroadcastFirst(_233)));
+        if (_236)
         {
-            _241 = subgroupExclusiveOr(_225);
+            _238 = subgroupExclusiveOr(_223);
         }
         else
         {
-            _241 = _229;
+            _238 = _54;
         }
-        if (_239)
+        if (_236)
         {
             break;
         }
@@ -158,27 +153,27 @@ uint WaveMultiPrefixBitOr(uint _225, uvec4 _226)
             continue;
         }
     }
-    return _241;
+    return _238;
 }
 
-uint WaveMultiPrefixBitAnd(uint _269, uvec4 _270)
+uint WaveMultiPrefixBitAnd(uint _266, uvec4 _267)
 {
-    uvec4 _279 = subgroupBallot(true);
-    uvec4 _280 = _279 & _270;
-    bool _283;
-    uint _285;
+    uvec4 _275 = subgroupBallot(true);
+    uvec4 _276 = _275 & _267;
+    bool _279;
+    uint _281;
     for (;;)
     {
-        _283 = all(equal(_280, subgroupBroadcastFirst(_280)));
-        if (_283)
+        _279 = all(equal(_276, subgroupBroadcastFirst(_276)));
+        if (_279)
         {
-            _285 = subgroupExclusiveAnd(_269);
+            _281 = subgroupExclusiveAnd(_266);
         }
         else
         {
-            _285 = _273;
+            _281 = _54;
         }
-        if (_283)
+        if (_279)
         {
             break;
         }
@@ -187,27 +182,27 @@ uint WaveMultiPrefixBitAnd(uint _269, uvec4 _270)
             continue;
         }
     }
-    return _285;
+    return _281;
 }
 
-uint WaveMultiPrefixBitXor(uint _314, uvec4 _315)
+uint WaveMultiPrefixBitXor(uint _310, uvec4 _311)
 {
-    uvec4 _324 = subgroupBallot(true);
-    uvec4 _325 = _324 & _315;
-    bool _328;
-    uint _330;
+    uvec4 _319 = subgroupBallot(true);
+    uvec4 _320 = _319 & _311;
+    bool _323;
+    uint _325;
     for (;;)
     {
-        _328 = all(equal(_325, subgroupBroadcastFirst(_325)));
-        if (_328)
+        _323 = all(equal(_320, subgroupBroadcastFirst(_320)));
+        if (_323)
         {
-            _330 = subgroupExclusiveXor(_314);
+            _325 = subgroupExclusiveXor(_310);
         }
         else
         {
-            _330 = _318;
+            _325 = _54;
         }
-        if (_328)
+        if (_323)
         {
             break;
         }
@@ -216,7 +211,7 @@ uint WaveMultiPrefixBitXor(uint _314, uvec4 _315)
             continue;
         }
     }
-    return _330;
+    return _325;
 }
 
 void main()
@@ -228,14 +223,14 @@ void main()
     imageStore(_12, int((gl_GlobalInvocationID.x * 7u) + 1u), uvec4(uint(WaveMultiPrefixSum(uintBitsToFloat(texelFetch(_8, int(gl_GlobalInvocationID.x)).x), uvec4(uvec4(texelFetch(_9, int(_74)).x, texelFetch(_9, int(_74 + 1u)).x, texelFetch(_9, int(_74 + 2u)).x, texelFetch(_9, int(_74 + 3u)).x))))));
     uint _120 = gl_GlobalInvocationID.x * 4u;
     imageStore(_12, int((gl_GlobalInvocationID.x * 7u) + 2u), uvec4(WaveMultiPrefixProduct(texelFetch(_8, int(gl_GlobalInvocationID.x)).x, uvec4(uvec4(texelFetch(_9, int(_120)).x, texelFetch(_9, int(_120 + 1u)).x, texelFetch(_9, int(_120 + 2u)).x, texelFetch(_9, int(_120 + 3u)).x)))));
-    uint _162 = gl_GlobalInvocationID.x * 4u;
-    imageStore(_12, int((gl_GlobalInvocationID.x * 7u) + 3u), uvec4(uint(WaveMultiPrefixProduct(uintBitsToFloat(texelFetch(_8, int(gl_GlobalInvocationID.x)).x), uvec4(uvec4(texelFetch(_9, int(_162)).x, texelFetch(_9, int(_162 + 1u)).x, texelFetch(_9, int(_162 + 2u)).x, texelFetch(_9, int(_162 + 3u)).x))))));
-    uint _206 = gl_GlobalInvocationID.x * 4u;
-    imageStore(_12, int((gl_GlobalInvocationID.x * 7u) + 4u), uvec4(WaveMultiPrefixBitOr(texelFetch(_8, int(gl_GlobalInvocationID.x)).x, uvec4(uvec4(texelFetch(_9, int(_206)).x, texelFetch(_9, int(_206 + 1u)).x, texelFetch(_9, int(_206 + 2u)).x, texelFetch(_9, int(_206 + 3u)).x)))));
-    uint _248 = gl_GlobalInvocationID.x * 4u;
-    imageStore(_12, int((gl_GlobalInvocationID.x * 7u) + 5u), uvec4(WaveMultiPrefixBitAnd(uint(int(uintBitsToFloat(texelFetch(_8, int(gl_GlobalInvocationID.x)).x))), uvec4(uvec4(texelFetch(_9, int(_248)).x, texelFetch(_9, int(_248 + 1u)).x, texelFetch(_9, int(_248 + 2u)).x, texelFetch(_9, int(_248 + 3u)).x)))));
-    uint _293 = gl_GlobalInvocationID.x * 4u;
-    imageStore(_12, int((gl_GlobalInvocationID.x * 7u) + 6u), uvec4(WaveMultiPrefixBitXor(uint(int(uintBitsToFloat(texelFetch(_8, int(gl_GlobalInvocationID.x)).x))), uvec4(uvec4(texelFetch(_9, int(_293)).x, texelFetch(_9, int(_293 + 1u)).x, texelFetch(_9, int(_293 + 2u)).x, texelFetch(_9, int(_293 + 3u)).x)))));
+    uint _161 = gl_GlobalInvocationID.x * 4u;
+    imageStore(_12, int((gl_GlobalInvocationID.x * 7u) + 3u), uvec4(uint(WaveMultiPrefixProduct(uintBitsToFloat(texelFetch(_8, int(gl_GlobalInvocationID.x)).x), uvec4(uvec4(texelFetch(_9, int(_161)).x, texelFetch(_9, int(_161 + 1u)).x, texelFetch(_9, int(_161 + 2u)).x, texelFetch(_9, int(_161 + 3u)).x))))));
+    uint _204 = gl_GlobalInvocationID.x * 4u;
+    imageStore(_12, int((gl_GlobalInvocationID.x * 7u) + 4u), uvec4(WaveMultiPrefixBitOr(texelFetch(_8, int(gl_GlobalInvocationID.x)).x, uvec4(uvec4(texelFetch(_9, int(_204)).x, texelFetch(_9, int(_204 + 1u)).x, texelFetch(_9, int(_204 + 2u)).x, texelFetch(_9, int(_204 + 3u)).x)))));
+    uint _245 = gl_GlobalInvocationID.x * 4u;
+    imageStore(_12, int((gl_GlobalInvocationID.x * 7u) + 5u), uvec4(WaveMultiPrefixBitAnd(uint(int(uintBitsToFloat(texelFetch(_8, int(gl_GlobalInvocationID.x)).x))), uvec4(uvec4(texelFetch(_9, int(_245)).x, texelFetch(_9, int(_245 + 1u)).x, texelFetch(_9, int(_245 + 2u)).x, texelFetch(_9, int(_245 + 3u)).x)))));
+    uint _289 = gl_GlobalInvocationID.x * 4u;
+    imageStore(_12, int((gl_GlobalInvocationID.x * 7u) + 6u), uvec4(WaveMultiPrefixBitXor(uint(int(uintBitsToFloat(texelFetch(_8, int(gl_GlobalInvocationID.x)).x))), uvec4(uvec4(texelFetch(_9, int(_289)).x, texelFetch(_9, int(_289 + 1u)).x, texelFetch(_9, int(_289 + 2u)).x, texelFetch(_9, int(_289 + 3u)).x)))));
 }
 
 
@@ -244,7 +239,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 339
+; Bound: 334
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
@@ -259,10 +254,10 @@ OpName %3 "main"
 OpName %52 "WaveMultiPrefixSum"
 OpName %98 "WaveMultiPrefixSum"
 OpName %141 "WaveMultiPrefixProduct"
-OpName %184 "WaveMultiPrefixProduct"
-OpName %227 "WaveMultiPrefixBitOr"
-OpName %271 "WaveMultiPrefixBitAnd"
-OpName %316 "WaveMultiPrefixBitXor"
+OpName %183 "WaveMultiPrefixProduct"
+OpName %225 "WaveMultiPrefixBitOr"
+OpName %268 "WaveMultiPrefixBitAnd"
+OpName %312 "WaveMultiPrefixBitXor"
 OpDecorate %8 DescriptorSet 0
 OpDecorate %8 Binding 0
 OpDecorate %9 DescriptorSet 0
@@ -294,16 +289,18 @@ OpDecorate %18 BuiltIn GlobalInvocationId
 %47 = OpTypeBool
 %48 = OpTypeVector %47 4
 %49 = OpTypeFunction %5 %5 %25
+%54 = OpUndef %5
 %61 = OpConstantTrue %47
 %71 = OpConstant %5 7
 %93 = OpTypeFloat 32
 %95 = OpTypeFunction %93 %93 %25
-%289 = OpConstant %5 5
-%334 = OpConstant %5 6
+%100 = OpUndef %93
+%285 = OpConstant %5 5
+%329 = OpConstant %5 6
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-OpBranch %338
-%338 = OpLabel
+OpBranch %333
+%333 = OpLabel
 %13 = OpLoad %10 %12
 %14 = OpLoad %6 %9
 %15 = OpLoad %6 %8
@@ -381,130 +378,129 @@ OpImageWrite %13 %118 %119 NonPrivateTexel
 %136 = OpCompositeExtract %5 %132 3
 %137 = OpImageFetch %25 %15 %22
 %138 = OpCompositeExtract %5 %137 0
-%157 = OpCompositeConstruct %25 %133 %134 %135 %136
-%156 = OpFunctionCall %5 %141 %138 %157
-%158 = OpIAdd %5 %70 %34
-%159 = OpIMul %5 %22 %71
-%160 = OpIAdd %5 %159 %34
-%161 = OpCompositeConstruct %25 %156 %156 %156 %156
-OpImageWrite %13 %160 %161 NonPrivateTexel
-%162 = OpIMul %5 %22 %24
-%163 = OpImageFetch %25 %14 %162
-%164 = OpCompositeExtract %5 %163 0
-%166 = OpIAdd %5 %162 %30
-%165 = OpImageFetch %25 %14 %166
-%167 = OpCompositeExtract %5 %165 0
-%169 = OpIAdd %5 %162 %34
-%168 = OpImageFetch %25 %14 %169
-%170 = OpCompositeExtract %5 %168 0
-%172 = OpIAdd %5 %162 %38
-%171 = OpImageFetch %25 %14 %172
-%173 = OpCompositeExtract %5 %171 0
-%174 = OpCompositeConstruct %25 %164 %167 %170 %173
-%175 = OpCompositeExtract %5 %174 0
-%176 = OpCompositeExtract %5 %174 1
-%177 = OpCompositeExtract %5 %174 2
-%178 = OpCompositeExtract %5 %174 3
-%179 = OpImageFetch %25 %15 %22
-%180 = OpCompositeExtract %5 %179 0
-%181 = OpBitcast %93 %180
-%200 = OpCompositeConstruct %25 %175 %176 %177 %178
-%199 = OpFunctionCall %93 %184 %181 %200
-%201 = OpConvertFToU %5 %199
-%202 = OpIAdd %5 %70 %38
-%203 = OpIMul %5 %22 %71
-%204 = OpIAdd %5 %203 %38
-%205 = OpCompositeConstruct %25 %201 %201 %201 %201
-OpImageWrite %13 %204 %205 NonPrivateTexel
-%206 = OpIMul %5 %22 %24
-%207 = OpImageFetch %25 %14 %206
-%208 = OpCompositeExtract %5 %207 0
-%210 = OpIAdd %5 %206 %30
-%209 = OpImageFetch %25 %14 %210
-%211 = OpCompositeExtract %5 %209 0
-%213 = OpIAdd %5 %206 %34
-%212 = OpImageFetch %25 %14 %213
-%214 = OpCompositeExtract %5 %212 0
-%216 = OpIAdd %5 %206 %38
-%215 = OpImageFetch %25 %14 %216
-%217 = OpCompositeExtract %5 %215 0
-%218 = OpCompositeConstruct %25 %208 %211 %214 %217
-%219 = OpCompositeExtract %5 %218 0
-%220 = OpCompositeExtract %5 %218 1
-%221 = OpCompositeExtract %5 %218 2
-%222 = OpCompositeExtract %5 %218 3
-%223 = OpImageFetch %25 %15 %22
-%224 = OpCompositeExtract %5 %223 0
-%243 = OpCompositeConstruct %25 %219 %220 %221 %222
-%242 = OpFunctionCall %5 %227 %224 %243
-%244 = OpIAdd %5 %70 %24
-%245 = OpIMul %5 %22 %71
-%246 = OpIAdd %5 %245 %24
-%247 = OpCompositeConstruct %25 %242 %242 %242 %242
-OpImageWrite %13 %246 %247 NonPrivateTexel
-%248 = OpIMul %5 %22 %24
-%249 = OpImageFetch %25 %14 %248
-%250 = OpCompositeExtract %5 %249 0
-%252 = OpIAdd %5 %248 %30
+%156 = OpCompositeConstruct %25 %133 %134 %135 %136
+%155 = OpFunctionCall %5 %141 %138 %156
+%157 = OpIAdd %5 %70 %34
+%158 = OpIMul %5 %22 %71
+%159 = OpIAdd %5 %158 %34
+%160 = OpCompositeConstruct %25 %155 %155 %155 %155
+OpImageWrite %13 %159 %160 NonPrivateTexel
+%161 = OpIMul %5 %22 %24
+%162 = OpImageFetch %25 %14 %161
+%163 = OpCompositeExtract %5 %162 0
+%165 = OpIAdd %5 %161 %30
+%164 = OpImageFetch %25 %14 %165
+%166 = OpCompositeExtract %5 %164 0
+%168 = OpIAdd %5 %161 %34
+%167 = OpImageFetch %25 %14 %168
+%169 = OpCompositeExtract %5 %167 0
+%171 = OpIAdd %5 %161 %38
+%170 = OpImageFetch %25 %14 %171
+%172 = OpCompositeExtract %5 %170 0
+%173 = OpCompositeConstruct %25 %163 %166 %169 %172
+%174 = OpCompositeExtract %5 %173 0
+%175 = OpCompositeExtract %5 %173 1
+%176 = OpCompositeExtract %5 %173 2
+%177 = OpCompositeExtract %5 %173 3
+%178 = OpImageFetch %25 %15 %22
+%179 = OpCompositeExtract %5 %178 0
+%180 = OpBitcast %93 %179
+%198 = OpCompositeConstruct %25 %174 %175 %176 %177
+%197 = OpFunctionCall %93 %183 %180 %198
+%199 = OpConvertFToU %5 %197
+%200 = OpIAdd %5 %70 %38
+%201 = OpIMul %5 %22 %71
+%202 = OpIAdd %5 %201 %38
+%203 = OpCompositeConstruct %25 %199 %199 %199 %199
+OpImageWrite %13 %202 %203 NonPrivateTexel
+%204 = OpIMul %5 %22 %24
+%205 = OpImageFetch %25 %14 %204
+%206 = OpCompositeExtract %5 %205 0
+%208 = OpIAdd %5 %204 %30
+%207 = OpImageFetch %25 %14 %208
+%209 = OpCompositeExtract %5 %207 0
+%211 = OpIAdd %5 %204 %34
+%210 = OpImageFetch %25 %14 %211
+%212 = OpCompositeExtract %5 %210 0
+%214 = OpIAdd %5 %204 %38
+%213 = OpImageFetch %25 %14 %214
+%215 = OpCompositeExtract %5 %213 0
+%216 = OpCompositeConstruct %25 %206 %209 %212 %215
+%217 = OpCompositeExtract %5 %216 0
+%218 = OpCompositeExtract %5 %216 1
+%219 = OpCompositeExtract %5 %216 2
+%220 = OpCompositeExtract %5 %216 3
+%221 = OpImageFetch %25 %15 %22
+%222 = OpCompositeExtract %5 %221 0
+%240 = OpCompositeConstruct %25 %217 %218 %219 %220
+%239 = OpFunctionCall %5 %225 %222 %240
+%241 = OpIAdd %5 %70 %24
+%242 = OpIMul %5 %22 %71
+%243 = OpIAdd %5 %242 %24
+%244 = OpCompositeConstruct %25 %239 %239 %239 %239
+OpImageWrite %13 %243 %244 NonPrivateTexel
+%245 = OpIMul %5 %22 %24
+%246 = OpImageFetch %25 %14 %245
+%247 = OpCompositeExtract %5 %246 0
+%249 = OpIAdd %5 %245 %30
+%248 = OpImageFetch %25 %14 %249
+%250 = OpCompositeExtract %5 %248 0
+%252 = OpIAdd %5 %245 %34
 %251 = OpImageFetch %25 %14 %252
 %253 = OpCompositeExtract %5 %251 0
-%255 = OpIAdd %5 %248 %34
+%255 = OpIAdd %5 %245 %38
 %254 = OpImageFetch %25 %14 %255
 %256 = OpCompositeExtract %5 %254 0
-%258 = OpIAdd %5 %248 %38
-%257 = OpImageFetch %25 %14 %258
-%259 = OpCompositeExtract %5 %257 0
-%260 = OpCompositeConstruct %25 %250 %253 %256 %259
-%261 = OpCompositeExtract %5 %260 0
-%262 = OpCompositeExtract %5 %260 1
-%263 = OpCompositeExtract %5 %260 2
-%264 = OpCompositeExtract %5 %260 3
-%265 = OpImageFetch %25 %15 %22
-%266 = OpCompositeExtract %5 %265 0
-%267 = OpBitcast %93 %266
-%268 = OpConvertFToS %5 %267
-%287 = OpCompositeConstruct %25 %261 %262 %263 %264
-%286 = OpFunctionCall %5 %271 %268 %287
-%288 = OpIAdd %5 %70 %289
-%290 = OpIMul %5 %22 %71
-%291 = OpIAdd %5 %290 %289
-%292 = OpCompositeConstruct %25 %286 %286 %286 %286
-OpImageWrite %13 %291 %292 NonPrivateTexel
-%293 = OpIMul %5 %22 %24
-%294 = OpImageFetch %25 %14 %293
-%295 = OpCompositeExtract %5 %294 0
-%297 = OpIAdd %5 %293 %30
-%296 = OpImageFetch %25 %14 %297
-%298 = OpCompositeExtract %5 %296 0
-%300 = OpIAdd %5 %293 %34
-%299 = OpImageFetch %25 %14 %300
-%301 = OpCompositeExtract %5 %299 0
-%303 = OpIAdd %5 %293 %38
-%302 = OpImageFetch %25 %14 %303
-%304 = OpCompositeExtract %5 %302 0
-%305 = OpCompositeConstruct %25 %295 %298 %301 %304
-%306 = OpCompositeExtract %5 %305 0
-%307 = OpCompositeExtract %5 %305 1
-%308 = OpCompositeExtract %5 %305 2
-%309 = OpCompositeExtract %5 %305 3
-%310 = OpImageFetch %25 %15 %22
-%311 = OpCompositeExtract %5 %310 0
-%312 = OpBitcast %93 %311
-%313 = OpConvertFToS %5 %312
-%332 = OpCompositeConstruct %25 %306 %307 %308 %309
-%331 = OpFunctionCall %5 %316 %313 %332
-%333 = OpIAdd %5 %70 %334
-%335 = OpIMul %5 %22 %71
-%336 = OpIAdd %5 %335 %334
-%337 = OpCompositeConstruct %25 %331 %331 %331 %331
-OpImageWrite %13 %336 %337 NonPrivateTexel
+%257 = OpCompositeConstruct %25 %247 %250 %253 %256
+%258 = OpCompositeExtract %5 %257 0
+%259 = OpCompositeExtract %5 %257 1
+%260 = OpCompositeExtract %5 %257 2
+%261 = OpCompositeExtract %5 %257 3
+%262 = OpImageFetch %25 %15 %22
+%263 = OpCompositeExtract %5 %262 0
+%264 = OpBitcast %93 %263
+%265 = OpConvertFToS %5 %264
+%283 = OpCompositeConstruct %25 %258 %259 %260 %261
+%282 = OpFunctionCall %5 %268 %265 %283
+%284 = OpIAdd %5 %70 %285
+%286 = OpIMul %5 %22 %71
+%287 = OpIAdd %5 %286 %285
+%288 = OpCompositeConstruct %25 %282 %282 %282 %282
+OpImageWrite %13 %287 %288 NonPrivateTexel
+%289 = OpIMul %5 %22 %24
+%290 = OpImageFetch %25 %14 %289
+%291 = OpCompositeExtract %5 %290 0
+%293 = OpIAdd %5 %289 %30
+%292 = OpImageFetch %25 %14 %293
+%294 = OpCompositeExtract %5 %292 0
+%296 = OpIAdd %5 %289 %34
+%295 = OpImageFetch %25 %14 %296
+%297 = OpCompositeExtract %5 %295 0
+%299 = OpIAdd %5 %289 %38
+%298 = OpImageFetch %25 %14 %299
+%300 = OpCompositeExtract %5 %298 0
+%301 = OpCompositeConstruct %25 %291 %294 %297 %300
+%302 = OpCompositeExtract %5 %301 0
+%303 = OpCompositeExtract %5 %301 1
+%304 = OpCompositeExtract %5 %301 2
+%305 = OpCompositeExtract %5 %301 3
+%306 = OpImageFetch %25 %15 %22
+%307 = OpCompositeExtract %5 %306 0
+%308 = OpBitcast %93 %307
+%309 = OpConvertFToS %5 %308
+%327 = OpCompositeConstruct %25 %302 %303 %304 %305
+%326 = OpFunctionCall %5 %312 %309 %327
+%328 = OpIAdd %5 %70 %329
+%330 = OpIMul %5 %22 %71
+%331 = OpIAdd %5 %330 %329
+%332 = OpCompositeConstruct %25 %326 %326 %326 %326
+OpImageWrite %13 %331 %332 NonPrivateTexel
 OpReturn
 OpFunctionEnd
 %52 = OpFunction %5 None %49
 %50 = OpFunctionParameter %5
 %51 = OpFunctionParameter %25
 %53 = OpLabel
-%54 = OpUndef %5
 %60 = OpGroupNonUniformBallot %25 %38 %61
 %62 = OpBitwiseAnd %25 %60 %51
 OpBranch %55
@@ -530,7 +526,6 @@ OpFunctionEnd
 %96 = OpFunctionParameter %93
 %97 = OpFunctionParameter %25
 %99 = OpLabel
-%100 = OpUndef %93
 %106 = OpGroupNonUniformBallot %25 %38 %61
 %107 = OpBitwiseAnd %25 %106 %97
 OpBranch %101
@@ -556,130 +551,125 @@ OpFunctionEnd
 %139 = OpFunctionParameter %5
 %140 = OpFunctionParameter %25
 %142 = OpLabel
-%143 = OpUndef %5
-%149 = OpGroupNonUniformBallot %25 %38 %61
-%150 = OpBitwiseAnd %25 %149 %140
+%148 = OpGroupNonUniformBallot %25 %38 %61
+%149 = OpBitwiseAnd %25 %148 %140
+OpBranch %143
+%143 = OpLabel
+OpLoopMerge %147 %144 None
 OpBranch %144
 %144 = OpLabel
-OpLoopMerge %148 %145 None
-OpBranch %145
+%150 = OpGroupNonUniformBroadcastFirst %25 %38 %149
+%151 = OpIEqual %48 %149 %150
+%152 = OpAll %47 %151
+OpSelectionMerge %146 None
+OpBranchConditional %152 %145 %146
 %145 = OpLabel
-%151 = OpGroupNonUniformBroadcastFirst %25 %38 %150
-%152 = OpIEqual %48 %150 %151
-%153 = OpAll %47 %152
-OpSelectionMerge %147 None
-OpBranchConditional %153 %146 %147
+%153 = OpGroupNonUniformIMul %5 %38 ExclusiveScan %139
+OpBranch %146
 %146 = OpLabel
-%154 = OpGroupNonUniformIMul %5 %38 ExclusiveScan %139
-OpBranch %147
+%154 = OpPhi %5 %153 %145 %54 %144
+OpBranchConditional %152 %147 %143
 %147 = OpLabel
-%155 = OpPhi %5 %154 %146 %143 %145
-OpBranchConditional %153 %148 %144
-%148 = OpLabel
-OpReturnValue %155
+OpReturnValue %154
 OpFunctionEnd
-%184 = OpFunction %93 None %95
-%182 = OpFunctionParameter %93
-%183 = OpFunctionParameter %25
+%183 = OpFunction %93 None %95
+%181 = OpFunctionParameter %93
+%182 = OpFunctionParameter %25
+%184 = OpLabel
+%190 = OpGroupNonUniformBallot %25 %38 %61
+%191 = OpBitwiseAnd %25 %190 %182
+OpBranch %185
 %185 = OpLabel
-%186 = OpUndef %93
-%192 = OpGroupNonUniformBallot %25 %38 %61
-%193 = OpBitwiseAnd %25 %192 %183
-OpBranch %187
+OpLoopMerge %189 %186 None
+OpBranch %186
+%186 = OpLabel
+%192 = OpGroupNonUniformBroadcastFirst %25 %38 %191
+%193 = OpIEqual %48 %191 %192
+%194 = OpAll %47 %193
+OpSelectionMerge %188 None
+OpBranchConditional %194 %187 %188
 %187 = OpLabel
-OpLoopMerge %191 %188 None
+%195 = OpGroupNonUniformFMul %93 %38 ExclusiveScan %181
 OpBranch %188
 %188 = OpLabel
-%194 = OpGroupNonUniformBroadcastFirst %25 %38 %193
-%195 = OpIEqual %48 %193 %194
-%196 = OpAll %47 %195
-OpSelectionMerge %190 None
-OpBranchConditional %196 %189 %190
+%196 = OpPhi %93 %195 %187 %100 %186
+OpBranchConditional %194 %189 %185
 %189 = OpLabel
-%197 = OpGroupNonUniformFMul %93 %38 ExclusiveScan %182
-OpBranch %190
-%190 = OpLabel
-%198 = OpPhi %93 %197 %189 %186 %188
-OpBranchConditional %196 %191 %187
-%191 = OpLabel
-OpReturnValue %198
+OpReturnValue %196
 OpFunctionEnd
-%227 = OpFunction %5 None %49
-%225 = OpFunctionParameter %5
-%226 = OpFunctionParameter %25
+%225 = OpFunction %5 None %49
+%223 = OpFunctionParameter %5
+%224 = OpFunctionParameter %25
+%226 = OpLabel
+%232 = OpGroupNonUniformBallot %25 %38 %61
+%233 = OpBitwiseAnd %25 %232 %224
+OpBranch %227
+%227 = OpLabel
+OpLoopMerge %231 %228 None
+OpBranch %228
 %228 = OpLabel
-%229 = OpUndef %5
-%235 = OpGroupNonUniformBallot %25 %38 %61
-%236 = OpBitwiseAnd %25 %235 %226
+%234 = OpGroupNonUniformBroadcastFirst %25 %38 %233
+%235 = OpIEqual %48 %233 %234
+%236 = OpAll %47 %235
+OpSelectionMerge %230 None
+OpBranchConditional %236 %229 %230
+%229 = OpLabel
+%237 = OpGroupNonUniformBitwiseOr %5 %38 ExclusiveScan %223
 OpBranch %230
 %230 = OpLabel
-OpLoopMerge %234 %231 None
-OpBranch %231
+%238 = OpPhi %5 %237 %229 %54 %228
+OpBranchConditional %236 %231 %227
 %231 = OpLabel
-%237 = OpGroupNonUniformBroadcastFirst %25 %38 %236
-%238 = OpIEqual %48 %236 %237
-%239 = OpAll %47 %238
-OpSelectionMerge %233 None
-OpBranchConditional %239 %232 %233
-%232 = OpLabel
-%240 = OpGroupNonUniformBitwiseOr %5 %38 ExclusiveScan %225
-OpBranch %233
-%233 = OpLabel
-%241 = OpPhi %5 %240 %232 %229 %231
-OpBranchConditional %239 %234 %230
-%234 = OpLabel
-OpReturnValue %241
+OpReturnValue %238
 OpFunctionEnd
-%271 = OpFunction %5 None %49
-%269 = OpFunctionParameter %5
-%270 = OpFunctionParameter %25
+%268 = OpFunction %5 None %49
+%266 = OpFunctionParameter %5
+%267 = OpFunctionParameter %25
+%269 = OpLabel
+%275 = OpGroupNonUniformBallot %25 %38 %61
+%276 = OpBitwiseAnd %25 %275 %267
+OpBranch %270
+%270 = OpLabel
+OpLoopMerge %274 %271 None
+OpBranch %271
+%271 = OpLabel
+%277 = OpGroupNonUniformBroadcastFirst %25 %38 %276
+%278 = OpIEqual %48 %276 %277
+%279 = OpAll %47 %278
+OpSelectionMerge %273 None
+OpBranchConditional %279 %272 %273
 %272 = OpLabel
-%273 = OpUndef %5
-%279 = OpGroupNonUniformBallot %25 %38 %61
-%280 = OpBitwiseAnd %25 %279 %270
-OpBranch %274
+%280 = OpGroupNonUniformBitwiseAnd %5 %38 ExclusiveScan %266
+OpBranch %273
+%273 = OpLabel
+%281 = OpPhi %5 %280 %272 %54 %271
+OpBranchConditional %279 %274 %270
 %274 = OpLabel
-OpLoopMerge %278 %275 None
-OpBranch %275
-%275 = OpLabel
-%281 = OpGroupNonUniformBroadcastFirst %25 %38 %280
-%282 = OpIEqual %48 %280 %281
-%283 = OpAll %47 %282
-OpSelectionMerge %277 None
-OpBranchConditional %283 %276 %277
-%276 = OpLabel
-%284 = OpGroupNonUniformBitwiseAnd %5 %38 ExclusiveScan %269
-OpBranch %277
-%277 = OpLabel
-%285 = OpPhi %5 %284 %276 %273 %275
-OpBranchConditional %283 %278 %274
-%278 = OpLabel
-OpReturnValue %285
+OpReturnValue %281
 OpFunctionEnd
-%316 = OpFunction %5 None %49
-%314 = OpFunctionParameter %5
-%315 = OpFunctionParameter %25
+%312 = OpFunction %5 None %49
+%310 = OpFunctionParameter %5
+%311 = OpFunctionParameter %25
+%313 = OpLabel
+%319 = OpGroupNonUniformBallot %25 %38 %61
+%320 = OpBitwiseAnd %25 %319 %311
+OpBranch %314
+%314 = OpLabel
+OpLoopMerge %318 %315 None
+OpBranch %315
+%315 = OpLabel
+%321 = OpGroupNonUniformBroadcastFirst %25 %38 %320
+%322 = OpIEqual %48 %320 %321
+%323 = OpAll %47 %322
+OpSelectionMerge %317 None
+OpBranchConditional %323 %316 %317
+%316 = OpLabel
+%324 = OpGroupNonUniformBitwiseXor %5 %38 ExclusiveScan %310
+OpBranch %317
 %317 = OpLabel
-%318 = OpUndef %5
-%324 = OpGroupNonUniformBallot %25 %38 %61
-%325 = OpBitwiseAnd %25 %324 %315
-OpBranch %319
-%319 = OpLabel
-OpLoopMerge %323 %320 None
-OpBranch %320
-%320 = OpLabel
-%326 = OpGroupNonUniformBroadcastFirst %25 %38 %325
-%327 = OpIEqual %48 %325 %326
-%328 = OpAll %47 %327
-OpSelectionMerge %322 None
-OpBranchConditional %328 %321 %322
-%321 = OpLabel
-%329 = OpGroupNonUniformBitwiseXor %5 %38 ExclusiveScan %314
-OpBranch %322
-%322 = OpLabel
-%330 = OpPhi %5 %329 %321 %318 %320
-OpBranchConditional %328 %323 %319
-%323 = OpLabel
-OpReturnValue %330
+%325 = OpPhi %5 %324 %316 %54 %315
+OpBranchConditional %323 %318 %314
+%318 = OpLabel
+OpReturnValue %325
 OpFunctionEnd
 #endif

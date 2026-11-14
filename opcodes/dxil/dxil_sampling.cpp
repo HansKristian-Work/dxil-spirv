@@ -1178,7 +1178,7 @@ bool emit_get_dimensions_instruction(Converter::Impl &impl, const llvm::CallInst
 		// This element cannot be statically accessed if we don't have LOD, so don't bother returning anything here.
 		// Otherwise, we need to pad out.
 		for (unsigned i = num_coords; i < 3; i++)
-			op->add_id(builder.createUndefined(builder.makeUintType(32)));
+			op->add_id(builder.createUndefinedConstant(builder.makeUintType(32)));
 		op->add_id(levels_or_samples_op->id);
 
 		impl.add(op);

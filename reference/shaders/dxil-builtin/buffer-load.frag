@@ -2,7 +2,6 @@
 #extension GL_EXT_samplerless_texture_functions : require
 
 uint _115;
-uint _132;
 
 layout(set = 0, binding = 0) uniform samplerBuffer _8;
 layout(set = 0, binding = 1) uniform usamplerBuffer _12;
@@ -36,9 +35,9 @@ void main()
     uint _113 = TEXCOORD * 6u;
     vec3 _125 = uintBitsToFloat(uvec3(_115, texelFetch(_14, int(_113 + 1u)).x, texelFetch(_14, int(_113 + 2u)).x));
     uint _131 = (TEXCOORD * 6u) + 3u;
-    vec3 _140 = uintBitsToFloat(uvec3(_132, imageLoad(_22, int(_131 + 1u)).x, imageLoad(_22, int(_131 + 2u)).x));
-    SV_Target.x = ((((((_41.x + _38.x) + uintBitsToFloat(_68.x)) + uintBitsToFloat(_82.x)) + _96.x) + _108.x) + _125.y) + _140.y;
-    SV_Target.y = ((((((_41.y + _38.y) + uintBitsToFloat(_68.y)) + uintBitsToFloat(_82.y)) + _96.y) + _108.y) + _125.z) + _140.z;
+    vec3 _139 = uintBitsToFloat(uvec3(_115, imageLoad(_22, int(_131 + 1u)).x, imageLoad(_22, int(_131 + 2u)).x));
+    SV_Target.x = ((((((_41.x + _38.x) + uintBitsToFloat(_68.x)) + uintBitsToFloat(_82.x)) + _96.x) + _108.x) + _125.y) + _139.y;
+    SV_Target.y = ((((((_41.y + _38.y) + uintBitsToFloat(_68.y)) + uintBitsToFloat(_82.y)) + _96.y) + _108.y) + _125.z) + _139.z;
 }
 
 
@@ -47,7 +46,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 150
+; Bound: 149
 ; Schema: 0
 OpCapability Shader
 OpCapability SampledBuffer
@@ -120,16 +119,15 @@ OpDecorate %27 Location 0
 %65 = OpConstant %9 1
 %67 = OpTypeVector %9 2
 %114 = OpConstant %9 6
+%115 = OpUndef %9
 %122 = OpTypeVector %9 3
 %124 = OpTypeVector %5 3
-%145 = OpTypePointer Output %5
-%147 = OpConstant %9 0
+%144 = OpTypePointer Output %5
+%146 = OpConstant %9 0
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%115 = OpUndef %9
-%132 = OpUndef %9
-OpBranch %149
-%149 = OpLabel
+OpBranch %148
+%148 = OpLabel
 %28 = OpLoad %18 %22
 %29 = OpLoad %18 %21
 %30 = OpLoad %18 %20
@@ -215,22 +213,22 @@ OpBranch %149
 %129 = OpFAdd %5 %112 %127
 %130 = OpIMul %9 %36 %114
 %131 = OpIAdd %9 %130 %47
-%134 = OpIAdd %9 %131 %65
-%133 = OpImageRead %60 %28 %134 NonPrivateTexel
-%135 = OpCompositeExtract %9 %133 0
-%137 = OpIAdd %9 %131 %49
-%136 = OpImageRead %60 %28 %137 NonPrivateTexel
-%138 = OpCompositeExtract %9 %136 0
-%139 = OpCompositeConstruct %122 %132 %135 %138
-%140 = OpBitcast %124 %139
-%141 = OpCompositeExtract %5 %140 1
-%142 = OpCompositeExtract %5 %140 2
-%143 = OpFAdd %5 %128 %141
-%144 = OpFAdd %5 %129 %142
-%146 = OpAccessChain %145 %27 %147
-OpStore %146 %143
-%148 = OpAccessChain %145 %27 %65
-OpStore %148 %144
+%133 = OpIAdd %9 %131 %65
+%132 = OpImageRead %60 %28 %133 NonPrivateTexel
+%134 = OpCompositeExtract %9 %132 0
+%136 = OpIAdd %9 %131 %49
+%135 = OpImageRead %60 %28 %136 NonPrivateTexel
+%137 = OpCompositeExtract %9 %135 0
+%138 = OpCompositeConstruct %122 %115 %134 %137
+%139 = OpBitcast %124 %138
+%140 = OpCompositeExtract %5 %139 1
+%141 = OpCompositeExtract %5 %139 2
+%142 = OpFAdd %5 %128 %140
+%143 = OpFAdd %5 %129 %141
+%145 = OpAccessChain %144 %27 %146
+OpStore %145 %142
+%147 = OpAccessChain %144 %27 %65
+OpStore %147 %143
 OpReturn
 OpFunctionEnd
 %53 = OpFunction %9 None %50

@@ -196,6 +196,7 @@ OpDecorate %28 Location 0
 %30 = OpTypeBool
 %32 = OpConstant %5 40
 %34 = OpConstant %5 1
+%36 = OpUndef %6
 %39 = OpConstant %5 3
 %41 = OpConstant %5 0
 %42 = OpConstantComposite %6 %41 %41
@@ -208,6 +209,7 @@ OpDecorate %28 Location 0
 %78 = OpConstant %5 4
 %86 = OpConstant %5 5
 %94 = OpConstant %5 6
+%100 = OpUndef %11
 %105 = OpConstantComposite %11 %41 %41 %41
 %108 = OpTypePointer StorageBuffer %11
 %112 = OpConstantComposite %11 %34 %34 %34
@@ -218,6 +220,7 @@ OpDecorate %28 Location 0
 %147 = OpConstantComposite %11 %146 %146 %146
 %152 = OpTypeFloat 32
 %158 = OpTypeVector %152 4
+%160 = OpUndef %158
 %166 = OpConstant %152 0
 %167 = OpConstantComposite %158 %166 %166 %166 %166
 %171 = OpTypePointer StorageBuffer %16
@@ -229,6 +232,7 @@ OpDecorate %28 Location 0
 %194 = OpConstantComposite %158 %193 %193 %193 %193
 %200 = OpTypeFloat 16
 %205 = OpTypeVector %200 4
+%207 = OpUndef %205
 %213 = OpConstant %200 0x0p+0
 %214 = OpConstantComposite %205 %213 %213 %213 %213
 %218 = OpTypePointer StorageBuffer %22
@@ -240,10 +244,6 @@ OpDecorate %28 Location 0
 %241 = OpConstantComposite %205 %240 %240 %240 %240
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%36 = OpUndef %6
-%100 = OpUndef %11
-%160 = OpUndef %158
-%207 = OpUndef %205
 OpBranch %247
 %247 = OpLabel
 %29 = OpLoad %5 %28

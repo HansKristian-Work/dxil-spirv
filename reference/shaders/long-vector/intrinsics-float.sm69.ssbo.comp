@@ -4,9 +4,9 @@
 #extension GL_EXT_spirv_intrinsics : require
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-float _111;
 vector<float, 8> _65;
 vector<bool, 8> _99;
+float _111;
 vector<uint, 8> _425;
 vector<double, 8> _740;
 
@@ -749,13 +749,16 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %45 = OpTypeBool
 %47 = OpConstant %5 28
 %48 = OpTypeFunction %45 %45
+%65 = OpUndef %29
 %70 = OpConstant %5 56
 %89 = OpConstant %28 0
 %97 = OpTypeVector %45 8
+%99 = OpUndef %97
 %108 = OpConstant %28 1
 %111 = OpUndef %28
 %112 = OpConstantComposite %29 %111 %111 %111 %89 %89 %89 %89 %89
 %422 = OpTypeVector %28 2
+%425 = OpUndef %6
 %547 = OpConstant %5 4294967295
 %548 = OpConstantComposite %6 %547 %547 %547 %547 %547 %547 %547 %547
 %550 = OpConstant %5 31
@@ -787,6 +790,7 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %720 = OpConstantComposite %29 %719 %719 %719 %719 %719 %719 %719 %719
 %729 = OpTypeFloat 64
 %738 = OpTypeVector %729 8
+%740 = OpUndef %738
 %843 = OpConstant %28 1.17549435e-38
 %844 = OpConstantComposite %29 %843 %843 %843 %843 %843 %843 %843 %843
 %845 = OpConstant %28 0x1p+128
@@ -794,10 +798,6 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %957 = OpTypePointer Function %29
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%65 = OpUndef %29
-%99 = OpUndef %97
-%425 = OpUndef %6
-%740 = OpUndef %738
 OpBranch %967
 %967 = OpLabel
 %19 = OpAccessChain %18 %17 %20

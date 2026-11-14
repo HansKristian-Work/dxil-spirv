@@ -65,10 +65,10 @@ OpName %13 "hit"
 %14 = OpTypePointer HitAttributeKHR %10
 %16 = OpTypeInt 32 0
 %17 = OpConstant %16 0
+%20 = OpUndef %10
 %21 = OpTypePointer IncomingRayPayloadKHR %6
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%20 = OpUndef %10
 OpBranch %23
 %23 = OpLabel
 %15 = OpInBoundsAccessChain %14 %13 %17

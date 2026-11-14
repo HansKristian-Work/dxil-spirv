@@ -82,9 +82,9 @@ OpDecorate %14 Binding 0
 %27 = OpConstant %7 0
 %29 = OpTypeVector %7 2
 %35 = OpTypePointer IncomingRayPayloadKHR %15
+%50 = OpUndef %15
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%50 = OpUndef %15
 OpBranch %54
 %54 = OpLabel
 %20 = OpInBoundsAccessChain %19 %18 %21

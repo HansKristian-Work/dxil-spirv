@@ -4,9 +4,9 @@
 layout(primitive_culling);
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-uint _479;
 vec4 _106;
 vec3 _162;
+uint _479;
 
 layout(set = 0, binding = 0) uniform accelerationStructureEXT _8;
 layout(set = 0, binding = 1, r32ui) uniform writeonly uimageBuffer _12;
@@ -361,6 +361,8 @@ OpDecorate %17 BuiltIn LocalInvocationIndex
 %96 = OpConstant %9 16
 %101 = OpTypeMatrix %32 4
 %104 = OpTypeVector %25 4
+%106 = OpUndef %104
+%162 = OpUndef %32
 %180 = OpConstant %9 12
 %181 = OpTypeVector %9 3
 %212 = OpConstant %25 0.5
@@ -402,8 +404,6 @@ OpDecorate %17 BuiltIn LocalInvocationIndex
 %476 = OpVariable %468 Function
 %477 = OpVariable %468 Function
 %478 = OpVariable %468 Function
-%106 = OpUndef %104
-%162 = OpUndef %32
 OpBranch %480
 %480 = OpLabel
 %18 = OpLoad %9 %17

@@ -65,6 +65,7 @@ OpDecorate %11 Location 0
 %14 = OpTypeInt 32 0
 %15 = OpConstant %14 0
 %18 = OpTypeVector %14 4
+%20 = OpUndef %18
 %22 = OpConstant %14 1
 %27 = OpConstant %14 2
 %32 = OpConstant %14 3
@@ -78,7 +79,6 @@ OpDecorate %11 Location 0
 %79 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%20 = OpUndef %18
 OpBranch %91
 %91 = OpLabel
 %13 = OpAccessChain %12 %9 %15

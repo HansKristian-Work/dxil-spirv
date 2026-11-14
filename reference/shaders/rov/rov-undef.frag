@@ -108,6 +108,7 @@ OpDecorate %12 BuiltIn FragCoord
 %29 = OpConstant %5 1
 %31 = OpTypeVector %5 2
 %35 = OpConstant %5 50
+%38 = OpUndef %5
 %41 = OpConstant %5 1000
 %44 = OpConstant %5 4
 %46 = OpTypeFunction %5 %5 %5
@@ -117,7 +118,6 @@ OpDecorate %12 BuiltIn FragCoord
 %86 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%38 = OpUndef %5
 OpBranch %89
 %89 = OpLabel
 %13 = OpLoad %6 %8

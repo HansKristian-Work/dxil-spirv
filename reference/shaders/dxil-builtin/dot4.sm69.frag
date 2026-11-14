@@ -53,12 +53,12 @@ OpDecorate %11 Location 0
 %12 = OpTypePointer Input %5
 %14 = OpTypeInt 32 0
 %15 = OpConstant %14 0
+%18 = OpUndef %6
 %20 = OpConstant %14 1
 %24 = OpConstant %14 2
 %28 = OpConstant %14 3
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%18 = OpUndef %6
 OpBranch %44
 %44 = OpLabel
 %13 = OpAccessChain %12 %9 %15

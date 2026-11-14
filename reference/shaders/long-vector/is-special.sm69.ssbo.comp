@@ -114,6 +114,7 @@ OpDecorate %19 BuiltIn GlobalInvocationId
 %30 = OpTypeBool
 %31 = OpTypeVector %30 4
 %37 = OpConstant %5 1
+%43 = OpUndef %12
 %62 = OpConstant %27 0x1p-14
 %63 = OpConstantComposite %28 %62 %62 %62 %62
 %64 = OpConstant %27 0x1p+16
@@ -123,7 +124,6 @@ OpDecorate %19 BuiltIn GlobalInvocationId
 %91 = OpConstant %5 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%43 = OpUndef %12
 OpBranch %95
 %95 = OpLabel
 %21 = OpAccessChain %20 %19 %22

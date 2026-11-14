@@ -109,6 +109,7 @@ OpDecorate %27 NonReadable
 %27 = OpVariable %26 StorageBuffer
 %28 = OpConstant %5 0
 %29 = OpTypePointer StorageBuffer %6
+%34 = OpUndef %6
 %35 = OpTypePointer StorageBuffer %23
 %37 = OpTypePointer StorageBuffer %12
 %41 = OpConstant %5 1
@@ -116,7 +117,6 @@ OpDecorate %27 NonReadable
 %47 = OpConstant %5 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%34 = OpUndef %6
 OpBranch %49
 %49 = OpLabel
 %30 = OpAccessChain %29 %10 %28 %28

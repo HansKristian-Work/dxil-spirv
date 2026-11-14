@@ -123,12 +123,12 @@ OpMemberDecorate %11 10 Offset 112
 %32 = OpTypePointer ShaderRecordBufferKHR %5
 %44 = OpConstant %5 2
 %49 = OpConstant %5 3
+%63 = OpUndef %15
 %67 = OpConstant %14 1
 %68 = OpTypePointer IncomingRayPayloadKHR %15
+%101 = OpUndef %16
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%63 = OpUndef %15
-%101 = OpUndef %16
 OpBranch %105
 %105 = OpLabel
 %21 = OpAccessChain %20 %13 %22

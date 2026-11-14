@@ -78,9 +78,9 @@ OpDecorate %24 BuiltIn ObjectToWorldKHR
 %29 = OpConstant %16 1
 %32 = OpConstant %16 2
 %35 = OpConstant %16 3
+%59 = OpUndef %6
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%59 = OpUndef %6
 OpBranch %70
 %70 = OpLabel
 %15 = OpInBoundsAccessChain %14 %9 %17

@@ -1378,7 +1378,7 @@ void Builder::leaveFunction()
         if (function.getReturnType() == makeVoidType())
             makeReturn();
         else {
-            makeReturnValue(createUndefined(function.getReturnType()));
+            makeReturnValue(createUndefinedConstant(function.getReturnType()));
         }
     }
 }
@@ -1413,15 +1413,6 @@ Id Builder::createVariableWithInitializer(StorageClass storageClass, Id type, Id
         addName(inst->getResultId(), name);
 
     return inst->getResultId();
-}
-
-// Comments in header
-Id Builder::createUndefined(Id type)
-{
-  Instruction* inst = new Instruction(getUniqueId(), type, OpUndef);
-  buildPoint->addInstruction(std::unique_ptr<Instruction>(inst));
-  module.mapInstruction(inst);
-  return inst->getResultId();
 }
 
 Id Builder::createUndefinedConstant(Id type)

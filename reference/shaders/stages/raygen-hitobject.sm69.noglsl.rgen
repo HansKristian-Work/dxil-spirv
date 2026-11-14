@@ -65,12 +65,12 @@ OpDecorate %12 NonReadable
 %36 = OpTypePointer RayPayloadKHR %17
 %42 = OpConstant %23 1
 %46 = OpTypePointer RayPayloadKHR %9
+%52 = OpUndef %17
 %60 = OpTypeVector %23 2
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %35 = OpVariable %34 Function
 %45 = OpVariable %34 Function
-%52 = OpUndef %17
 OpBranch %63
 %63 = OpLabel
 %22 = OpLoad %6 %8

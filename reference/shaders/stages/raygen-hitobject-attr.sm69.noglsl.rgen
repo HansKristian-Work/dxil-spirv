@@ -64,16 +64,16 @@ OpDecorate %12 NonReadable
 %39 = OpConstantComposite %13 %24 %25 %25 %24
 %40 = OpConstantComposite %13 %25 %24 %25 %24
 %41 = OpTypePointer RayPayloadKHR %13
+%46 = OpUndef %29
 %90 = OpTypeMatrix %29 4
 %140 = OpConstantNull %18
+%146 = OpUndef %13
 %150 = OpTypePointer HitObjectAttributeEXT %17
 %166 = OpTypeVector %22 2
 %169 = OpTypePointer Function %13
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %34 = OpVariable %33 Function
-%46 = OpUndef %29
-%146 = OpUndef %13
 OpBranch %171
 %171 = OpLabel
 %21 = OpLoad %6 %8

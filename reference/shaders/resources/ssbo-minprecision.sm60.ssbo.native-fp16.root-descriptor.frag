@@ -150,16 +150,16 @@ OpDecorate %68 Block
 %52 = OpTypeRuntimeArray %33
 %53 = OpTypeStruct %52
 %54 = OpTypePointer PhysicalStorageBuffer %53
+%57 = OpUndef %42
 %59 = OpTypePointer StorageBuffer %5
 %67 = OpTypeRuntimeArray %5
 %68 = OpTypeStruct %67
 %69 = OpTypePointer PhysicalStorageBuffer %68
 %71 = OpTypePointer PhysicalStorageBuffer %5
+%73 = OpUndef %30
 %75 = OpConstant %5 10
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%57 = OpUndef %42
-%73 = OpUndef %30
 OpBranch %77
 %77 = OpLabel
 %20 = OpAccessChain %19 %9 %21

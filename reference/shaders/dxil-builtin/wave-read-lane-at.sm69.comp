@@ -67,6 +67,7 @@ OpDecorate %36 BuiltIn SubgroupLocalInvocationId
 %11 = OpVariable %10 Input
 %12 = OpTypePointer Input %5
 %14 = OpConstant %5 0
+%17 = OpUndef %9
 %19 = OpConstant %5 1
 %23 = OpConstant %5 2
 %26 = OpVariable %12 Input
@@ -83,7 +84,6 @@ OpDecorate %36 BuiltIn SubgroupLocalInvocationId
 %84 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%17 = OpUndef %9
 OpBranch %90
 %90 = OpLabel
 %13 = OpAccessChain %12 %11 %14

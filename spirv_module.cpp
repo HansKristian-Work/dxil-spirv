@@ -527,7 +527,7 @@ spv::Id SPIRVModule::Impl::build_wave_multi_prefix_op(SPIRVModule &module, spv::
 	                                       types, {}, &entry);
 	spv::Id value_id = func->getParamId(0);
 	spv::Id mask_id = func->getParamId(1);
-	spv::Id undef_value = builder.createUndefined(type_id);
+	spv::Id undef_value = builder.createUndefinedConstant(type_id);
 
 	spv::Block *outer_entry = nullptr;
 	spv::Block *return_block = nullptr;
@@ -674,7 +674,7 @@ spv::Id SPIRVModule::Impl::build_wave_multi_prefix_count_bits(SPIRVModule &modul
 	{
 		auto *inner_entry_block = func->newBlockAfter(builder.getUniqueId(), entry);
 		return_block = func->newBlock(builder.getUniqueId());
-		undef_id = builder.createUndefined(uint_type);
+		undef_id = builder.createUndefinedConstant(uint_type);
 		builder.createSelectionMerge(return_block, 0);
 		builder.createConditionalBranch(func->getParamId(2), return_block, inner_entry_block);
 		outer_entry = entry;
@@ -797,7 +797,7 @@ spv::Id SPIRVModule::Impl::build_wave_active_all_equal_masked(SPIRVModule &modul
 	{
 		builder.setBuildPoint(is_helper_block);
 		// Assist in scalar promotion, if we set something concrete, we will force VGPR.
-		undef_id = builder.createUndefined(bool_type);
+		undef_id = builder.createUndefinedConstant(bool_type);
 		builder.createBranch(merge_block);
 	}
 
@@ -992,7 +992,7 @@ spv::Id SPIRVModule::Impl::build_wave_match(SPIRVModule &module, spv::Id type_id
 	{
 		auto *inner_header_block = func->newBlockAfter(builder.getUniqueId(), header_block);
 		return_block = func->newBlock(builder.getUniqueId());
-		undef_id = builder.createUndefined(uvec4_type);
+		undef_id = builder.createUndefinedConstant(uvec4_type);
 		builder.createSelectionMerge(return_block, 0);
 		builder.createConditionalBranch(func->getParamId(1), return_block, inner_header_block);
 		outer_header = header_block;
@@ -1612,7 +1612,7 @@ spv::Id SPIRVModule::Impl::build_allocate_node_records(SPIRVModule &, bool per_t
 		total_count_id = counts_total->getResultId();
 		add_instruction(entry, std::move(counts_total));
 
-		phi_undefined_id = builder.createUndefined(uint_type);
+		phi_undefined_id = builder.createUndefinedConstant(uint_type);
 	}
 	else
 	{
@@ -3649,7 +3649,7 @@ void SPIRVModule::Impl::emit_basic_block(CFGNode *node)
 		if (fake_loop_block && !node->ir.merge_info.continue_block)
 		{
 			builder.setBuildPoint(fake_loop_block);
-			phi_op->addIdOperand(builder.createUndefined(phi.type_id));
+			phi_op->addIdOperand(builder.createUndefinedConstant(phi.type_id));
 			builder.setBuildPoint(bb);
 			phi_op->addIdOperand(fake_loop_block->getId());
 		}

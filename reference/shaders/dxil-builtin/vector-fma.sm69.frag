@@ -72,10 +72,10 @@ OpDecorate %58 NoContraction
 %22 = OpConstant %15 2
 %36 = OpTypeFloat 64
 %40 = OpTypeVector %36 3
+%42 = OpUndef %40
 %65 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%42 = OpUndef %40
 OpBranch %69
 %69 = OpLabel
 %14 = OpAccessChain %13 %10 %16

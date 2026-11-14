@@ -160,9 +160,9 @@ OpDecorate %74 NonUniform
 %51 = OpTypeVector %5 4
 %62 = OpTypePointer IncomingRayPayloadKHR %18
 %73 = OpTypePointer Uniform %18
+%89 = OpUndef %18
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%89 = OpUndef %18
 OpBranch %93
 %93 = OpLabel
 %29 = OpAccessChain %28 %16 %30
