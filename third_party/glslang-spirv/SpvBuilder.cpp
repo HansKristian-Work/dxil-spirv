@@ -1264,6 +1264,11 @@ void Builder::removeDecorations(const dxil_spv::UnorderedSet<spv::Id> &ids)
                 }), decorations.end());
 }
 
+void Builder::removeLocalVariables(const dxil_spv::UnorderedSet<spv::Id> &ids)
+{
+    buildPoint->getParent().removeLocalVariables(ids);
+}
+
 bool Builder::hasDecoration(spv::Id id, spv::Decoration decoration) const
 {
     for (auto &dec : decorations)
