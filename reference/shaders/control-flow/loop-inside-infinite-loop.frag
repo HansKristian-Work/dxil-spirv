@@ -1,5 +1,7 @@
 #version 460
 
+uint _81;
+
 layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
 
 layout(location = 0) flat in uvec4 V;
@@ -23,11 +25,10 @@ void main()
             _39 = V.y == 0u;
             if (!_39)
             {
-                uint _40 = _33 & 3u;
                 uint _43;
                 bool _78;
-                uint _73 = _40;
-                uint _74 = 0u;
+                uint _73;
+                uint _74;
                 uint _42;
                 bool _44;
                 for (;;)
@@ -90,7 +91,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 101
+; Bound: 102
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -136,6 +137,7 @@ OpDecorate %15 Location 0
 %76 = OpConstantTrue %30
 %77 = OpTypePointer Function %30
 %79 = OpConstantFalse %30
+%81 = OpUndef %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %68 = OpVariable %67 Function
@@ -146,8 +148,8 @@ OpDecorate %15 Location 0
 %74 = OpVariable %72 Function
 %75 = OpVariable %72 Function
 %78 = OpVariable %77 Function
-OpBranch %81
-%81 = OpLabel
+OpBranch %82
+%82 = OpLabel
 %16 = OpLoad %6 %8
 %18 = OpAccessChain %17 %11 %19
 %20 = OpLoad %5 %18
@@ -158,70 +160,72 @@ OpBranch %81
 %27 = OpAccessChain %17 %11 %28
 %29 = OpLoad %5 %27
 %31 = OpULessThan %30 %20 %32
-OpSelectionMerge %96 None
-OpBranchConditional %31 %83 %82
-%82 = OpLabel
+OpSelectionMerge %97 None
+OpBranchConditional %31 %84 %83
+%83 = OpLabel
 OpStore %68 %50
 OpStore %69 %50
 OpStore %70 %50
 OpStore %71 %50
-OpBranch %96
-%83 = OpLabel
-OpStore %75 %20
-OpBranch %84
+OpBranch %97
 %84 = OpLabel
+OpStore %75 %20
+OpBranch %85
+%85 = OpLabel
 %33 = OpLoad %5 %75
 %36 = OpImageTexelPointer %35 %8 %19 %19
 %37 = OpAtomicIAdd %5 %36 %38 %19 %33
 %39 = OpIEqual %30 %23 %19
-OpLoopMerge %95 %99 None
-OpBranch %85
-%85 = OpLabel
-OpSelectionMerge %98 None
-OpBranchConditional %39 %98 %86
+OpLoopMerge %96 %100 None
+OpBranch %86
 %86 = OpLabel
+OpSelectionMerge %99 None
+OpBranchConditional %39 %99 %87
+%87 = OpLabel
 %40 = OpBitwiseAnd %5 %33 %28
 OpStore %73 %40
 OpStore %74 %19
-OpBranch %87
-%87 = OpLabel
+OpStore %74 %81
+OpStore %73 %81
+OpBranch %88
+%88 = OpLabel
 %42 = OpLoad %5 %74
 %41 = OpLoad %5 %73
 %44 = OpIEqual %30 %41 %19
 OpStore %78 %79
-OpLoopMerge %93 %92 None
-OpBranch %88
-%88 = OpLabel
-OpSelectionMerge %90 None
-OpBranchConditional %44 %90 %89
+OpLoopMerge %94 %93 None
+OpBranch %89
 %89 = OpLabel
-OpStore %78 %76
-OpBranch %93
+OpSelectionMerge %91 None
+OpBranchConditional %44 %91 %90
 %90 = OpLabel
+OpStore %78 %76
+OpBranch %94
+%91 = OpLabel
 %59 = OpBitwiseAnd %5 %33 %60
 %61 = OpIEqual %30 %59 %19
-OpSelectionMerge %91 None
-OpBranchConditional %61 %91 %93
-%91 = OpLabel
+OpSelectionMerge %92 None
+OpBranchConditional %61 %92 %94
+%92 = OpLabel
 %62 = OpImageTexelPointer %35 %8 %19 %19
 %63 = OpAtomicIAdd %5 %62 %38 %19 %33
 %43 = OpIAdd %5 %42 %22
 %64 = OpULessThan %30 %43 %23
-OpSelectionMerge %100 None
-OpBranchConditional %64 %92 %93
-%100 = OpLabel
+OpSelectionMerge %101 None
+OpBranchConditional %64 %93 %94
+%101 = OpLabel
 OpUnreachable
-%92 = OpLabel
+%93 = OpLabel
 OpStore %73 %19
 OpStore %74 %43
-OpBranch %87
-%93 = OpLabel
-%80 = OpLoad %30 %78
-OpSelectionMerge %94 None
-OpBranchConditional %80 %95 %94
+OpBranch %88
 %94 = OpLabel
-OpBranch %98
+%80 = OpLoad %30 %78
+OpSelectionMerge %95 None
+OpBranchConditional %80 %96 %95
 %95 = OpLabel
+OpBranch %99
+%96 = OpLabel
 %45 = OpConvertUToF %12 %33
 %46 = OpConvertUToF %12 %23
 %47 = OpConvertUToF %12 %26
@@ -230,10 +234,10 @@ OpStore %68 %45
 OpStore %69 %46
 OpStore %70 %47
 OpStore %71 %48
-OpBranch %96
-%96 = OpLabel
 OpBranch %97
 %97 = OpLabel
+OpBranch %98
+%98 = OpLabel
 %53 = OpLoad %12 %71
 %52 = OpLoad %12 %70
 %51 = OpLoad %12 %69
@@ -247,13 +251,13 @@ OpStore %57 %52
 %58 = OpAccessChain %54 %15 %28
 OpStore %58 %53
 OpReturn
-%98 = OpLabel
-OpBranch %99
 %99 = OpLabel
+OpBranch %100
+%100 = OpLabel
 %65 = OpImageTexelPointer %35 %8 %19 %19
 %66 = OpAtomicIAdd %5 %65 %38 %19 %33
 %34 = OpIAdd %5 %33 %22
 OpStore %75 %34
-OpBranch %84
+OpBranch %85
 OpFunctionEnd
 #endif
