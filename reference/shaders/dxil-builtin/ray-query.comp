@@ -4,6 +4,8 @@
 layout(primitive_culling);
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
+uint _411;
+
 layout(set = 0, binding = 0) uniform accelerationStructureEXT _8;
 layout(set = 0, binding = 1, r32ui) uniform writeonly uimageBuffer _12;
 layout(set = 0, binding = 2, r32ui) uniform writeonly uimageBuffer _13;
@@ -25,9 +27,6 @@ void main()
         uint _46;
         uint _49;
         uint _51;
-        uint _405;
-        uint _406;
-        uint _407;
         uint _408 = 0u;
         uint _409 = 0u;
         uint _410 = 0u;
@@ -91,6 +90,9 @@ void main()
             imageStore(_15, int(_165 + 2u), uvec4(floatBitsToUint(_152[0].z)));
             _174 = rayQueryGetIntersectionTypeEXT(_26, bool(0u));
             _175 = _174 == 0u;
+            uint _407 = _411;
+            uint _406 = _411;
+            uint _405 = _411;
             if (_175)
             {
                 float _185 = rayQueryGetIntersectionTEXT(_26, bool(0u));
@@ -243,7 +245,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 437
+; Bound: 438
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -343,6 +345,7 @@ OpDecorate %22 BuiltIn LocalInvocationIndex
 %390 = OpConstant %9 44
 %397 = OpConstant %9 45
 %400 = OpTypePointer Function %9
+%411 = OpUndef %9
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %401 = OpVariable %400 Function
@@ -355,8 +358,8 @@ OpDecorate %22 BuiltIn LocalInvocationIndex
 %408 = OpVariable %400 Function
 %409 = OpVariable %400 Function
 %410 = OpVariable %400 Function
-OpBranch %411
-%411 = OpLabel
+OpBranch %412
+%412 = OpLabel
 %16 = OpLoad %10 %15
 %17 = OpLoad %10 %14
 %18 = OpLoad %10 %13
@@ -367,21 +370,21 @@ OpBranch %411
 %39 = OpCompositeConstruct %36 %31 %33 %35
 OpRayQueryInitializeKHR %26 %20 %27 %28 %37 %38 %39 %40
 %42 = OpRayQueryProceedKHR %41 %26
-OpSelectionMerge %426 None
-OpBranchConditional %42 %413 %412
-%412 = OpLabel
+OpSelectionMerge %427 None
+OpBranchConditional %42 %414 %413
+%413 = OpLabel
 %43 = OpShiftLeftLogical %9 %23 %44
 OpStore %401 %43
 OpStore %402 %47
 OpStore %403 %47
 OpStore %404 %47
-OpBranch %426
-%413 = OpLabel
+OpBranch %427
+%414 = OpLabel
 OpStore %408 %47
 OpStore %409 %47
 OpStore %410 %47
-OpBranch %414
-%414 = OpLabel
+OpBranch %415
+%415 = OpLabel
 %50 = OpLoad %9 %410
 %48 = OpLoad %9 %409
 %45 = OpLoad %9 %408
@@ -520,21 +523,24 @@ OpImageWrite %16 %171 %170 NonPrivateTexel
 OpImageWrite %16 %173 %172 NonPrivateTexel
 %174 = OpRayQueryGetIntersectionTypeKHR %9 %26 %47
 %175 = OpIEqual %41 %174 %47
-OpLoopMerge %425 %424 None
-OpBranch %415
-%415 = OpLabel
-OpSelectionMerge %421 None
-OpBranchConditional %175 %420 %416
+OpLoopMerge %426 %425 None
+OpBranch %416
 %416 = OpLabel
-%176 = OpIEqual %41 %174 %60
-OpSelectionMerge %419 None
-OpBranchConditional %176 %418 %417
+OpStore %407 %411
+OpStore %406 %411
+OpStore %405 %411
+OpSelectionMerge %422 None
+OpBranchConditional %175 %421 %417
 %417 = OpLabel
+%176 = OpIEqual %41 %174 %60
+OpSelectionMerge %420 None
+OpBranchConditional %176 %419 %418
+%418 = OpLabel
 OpStore %405 %45
 OpStore %406 %48
 OpStore %407 %50
-OpBranch %419
-%418 = OpLabel
+OpBranch %420
+%419 = OpLabel
 %177 = OpRayQueryGetIntersectionCandidateAABBOpaqueKHR %41 %26
 %178 = OpLogicalNot %41 %177
 %179 = OpSelect %9 %178 %60 %47
@@ -545,10 +551,10 @@ OpRayQueryGenerateIntersectionKHR %26 %183
 OpStore %405 %45
 OpStore %406 %180
 OpStore %407 %182
-OpBranch %419
-%419 = OpLabel
-OpBranch %421
+OpBranch %420
 %420 = OpLabel
+OpBranch %422
+%421 = OpLabel
 %184 = OpIAdd %9 %45 %60
 %185 = OpRayQueryGetIntersectionTKHR %29 %26 %47
 %186 = OpBitwiseOr %9 %53 %44
@@ -576,35 +582,35 @@ OpRayQueryConfirmIntersectionKHR %26
 OpStore %405 %184
 OpStore %406 %48
 OpStore %407 %50
-OpBranch %421
-%421 = OpLabel
+OpBranch %422
+%422 = OpLabel
 %51 = OpLoad %9 %407
 %49 = OpLoad %9 %406
 %46 = OpLoad %9 %405
 %209 = OpIEqual %41 %46 %79
-OpSelectionMerge %423 None
-OpBranchConditional %209 %422 %423
-%422 = OpLabel
-OpRayQueryTerminateKHR %26
-OpBranch %423
+OpSelectionMerge %424 None
+OpBranchConditional %209 %423 %424
 %423 = OpLabel
-%210 = OpRayQueryProceedKHR %41 %26
-OpSelectionMerge %436 None
-OpBranchConditional %210 %424 %425
-%436 = OpLabel
-OpUnreachable
+OpRayQueryTerminateKHR %26
+OpBranch %424
 %424 = OpLabel
+%210 = OpRayQueryProceedKHR %41 %26
+OpSelectionMerge %437 None
+OpBranchConditional %210 %425 %426
+%437 = OpLabel
+OpUnreachable
+%425 = OpLabel
 OpStore %408 %46
 OpStore %409 %49
 OpStore %410 %51
-OpBranch %414
-%425 = OpLabel
+OpBranch %415
+%426 = OpLabel
 OpStore %401 %53
 OpStore %402 %46
 OpStore %403 %49
 OpStore %404 %51
-OpBranch %426
-%426 = OpLabel
+OpBranch %427
+%427 = OpLabel
 %214 = OpLoad %9 %404
 %213 = OpLoad %9 %403
 %212 = OpLoad %9 %402
@@ -636,9 +642,9 @@ OpImageWrite %18 %230 %232 NonPrivateTexel
 OpImageWrite %18 %235 %237 NonPrivateTexel
 %238 = OpRayQueryGetIntersectionTypeKHR %9 %26 %60
 %239 = OpIEqual %41 %238 %47
-OpSelectionMerge %428 None
-OpBranchConditional %239 %428 %427
-%427 = OpLabel
+OpSelectionMerge %429 None
+OpBranchConditional %239 %429 %428
+%428 = OpLabel
 %240 = OpRayQueryGetIntersectionInstanceIdKHR %9 %26 %60
 %241 = OpBitwiseOr %9 %211 %242
 %243 = OpIAdd %9 %241 %47
@@ -777,31 +783,31 @@ OpImageWrite %16 %365 %364 NonPrivateTexel
 %370 = OpBitcast %9 %366
 %371 = OpCompositeConstruct %56 %370 %370 %370 %370
 OpImageWrite %18 %369 %371 NonPrivateTexel
-OpBranch %428
-%428 = OpLabel
+OpBranch %429
+%429 = OpLabel
 %372 = OpRayQueryGetIntersectionTypeKHR %9 %26 %60
 %373 = OpIEqual %41 %372 %60
-OpSelectionMerge %434 None
-OpBranchConditional %373 %433 %429
-%429 = OpLabel
-%374 = OpIEqual %41 %372 %66
-OpSelectionMerge %432 None
-OpBranchConditional %374 %431 %430
+OpSelectionMerge %435 None
+OpBranchConditional %373 %434 %430
 %430 = OpLabel
+%374 = OpIEqual %41 %372 %66
+OpSelectionMerge %433 None
+OpBranchConditional %374 %432 %431
+%431 = OpLabel
 %375 = OpBitwiseOr %9 %211 %376
 %377 = OpIAdd %9 %375 %47
 %378 = OpCompositeConstruct %56 %214 %214 %214 %214
 OpImageWrite %19 %377 %378 NonPrivateTexel
-OpBranch %432
-%431 = OpLabel
+OpBranch %433
+%432 = OpLabel
 %379 = OpBitwiseOr %9 %211 %380
 %381 = OpIAdd %9 %379 %47
 %382 = OpCompositeConstruct %56 %213 %213 %213 %213
 OpImageWrite %19 %381 %382 NonPrivateTexel
-OpBranch %432
-%432 = OpLabel
-OpBranch %434
+OpBranch %433
 %433 = OpLabel
+OpBranch %435
+%434 = OpLabel
 %383 = OpBitwiseOr %9 %211 %384
 %385 = OpIAdd %9 %383 %47
 %386 = OpCompositeConstruct %56 %212 %212 %212 %212
@@ -819,10 +825,10 @@ OpImageWrite %18 %391 %393 NonPrivateTexel
 %398 = OpIAdd %9 %396 %47
 %399 = OpCompositeConstruct %56 %395 %395 %395 %395
 OpImageWrite %19 %398 %399 NonPrivateTexel
-OpBranch %434
-%434 = OpLabel
 OpBranch %435
 %435 = OpLabel
+OpBranch %436
+%436 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

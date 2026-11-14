@@ -448,7 +448,7 @@ CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
 CFGNode *CFGNode::get_immediate_dominator_loop_header()
 {
 	assert(immediate_dominator);
-	auto *node = this;
+	auto *node = immediate_dominator;
 	while (!node->pred_back_edge)
 	{
 		if (node->pred.empty())
