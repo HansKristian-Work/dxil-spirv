@@ -2491,6 +2491,7 @@ void CFGStructurizer::fixup_broken_value_dominance()
 			spv::Id alloca_var_id = module.create_variable(spv::StorageClassFunction, orig.type_id);
 
 			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(alloca_var_id);
 			store_op->add_id(rewrite.id);
 			orig.node->ir.operations.push_back(store_op);
@@ -2501,6 +2502,7 @@ void CFGStructurizer::fixup_broken_value_dominance()
 			{
 				spv::Id loaded_id = module.allocate_id();
 				auto *load_op = module.allocate_op(spv::OpLoad, loaded_id, orig.type_id);
+				load_op->flags |= Operation::SSALoadStore;
 				load_op->add_id(alloca_var_id);
 
 				rewrite_consumed_ids(consumer->ir, rewrite.id, loaded_id);

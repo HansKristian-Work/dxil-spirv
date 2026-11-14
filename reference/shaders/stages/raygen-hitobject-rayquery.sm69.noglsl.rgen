@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 150
+; Bound: 152
 ; Schema: 0
 OpCapability Shader
 OpCapability UniformBufferArrayDynamicIndexing
@@ -97,6 +97,8 @@ OpDecorate %25 BuiltIn LaunchIdKHR
 %115 = OpTypePointer Function %13
 %117 = OpTypePointer Function %18
 %119 = OpTypePointer Function %22
+%125 = OpUndef %22
+%126 = OpUndef %18
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %80 = OpVariable %79 Function
@@ -110,8 +112,8 @@ OpDecorate %25 BuiltIn LaunchIdKHR
 %124 = OpVariable %119 Function
 %53 = OpUndef %18
 %89 = OpUndef %22
-OpBranch %125
-%125 = OpLabel
+OpBranch %127
+%127 = OpLabel
 %27 = OpAccessChain %26 %25 %28
 %29 = OpLoad %22 %27
 %30 = OpAccessChain %26 %25 %31
@@ -121,40 +123,42 @@ OpBranch %125
 %47 = OpCompositeConstruct %13 %40 %42 %44
 OpRayQueryInitializeKHR %35 %36 %37 %38 %45 %46 %47 %48
 %50 = OpRayQueryProceedKHR %49 %35
-OpSelectionMerge %141 None
-OpBranchConditional %50 %127 %126
-%126 = OpLabel
+OpSelectionMerge %143 None
+OpBranchConditional %50 %129 %128
+%128 = OpLabel
 OpStore %118 %53
 OpStore %120 %28
-OpBranch %141
-%127 = OpLabel
+OpBranch %143
+%129 = OpLabel
 OpStore %123 %53
 OpStore %124 %28
-OpBranch %128
-%128 = OpLabel
+OpBranch %130
+%130 = OpLabel
 %54 = OpLoad %22 %124
 %51 = OpLoad %18 %123
 %56 = OpRayQueryGetIntersectionTypeKHR %22 %35 %28
 %57 = OpIEqual %49 %56 %28
-OpLoopMerge %140 %139 None
-OpBranch %129
-%129 = OpLabel
-OpSelectionMerge %138 None
-OpBranchConditional %57 %137 %130
-%130 = OpLabel
-%58 = OpIEqual %49 %56 %31
-OpSelectionMerge %136 None
-OpBranchConditional %58 %132 %131
+OpLoopMerge %142 %141 None
+OpBranch %131
 %131 = OpLabel
+OpStore %122 %125
+OpStore %121 %126
+OpSelectionMerge %140 None
+OpBranchConditional %57 %139 %132
+%132 = OpLabel
+%58 = OpIEqual %49 %56 %31
+OpSelectionMerge %138 None
+OpBranchConditional %58 %134 %133
+%133 = OpLabel
 OpStore %121 %51
 OpStore %122 %54
-OpBranch %136
-%132 = OpLabel
+OpBranch %138
+%134 = OpLabel
 %59 = OpRayQueryGetIntersectionPrimitiveIndexKHR %22 %35 %28
 %60 = OpUGreaterThan %49 %59 %61
-OpSelectionMerge %135 None
-OpBranchConditional %60 %134 %133
-%133 = OpLabel
+OpSelectionMerge %137 None
+OpBranchConditional %60 %136 %135
+%135 = OpLabel
 %62 = OpRayQueryGetRayTMinKHR %9 %35
 OpRayQueryGenerateIntersectionKHR %35 %62
 %63 = OpRayQueryGetIntersectionObjectRayOriginKHR %13 %35 %28
@@ -168,51 +172,51 @@ OpRayQueryGenerateIntersectionKHR %35 %62
 %71 = OpConvertFToU %22 %70
 OpStore %121 %68
 OpStore %122 %71
-OpBranch %135
-%134 = OpLabel
+OpBranch %137
+%136 = OpLabel
 OpStore %121 %51
 OpStore %122 %54
-OpBranch %135
-%135 = OpLabel
-OpBranch %136
-%136 = OpLabel
-OpBranch %138
+OpBranch %137
 %137 = OpLabel
+OpBranch %138
+%138 = OpLabel
+OpBranch %140
+%139 = OpLabel
 OpRayQueryConfirmIntersectionKHR %35
 OpStore %121 %51
 OpStore %122 %54
-OpBranch %138
-%138 = OpLabel
+OpBranch %140
+%140 = OpLabel
 %55 = OpLoad %22 %122
 %52 = OpLoad %18 %121
 %72 = OpRayQueryProceedKHR %49 %35
-OpSelectionMerge %149 None
-OpBranchConditional %72 %139 %140
-%149 = OpLabel
+OpSelectionMerge %151 None
+OpBranchConditional %72 %141 %142
+%151 = OpLabel
 OpUnreachable
-%139 = OpLabel
+%141 = OpLabel
 OpStore %123 %52
 OpStore %124 %55
-OpBranch %128
-%140 = OpLabel
+OpBranch %130
+%142 = OpLabel
 OpStore %118 %52
 OpStore %120 %55
-OpBranch %141
-%141 = OpLabel
+OpBranch %143
+%143 = OpLabel
 %74 = OpLoad %22 %120
 %73 = OpLoad %18 %118
 %75 = OpRayQueryGetIntersectionTypeKHR %22 %35 %31
 %76 = OpIEqual %49 %75 %61
-OpSelectionMerge %147 None
-OpBranchConditional %76 %146 %142
-%142 = OpLabel
-%77 = OpIEqual %49 %75 %31
-OpSelectionMerge %145 None
-OpBranchConditional %77 %144 %143
-%143 = OpLabel
-OpStore %116 %106
-OpBranch %145
+OpSelectionMerge %149 None
+OpBranchConditional %76 %148 %144
 %144 = OpLabel
+%77 = OpIEqual %49 %75 %31
+OpSelectionMerge %147 None
+OpBranchConditional %77 %146 %145
+%145 = OpLabel
+OpStore %116 %106
+OpBranch %147
+%146 = OpLabel
 OpHitObjectRecordFromQueryEXT %80 %35 %28 %83
 %84 = OpHitObjectIsHitEXT %49 %80
 %85 = OpSelect %22 %84 %86 %87
@@ -224,10 +228,10 @@ OpStore %91 %92
 OpHitObjectExecuteShaderEXT %80 %16
 %93 = OpLoad %13 %91
 OpStore %116 %93
-OpBranch %145
-%145 = OpLabel
 OpBranch %147
-%146 = OpLabel
+%147 = OpLabel
+OpBranch %149
+%148 = OpLabel
 %95 = OpInBoundsAccessChain %94 %21 %28
 OpStore %95 %73
 OpHitObjectRecordFromQueryEXT %96 %35 %28 %21 %74
@@ -241,10 +245,10 @@ OpStore %100 %92
 OpHitObjectExecuteShaderEXT %96 %17
 %101 = OpLoad %13 %100
 OpStore %116 %101
-OpBranch %147
-%147 = OpLabel
-OpBranch %148
-%148 = OpLabel
+OpBranch %149
+%149 = OpLabel
+OpBranch %150
+%150 = OpLabel
 %102 = OpLoad %13 %116
 %107 = OpCompositeExtract %9 %102 0
 %108 = OpCompositeExtract %9 %102 1

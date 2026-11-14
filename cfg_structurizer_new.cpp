@@ -234,6 +234,7 @@ void CFGStructurizer::convert_phi_to_variables()
 			{
 				assert(incoming.block->ir.terminator.type == Terminator::Type::Branch);
 				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
 				store_op->add_id(alloca_id);
 				store_op->add_id(incoming.id);
 				incoming.block->ir.operations.push_back(store_op);
@@ -241,6 +242,7 @@ void CFGStructurizer::convert_phi_to_variables()
 
 			// Back to SSA since future opcodes depend on it.
 			auto *load_phi = module.allocate_op(spv::OpLoad, phi.id, phi.type_id);
+			load_phi->flags |= Operation::SSALoadStore;
 			load_phi->add_id(alloca_id);
 			node->ir.operations.insert(node->ir.operations.begin(), load_phi);
 		}
@@ -735,6 +737,73 @@ void CFGStructurizer::filter_outer_idom_candidates(Vector<CFGNode *> &outer_idom
 	}
 }
 
+void CFGStructurizer::clamp_ssa_variable_lifetimes()
+{
+	UnorderedMap<uint32_t, Vector<CFGNode *>> ssa_variable_to_writers;
+
+	for (auto *node : forward_post_visit_order)
+		for (auto &op : node->ir.operations)
+			if (op->op == spv::OpStore && (op->flags & Operation::SSALoadStore) != 0)
+				push_back_unique(ssa_variable_to_writers[op->argument(0)], node);
+
+	for (auto *node : forward_post_visit_order)
+	{
+		for (auto &op : node->ir.operations)
+		{
+			if (op->op == spv::OpLoad && (op->flags & Operation::SSALoadStore) != 0)
+			{
+				// This is a PHI variable we couldn't (easily) turn back into SSA form again.
+				// If the variable partly lives inside a loop, this has a tendency to confuse compilers
+				// w.r.t. liveness if we're not very careful since if the PHI variable is not written
+				// at the loop header, there is a risk the value may have to survive through a loop iteration,
+				// which bloats register allocation.
+				// That is never the intent for SSALoadStore flagged load-stores since they were originally meant to be SSA values.
+				// Their effective lifetime starts at the innermost loop header.
+				auto *idom = node->immediate_dominator;
+				if (!idom)
+					break;
+
+				auto &writers = ssa_variable_to_writers[op->argument(0)];
+				for (auto *writer : writers)
+					idom = CFGNode::find_common_dominator(idom, writer);
+
+				auto *header = idom;
+				if (!header->pred_back_edge)
+					header = header->get_immediate_dominator_loop_header();
+
+				// Avoid false positive loop analysis. If we're dominated by a loop, but dominated by the merge block,
+				// we keep going up. We need to find the innermost loop header where we can potentially reach the back-edge.
+				while (header && header->pred_back_edge && header->ir.merge_info.merge_block->dominates(idom))
+					header = header->get_immediate_dominator_loop_header();
+
+				if (!header)
+					break;
+
+				// It's possible the dominator already writes a PHI variable.
+				// In that case, we just skip this.
+
+				bool has_ssa_store = false;
+				for (auto &header_op : header->ir.operations)
+				{
+					if (header_op->op == spv::OpStore && header_op->argument(0) == op->argument(0))
+					{
+						has_ssa_store = true;
+						break;
+					}
+				}
+
+				if (!has_ssa_store)
+				{
+					auto *store_undef = module.allocate_op(spv::OpStore);
+					store_undef->add_id(op->argument(0));
+					store_undef->add_id(module.get_builder().createUndefinedConstant(op->type_id));
+					idom->ir.operations.push_back(store_undef);
+				}
+			}
+		}
+	}
+}
+
 void CFGStructurizer::analyze_levels_skippability(CFGNode *node,
                                                   const Vector<SerializationLevel> &outer_levels,
                                                   Vector<SerializationLevel> &levels)
@@ -808,6 +877,7 @@ void CFGStructurizer::analyze_levels_skippability(CFGNode *node,
 			{
 				// Unless we explicitly branch to a level, consider it skipped by default.
 				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
 				store_op->add_id(level.path_selector_id);
 				store_op->add_id(module.get_builder().makeIntConstant(-1));
 				node->ir.operations.push_back(store_op);
@@ -822,6 +892,7 @@ void CFGStructurizer::analyze_levels_skippability(CFGNode *node,
 			{
 				// Unless we explicitly branch to a level, consider it skipped by default.
 				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
 				store_op->add_id(level.path_selector_id);
 				store_op->add_id(module.get_builder().makeBoolConstant(false));
 				node->ir.operations.push_back(store_op);
@@ -858,6 +929,7 @@ void CFGStructurizer::analyze_levels_skippability(CFGNode *node,
 
 				auto *load_op = module.allocate_op(
 					spv::OpLoad, module.allocate_id(), module.get_builder().makeIntType(32));
+				load_op->flags |= Operation::SSALoadStore;
 				load_op->add_id(level.path_selector_id);
 				level.input_node->ir.operations.push_back(load_op);
 				level.input_node->ir.terminator.conditional_id = load_op->id;
@@ -881,6 +953,7 @@ void CFGStructurizer::analyze_levels_skippability(CFGNode *node,
 
 				auto *load_op = module.allocate_op(
 					spv::OpLoad, module.allocate_id(), module.get_builder().makeBoolType());
+				load_op->flags |= Operation::SSALoadStore;
 				load_op->add_id(level.path_selector_id);
 				level.input_node->ir.operations.push_back(load_op);
 				level.input_node->ir.terminator.conditional_id = load_op->id;
@@ -1369,6 +1442,7 @@ CFGNode *CFGStructurizer::route_conditional_break(CFGNode *node, spv::Id var_id,
 	assert(var_id != 0);
 
 	auto *load_op = module.allocate_op(spv::OpLoad, module.allocate_id(), module.get_builder().makeBoolType());
+	load_op->flags |= Operation::SSALoadStore;
 	load_op->add_id(var_id);
 	node->ir.operations.push_back(load_op);
 
@@ -1395,6 +1469,7 @@ CFGNode *CFGStructurizer::route_loop_bypass(CFGNode *header, CFGNode *merge,
 	if (bypass_break_id != 0)
 	{
 		auto *store_op = module.allocate_op(spv::OpStore);
+		store_op->flags |= Operation::SSALoadStore;
 		store_op->add_id(bypass_break_id);
 		store_op->add_id(module.get_builder().makeBoolConstant(false));
 		header->ir.operations.push_back(store_op);
@@ -1405,6 +1480,7 @@ CFGNode *CFGStructurizer::route_loop_bypass(CFGNode *header, CFGNode *merge,
 	if (bypass_continue_id != 0)
 	{
 		auto *store_op = module.allocate_op(spv::OpStore);
+		store_op->flags |= Operation::SSALoadStore;
 		store_op->add_id(bypass_continue_id);
 		store_op->add_id(module.get_builder().makeBoolConstant(false));
 		header->ir.operations.push_back(store_op);
@@ -1479,6 +1555,7 @@ bool CFGStructurizer::resolve_complex_breaks(CFGNode *from, CFGNode *rerouted_su
 				scope->bypass_continue_id = module.create_variable(spv::StorageClassFunction, module.get_builder().makeBoolType());
 
 			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(scope->bypass_continue_id);
 			store_op->add_id(cond_id);
 			from->ir.operations.push_back(store_op);
@@ -1493,6 +1570,7 @@ bool CFGStructurizer::resolve_complex_breaks(CFGNode *from, CFGNode *rerouted_su
 				scope->bypass_break_id = module.create_variable(spv::StorageClassFunction, module.get_builder().makeBoolType());
 
 			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(scope->bypass_break_id);
 			store_op->add_id(cond_id);
 			from->ir.operations.push_back(store_op);
@@ -1523,6 +1601,7 @@ bool CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const Se
 		if (num_paths >= 3)
 		{
 			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(level->path_selector_id);
 
 			// If the level is not skippable, we can write garbage. It must be overwritten by someone else on the way.
@@ -1559,6 +1638,7 @@ bool CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const Se
 		else if (num_paths == 2)
 		{
 			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(level->path_selector_id);
 
 			bool path_is_true = bool(i) || level->skippable;
@@ -1664,6 +1744,7 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 			node->ir.operations.push_back(sel);
 
 			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(level.path_selector_id);
 			store_op->add_id(sel->id);
 			node->ir.operations.push_back(store_op);
@@ -1684,6 +1765,7 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 			}
 
 			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(level.path_selector_id);
 			store_op->add_id(cond);
 			node->ir.operations.push_back(store_op);
@@ -1965,6 +2047,8 @@ bool CFGStructurizer::run_structurizer()
 	// It's possible SSA dominance is broken as a result of splitting loop scopes and maximal reconvergence.
 	// Fix this up now.
 	fixup_broken_value_dominance();
+
+	clamp_ssa_variable_lifetimes();
 
 	return true;
 }

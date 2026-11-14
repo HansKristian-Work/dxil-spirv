@@ -231,7 +231,8 @@ struct Operation
 		SubgroupSyncPost = 1 << 4,
 		// Used for analysis if a stage output is only conditionally written to.
 		// First arguments holds the output OpVariable in question.
-		StageOutputWriteAnalysis = 1 << 5
+		StageOutputWriteAnalysis = 1 << 5,
+		SSALoadStore = 1 << 6
 	};
 	uint8_t flags = 0;
 

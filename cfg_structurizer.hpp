@@ -425,6 +425,8 @@ private:
 	void cleanup_degenerate_blocks();
 	void rewrite_degenerate_phi_constructs();
 	void rewrite_degenerate_interposing_frontiers();
+
+	void clamp_ssa_variable_lifetimes();
 };
 
 template <typename Container, typename T>
