@@ -9,10 +9,10 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    uint _89;
-    uint _90;
-    uint _91;
-    uint _92;
+    uint _68;
+    uint _69;
+    uint _70;
+    uint _71;
     if (V.x < 10u)
     {
         uint _95 = V.x;
@@ -67,10 +67,10 @@ void main()
             _95 = _58 + 1u;
             continue;
         }
-        _89 = _58;
-        _90 = V.y;
-        _91 = V.z;
-        _92 = V.w;
+        _68 = _58;
+        _69 = V.y;
+        _70 = V.z;
+        _71 = V.w;
     }
     else
     {
@@ -128,15 +128,15 @@ void main()
             _98 = _36 + 1u;
             continue;
         }
-        _89 = _36;
-        _90 = _34;
-        _91 = ~V.z;
-        _92 = ~V.w;
+        _68 = _36;
+        _69 = _34;
+        _70 = ~V.z;
+        _71 = ~V.w;
     }
-    SV_Target.x = float(_89);
-    SV_Target.y = float(_90);
-    SV_Target.z = float(_91);
-    SV_Target.w = float(_92);
+    SV_Target.x = float(_68);
+    SV_Target.y = float(_69);
+    SV_Target.z = float(_70);
+    SV_Target.w = float(_71);
 }
 
 
@@ -193,10 +193,6 @@ OpDecorate %15 Location 0
 %106 = OpUndef %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%89 = OpVariable %88 Function
-%90 = OpVariable %88 Function
-%91 = OpVariable %88 Function
-%92 = OpVariable %88 Function
 %93 = OpVariable %88 Function
 %94 = OpVariable %88 Function
 %95 = OpVariable %88 Function
@@ -281,10 +277,6 @@ OpBranchConditional %105 %120 %119
 OpBranch %121
 %120 = OpLabel
 %49 = OpNot %5 %29
-OpStore %89 %36
-OpStore %90 %34
-OpStore %91 %35
-OpStore %92 %49
 OpBranch %136
 %121 = OpLabel
 OpBranch %122
@@ -352,18 +344,14 @@ OpBranchConditional %103 %135 %134
 %134 = OpLabel
 OpBranch %138
 %135 = OpLabel
-OpStore %89 %58
-OpStore %90 %23
-OpStore %91 %26
-OpStore %92 %29
 OpBranch %136
 %136 = OpLabel
+%68 = OpPhi %5 %58 %135 %36 %120
+%69 = OpPhi %5 %23 %135 %34 %120
+%70 = OpPhi %5 %26 %135 %35 %120
+%71 = OpPhi %5 %29 %135 %49 %120
 OpBranch %137
 %137 = OpLabel
-%71 = OpLoad %5 %92
-%70 = OpLoad %5 %91
-%69 = OpLoad %5 %90
-%68 = OpLoad %5 %89
 %72 = OpConvertUToF %12 %68
 %73 = OpConvertUToF %12 %69
 %74 = OpConvertUToF %12 %70

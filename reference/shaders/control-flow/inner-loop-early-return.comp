@@ -59,16 +59,16 @@ void main()
             break;
         }
     }
-    uint _37;
+    uint _31;
     if (_41)
     {
-        _37 = 80u;
+        _31 = 80u;
     }
     else
     {
-        _37 = 70u;
+        _31 = 70u;
     }
-    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(_37));
+    imageStore(_8, int(gl_GlobalInvocationID.x), uvec4(_31));
 }
 
 
@@ -116,7 +116,6 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %47 = OpUndef %24
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%37 = OpVariable %36 Function
 %38 = OpVariable %36 Function
 %39 = OpVariable %36 Function
 %41 = OpVariable %40 Function
@@ -181,15 +180,13 @@ OpBranch %59
 OpSelectionMerge %62 None
 OpBranchConditional %42 %60 %61
 %60 = OpLabel
-OpStore %37 %33
 OpBranch %62
 %61 = OpLabel
-OpStore %37 %32
 OpBranch %62
 %62 = OpLabel
+%31 = OpPhi %5 %32 %61 %33 %60
 OpBranch %63
 %63 = OpLabel
-%31 = OpLoad %5 %37
 %35 = OpCompositeConstruct %34 %31 %31 %31 %31
 OpImageWrite %9 %16 %35 NonPrivateTexel
 OpReturn

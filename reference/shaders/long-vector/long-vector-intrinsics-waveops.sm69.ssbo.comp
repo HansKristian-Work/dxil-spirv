@@ -235,67 +235,67 @@ void main()
     vector<uint, 8> _182 = WaveMultiPrefixBitXor(_10._m0[_24], uvec4(_10._m0[_31][0], _10._m0[_31][1], _10._m0[_31][2], _10._m0[_31][3]));
     vector<uint, 8> _201 = WaveMultiPrefixProduct(_10._m0[_24], uvec4(_10._m0[_31][0], _10._m0[_31][1], _10._m0[_31][2], _10._m0[_31][3]));
     vector<uint, 8> _220 = WaveMultiPrefixSum(_10._m0[_24], uvec4(_10._m0[_31][0], _10._m0[_31][1], _10._m0[_31][2], _10._m0[_31][3]));
-    vector<uint, 8> _247;
+    vector<uint, 8> _243;
     switch (gl_GlobalInvocationID.x)
     {
         case 0u:
         {
-            _247 = _40;
+            _243 = _40;
             break;
         }
         case 1u:
         {
-            _247 = _41;
+            _243 = _41;
             break;
         }
         case 2u:
         {
-            _247 = _42;
+            _243 = _42;
             break;
         }
         case 3u:
         {
-            _247 = _43;
+            _243 = _43;
             break;
         }
         case 4u:
         {
-            _247 = _44;
+            _243 = _44;
             break;
         }
         case 5u:
         {
-            _247 = _45;
+            _243 = _45;
             break;
         }
         case 6u:
         {
-            _247 = _46;
+            _243 = _46;
             break;
         }
         case 7u:
         {
-            _247 = _47;
+            _243 = _47;
             break;
         }
         case 8u:
         {
-            _247 = _48;
+            _243 = _48;
             break;
         }
         case 9u:
         {
-            _247 = _49;
+            _243 = _49;
             break;
         }
         case 10u:
         {
-            _247 = _51;
+            _243 = _51;
             break;
         }
         case 11u:
         {
-            _247 = ((mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_73, _75, _77, _79, _81, _83, _85, _87)) << (vector<uint, 8>(8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u))) | mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_56, _58, _60, _62, _64, _66, _68, _70))) | (mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_90, _92, _94, _96, _98, _100, _102, _104)) << (vector<uint, 8>(16u, 16u, 16u, 16u, 16u, 16u, 16u, 16u)));
+            _243 = ((mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_73, _75, _77, _79, _81, _83, _85, _87)) << (vector<uint, 8>(8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u))) | mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_56, _58, _60, _62, _64, _66, _68, _70))) | (mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), vector<bool, 8>(_90, _92, _94, _96, _98, _100, _102, _104)) << (vector<uint, 8>(16u, 16u, 16u, 16u, 16u, 16u, 16u, 16u)));
             break;
         }
         case 12u:
@@ -304,41 +304,41 @@ void main()
             _223[0] = _117.x;
             _223[1] = _118.x;
             _223[2] = _119.x;
-            _247 = _223;
+            _243 = _223;
             break;
         }
         case 13u:
         {
-            _247 = _144;
+            _243 = _144;
             break;
         }
         case 14u:
         {
-            _247 = _163;
+            _243 = _163;
             break;
         }
         case 15u:
         {
-            _247 = _182;
+            _243 = _182;
             break;
         }
         case 16u:
         {
-            _247 = _201;
+            _243 = _201;
             break;
         }
         case 17u:
         {
-            _247 = _220;
+            _243 = _220;
             break;
         }
         default:
         {
-            _247 = vector<uint, 8>(0);
+            _243 = vector<uint, 8>(0);
             break;
         }
     }
-    _14._m0[gl_GlobalInvocationID.x] = _247;
+    _14._m0[gl_GlobalInvocationID.x] = _243;
 }
 
 
@@ -425,7 +425,6 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %246 = OpTypePointer Function %6
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%247 = OpVariable %246 Function
 OpBranch %248
 %248 = OpLabel
 %19 = OpAccessChain %18 %17 %20
@@ -526,19 +525,14 @@ OpBranch %248
 OpSelectionMerge %268 None
 OpSwitch %21 %267 0 %266 1 %265 2 %264 3 %263 4 %262 5 %261 6 %260 7 %259 8 %258 9 %257 10 %256 11 %255 12 %254 13 %253 14 %252 15 %251 16 %250 17 %249
 %249 = OpLabel
-OpStore %247 %220
 OpBranch %268
 %250 = OpLabel
-OpStore %247 %201
 OpBranch %268
 %251 = OpLabel
-OpStore %247 %182
 OpBranch %268
 %252 = OpLabel
-OpStore %247 %163
 OpBranch %268
 %253 = OpLabel
-OpStore %247 %144
 OpBranch %268
 %254 = OpLabel
 %222 = OpCompositeExtract %5 %117 0
@@ -547,7 +541,6 @@ OpBranch %268
 %227 = OpCompositeInsert %6 %226 %223 1
 %228 = OpCompositeExtract %5 %119 0
 %229 = OpCompositeInsert %6 %228 %227 2
-OpStore %247 %229
 OpBranch %268
 %255 = OpLabel
 %232 = OpSelect %6 %54 %231 %230
@@ -557,48 +550,35 @@ OpBranch %268
 %238 = OpSelect %6 %88 %231 %230
 %239 = OpShiftLeftLogical %6 %238 %241
 %242 = OpBitwiseOr %6 %237 %239
-OpStore %247 %242
 OpBranch %268
 %256 = OpLabel
-OpStore %247 %51
 OpBranch %268
 %257 = OpLabel
-OpStore %247 %49
 OpBranch %268
 %258 = OpLabel
-OpStore %247 %48
 OpBranch %268
 %259 = OpLabel
-OpStore %247 %47
 OpBranch %268
 %260 = OpLabel
-OpStore %247 %46
 OpBranch %268
 %261 = OpLabel
-OpStore %247 %45
 OpBranch %268
 %262 = OpLabel
-OpStore %247 %44
 OpBranch %268
 %263 = OpLabel
-OpStore %247 %43
 OpBranch %268
 %264 = OpLabel
-OpStore %247 %42
 OpBranch %268
 %265 = OpLabel
-OpStore %247 %41
 OpBranch %268
 %266 = OpLabel
-OpStore %247 %40
 OpBranch %268
 %267 = OpLabel
-OpStore %247 %244
 OpBranch %268
 %268 = OpLabel
+%243 = OpPhi %6 %244 %267 %40 %266 %41 %265 %42 %264 %43 %263 %44 %262 %45 %261 %46 %260 %47 %259 %48 %258 %49 %257 %51 %256 %242 %255 %229 %254 %144 %253 %163 %252 %182 %251 %201 %250 %220 %249
 OpBranch %269
 %269 = OpLabel
-%243 = OpLoad %6 %247
 %245 = OpAccessChain %25 %14 %20 %21
 OpStore %245 %243 NonPrivatePointer
 OpReturn

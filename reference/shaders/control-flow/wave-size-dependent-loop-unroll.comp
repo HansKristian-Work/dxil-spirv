@@ -37,10 +37,10 @@ void main()
 {
     uint _37 = UDiv(256u, gl_SubgroupSize);
     bool _38 = _37 == 0u;
-    bool _181;
+    bool _143;
     if (_38)
     {
-        _181 = true;
+        _143 = true;
     }
     else
     {
@@ -60,53 +60,60 @@ void main()
         _13[13u] = 13.0;
         _13[14u] = 14.0;
         _13[15u] = 15.0;
+        bool _185;
         if (_37 > 4u)
         {
             _13[16u] = 16.0;
             _13[17u] = 17.0;
             _13[18u] = 18.0;
             _13[19u] = 19.0;
+            bool _184;
             if (_37 > 5u)
             {
                 _13[20u] = 20.0;
                 _13[21u] = 21.0;
                 _13[22u] = 22.0;
                 _13[23u] = 23.0;
+                bool _183;
                 if (_37 > 6u)
                 {
                     _13[24u] = 24.0;
                     _13[25u] = 25.0;
                     _13[26u] = 26.0;
                     _13[27u] = 27.0;
+                    bool _182;
                     if (_37 > 7u)
                     {
                         _13[28u] = 28.0;
                         _13[29u] = 29.0;
                         _13[30u] = 30.0;
                         _13[31u] = 31.0;
-                        _181 = _38;
+                        _182 = _38;
                     }
                     else
                     {
-                        _181 = _38;
+                        _182 = _38;
                     }
+                    _183 = _182;
                 }
                 else
                 {
-                    _181 = _38;
+                    _183 = _38;
                 }
+                _184 = _183;
             }
             else
             {
-                _181 = _38;
+                _184 = _38;
             }
+            _185 = _184;
         }
         else
         {
-            _181 = _38;
+            _185 = _38;
         }
+        _143 = _185;
     }
-    bool _143 = _181;
     barrier();
     if (!_143)
     {
@@ -141,7 +148,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 206
+; Bound: 210
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -252,18 +259,17 @@ OpDecorate %22 BuiltIn SubgroupSize
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %179 = OpVariable %178 Function
-%181 = OpVariable %180 Function
-OpBranch %182
-%182 = OpLabel
+OpBranch %186
+%186 = OpLabel
 %14 = OpLoad %6 %8
 %19 = OpAccessChain %18 %17 %20
 %21 = OpLoad %5 %19
 %23 = OpLoad %5 %22
 %37 = OpFunctionCall %5 %27 %9 %23
 %38 = OpIEqual %32 %37 %20
-OpSelectionMerge %197 None
-OpBranchConditional %38 %196 %183
-%183 = OpLabel
+OpSelectionMerge %201 None
+OpBranchConditional %38 %200 %187
+%187 = OpLabel
 %40 = OpAccessChain %39 %13 %20
 OpStore %40 %41 MakePointerAvailable|NonPrivatePointer %42
 %43 = OpAccessChain %39 %13 %44
@@ -300,12 +306,11 @@ OpStore %84 %86 MakePointerAvailable|NonPrivatePointer %42
 %87 = OpAccessChain %39 %13 %88
 OpStore %87 %89 MakePointerAvailable|NonPrivatePointer %42
 %90 = OpUGreaterThan %32 %37 %53
-OpSelectionMerge %195 None
-OpBranchConditional %90 %185 %184
-%184 = OpLabel
-OpStore %181 %38
-OpBranch %195
-%185 = OpLabel
+OpSelectionMerge %199 None
+OpBranchConditional %90 %189 %188
+%188 = OpLabel
+OpBranch %199
+%189 = OpLabel
 %91 = OpAccessChain %39 %13 %92
 OpStore %91 %93 MakePointerAvailable|NonPrivatePointer %42
 %94 = OpAccessChain %39 %13 %95
@@ -315,12 +320,11 @@ OpStore %97 %99 MakePointerAvailable|NonPrivatePointer %42
 %100 = OpAccessChain %39 %13 %101
 OpStore %100 %102 MakePointerAvailable|NonPrivatePointer %42
 %103 = OpUGreaterThan %32 %37 %56
-OpSelectionMerge %194 None
-OpBranchConditional %103 %187 %186
-%186 = OpLabel
-OpStore %181 %38
-OpBranch %194
-%187 = OpLabel
+OpSelectionMerge %198 None
+OpBranchConditional %103 %191 %190
+%190 = OpLabel
+OpBranch %198
+%191 = OpLabel
 %104 = OpAccessChain %39 %13 %105
 OpStore %104 %106 MakePointerAvailable|NonPrivatePointer %42
 %107 = OpAccessChain %39 %13 %108
@@ -330,12 +334,11 @@ OpStore %110 %112 MakePointerAvailable|NonPrivatePointer %42
 %113 = OpAccessChain %39 %13 %114
 OpStore %113 %115 MakePointerAvailable|NonPrivatePointer %42
 %116 = OpUGreaterThan %32 %37 %59
-OpSelectionMerge %193 None
-OpBranchConditional %116 %189 %188
-%188 = OpLabel
-OpStore %181 %38
-OpBranch %193
-%189 = OpLabel
+OpSelectionMerge %197 None
+OpBranchConditional %116 %193 %192
+%192 = OpLabel
+OpBranch %197
+%193 = OpLabel
 %117 = OpAccessChain %39 %13 %118
 OpStore %117 %119 MakePointerAvailable|NonPrivatePointer %42
 %120 = OpAccessChain %39 %13 %121
@@ -345,12 +348,11 @@ OpStore %123 %125 MakePointerAvailable|NonPrivatePointer %42
 %126 = OpAccessChain %39 %13 %127
 OpStore %126 %128 MakePointerAvailable|NonPrivatePointer %42
 %129 = OpUGreaterThan %32 %37 %62
-OpSelectionMerge %192 None
-OpBranchConditional %129 %191 %190
-%190 = OpLabel
-OpStore %181 %38
-OpBranch %192
-%191 = OpLabel
+OpSelectionMerge %196 None
+OpBranchConditional %129 %195 %194
+%194 = OpLabel
+OpBranch %196
+%195 = OpLabel
 %130 = OpAccessChain %39 %13 %131
 OpStore %130 %132 MakePointerAvailable|NonPrivatePointer %42
 %133 = OpAccessChain %39 %13 %134
@@ -360,28 +362,30 @@ OpStore %136 %138 MakePointerAvailable|NonPrivatePointer %42
 %139 = OpAccessChain %39 %13 %140
 OpStore %139 %141 MakePointerAvailable|NonPrivatePointer %42
 %142 = OpUGreaterThan %32 %37 %66
-OpStore %181 %38
-OpBranch %192
-%192 = OpLabel
-OpBranch %193
-%193 = OpLabel
-OpBranch %194
-%194 = OpLabel
-OpBranch %195
-%195 = OpLabel
-OpBranch %197
+OpBranch %196
 %196 = OpLabel
-OpStore %181 %144
+%182 = OpPhi %32 %38 %195 %38 %194
 OpBranch %197
 %197 = OpLabel
-%143 = OpLoad %32 %181
-OpControlBarrier %42 %42 %145
-OpSelectionMerge %203 None
-OpBranchConditional %143 %203 %198
+%183 = OpPhi %32 %182 %196 %38 %192
+OpBranch %198
 %198 = OpLabel
-OpStore %179 %20
+%184 = OpPhi %32 %183 %197 %38 %190
 OpBranch %199
 %199 = OpLabel
+%185 = OpPhi %32 %184 %198 %38 %188
+OpBranch %201
+%200 = OpLabel
+OpBranch %201
+%201 = OpLabel
+%143 = OpPhi %32 %144 %200 %185 %199
+OpControlBarrier %42 %42 %145
+OpSelectionMerge %207 None
+OpBranchConditional %143 %207 %202
+%202 = OpLabel
+OpStore %179 %20
+OpBranch %203
+%203 = OpLabel
 %146 = OpLoad %5 %179
 %148 = OpIMul %5 %146 %53
 %149 = OpIAdd %5 %20 %148
@@ -417,21 +421,21 @@ OpImageWrite %14 %174 %173 NonPrivateTexel
 OpImageWrite %14 %176 %175 NonPrivateTexel
 %147 = OpIAdd %5 %146 %44
 %177 = OpULessThan %32 %147 %37
-OpLoopMerge %202 %201 None
-OpBranch %200
-%200 = OpLabel
-OpSelectionMerge %205 None
-OpBranchConditional %177 %201 %202
-%205 = OpLabel
-OpUnreachable
-%201 = OpLabel
-OpStore %179 %147
-OpBranch %199
-%202 = OpLabel
-OpBranch %203
-%203 = OpLabel
+OpLoopMerge %206 %205 None
 OpBranch %204
 %204 = OpLabel
+OpSelectionMerge %209 None
+OpBranchConditional %177 %205 %206
+%209 = OpLabel
+OpUnreachable
+%205 = OpLabel
+OpStore %179 %147
+OpBranch %203
+%206 = OpLabel
+OpBranch %207
+%207 = OpLabel
+OpBranch %208
+%208 = OpLabel
 OpReturn
 OpFunctionEnd
 %27 = OpFunction %5 None %24

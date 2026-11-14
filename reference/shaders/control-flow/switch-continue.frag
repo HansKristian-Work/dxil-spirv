@@ -1,7 +1,5 @@
 #version 460
 
-uint _50;
-
 layout(location = 0) flat in ivec4 I;
 layout(location = 0) out float SV_Target;
 
@@ -11,7 +9,7 @@ void main()
     uint _21 = uint(I.y);
     uint _25 = uint(I.z);
     uint _29 = uint(I.w);
-    uint _40;
+    uint _34;
     uint _41 = _17;
     uint _42 = _21;
     uint _43 = _25;
@@ -28,10 +26,9 @@ void main()
         _31 = _42;
         _30 = _41;
         _46 = _30 == 5u;
-        _40 = _50;
         if (_46)
         {
-            _40 = 6u;
+            _34 = 6u;
         }
         else
         {
@@ -39,12 +36,12 @@ void main()
             {
                 break;
             }
-            _40 = 17u;
+            _34 = 17u;
         }
         _41 = _31;
         _42 = _32;
         _43 = _33;
-        _44 = _40;
+        _44 = _34;
         continue;
     }
     SV_Target = float(int(_32 + _31));
@@ -56,7 +53,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 61
+; Bound: 60
 ; Schema: 0
 OpCapability Shader
 OpCapability VulkanMemoryModel
@@ -90,16 +87,14 @@ OpDecorate %11 Location 0
 %45 = OpTypeBool
 %47 = OpConstant %14 5
 %49 = OpConstant %14 7
-%50 = OpUndef %14
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%40 = OpVariable %39 Function
 %41 = OpVariable %39 Function
 %42 = OpVariable %39 Function
 %43 = OpVariable %39 Function
 %44 = OpVariable %39 Function
-OpBranch %51
-%51 = OpLabel
+OpBranch %50
+%50 = OpLabel
 %13 = OpAccessChain %12 %8 %15
 %16 = OpLoad %5 %13
 %17 = OpBitcast %14 %16
@@ -116,44 +111,41 @@ OpStore %41 %17
 OpStore %42 %21
 OpStore %43 %25
 OpStore %44 %29
-OpBranch %52
-%52 = OpLabel
+OpBranch %51
+%51 = OpLabel
 %33 = OpLoad %14 %44
 %32 = OpLoad %14 %43
 %31 = OpLoad %14 %42
 %30 = OpLoad %14 %41
 %46 = OpIEqual %45 %30 %47
-OpLoopMerge %55 %60 None
-OpBranch %53
+OpLoopMerge %54 %59 None
+OpBranch %52
+%52 = OpLabel
+OpSelectionMerge %58 None
+OpBranchConditional %46 %57 %53
 %53 = OpLabel
-OpStore %40 %50
-OpSelectionMerge %59 None
-OpBranchConditional %46 %58 %54
-%54 = OpLabel
 %48 = OpIEqual %45 %30 %49
-OpSelectionMerge %57 None
-OpBranchConditional %48 %57 %55
+OpSelectionMerge %56 None
+OpBranchConditional %48 %56 %54
+%54 = OpLabel
+OpBranch %55
 %55 = OpLabel
-OpBranch %56
-%56 = OpLabel
 %37 = OpIAdd %14 %32 %31
 %38 = OpConvertSToF %9 %37
 OpStore %11 %38
 OpReturn
+%56 = OpLabel
+OpBranch %58
 %57 = OpLabel
-OpStore %40 %35
-OpBranch %59
+OpBranch %58
 %58 = OpLabel
-OpStore %40 %36
+%34 = OpPhi %14 %36 %57 %35 %56
 OpBranch %59
 %59 = OpLabel
-OpBranch %60
-%60 = OpLabel
-%34 = OpLoad %14 %40
 OpStore %41 %31
 OpStore %42 %32
 OpStore %43 %33
 OpStore %44 %34
-OpBranch %52
+OpBranch %51
 OpFunctionEnd
 #endif

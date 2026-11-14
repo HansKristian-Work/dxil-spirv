@@ -9,41 +9,49 @@ layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _14;
 
 void main()
 {
-    float _81;
-    float _82;
-    float _83;
-    float _84;
+    float _57;
+    float _58;
+    float _59;
+    float _60;
     if (gl_GlobalInvocationID.x < 20u)
     {
         mediump vec4 _51 = texelFetch(_8, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
-        _81 = _51.x;
-        _82 = _51.y;
-        _83 = _51.z;
-        _84 = _51.w;
+        _57 = _51.x;
+        _58 = _51.y;
+        _59 = _51.z;
+        _60 = _51.w;
     }
     else
     {
+        float _85;
+        float _86;
+        float _87;
+        float _88;
         if (gl_GlobalInvocationID.y < 40u)
         {
             mediump vec4 _45 = texelFetch(_9, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
-            _81 = _45.x;
-            _82 = _45.y;
-            _83 = _45.z;
-            _84 = _45.w;
+            _85 = _45.x;
+            _86 = _45.y;
+            _87 = _45.z;
+            _88 = _45.w;
         }
         else
         {
             mediump vec4 _38 = texelFetch(_10, ivec2(uvec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)), int(gl_GlobalInvocationID.z));
-            _81 = _38.x;
-            _82 = _38.y;
-            _83 = _38.z;
-            _84 = _38.w;
+            _85 = _38.x;
+            _86 = _38.y;
+            _87 = _38.z;
+            _88 = _38.w;
         }
+        _57 = _85;
+        _58 = _86;
+        _59 = _87;
+        _60 = _88;
     }
-    mediump float _61 = _84;
-    mediump float _62 = _83;
-    mediump float _63 = _82;
-    mediump float _64 = _81;
+    mediump float _61 = _60;
+    mediump float _62 = _59;
+    mediump float _63 = _58;
+    mediump float _64 = _57;
     uint _65 = gl_GlobalInvocationID.x * 4u;
     imageStore(_14, int(_65), uvec4(floatBitsToUint(_64)));
     imageStore(_14, int(_65 + 1u), uvec4(floatBitsToUint(_63)));
@@ -57,7 +65,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 93
+; Bound: 97
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -113,12 +121,8 @@ OpDecorate %64 RelaxedPrecision
 %80 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%81 = OpVariable %80 Function
-%82 = OpVariable %80 Function
-%83 = OpVariable %80 Function
-%84 = OpVariable %80 Function
-OpBranch %85
-%85 = OpLabel
+OpBranch %89
+%89 = OpLabel
 %15 = OpLoad %12 %14
 %16 = OpLoad %6 %10
 %17 = OpLoad %6 %9
@@ -130,57 +134,49 @@ OpBranch %85
 %29 = OpAccessChain %22 %21 %30
 %31 = OpLoad %11 %29
 %33 = OpULessThan %32 %25 %34
-OpSelectionMerge %91 None
-OpBranchConditional %33 %90 %86
-%86 = OpLabel
+OpSelectionMerge %95 None
+OpBranchConditional %33 %94 %90
+%90 = OpLabel
 %35 = OpULessThan %32 %28 %36
-OpSelectionMerge %89 None
-OpBranchConditional %35 %88 %87
-%87 = OpLabel
+OpSelectionMerge %93 None
+OpBranchConditional %35 %92 %91
+%91 = OpLabel
 %40 = OpCompositeConstruct %39 %25 %28
 %38 = OpImageFetch %37 %16 %40 Lod %31
 %41 = OpCompositeExtract %5 %38 0
 %42 = OpCompositeExtract %5 %38 1
 %43 = OpCompositeExtract %5 %38 2
 %44 = OpCompositeExtract %5 %38 3
-OpStore %81 %41
-OpStore %82 %42
-OpStore %83 %43
-OpStore %84 %44
-OpBranch %89
-%88 = OpLabel
+OpBranch %93
+%92 = OpLabel
 %46 = OpCompositeConstruct %39 %25 %28
 %45 = OpImageFetch %37 %17 %46 Lod %31
 %47 = OpCompositeExtract %5 %45 0
 %48 = OpCompositeExtract %5 %45 1
 %49 = OpCompositeExtract %5 %45 2
 %50 = OpCompositeExtract %5 %45 3
-OpStore %81 %47
-OpStore %82 %48
-OpStore %83 %49
-OpStore %84 %50
-OpBranch %89
-%89 = OpLabel
-OpBranch %91
-%90 = OpLabel
+OpBranch %93
+%93 = OpLabel
+%85 = OpPhi %5 %47 %92 %41 %91
+%86 = OpPhi %5 %48 %92 %42 %91
+%87 = OpPhi %5 %49 %92 %43 %91
+%88 = OpPhi %5 %50 %92 %44 %91
+OpBranch %95
+%94 = OpLabel
 %52 = OpCompositeConstruct %39 %25 %28
 %51 = OpImageFetch %37 %18 %52 Lod %31
 %53 = OpCompositeExtract %5 %51 0
 %54 = OpCompositeExtract %5 %51 1
 %55 = OpCompositeExtract %5 %51 2
 %56 = OpCompositeExtract %5 %51 3
-OpStore %81 %53
-OpStore %82 %54
-OpStore %83 %55
-OpStore %84 %56
-OpBranch %91
-%91 = OpLabel
-OpBranch %92
-%92 = OpLabel
-%60 = OpLoad %5 %84
-%59 = OpLoad %5 %83
-%58 = OpLoad %5 %82
-%57 = OpLoad %5 %81
+OpBranch %95
+%95 = OpLabel
+%57 = OpPhi %5 %53 %94 %85 %93
+%58 = OpPhi %5 %54 %94 %86 %93
+%59 = OpPhi %5 %55 %94 %87 %93
+%60 = OpPhi %5 %56 %94 %88 %93
+OpBranch %96
+%96 = OpLabel
 %61 = OpCopyObject %5 %60
 %62 = OpCopyObject %5 %59
 %63 = OpCopyObject %5 %58

@@ -17,14 +17,14 @@ rayQueryEXT RayQueryHeap;
 void main()
 {
     uvec4 _38 = floatBitsToUint(_16._m0[0u]);
-    uint _58;
+    uint _42;
     if (_38.y == 0u)
     {
-        _58 = 0u;
+        _42 = 0u;
     }
     else
     {
-        _58 = 0u;
+        _42 = 0u;
     }
     rayQueryInitializeEXT(RayQueryHeap, _8[_38.x], 4u, 255u, vec3(float(gl_GlobalInvocationID.x) + 0.5, float(gl_GlobalInvocationID.y) + 0.5, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
 }
@@ -96,7 +96,6 @@ OpDecorate %22 BuiltIn GlobalInvocationId
 %57 = OpTypePointer Function %9
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%58 = OpVariable %57 Function
 OpBranch %59
 %59 = OpLabel
 %24 = OpAccessChain %23 %22 %25
@@ -115,15 +114,13 @@ OpBranch %59
 OpSelectionMerge %62 None
 OpBranchConditional %41 %61 %60
 %60 = OpLabel
-OpStore %58 %25
 OpBranch %62
 %61 = OpLabel
-OpStore %58 %25
 OpBranch %62
 %62 = OpLabel
+%42 = OpPhi %9 %25 %61 %25 %60
 OpBranch %63
 %63 = OpLabel
-%42 = OpLoad %9 %58
 %43 = OpCompositeExtract %9 %38 0
 %45 = OpAccessChain %44 %8 %43
 %46 = OpLoad %5 %45

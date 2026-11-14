@@ -31,10 +31,10 @@ void main()
     coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _30;
     coopMatLoad(_30, _15._m0, 0u, 16u, gl_CooperativeMatrixLayoutRowMajor);
     uint _32 = uint(coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA>(0).length()) / 4u;
-    coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _105;
+    coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _103;
     if (_32 == 0u)
     {
-        _105 = _30;
+        _103 = _30;
     }
     else
     {
@@ -73,9 +73,9 @@ void main()
                 continue;
             }
         }
-        _105 = _101;
+        _103 = _101;
     }
-    coopMatStore(_105, _19._m0, 0u, 16u, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(_103, _19._m0, 0u, 16u, gl_CooperativeMatrixLayoutRowMajor);
 }
 
 
@@ -172,7 +172,6 @@ OpDecorate %25 BuiltIn LocalInvocationIndex
 %10 = OpLabel
 %41 = OpVariable %40 Function
 %81 = OpVariable %40 Function
-%105 = OpVariable %40 Function
 %106 = OpVariable %40 Function
 %108 = OpVariable %107 Function
 OpBranch %109
@@ -255,15 +254,13 @@ OpStore %106 %101
 OpStore %108 %39
 OpBranch %111
 %114 = OpLabel
-OpStore %105 %101
 OpBranch %116
 %115 = OpLabel
-OpStore %105 %30
 OpBranch %116
 %116 = OpLabel
+%103 = OpPhi %5 %30 %115 %101 %114
 OpBranch %117
 %117 = OpLabel
-%103 = OpLoad %5 %105
 %104 = OpAccessChain %28 %19 %3 %3
 OpCooperativeMatrixStoreKHR %104 %103 %3 %4 NonPrivatePointer
 OpReturn

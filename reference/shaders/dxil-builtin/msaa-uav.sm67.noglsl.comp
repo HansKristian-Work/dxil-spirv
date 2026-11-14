@@ -56,10 +56,6 @@ OpDecorate %18 BuiltIn GlobalInvocationId
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %32 = OpVariable %31 Function
-%139 = OpVariable %80 Function
-%140 = OpVariable %80 Function
-%141 = OpVariable %80 Function
-%142 = OpVariable %80 Function
 %144 = OpVariable %143 Function
 OpBranch %145
 %145 = OpLabel
@@ -165,10 +161,6 @@ OpBranch %150
 %98 = OpLoad %5 %97
 %99 = OpInBoundsAccessChain %80 %32 %36
 %100 = OpLoad %5 %99
-OpStore %139 %100
-OpStore %140 %98
-OpStore %141 %96
-OpStore %142 %94
 OpBranch %155
 %154 = OpLabel
 %101 = OpLoad %6 %8
@@ -191,18 +183,14 @@ OpStore %112 %111
 %115 = OpCompositeExtract %5 %113 0
 %116 = OpAccessChain %80 %32 %36
 OpStore %116 %115
-OpStore %139 %115
-OpStore %140 %111
-OpStore %141 %107
-OpStore %142 %104
 OpBranch %155
 %155 = OpLabel
+%117 = OpPhi %5 %115 %154 %100 %153
+%118 = OpPhi %5 %111 %154 %98 %153
+%119 = OpPhi %5 %107 %154 %96 %153
+%120 = OpPhi %5 %104 %154 %94 %153
 OpBranch %156
 %156 = OpLabel
-%120 = OpLoad %5 %142
-%119 = OpLoad %5 %141
-%118 = OpLoad %5 %140
-%117 = OpLoad %5 %139
 %121 = OpShiftLeftLogical %12 %28 %29
 %122 = OpShiftLeftLogical %12 %25 %27
 %123 = OpIAdd %12 %122 %22

@@ -747,12 +747,262 @@ void CFGStructurizer::analyze_ssa_variable_access()
 			{
 				auto &mapping = ssa_variable_access[op->argument(0)];
 				if (op->op == spv::OpLoad)
+				{
 					push_back_unique(mapping.readers, node);
+					mapping.type_id = op->type_id;
+				}
 				else
+				{
 					push_back_unique(mapping.writers, node);
+				}
 			}
 		}
 	}
+}
+
+bool CFGStructurizer::phi_frontiers_converge(
+		const Vector<CFGNode *> &writers, CFGNode *reader_idom, CFGNode *scope_idom,
+		Vector<CFGNode *> &frontiers)
+{
+	auto path = writers;
+	bool progress = true;
+
+	// On the merge path, every block must only have one dominance frontier,
+	// and that dominance frontier must be dominated by scope_idom in the end.
+	const auto find_unique_dominance_frontier = [&](CFGNode *node) -> CFGNode *
+	{
+		CFGNode *candidate = nullptr;
+		for (auto *df : node->dominance_frontier)
+		{
+			if (scope_idom->dominates(df))
+			{
+				if (candidate)
+					return nullptr;
+				candidate = df;
+			}
+		}
+
+		return candidate;
+	};
+
+	while (progress)
+	{
+		progress = false;
+		for (auto itr = path.begin(); itr != path.end(); )
+		{
+			auto *node = *itr;
+
+			auto *unique_df = find_unique_dominance_frontier(node);
+			if (!node->dominance_frontier.empty() && !unique_df)
+			{
+				// Non-trivial merge. Just fallback to plain old OpVariable and let compiler deal with it.
+				return false;
+			}
+
+			// Non-sensical. Should not happen, but bail if it does.
+			if (has_element(writers, unique_df))
+				return false;
+
+			if (node->dominates(reader_idom))
+			{
+				// This is a candidate. Keep it around and hope it is the only remaining block.
+				++itr;
+			}
+			else if (!unique_df || has_element(frontiers, unique_df))
+			{
+				// It cannot possibly reach reader_idom now.
+				// or, multiple nodes converge and we've already seen this frontier.
+				itr = path.erase(itr);
+			}
+			else
+			{
+				*itr = unique_df;
+				++itr;
+				progress = true;
+				frontiers.push_back(unique_df);
+			}
+		}
+	}
+
+	bool valid = !frontiers.empty() && path.size() == 1 &&
+	             scope_idom->dominates(path.front()) &&
+	             path.front()->dominates(reader_idom);
+
+	if (valid)
+	{
+		// Resolve frontiers top to bottom.
+		std::sort(frontiers.begin(), frontiers.end(), [](const CFGNode *a, const CFGNode *b)
+		{
+			return a->forward_post_visit_order > b->forward_post_visit_order;
+		});
+	}
+	return valid;
+}
+
+void CFGStructurizer::insert_phi_frontiers(const Vector<CFGNode *> &frontiers, PHI &phi)
+{
+	for (auto *frontier : frontiers)
+	{
+		PHI frontier_phi;
+
+		if (frontier == frontiers.back())
+			frontier_phi.id = phi.id;
+		else
+			frontier_phi.id = module.allocate_id();
+
+		frontier_phi.type_id = phi.type_id;
+		frontier_phi.relaxed = phi.relaxed;
+
+		const auto find_unique_incoming_dominator = [&](const CFGNode *node)
+		{
+			auto candidate = phi.incoming.end();
+
+			for (auto itr = phi.incoming.begin(); itr != phi.incoming.end(); ++itr)
+			{
+				if (itr->block->dominates(node))
+				{
+					if (candidate != phi.incoming.end())
+					{
+						LOGE("Multiple dominators ... ?\n");
+						abort();
+					}
+
+					candidate = itr;
+				}
+			}
+
+			return candidate;
+		};
+
+		for (auto *pred : frontier->pred)
+		{
+			auto incoming_itr = find_unique_incoming_dominator(pred);
+			if (incoming_itr != phi.incoming.end())
+			{
+				incoming_itr->block = pred;
+				frontier_phi.incoming.push_back(*incoming_itr);
+				phi.incoming.erase(incoming_itr);
+			}
+			else
+			{
+				// This can reasonably happen.
+				// If we see undef phi we will not end up executing the target block that consumes it.
+				IncomingValue undef = {};
+				undef.id = module.get_builder().createUndefinedConstant(phi.type_id);
+				undef.block = pred;
+				frontier_phi.incoming.push_back(undef);
+			}
+		}
+
+		IncomingValue frontier_incoming = {};
+		frontier_incoming.id = frontier_phi.id;
+		frontier_incoming.block = frontier;
+		phi.incoming.push_back(frontier_incoming);
+
+		frontier->ir.phi.push_back(std::move(frontier_phi));
+	}
+}
+
+void CFGStructurizer::rewrite_local_variable_to_phi(spv::Id variable_id, const SSAVariableAccess &accesses,
+                                                    const Vector<CFGNode *> &frontiers, CFGNode *reader_idom)
+{
+	// We're good. Replace all load-store with PHI.
+
+	// Eliminate loads and stores.
+	auto *reader = accesses.readers.front();
+	auto itr = std::find_if(reader->ir.operations.begin(), reader->ir.operations.end(),
+							[&](const Operation *op)
+							{
+								return op->op == spv::OpLoad && op->argument(0) == variable_id;
+							});
+
+	assert(itr != reader->ir.operations.end());
+	auto *phi_load_op = *itr;
+	reader->ir.operations.erase(itr);
+
+	PHI phi;
+	phi.id = phi_load_op->id;
+	phi.type_id = accesses.type_id;
+	phi.relaxed = module.get_builder().hasDecoration(variable_id, spv::DecorationRelaxedPrecision);
+
+	for (auto *writer : accesses.writers)
+	{
+		itr = std::find_if(writer->ir.operations.begin(), writer->ir.operations.end(),
+						   [&](const Operation *op)
+						   {
+							   return op->op == spv::OpStore && op->argument(0) == variable_id;
+						   });
+		assert(itr != writer->ir.operations.end());
+		auto *store_op = *itr;
+		writer->ir.operations.erase(itr);
+
+		IncomingValue incoming = {};
+		incoming.block = writer;
+		incoming.id = store_op->argument(1);
+		phi.incoming.push_back(incoming);
+	}
+
+	insert_phi_frontiers(frontiers, phi);
+}
+
+void CFGStructurizer::reintroduce_ssa_phi()
+{
+	// Using SSA PHI is a good way to "fix" liveness analysis issues.
+	// The fallback to use OpVariable + writing undef is ugly and looks very confusing
+	// when reading the output in SPIRV-Cross.
+
+	// Ensure stable codegen.
+	using Mapping = std::pair<uint32_t, SSAVariableAccess *>;
+	Vector<Mapping> ssa_ids;
+
+	ssa_ids.reserve(ssa_variable_access.size());
+	for (auto &id : ssa_variable_access)
+		ssa_ids.emplace_back(id.first, &id.second);
+
+	std::sort(ssa_ids.begin(), ssa_ids.end(), [](const Mapping &a, const Mapping &b)
+	{
+		return a.first < b.first;
+	});
+
+	// If we're going to use PHI, we need a simple behavior for blocks.
+	// We follow dominance frontiers of the writing blocks, and it should converge in the end
+	// to a block that dominates all uses of the variable.
+	// For loop header PHIs, we need to find convergence to back-edge, and convergence to header.
+	UnorderedSet<spv::Id> eliminated_ids;
+
+	for (auto &mapping : ssa_ids)
+	{
+		const auto &accesses = *mapping.second;
+		spv::Id id = mapping.first;
+		assert(!accesses.readers.empty());
+
+		CFGNode *reader_idom = accesses.readers.front();
+		for (auto *reader : accesses.readers)
+			reader_idom = CFGNode::find_common_dominator(reader_idom, reader);
+
+		// Any analysis cannot escape this node.
+		// Variable lifetime is dominated by this node as well.
+		CFGNode *scope_idom = reader_idom;
+		for (auto *writer : accesses.writers)
+			scope_idom = CFGNode::find_common_dominator(scope_idom, writer);
+
+		// For now, don't deal with loop PHIs.
+		// Never deal with broken value dominance where there are multiple readers. Keep those as plain variables.
+		if (reader_idom->pred_back_edge || accesses.readers.size() > 1)
+			continue;
+
+		// The final PHI node must be placed in a node that dominates reader_idom.
+
+		Vector<CFGNode *> frontiers;
+		if (!phi_frontiers_converge(accesses.writers, reader_idom, scope_idom, frontiers))
+			continue;
+
+		rewrite_local_variable_to_phi(id, accesses, frontiers, reader_idom);
+		eliminated_ids.insert(id);
+	}
+
+	module.get_builder().removeDecorations(eliminated_ids);
+	module.get_builder().removeLocalVariables(eliminated_ids);
 }
 
 void CFGStructurizer::clamp_ssa_variable_lifetimes()
@@ -1897,15 +2147,19 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths_entry()
 
 void CFGStructurizer::cleanup_degenerate_blocks()
 {
-	Vector<CFGNode *> merge_blocks;
+	UnorderedSet<CFGNode *> merge_blocks_or_phi_incoming;
 
 	// We cannot remove blocks that are merge blocks for others.
 	for (auto *node : forward_post_visit_order)
 	{
 		if (node->ir.merge_info.merge_block)
-			merge_blocks.push_back(node->ir.merge_info.merge_block);
+			merge_blocks_or_phi_incoming.insert(node->ir.merge_info.merge_block);
 		if (node->ir.merge_info.continue_block)
-			merge_blocks.push_back(node->ir.merge_info.continue_block);
+			merge_blocks_or_phi_incoming.insert(node->ir.merge_info.continue_block);
+
+		if (!node->ir.phi.empty())
+			for (auto &incoming : node->ir.phi.front().incoming)
+				merge_blocks_or_phi_incoming.insert(incoming.block);
 	}
 
 	bool rewrote_cfg = false;
@@ -1928,7 +2182,7 @@ void CFGStructurizer::cleanup_degenerate_blocks()
 			if (!succ->ir.phi.empty())
 				return;
 
-			if (node->dominates(succ) && !has_element(merge_blocks, succ))
+			if (node->dominates(succ) && !has_element(merge_blocks_or_phi_incoming, succ))
 			{
 				// Cannot fuse operations if it needs to be executed conditionally.
 				if (node->ir.terminator.type == Terminator::Type::Condition && !succ->ir.operations.empty())
@@ -2076,10 +2330,11 @@ bool CFGStructurizer::run_structurizer()
 	fixup_broken_value_dominance();
 
 	analyze_ssa_variable_access();
+	reintroduce_ssa_phi();
 	clamp_ssa_variable_lifetimes();
 
 	// After dealing with PHI, it's possible we can cleanup some more blocks.
-	//cleanup_degenerate_blocks();
+	cleanup_degenerate_blocks();
 
 	return true;
 }

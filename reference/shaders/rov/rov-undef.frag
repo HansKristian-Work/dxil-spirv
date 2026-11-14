@@ -27,8 +27,8 @@ uint ByteAddressMask(uint index, uint stride)
 void main()
 {
     SPIRV_Cross_beginInvocationInterlock();
-    uint _87;
-    uint _88;
+    uint _37;
+    uint _39;
     if (gl_FragCoord.x > 1000.0)
     {
         uvec4 _24 = imageLoad(_8, int(0u));
@@ -36,17 +36,17 @@ void main()
         uvec4 _27 = imageLoad(_8, int(_28));
         uvec2 _32 = uvec2(_24.x, _27.x);
         imageStore(_8, int(0u), uvec4(50u));
-        _87 = _32.x;
-        _88 = _32.y;
+        _37 = _32.x;
+        _39 = _32.y;
     }
     else
     {
-        _87 = _38;
-        _88 = _38;
+        _37 = _38;
+        _39 = _38;
     }
     if (gl_FragCoord.x > 1100.0)
     {
-        uint _42 = (_88 * 1000u) + _87;
+        uint _42 = (_39 * 1000u) + _37;
         uint _54 = ByteAddressMask(_42 * 4u, 4u);
         uvec4 _55 = imageLoad(_8, int(_54));
         uvec4 _57 = imageLoad(_8, int(_54 + 1u));
@@ -117,8 +117,6 @@ OpDecorate %12 BuiltIn FragCoord
 %86 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%87 = OpVariable %86 Function
-%88 = OpVariable %86 Function
 %38 = OpUndef %5
 OpBranch %89
 %89 = OpLabel
@@ -131,8 +129,6 @@ OpBeginInvocationInterlockEXT
 OpSelectionMerge %92 None
 OpBranchConditional %19 %91 %90
 %90 = OpLabel
-OpStore %87 %38
-OpStore %88 %38
 OpBranch %92
 %91 = OpLabel
 %24 = OpImageRead %23 %13 %16 MakeTexelVisible|NonPrivateTexel %25
@@ -145,12 +141,10 @@ OpBranch %92
 %34 = OpCompositeExtract %5 %32 1
 %36 = OpCompositeConstruct %23 %35 %35 %35 %35
 OpImageWrite %13 %16 %36 MakeTexelAvailable|NonPrivateTexel %25
-OpStore %87 %33
-OpStore %88 %34
 OpBranch %92
 %92 = OpLabel
-%39 = OpLoad %5 %88
-%37 = OpLoad %5 %87
+%37 = OpPhi %5 %33 %91 %38 %90
+%39 = OpPhi %5 %34 %91 %38 %90
 OpSelectionMerge %94 None
 OpBranchConditional %21 %93 %94
 %93 = OpLabel

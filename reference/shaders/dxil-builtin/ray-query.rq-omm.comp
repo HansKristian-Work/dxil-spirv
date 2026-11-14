@@ -18,10 +18,10 @@ void main()
 {
     rayQueryInitializeEXT(_28, _10, 132u, 170u, vec3(1.0, 2.0, 3.0), 4.0, vec3(5.0, 6.0, 7.0), 8.0);
     bool _43 = rayQueryProceedEXT(_28);
-    uint _402;
-    uint _403;
-    uint _404;
-    uint _405;
+    uint _212;
+    uint _213;
+    uint _214;
+    uint _215;
     if (_43)
     {
         uint _47;
@@ -144,43 +144,43 @@ void main()
                 break;
             }
         }
-        _402 = _54;
-        _403 = _47;
-        _404 = _50;
-        _405 = _52;
+        _212 = _54;
+        _213 = _47;
+        _214 = _50;
+        _215 = _52;
     }
     else
     {
-        _402 = gl_LocalInvocationIndex << 6u;
-        _403 = 0u;
-        _404 = 0u;
-        _405 = 0u;
+        _212 = gl_LocalInvocationIndex << 6u;
+        _213 = 0u;
+        _214 = 0u;
+        _215 = 0u;
     }
     uint _216 = rayQueryGetRayFlagsEXT(_28);
-    imageStore(_14, int((_402 | 9u) + 0u), uvec4(_216));
+    imageStore(_14, int((_212 | 9u) + 0u), uvec4(_216));
     vec3 _221 = rayQueryGetWorldRayOriginEXT(_28);
-    imageStore(_15, int((_402 | 10u) + 0u), uvec4(floatBitsToUint(_221.x)));
+    imageStore(_15, int((_212 | 10u) + 0u), uvec4(floatBitsToUint(_221.x)));
     vec3 _227 = rayQueryGetWorldRayDirectionEXT(_28);
-    imageStore(_15, int((_402 | 11u) + 0u), uvec4(floatBitsToUint(_227.y)));
+    imageStore(_15, int((_212 | 11u) + 0u), uvec4(floatBitsToUint(_227.y)));
     float _234 = rayQueryGetRayTMinEXT(_28);
-    imageStore(_15, int((_402 | 12u) + 0u), uvec4(floatBitsToUint(_234)));
+    imageStore(_15, int((_212 | 12u) + 0u), uvec4(floatBitsToUint(_234)));
     uint _239 = rayQueryGetIntersectionTypeEXT(_28, bool(1u));
     if (!(_239 == 0u))
     {
         uint _241 = rayQueryGetIntersectionInstanceIdEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 32u) + 0u), uvec4(_241));
+        imageStore(_14, int((_212 | 32u) + 0u), uvec4(_241));
         uint _246 = rayQueryGetIntersectionInstanceCustomIndexEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 33u) + 0u), uvec4(_246));
+        imageStore(_14, int((_212 | 33u) + 0u), uvec4(_246));
         uint _251 = rayQueryGetIntersectionGeometryIndexEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 34u) + 0u), uvec4(_251));
+        imageStore(_14, int((_212 | 34u) + 0u), uvec4(_251));
         uint _256 = rayQueryGetIntersectionPrimitiveIndexEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 35u) + 0u), uvec4(_256));
+        imageStore(_14, int((_212 | 35u) + 0u), uvec4(_256));
         vec3 _261 = rayQueryGetIntersectionObjectRayOriginEXT(_28, bool(1u));
-        imageStore(_15, int((_402 | 36u) + 0u), uvec4(floatBitsToUint(_261.x)));
+        imageStore(_15, int((_212 | 36u) + 0u), uvec4(floatBitsToUint(_261.x)));
         vec3 _268 = rayQueryGetIntersectionObjectRayDirectionEXT(_28, bool(1u));
-        imageStore(_15, int((_402 | 37u) + 0u), uvec4(floatBitsToUint(_268.y)));
+        imageStore(_15, int((_212 | 37u) + 0u), uvec4(floatBitsToUint(_268.y)));
         uint _275 = rayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 38u) + 0u), uvec4(_275));
+        imageStore(_14, int((_212 | 38u) + 0u), uvec4(_275));
         mat4x3 _280 = rayQueryGetIntersectionWorldToObjectEXT(_28, bool(1u));
         mat4x3 _282 = rayQueryGetIntersectionWorldToObjectEXT(_28, bool(1u));
         mat4x3 _284 = rayQueryGetIntersectionWorldToObjectEXT(_28, bool(1u));
@@ -215,26 +215,26 @@ void main()
         imageStore(_17, int(_358 + 1u), uvec4(floatBitsToUint(_337[0].y)));
         imageStore(_17, int(_358 + 2u), uvec4(floatBitsToUint(_339[0].z)));
         float _367 = rayQueryGetIntersectionTEXT(_28, bool(1u));
-        imageStore(_15, int((_402 | 43u) + 0u), uvec4(floatBitsToUint(_367)));
+        imageStore(_15, int((_212 | 43u) + 0u), uvec4(floatBitsToUint(_367)));
     }
     uint _373 = rayQueryGetIntersectionTypeEXT(_28, bool(1u));
     if (_373 == 1u)
     {
-        imageStore(_14, int((_402 | 13u) + 0u), uvec4(_403));
+        imageStore(_14, int((_212 | 13u) + 0u), uvec4(_213));
         vec2 _388 = rayQueryGetIntersectionBarycentricsEXT(_28, bool(1u));
-        imageStore(_15, int((_402 | 44u) + 0u), uvec4(floatBitsToUint(_388.y)));
+        imageStore(_15, int((_212 | 44u) + 0u), uvec4(floatBitsToUint(_388.y)));
         bool _395 = rayQueryGetIntersectionFrontFaceEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 45u) + 0u), uvec4(_395 ? 100u : 10u));
+        imageStore(_14, int((_212 | 45u) + 0u), uvec4(_395 ? 100u : 10u));
     }
     else
     {
         if (_373 == 2u)
         {
-            imageStore(_14, int((_402 | 14u) + 0u), uvec4(_404));
+            imageStore(_14, int((_212 | 14u) + 0u), uvec4(_214));
         }
         else
         {
-            imageStore(_14, int((_402 | 15u) + 0u), uvec4(_405));
+            imageStore(_14, int((_212 | 15u) + 0u), uvec4(_215));
         }
     }
 }
@@ -352,10 +352,6 @@ OpDecorate %24 BuiltIn LocalInvocationIndex
 %412 = OpUndef %11
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%402 = OpVariable %401 Function
-%403 = OpVariable %401 Function
-%404 = OpVariable %401 Function
-%405 = OpVariable %401 Function
 %406 = OpVariable %401 Function
 %407 = OpVariable %401 Function
 %408 = OpVariable %401 Function
@@ -378,10 +374,6 @@ OpSelectionMerge %428 None
 OpBranchConditional %43 %415 %414
 %414 = OpLabel
 %44 = OpShiftLeftLogical %11 %25 %45
-OpStore %402 %44
-OpStore %403 %48
-OpStore %404 %48
-OpStore %405 %48
 OpBranch %428
 %415 = OpLabel
 OpStore %409 %48
@@ -609,16 +601,12 @@ OpStore %410 %50
 OpStore %411 %52
 OpBranch %416
 %427 = OpLabel
-OpStore %402 %54
-OpStore %403 %47
-OpStore %404 %50
-OpStore %405 %52
 OpBranch %428
 %428 = OpLabel
-%215 = OpLoad %11 %405
-%214 = OpLoad %11 %404
-%213 = OpLoad %11 %403
-%212 = OpLoad %11 %402
+%212 = OpPhi %11 %54 %427 %44 %414
+%213 = OpPhi %11 %47 %427 %48 %414
+%214 = OpPhi %11 %50 %427 %48 %414
+%215 = OpPhi %11 %52 %427 %48 %414
 %216 = OpRayQueryGetRayFlagsKHR %11 %28
 %217 = OpBitwiseOr %11 %212 %218
 %219 = OpIAdd %11 %217 %48

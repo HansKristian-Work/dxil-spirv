@@ -1,8 +1,6 @@
 #version 460
 layout(local_size_x = 8, local_size_y = 1, local_size_z = 1) in;
 
-bool _84;
-
 layout(set = 0, binding = 0, std430) buffer SSBO
 {
     uint _m0[];
@@ -27,7 +25,7 @@ uint _getBranchTarget_YAII_Z(uint _26)
 void main()
 {
     uint _33;
-    bool _80;
+    bool _81;
     uint _32 = 0u;
     for (;;)
     {
@@ -36,10 +34,9 @@ void main()
         _32++;
         _33 = 18u;
         _someFn_YAXI_Z(_33);
-        _80 = _84;
         if (_getBranchTarget_YAII_Z(_33) == 20u)
         {
-            _80 = false;
+            _81 = false;
             break;
         }
         _33 = 21u;
@@ -50,30 +47,30 @@ void main()
             _someFn_YAXI_Z(_33);
             if (_getBranchTarget_YAII_Z(_33) == 30u)
             {
-                _80 = true;
+                _81 = true;
                 break;
             }
             _33 = 43u;
             _someFn_YAXI_Z(_33);
             if (_getBranchTarget_YAII_Z(_33) == 30u)
             {
-                _80 = true;
+                _81 = true;
                 break;
             }
         }
         _33 = 32u;
         _someFn_YAXI_Z(_33);
-        _80 = false;
         if (int(_32) < int(99u))
         {
             continue;
         }
         else
         {
+            _81 = false;
             break;
         }
     }
-    if (_80)
+    if (_81)
     {
         _33 = 30u;
         _someFn_YAXI_Z(_33);
@@ -93,7 +90,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 104
+; Bound: 103
 ; Schema: 0
 OpCapability Shader
 OpCapability VulkanMemoryModel
@@ -148,100 +145,93 @@ OpDecorate %13 NonWritable
 %79 = OpTypePointer Function %44
 %82 = OpConstantFalse %44
 %83 = OpConstantTrue %44
-%84 = OpUndef %44
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %32 = OpVariable %31 Function
 %33 = OpVariable %31 Function
-%80 = OpVariable %79 Function
+OpBranch %84
+%84 = OpLabel
+OpStore %32 %18
 OpBranch %85
 %85 = OpLabel
-OpStore %32 %18
-OpBranch %86
-%86 = OpLabel
 OpStore %33 %34
 %35 = OpLoad %5 %33
 %36 = OpFunctionCall %1 %16 %35
 %37 = OpLoad %5 %32
 %38 = OpIAdd %5 %37 %23
 OpStore %32 %38
-OpLoopMerge %97 %95 None
-OpBranch %87
-%87 = OpLabel
+OpLoopMerge %96 %94 None
+OpBranch %86
+%86 = OpLabel
 OpStore %33 %39
 %40 = OpLoad %5 %33
 %41 = OpFunctionCall %1 %16 %40
 %42 = OpLoad %5 %33
 %43 = OpFunctionCall %5 %27 %42
 %45 = OpIEqual %44 %43 %46
-OpStore %80 %84
-OpSelectionMerge %88 None
-OpBranchConditional %45 %96 %88
-%88 = OpLabel
+OpSelectionMerge %87 None
+OpBranchConditional %45 %95 %87
+%87 = OpLabel
 OpStore %33 %47
 %48 = OpLoad %5 %33
 %49 = OpFunctionCall %1 %16 %48
 %50 = OpLoad %5 %33
 %51 = OpFunctionCall %5 %27 %50
 %52 = OpIEqual %44 %51 %53
-OpSelectionMerge %94 None
-OpBranchConditional %52 %94 %89
-%89 = OpLabel
+OpSelectionMerge %93 None
+OpBranchConditional %52 %93 %88
+%88 = OpLabel
 OpStore %33 %54
 %55 = OpLoad %5 %33
 %56 = OpFunctionCall %1 %16 %55
 %57 = OpLoad %5 %33
 %58 = OpFunctionCall %5 %27 %57
 %59 = OpIEqual %44 %58 %60
-OpSelectionMerge %90 None
-OpBranchConditional %59 %93 %90
-%90 = OpLabel
+OpSelectionMerge %89 None
+OpBranchConditional %59 %92 %89
+%89 = OpLabel
 OpStore %33 %61
 %62 = OpLoad %5 %33
 %63 = OpFunctionCall %1 %16 %62
 %64 = OpLoad %5 %33
 %65 = OpFunctionCall %5 %27 %64
 %66 = OpIEqual %44 %65 %60
-OpSelectionMerge %91 None
-OpBranchConditional %66 %92 %91
+OpSelectionMerge %90 None
+OpBranchConditional %66 %91 %90
+%90 = OpLabel
+OpBranch %93
 %91 = OpLabel
-OpBranch %94
+OpBranch %96
 %92 = OpLabel
-OpStore %80 %83
-OpBranch %97
+OpBranch %96
 %93 = OpLabel
-OpStore %80 %83
-OpBranch %97
+OpBranch %94
 %94 = OpLabel
-OpBranch %95
-%95 = OpLabel
 OpStore %33 %53
 %69 = OpLoad %5 %33
 %70 = OpFunctionCall %1 %16 %69
 %71 = OpLoad %5 %32
 %72 = OpSLessThan %44 %71 %73
-OpStore %80 %82
-OpBranchConditional %72 %86 %97
+OpBranchConditional %72 %85 %96
+%95 = OpLabel
+OpBranch %96
 %96 = OpLabel
-OpStore %80 %82
-OpBranch %97
+%81 = OpPhi %44 %82 %95 %83 %92 %83 %91 %82 %94
+OpSelectionMerge %99 None
+OpBranchConditional %81 %97 %98
 %97 = OpLabel
-%81 = OpLoad %44 %80
-OpSelectionMerge %100 None
-OpBranchConditional %81 %98 %99
-%98 = OpLabel
 OpStore %33 %60
 %67 = OpLoad %5 %33
 %68 = OpFunctionCall %1 %16 %67
-OpBranch %100
-%99 = OpLabel
+OpBranch %99
+%98 = OpLabel
 OpStore %33 %46
 %74 = OpLoad %5 %33
 %75 = OpFunctionCall %1 %16 %74
+OpBranch %99
+%99 = OpLabel
 OpBranch %100
 %100 = OpLabel
-OpBranch %101
-%101 = OpLabel
 OpStore %33 %76
 %77 = OpLoad %5 %33
 %78 = OpFunctionCall %1 %16 %77
@@ -250,8 +240,8 @@ OpFunctionEnd
 %16 = OpFunction %1 None %14
 %15 = OpFunctionParameter %5
 %17 = OpLabel
-OpBranch %102
-%102 = OpLabel
+OpBranch %101
+%101 = OpLabel
 %20 = OpAccessChain %19 %9 %18 %18
 %21 = OpAtomicIAdd %5 %20 %22 %18 %23
 %24 = OpAccessChain %19 %9 %18 %21
@@ -261,8 +251,8 @@ OpFunctionEnd
 %27 = OpFunction %5 None %25
 %26 = OpFunctionParameter %5
 %28 = OpLabel
-OpBranch %103
-%103 = OpLabel
+OpBranch %102
+%102 = OpLabel
 %29 = OpAccessChain %19 %13 %18 %26
 %30 = OpLoad %5 %29 NonPrivatePointer
 OpReturnValue %30

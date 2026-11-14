@@ -9,10 +9,10 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    float _68;
-    float _69;
-    float _70;
-    float _71;
+    float _49;
+    float _51;
+    float _52;
+    float _53;
     if (V.x < 10u)
     {
         uint _75 = V.x;
@@ -67,22 +67,22 @@ void main()
             _75 = _33 + 1u;
             continue;
         }
-        _68 = float(_33);
-        _69 = float(V.y);
-        _70 = float(V.z);
-        _71 = float(V.w);
+        _49 = float(_33);
+        _51 = float(V.y);
+        _52 = float(V.z);
+        _53 = float(V.w);
     }
     else
     {
-        _68 = 0.0;
-        _69 = 0.0;
-        _70 = 0.0;
-        _71 = 0.0;
+        _49 = 0.0;
+        _51 = 0.0;
+        _52 = 0.0;
+        _53 = 0.0;
     }
-    SV_Target.x = _68;
-    SV_Target.y = _69;
-    SV_Target.z = _70;
-    SV_Target.w = _71;
+    SV_Target.x = _49;
+    SV_Target.y = _51;
+    SV_Target.z = _52;
+    SV_Target.w = _53;
 }
 
 
@@ -140,10 +140,6 @@ OpDecorate %15 Location 0
 %81 = OpUndef %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%68 = OpVariable %67 Function
-%69 = OpVariable %67 Function
-%70 = OpVariable %67 Function
-%71 = OpVariable %67 Function
 %73 = OpVariable %72 Function
 %74 = OpVariable %72 Function
 %75 = OpVariable %72 Function
@@ -163,10 +159,6 @@ OpBranch %82
 OpSelectionMerge %97 None
 OpBranchConditional %31 %84 %83
 %83 = OpLabel
-OpStore %68 %50
-OpStore %69 %50
-OpStore %70 %50
-OpStore %71 %50
 OpBranch %97
 %84 = OpLabel
 OpStore %75 %20
@@ -230,18 +222,14 @@ OpBranch %99
 %46 = OpConvertUToF %12 %23
 %47 = OpConvertUToF %12 %26
 %48 = OpConvertUToF %12 %29
-OpStore %68 %45
-OpStore %69 %46
-OpStore %70 %47
-OpStore %71 %48
 OpBranch %97
 %97 = OpLabel
+%49 = OpPhi %12 %45 %96 %50 %83
+%51 = OpPhi %12 %46 %96 %50 %83
+%52 = OpPhi %12 %47 %96 %50 %83
+%53 = OpPhi %12 %48 %96 %50 %83
 OpBranch %98
 %98 = OpLabel
-%53 = OpLoad %12 %71
-%52 = OpLoad %12 %70
-%51 = OpLoad %12 %69
-%49 = OpLoad %12 %68
 %55 = OpAccessChain %54 %15 %19
 OpStore %55 %49
 %56 = OpAccessChain %54 %15 %22

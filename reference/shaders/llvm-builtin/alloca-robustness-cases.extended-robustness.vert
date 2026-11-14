@@ -22,10 +22,10 @@ void main()
     {
         _34[A.y] = float(uint(gl_InstanceIndex) - uint(gl_BaseInstance));
     }
-    float _100;
+    float _87;
     if (A.w == 0u)
     {
-        _100 = _63;
+        _87 = _63;
     }
     else
     {
@@ -86,7 +86,7 @@ void main()
         {
             _86 = 0.0;
         }
-        _100 = _86;
+        _87 = _86;
     }
     float _94;
     if (A.w < 4u)
@@ -99,7 +99,7 @@ void main()
     }
     gl_Position.x = _23[min(A.z, 4u)];
     gl_Position.y = _94;
-    gl_Position.z = _100;
+    gl_Position.z = _87;
     gl_Position.w = 1.0;
 }
 
@@ -182,7 +182,6 @@ OpDecorate %52 BuiltIn BaseVertex
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %56 = OpVariable %55 Function
-%100 = OpVariable %57 Function
 %102 = OpVariable %101 Function
 OpBranch %103
 %103 = OpLabel
@@ -289,15 +288,13 @@ OpBranchConditional %66 %130 %131
 OpBranch %131
 %131 = OpLabel
 %86 = OpPhi %12 %132 %130 %133 %108
-OpStore %100 %86
 OpBranch %110
 %109 = OpLabel
-OpStore %100 %63
 OpBranch %110
 %110 = OpLabel
+%87 = OpPhi %12 %63 %109 %86 %131
 OpBranch %111
 %111 = OpLabel
-%87 = OpLoad %12 %100
 %90 = OpExtInst %5 %89 UMin %43 %26
 %88 = OpInBoundsAccessChain %68 %25 %90
 %91 = OpLoad %12 %88

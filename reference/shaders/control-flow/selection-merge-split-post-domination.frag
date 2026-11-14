@@ -5,17 +5,17 @@ layout(location = 0) out vec4 SV_Target;
 
 void main()
 {
-    float _47;
+    float _25;
     if (V.x > 0.0)
     {
-        _47 = 20.0;
+        _25 = 20.0;
     }
     else
     {
-        _47 = 10.0;
+        _25 = 10.0;
     }
-    float _44;
-    float _45;
+    float _33;
+    float _34;
     if (V.y > 0.0)
     {
         float _46;
@@ -27,26 +27,30 @@ void main()
         {
             _46 = 20.0;
         }
+        float _48;
+        float _49;
         if (V.z > 0.0)
         {
-            _44 = _46;
-            _45 = 30.0;
+            _48 = _46;
+            _49 = 30.0;
         }
         else
         {
-            _44 = _46;
-            _45 = 10.0;
+            _48 = _46;
+            _49 = 10.0;
         }
+        _33 = _48;
+        _34 = _49;
     }
     else
     {
-        _44 = 0.0;
-        _45 = 10.0;
+        _33 = 0.0;
+        _34 = 10.0;
     }
-    SV_Target.x = _47;
-    SV_Target.y = _44 + 10.0;
+    SV_Target.x = _25;
+    SV_Target.y = _33 + 10.0;
     SV_Target.z = 10.0;
-    SV_Target.w = _45;
+    SV_Target.w = _34;
 }
 
 
@@ -55,7 +59,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 62
+; Bound: 64
 ; Schema: 0
 OpCapability Shader
 OpCapability VulkanMemoryModel
@@ -91,12 +95,9 @@ OpDecorate %10 Location 0
 %43 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%44 = OpVariable %43 Function
-%45 = OpVariable %43 Function
 %46 = OpVariable %43 Function
-%47 = OpVariable %43 Function
-OpBranch %48
-%48 = OpLabel
+OpBranch %50
+%50 = OpLabel
 %12 = OpAccessChain %11 %8 %14
 %15 = OpLoad %5 %12
 %16 = OpAccessChain %11 %8 %17
@@ -104,53 +105,47 @@ OpBranch %48
 %19 = OpAccessChain %11 %8 %20
 %21 = OpLoad %5 %19
 %23 = OpFOrdGreaterThan %22 %15 %24
-OpSelectionMerge %51 None
-OpBranchConditional %23 %50 %49
-%49 = OpLabel
-OpStore %47 %27
-OpBranch %51
-%50 = OpLabel
-OpStore %47 %26
-OpBranch %51
+OpSelectionMerge %53 None
+OpBranchConditional %23 %52 %51
 %51 = OpLabel
-%25 = OpLoad %5 %47
-%28 = OpFOrdGreaterThan %22 %18 %24
-OpSelectionMerge %60 None
-OpBranchConditional %28 %53 %52
+OpBranch %53
 %52 = OpLabel
-OpStore %44 %24
-OpStore %45 %27
-OpBranch %60
+OpBranch %53
 %53 = OpLabel
-%29 = OpFOrdGreaterThan %22 %15 %30
-OpSelectionMerge %56 None
-OpBranchConditional %29 %55 %54
+%25 = OpPhi %5 %26 %52 %27 %51
+%28 = OpFOrdGreaterThan %22 %18 %24
+OpSelectionMerge %62 None
+OpBranchConditional %28 %55 %54
 %54 = OpLabel
-OpStore %46 %26
-OpBranch %56
+OpBranch %62
 %55 = OpLabel
-OpStore %46 %27
-OpBranch %56
+%29 = OpFOrdGreaterThan %22 %15 %30
+OpSelectionMerge %58 None
+OpBranchConditional %29 %57 %56
 %56 = OpLabel
+OpStore %46 %26
+OpBranch %58
+%57 = OpLabel
+OpStore %46 %27
+OpBranch %58
+%58 = OpLabel
 %31 = OpLoad %5 %46
 %32 = OpFOrdGreaterThan %22 %21 %24
-OpSelectionMerge %59 None
-OpBranchConditional %32 %58 %57
-%57 = OpLabel
-OpStore %44 %31
-OpStore %45 %27
-OpBranch %59
-%58 = OpLabel
-OpStore %44 %31
-OpStore %45 %35
-OpBranch %59
+OpSelectionMerge %61 None
+OpBranchConditional %32 %60 %59
 %59 = OpLabel
-OpBranch %60
+OpBranch %61
 %60 = OpLabel
 OpBranch %61
 %61 = OpLabel
-%34 = OpLoad %5 %45
-%33 = OpLoad %5 %44
+%48 = OpPhi %5 %31 %60 %31 %59
+%49 = OpPhi %5 %35 %60 %27 %59
+OpBranch %62
+%62 = OpLabel
+%33 = OpPhi %5 %48 %61 %24 %54
+%34 = OpPhi %5 %49 %61 %27 %54
+OpBranch %63
+%63 = OpLabel
 %36 = OpFAdd %5 %33 %27
 %38 = OpAccessChain %37 %10 %14
 OpStore %38 %25

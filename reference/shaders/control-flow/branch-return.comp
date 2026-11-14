@@ -1,48 +1,58 @@
 #version 460
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
+uint _49;
+
 layout(set = 0, binding = 0, r32ui) uniform writeonly uimageBuffer _8;
 
 void main()
 {
     bool _44 = false;
+    uint _34;
     uint _41;
-    uint _42;
     if (gl_GlobalInvocationID.x == 10u)
     {
+        uint _51;
         if (gl_GlobalInvocationID.z == 40u)
         {
             _41 = gl_GlobalInvocationID.y * 10u;
+            _51 = _49;
         }
         else
         {
-            _42 = gl_GlobalInvocationID.y;
             _44 = true;
+            _51 = gl_GlobalInvocationID.y;
         }
+        _34 = _51;
     }
     else
     {
+        uint _50;
         if (gl_GlobalInvocationID.y == 20u)
         {
+            uint _48;
             if (gl_GlobalInvocationID.z == 50u)
             {
                 _41 = gl_GlobalInvocationID.x * 24u;
+                _48 = _49;
             }
             else
             {
-                _42 = gl_GlobalInvocationID.z;
                 _44 = true;
+                _48 = gl_GlobalInvocationID.z;
             }
+            _50 = _48;
         }
         else
         {
-            _42 = 0u;
             _44 = true;
+            _50 = 0u;
         }
+        _34 = _50;
     }
     if (_44)
     {
-        _41 = _42 + gl_GlobalInvocationID.x;
+        _41 = _34 + gl_GlobalInvocationID.x;
     }
     imageStore(_8, int(0u), uvec4(_41));
 }
@@ -53,7 +63,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 64
+; Bound: 68
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -90,13 +100,13 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %43 = OpTypePointer Function %23
 %45 = OpConstantFalse %23
 %47 = OpConstantTrue %23
+%49 = OpUndef %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %41 = OpVariable %40 Function
-%42 = OpVariable %40 Function
 %44 = OpVariable %43 Function
-OpBranch %48
-%48 = OpLabel
+OpBranch %52
+%52 = OpLabel
 %9 = OpLoad %6 %8
 %14 = OpAccessChain %13 %12 %15
 %16 = OpLoad %5 %14
@@ -106,58 +116,58 @@ OpBranch %48
 %22 = OpLoad %5 %20
 %24 = OpIEqual %23 %16 %25
 OpStore %44 %45
-OpSelectionMerge %60 None
-OpBranchConditional %24 %56 %49
-%49 = OpLabel
-%26 = OpIEqual %23 %19 %27
-OpSelectionMerge %55 None
-OpBranchConditional %26 %51 %50
-%50 = OpLabel
-OpStore %42 %15
-OpStore %44 %47
-OpBranch %55
-%51 = OpLabel
-%28 = OpIEqual %23 %22 %29
-OpSelectionMerge %54 None
-OpBranchConditional %28 %53 %52
-%52 = OpLabel
-OpStore %42 %22
-OpStore %44 %47
-OpBranch %54
+OpSelectionMerge %64 None
+OpBranchConditional %24 %60 %53
 %53 = OpLabel
+%26 = OpIEqual %23 %19 %27
+OpSelectionMerge %59 None
+OpBranchConditional %26 %55 %54
+%54 = OpLabel
+OpStore %44 %47
+OpBranch %59
+%55 = OpLabel
+%28 = OpIEqual %23 %22 %29
+OpSelectionMerge %58 None
+OpBranchConditional %28 %57 %56
+%56 = OpLabel
+OpStore %44 %47
+OpBranch %58
+%57 = OpLabel
 %30 = OpIMul %5 %16 %31
 OpStore %41 %30
-OpBranch %54
-%54 = OpLabel
-OpBranch %55
-%55 = OpLabel
-OpBranch %60
-%56 = OpLabel
-%32 = OpIEqual %23 %22 %33
-OpSelectionMerge %59 None
-OpBranchConditional %32 %58 %57
-%57 = OpLabel
-OpStore %42 %19
-OpStore %44 %47
-OpBranch %59
+OpBranch %58
 %58 = OpLabel
-%36 = OpIMul %5 %19 %25
-OpStore %41 %36
+%48 = OpPhi %5 %49 %57 %22 %56
 OpBranch %59
 %59 = OpLabel
-OpBranch %60
+%50 = OpPhi %5 %48 %58 %15 %54
+OpBranch %64
 %60 = OpLabel
-%46 = OpLoad %23 %44
-OpSelectionMerge %62 None
-OpBranchConditional %46 %61 %62
+%32 = OpIEqual %23 %22 %33
+OpSelectionMerge %63 None
+OpBranchConditional %32 %62 %61
 %61 = OpLabel
-%34 = OpLoad %5 %42
-%35 = OpIAdd %5 %34 %16
-OpStore %41 %35
-OpBranch %62
+OpStore %44 %47
+OpBranch %63
 %62 = OpLabel
+%36 = OpIMul %5 %19 %25
+OpStore %41 %36
 OpBranch %63
 %63 = OpLabel
+%51 = OpPhi %5 %49 %62 %19 %61
+OpBranch %64
+%64 = OpLabel
+%34 = OpPhi %5 %51 %63 %50 %59
+%46 = OpLoad %23 %44
+OpSelectionMerge %66 None
+OpBranchConditional %46 %65 %66
+%65 = OpLabel
+%35 = OpIAdd %5 %34 %16
+OpStore %41 %35
+OpBranch %66
+%66 = OpLabel
+OpBranch %67
+%67 = OpLabel
 %37 = OpLoad %5 %41
 %39 = OpCompositeConstruct %38 %37 %37 %37 %37
 OpImageWrite %9 %15 %39 NonPrivateTexel

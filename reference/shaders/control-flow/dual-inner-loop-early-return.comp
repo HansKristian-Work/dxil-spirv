@@ -12,7 +12,7 @@ void main()
     uint _46;
     uint _47;
     bool _51;
-    uint _57;
+    uint _58;
     uint _48 = 0u;
     uint _49 = gl_GlobalInvocationID.y;
     uint _23;
@@ -35,11 +35,11 @@ void main()
             _31 = _29 < 10u;
             _55 = false;
             _45 = _59;
-            _57 = _59;
             if (_31)
             {
                 _45 = 50u;
                 _55 = true;
+                _58 = _59;
                 break;
             }
             else
@@ -48,13 +48,13 @@ void main()
                 {
                     _45 = 70u;
                     _55 = true;
+                    _58 = _59;
                     break;
                 }
                 else
                 {
                     _26 = _29 + 1u;
                     _28 = _27 + 1u;
-                    _57 = _26;
                     if (int(_28) < int(20u))
                     {
                         _46 = _28;
@@ -63,6 +63,7 @@ void main()
                     }
                     else
                     {
+                        _58 = _26;
                         break;
                     }
                 }
@@ -76,7 +77,7 @@ void main()
         if (int(_24) < int(10u))
         {
             _48 = _24;
-            _49 = _57;
+            _49 = _58;
             continue;
         }
         else
@@ -145,7 +146,6 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %49 = OpVariable %44 Function
 %51 = OpVariable %50 Function
 %55 = OpVariable %50 Function
-%57 = OpVariable %44 Function
 OpBranch %60
 %60 = OpLabel
 %9 = OpLoad %6 %8
@@ -175,7 +175,6 @@ OpLoopMerge %69 %66 None
 OpBranch %63
 %63 = OpLabel
 OpStore %45 %59
-OpStore %57 %59
 OpSelectionMerge %77 None
 OpBranchConditional %31 %68 %64
 %77 = OpLabel
@@ -190,7 +189,6 @@ OpUnreachable
 %26 = OpIAdd %5 %29 %18
 %28 = OpIAdd %5 %27 %18
 %34 = OpSLessThan %30 %28 %35
-OpStore %57 %26
 OpSelectionMerge %79 None
 OpBranchConditional %34 %66 %69
 %79 = OpLabel
@@ -208,6 +206,7 @@ OpStore %45 %39
 OpStore %55 %54
 OpBranch %69
 %69 = OpLabel
+%58 = OpPhi %5 %59 %68 %59 %67 %26 %65
 %56 = OpLoad %30 %55
 OpSelectionMerge %70 None
 OpBranchConditional %56 %73 %70
@@ -219,7 +218,6 @@ OpBranchConditional %36 %71 %72
 %80 = OpLabel
 OpUnreachable
 %71 = OpLabel
-%58 = OpLoad %5 %57
 OpStore %48 %24
 OpStore %49 %58
 OpBranch %61

@@ -72,7 +72,6 @@ OpDecorate %12 NonReadable
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %34 = OpVariable %33 Function
-%170 = OpVariable %169 Function
 %46 = OpUndef %29
 %146 = OpUndef %13
 OpBranch %171
@@ -87,7 +86,6 @@ OpBranchConditional %36 %173 %172
 %172 = OpLabel
 %37 = OpHitObjectIsMissEXT %35 %34
 %38 = OpSelect %13 %37 %39 %40
-OpStore %170 %38
 OpBranch %174
 %173 = OpLabel
 %42 = OpInBoundsAccessChain %41 %16 %23
@@ -210,12 +208,11 @@ OpBranch %177
 %157 = OpCompositeInsert %13 %154 %156 2
 %158 = OpCompositeInsert %13 %24 %157 3
 %159 = OpFAdd %13 %158 %149
-OpStore %170 %159
 OpBranch %174
 %174 = OpLabel
+%160 = OpPhi %13 %159 %177 %38 %172
 OpBranch %175
 %175 = OpLabel
-%160 = OpLoad %13 %170
 %161 = OpLoad %10 %12
 %162 = OpCompositeExtract %9 %160 0
 %163 = OpCompositeExtract %9 %160 1

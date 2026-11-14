@@ -428,12 +428,22 @@ private:
 
 	struct SSAVariableAccess
 	{
+		spv::Id type_id = 0;
 		Vector<CFGNode *> readers;
 		Vector<CFGNode *> writers;
 	};
 	UnorderedMap<uint32_t, SSAVariableAccess> ssa_variable_access;
 	void analyze_ssa_variable_access();
+	void reintroduce_ssa_phi();
+
+	void rewrite_local_variable_to_phi(spv::Id variable_id, const SSAVariableAccess &accesses,
+	                                   const Vector<CFGNode *> &frontiers, CFGNode *reader_idom);
+
 	void clamp_ssa_variable_lifetimes();
+
+	bool phi_frontiers_converge(const Vector<CFGNode *> &writers, CFGNode *reader_idom, CFGNode *scope_idom,
+	                            Vector<CFGNode *> &frontiers);
+	void insert_phi_frontiers(const Vector<CFGNode *> &frontiers, PHI &phi);
 };
 
 template <typename Container, typename T>

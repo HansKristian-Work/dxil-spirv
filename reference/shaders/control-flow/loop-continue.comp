@@ -12,10 +12,10 @@ uint ByteAddressMask(uint index, uint stride)
 
 void main()
 {
-    uint _67;
+    uint _64;
     if (gl_GlobalInvocationID.x == 0u)
     {
-        _67 = 0u;
+        _64 = 0u;
     }
     else
     {
@@ -69,9 +69,9 @@ void main()
                 continue;
             }
         }
-        _67 = _20;
+        _64 = _20;
     }
-    imageStore(_8, int(0u), uvec4(_67));
+    imageStore(_8, int(0u), uvec4(_64));
 }
 
 
@@ -124,7 +124,6 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %77 = OpUndef %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%67 = OpVariable %66 Function
 %68 = OpVariable %66 Function
 %69 = OpVariable %66 Function
 %70 = OpVariable %66 Function
@@ -213,15 +212,13 @@ OpStore %70 %20
 OpStore %71 %22
 OpBranch %80
 %91 = OpLabel
-OpStore %67 %20
 OpBranch %93
 %92 = OpLabel
-OpStore %67 %15
 OpBranch %93
 %93 = OpLabel
+%64 = OpPhi %5 %15 %92 %20 %91
 OpBranch %94
 %94 = OpLabel
-%64 = OpLoad %5 %67
 %65 = OpCompositeConstruct %35 %64 %64 %64 %64
 OpImageWrite %9 %15 %65 NonPrivateTexel
 OpReturn

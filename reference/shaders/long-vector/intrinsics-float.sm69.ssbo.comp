@@ -44,53 +44,53 @@ void main()
     vector<float, 8> _30 = uintBitsToFloat(_10._m0[gl_GlobalInvocationID.x * 3u]);
     vector<float, 8> _37 = uintBitsToFloat(_10._m0[(gl_GlobalInvocationID.x * 3u) + 1u]);
     vector<float, 8> _44 = uintBitsToFloat(_10._m0[(gl_GlobalInvocationID.x * 3u) + 2u]);
-    vector<float, 8> _963;
-    vector<float, 8> _964;
-    vector<float, 8> _965;
-    vector<float, 8> _966;
+    vector<float, 8> _64;
+    vector<float, 8> _66;
+    vector<float, 8> _67;
+    vector<float, 8> _68;
     if (QuadAny(gl_GlobalInvocationID.x == 28u))
     {
-        _963 = dFdyFine(_30);
-        _964 = dFdxFine(_30);
-        _965 = dFdyCoarse(_30);
-        _966 = dFdxCoarse(_30);
+        _64 = dFdyFine(_30);
+        _66 = dFdxFine(_30);
+        _67 = dFdyCoarse(_30);
+        _68 = dFdxCoarse(_30);
     }
     else
     {
-        _963 = _65;
-        _964 = _65;
-        _965 = _65;
-        _966 = _65;
+        _64 = _65;
+        _66 = _65;
+        _67 = _65;
+        _68 = _65;
     }
-    vector<float, 8> _959;
-    vector<float, 8> _960;
-    vector<float, 8> _961;
-    vector<float, 8> _962;
+    vector<float, 8> _76;
+    vector<float, 8> _77;
+    vector<float, 8> _78;
+    vector<float, 8> _79;
     if (QuadAny(gl_GlobalInvocationID.x == 56u))
     {
-        _959 = subgroupQuadBroadcast(_30, 1u);
-        _960 = subgroupQuadSwapHorizontal(_30);
-        _961 = subgroupQuadSwapVertical(_30);
-        _962 = subgroupQuadSwapDiagonal(_30);
+        _76 = subgroupQuadBroadcast(_30, 1u);
+        _77 = subgroupQuadSwapHorizontal(_30);
+        _78 = subgroupQuadSwapVertical(_30);
+        _79 = subgroupQuadSwapDiagonal(_30);
     }
     else
     {
-        _959 = _65;
-        _960 = _65;
-        _961 = _65;
-        _962 = _65;
+        _76 = _65;
+        _77 = _65;
+        _78 = _65;
+        _79 = _65;
     }
-    vector<float, 8> _958;
+    vector<float, 8> _954;
     switch (gl_GlobalInvocationID.x)
     {
         case 0u:
         {
-            _958 = abs(_30);
+            _954 = abs(_30);
             break;
         }
         case 1u:
         {
-            _958 = spvNClamp(_30, vector<float, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+            _954 = spvNClamp(_30, vector<float, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
             break;
         }
         case 2u:
@@ -105,7 +105,7 @@ void main()
             _944[5] = float(_927[5]);
             _944[6] = float(_927[6]);
             _944[7] = float(_927[7]);
-            _958 = _944;
+            _954 = _944;
             break;
         }
         case 3u:
@@ -120,7 +120,7 @@ void main()
             _919[5] = float(_902[5]);
             _919[6] = float(_902[6]);
             _919[7] = float(_902[7]);
-            _958 = _919;
+            _954 = _919;
             break;
         }
         case 4u:
@@ -137,7 +137,7 @@ void main()
             _894[5] = float(_877[5]);
             _894[6] = float(_877[6]);
             _894[7] = float(_877[7]);
-            _958 = _894;
+            _954 = _894;
             break;
         }
         case 5u:
@@ -155,112 +155,112 @@ void main()
             _866[5] = float(_849[5]);
             _866[6] = float(_849[6]);
             _866[7] = float(_849[7]);
-            _958 = _866;
+            _954 = _866;
             break;
         }
         case 6u:
         {
-            _958 = cos(_30);
+            _954 = cos(_30);
             break;
         }
         case 7u:
         {
-            _958 = sin(_30);
+            _954 = sin(_30);
             break;
         }
         case 8u:
         {
-            _958 = tan(_30);
+            _954 = tan(_30);
             break;
         }
         case 9u:
         {
-            _958 = acos(_30);
+            _954 = acos(_30);
             break;
         }
         case 10u:
         {
-            _958 = asin(_30);
+            _954 = asin(_30);
             break;
         }
         case 11u:
         {
-            _958 = atan(_30);
+            _954 = atan(_30);
             break;
         }
         case 12u:
         {
-            _958 = cosh(_30);
+            _954 = cosh(_30);
             break;
         }
         case 13u:
         {
-            _958 = sinh(_30);
+            _954 = sinh(_30);
             break;
         }
         case 14u:
         {
-            _958 = tanh(_30);
+            _954 = tanh(_30);
             break;
         }
         case 15u:
         {
-            _958 = exp2(_30);
+            _954 = exp2(_30);
             break;
         }
         case 16u:
         {
-            _958 = fract(_30);
+            _954 = fract(_30);
             break;
         }
         case 17u:
         {
-            _958 = log2(_30);
+            _954 = log2(_30);
             break;
         }
         case 18u:
         {
-            _958 = sqrt(_30);
+            _954 = sqrt(_30);
             break;
         }
         case 19u:
         {
-            _958 = inversesqrt(_30);
+            _954 = inversesqrt(_30);
             break;
         }
         case 20u:
         {
-            _958 = roundEven(_30);
+            _954 = roundEven(_30);
             break;
         }
         case 21u:
         {
-            _958 = trunc(_30);
+            _954 = trunc(_30);
             break;
         }
         case 22u:
         {
-            _958 = ceil(_30);
+            _954 = ceil(_30);
             break;
         }
         case 23u:
         {
-            _958 = floor(_30);
+            _954 = floor(_30);
             break;
         }
         case 24u:
         {
-            _958 = spvNMax(_30, _37);
+            _954 = spvNMax(_30, _37);
             break;
         }
         case 25u:
         {
-            _958 = spvNMin(_30, _37);
+            _954 = spvNMin(_30, _37);
             break;
         }
         case 26u:
         {
-            _958 = fma(_30, _37, _44);
+            _954 = fma(_30, _37, _44);
             break;
         }
         case 27u:
@@ -302,27 +302,27 @@ void main()
             _813[5] = float(_796[5]);
             _813[6] = float(_796[6]);
             _813[7] = float(_796[7]);
-            _958 = _813;
+            _954 = _813;
             break;
         }
         case 28u:
         {
-            _958 = _966;
+            _954 = _68;
             break;
         }
         case 29u:
         {
-            _958 = _965;
+            _954 = _67;
             break;
         }
         case 30u:
         {
-            _958 = _964;
+            _954 = _66;
             break;
         }
         case 31u:
         {
-            _958 = _963;
+            _954 = _64;
             break;
         }
         case 32u:
@@ -332,60 +332,60 @@ void main()
             vector<bool, 8> _706 = equal(_37, vector<float, 8>(0));
             vector<bool, 8> _707 = greaterThanEqual(_30, vector<float, 8>(0));
             vector<bool, 8> _708 = lessThan(_30, vector<float, 8>(0));
-            _958 = mix(mix(mix(mix(_698, _698 + (vector<float, 8>(3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875)), vector<bool, 8>(_705[0] && _707[0], _705[1] && _707[1], _705[2] && _707[2], _705[3] && _707[3], _705[4] && _707[4], _705[5] && _707[5], _705[6] && _707[6], _705[7] && _707[7])), _698 + (vector<float, 8>(-3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875)), vector<bool, 8>(_705[0] && _708[0], _705[1] && _708[1], _705[2] && _708[2], _705[3] && _708[3], _705[4] && _708[4], _705[5] && _708[5], _705[6] && _708[6], _705[7] && _708[7])), vector<float, 8>(-1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375), vector<bool, 8>(_706[0] && _708[0], _706[1] && _708[1], _706[2] && _708[2], _706[3] && _708[3], _706[4] && _708[4], _706[5] && _708[5], _706[6] && _708[6], _706[7] && _708[7])), vector<float, 8>(1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375), vector<bool, 8>(_706[0] && _707[0], _706[1] && _707[1], _706[2] && _707[2], _706[3] && _707[3], _706[4] && _707[4], _706[5] && _707[5], _706[6] && _707[6], _706[7] && _707[7]));
+            _954 = mix(mix(mix(mix(_698, _698 + (vector<float, 8>(3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875, 3.1415927410125732421875)), vector<bool, 8>(_705[0] && _707[0], _705[1] && _707[1], _705[2] && _707[2], _705[3] && _707[3], _705[4] && _707[4], _705[5] && _707[5], _705[6] && _707[6], _705[7] && _707[7])), _698 + (vector<float, 8>(-3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875, -3.1415927410125732421875)), vector<bool, 8>(_705[0] && _708[0], _705[1] && _708[1], _705[2] && _708[2], _705[3] && _708[3], _705[4] && _708[4], _705[5] && _708[5], _705[6] && _708[6], _705[7] && _708[7])), vector<float, 8>(-1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375, -1.57079637050628662109375), vector<bool, 8>(_706[0] && _708[0], _706[1] && _708[1], _706[2] && _708[2], _706[3] && _708[3], _706[4] && _708[4], _706[5] && _708[5], _706[6] && _708[6], _706[7] && _708[7])), vector<float, 8>(1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375, 1.57079637050628662109375), vector<bool, 8>(_706[0] && _707[0], _706[1] && _707[1], _706[2] && _707[2], _706[3] && _707[3], _706[4] && _707[4], _706[5] && _707[5], _706[6] && _707[6], _706[7] && _707[7]));
             break;
         }
         case 33u:
         {
-            _958 = _30 * (vector<float, 8>(57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625));
+            _954 = _30 * (vector<float, 8>(57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625, 57.295780181884765625));
             break;
         }
         case 34u:
         {
-            _958 = _30 * (vector<float, 8>(0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625));
+            _954 = _30 * (vector<float, 8>(0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625, 0.01745329238474369049072265625));
             break;
         }
         case 35u:
         {
-            _958 = spvNMin(spvNMax(_30, _37), _44);
+            _954 = spvNMin(spvNMax(_30, _37), _44);
             break;
         }
         case 36u:
         {
             vector<float, 8> _681 = _30 / _37;
             vector<float, 8> _685 = fract(abs(_681));
-            _958 = mix((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _685, _685, greaterThanEqual(_681, (vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _681)) * _37;
+            _954 = mix((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _685, _685, greaterThanEqual(_681, (vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _681)) * _37;
             break;
         }
         case 37u:
         {
-            _958 = (_44 * (_37 - _30)) + _30;
+            _954 = (_44 * (_37 - _30)) + _30;
             break;
         }
         case 38u:
         {
-            _958 = exp2(log2(_30) * _37);
+            _954 = exp2(log2(_30) * _37);
             break;
         }
         case 39u:
         {
-            _958 = (vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)) / _30;
+            _954 = (vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)) / _30;
             break;
         }
         case 40u:
         {
-            _958 = vector<float, 8>(vector<int, 8>(mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), greaterThan(_30, vector<float, 8>(0))) - mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), lessThan(_30, vector<float, 8>(0)))));
+            _954 = vector<float, 8>(vector<int, 8>(mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), greaterThan(_30, vector<float, 8>(0))) - mix(vector<uint, 8>(0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u), vector<uint, 8>(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u), lessThan(_30, vector<float, 8>(0)))));
             break;
         }
         case 41u:
         {
             vector<float, 8> _657 = spvNClamp((_44 - _30) / (_37 - _30), vector<float, 8>(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
-            _958 = (_657 * _657) * ((vector<float, 8>(3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0)) - (_657 * (vector<float, 8>(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0))));
+            _954 = (_657 * _657) * ((vector<float, 8>(3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0)) - (_657 * (vector<float, 8>(2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0))));
             break;
         }
         case 42u:
         {
-            _958 = mix(vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), vector<float, 8>(0), lessThan(_37, _30));
+            _954 = mix(vector<float, 8>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), vector<float, 8>(0), lessThan(_37, _30));
             break;
         }
         case 43u:
@@ -401,7 +401,7 @@ void main()
             _638[5] = float(int(_621[5]));
             _638[6] = float(int(_621[6]));
             _638[7] = float(int(_621[7]));
-            _958 = (_30 + ((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _617)) + ((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _638);
+            _954 = (_30 + ((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _617)) + ((vector<float, 8>(-0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0, -0.0)) - _638);
             break;
         }
         case 44u:
@@ -410,7 +410,7 @@ void main()
             _612[0] = dot(_30, _37);
             _612[1] = dot(_30, _44);
             _612[2] = dot(_37, _44);
-            _958 = _612;
+            _954 = _612;
             break;
         }
         case 45u:
@@ -424,7 +424,7 @@ void main()
             _601[5] = uint(int(_30[5]));
             _601[6] = uint(int(_30[6]));
             _601[7] = uint(int(_30[7]));
-            _958 = uintBitsToFloat(bitfieldReverse(_601));
+            _954 = uintBitsToFloat(bitfieldReverse(_601));
             break;
         }
         case 46u:
@@ -438,7 +438,7 @@ void main()
             _575[5] = uint(int(_30[5]));
             _575[6] = uint(int(_30[6]));
             _575[7] = uint(int(_30[7]));
-            _958 = uintBitsToFloat(vector<uint, 8>(bitCount(_575)));
+            _954 = uintBitsToFloat(vector<uint, 8>(bitCount(_575)));
             break;
         }
         case 47u:
@@ -454,7 +454,7 @@ void main()
             _537[7] = uint(int(_30[7]));
             vector<uint, 8> _545 = vector<uint, 8>(findMSB(vector<int, 8>(_537)));
             vector<uint, 8> _552 = mix((vector<uint, 8>(31u, 31u, 31u, 31u, 31u, 31u, 31u, 31u)) - _545, vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u), equal(_545, (vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u))));
-            _958 = mix(uintBitsToFloat((vector<uint, 8>(31u, 31u, 31u, 31u, 31u, 31u, 31u, 31u)) - _552), vector<float, 8>(uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */)), equal(_552, (vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u))));
+            _954 = mix(uintBitsToFloat((vector<uint, 8>(31u, 31u, 31u, 31u, 31u, 31u, 31u, 31u)) - _552), vector<float, 8>(uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */), uintBitsToFloat(0xffffffffu /* nan */)), equal(_552, (vector<uint, 8>(4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u, 4294967295u))));
             break;
         }
         case 48u:
@@ -468,7 +468,7 @@ void main()
             _511[5] = uint(int(_30[5]));
             _511[6] = uint(int(_30[6]));
             _511[7] = uint(int(_30[7]));
-            _958 = uintBitsToFloat(vector<uint, 8>(findLSB(_511)));
+            _954 = uintBitsToFloat(vector<uint, 8>(findLSB(_511)));
             break;
         }
         case 49u:
@@ -482,7 +482,7 @@ void main()
             _473[5] = unpackHalf2x16(uint(int(_30[5]))).x;
             _473[6] = unpackHalf2x16(uint(int(_30[6]))).x;
             _473[7] = unpackHalf2x16(uint(int(_30[7]))).x;
-            _958 = _473;
+            _954 = _473;
             break;
         }
         case 50u:
@@ -496,7 +496,7 @@ void main()
             _424[5] = packHalf2x16(vec2(_30[5], 0.0));
             _424[6] = packHalf2x16(vec2(_30[6], 0.0));
             _424[7] = packHalf2x16(vec2(_30[7], 0.0));
-            _958 = uintBitsToFloat(_424);
+            _954 = uintBitsToFloat(_424);
             break;
         }
         case 51u:
@@ -529,7 +529,7 @@ void main()
             _411[5] = float(_394[5]);
             _411[6] = float(_394[6]);
             _411[7] = float(_394[7]);
-            _958 = _411;
+            _954 = _411;
             break;
         }
         case 52u:
@@ -562,7 +562,7 @@ void main()
             _338[5] = float(_321[5]);
             _338[6] = float(_321[6]);
             _338[7] = float(_321[7]);
-            _958 = _338;
+            _954 = _338;
             break;
         }
         case 53u:
@@ -576,7 +576,7 @@ void main()
             _264[5] = _30[5] != 0.0;
             _264[6] = _30[6] != 0.0;
             _264[7] = _30[7] != 0.0;
-            _958 = mix(_44, _37, _264);
+            _954 = mix(_44, _37, _264);
             break;
         }
         case 54u:
@@ -612,7 +612,7 @@ void main()
             _237[6] = _44[6] != 0.0;
             _237[7] = _44[7] != 0.0;
             _193[2] = float(all(_237));
-            _958 = _193;
+            _954 = _193;
             break;
         }
         case 55u:
@@ -648,36 +648,36 @@ void main()
             _156[6] = _44[6] != 0.0;
             _156[7] = _44[7] != 0.0;
             _110[2] = float(any(_156));
-            _958 = _110;
+            _954 = _110;
             break;
         }
         case 56u:
         {
-            _958 = _959;
+            _954 = _76;
             break;
         }
         case 57u:
         {
-            _958 = _960;
+            _954 = _77;
             break;
         }
         case 58u:
         {
-            _958 = _961;
+            _954 = _78;
             break;
         }
         case 59u:
         {
-            _958 = _962;
+            _954 = _79;
             break;
         }
         default:
         {
-            _958 = vector<float, 8>(0);
+            _954 = vector<float, 8>(0);
             break;
         }
     }
-    _14._m0[gl_GlobalInvocationID.x] = floatBitsToUint(_958);
+    _14._m0[gl_GlobalInvocationID.x] = floatBitsToUint(_954);
 }
 
 
@@ -794,15 +794,6 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %957 = OpTypePointer Function %29
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%958 = OpVariable %957 Function
-%959 = OpVariable %957 Function
-%960 = OpVariable %957 Function
-%961 = OpVariable %957 Function
-%962 = OpVariable %957 Function
-%963 = OpVariable %957 Function
-%964 = OpVariable %957 Function
-%965 = OpVariable %957 Function
-%966 = OpVariable %957 Function
 %65 = OpUndef %29
 %99 = OpUndef %97
 %425 = OpUndef %6
@@ -833,64 +824,44 @@ OpBranch %967
 OpSelectionMerge %970 None
 OpBranchConditional %59 %969 %968
 %968 = OpLabel
-OpStore %963 %65
-OpStore %964 %65
-OpStore %965 %65
-OpStore %966 %65
 OpBranch %970
 %969 = OpLabel
 %60 = OpDPdxCoarse %29 %30
 %61 = OpDPdyCoarse %29 %30
 %62 = OpDPdxFine %29 %30
 %63 = OpDPdyFine %29 %30
-OpStore %963 %63
-OpStore %964 %62
-OpStore %965 %61
-OpStore %966 %60
 OpBranch %970
 %970 = OpLabel
-%68 = OpLoad %29 %966
-%67 = OpLoad %29 %965
-%66 = OpLoad %29 %964
-%64 = OpLoad %29 %963
+%64 = OpPhi %29 %63 %969 %65 %968
+%66 = OpPhi %29 %62 %969 %65 %968
+%67 = OpPhi %29 %61 %969 %65 %968
+%68 = OpPhi %29 %60 %969 %65 %968
 %69 = OpIEqual %45 %21 %70
 %71 = OpFunctionCall %45 %50 %69
 OpSelectionMerge %973 None
 OpBranchConditional %71 %972 %971
 %971 = OpLabel
-OpStore %959 %65
-OpStore %960 %65
-OpStore %961 %65
-OpStore %962 %65
 OpBranch %973
 %972 = OpLabel
 %72 = OpGroupNonUniformQuadBroadcast %29 %23 %30 %32
 %73 = OpGroupNonUniformQuadSwap %29 %23 %30 %20
 %74 = OpGroupNonUniformQuadSwap %29 %23 %30 %32
 %75 = OpGroupNonUniformQuadSwap %29 %23 %30 %39
-OpStore %959 %72
-OpStore %960 %73
-OpStore %961 %74
-OpStore %962 %75
 OpBranch %973
 %973 = OpLabel
-%79 = OpLoad %29 %962
-%78 = OpLoad %29 %961
-%77 = OpLoad %29 %960
-%76 = OpLoad %29 %959
+%76 = OpPhi %29 %72 %972 %65 %971
+%77 = OpPhi %29 %73 %972 %65 %971
+%78 = OpPhi %29 %74 %972 %65 %971
+%79 = OpPhi %29 %75 %972 %65 %971
 OpSelectionMerge %1035 None
 OpSwitch %21 %1034 0 %1033 1 %1032 2 %1031 3 %1030 4 %1029 5 %1028 6 %1027 7 %1026 8 %1025 9 %1024 10 %1023 11 %1022 12 %1021 13 %1020 14 %1019 15 %1018 16 %1017 17 %1016 18 %1015 19 %1014 20 %1013 21 %1012 22 %1011 23 %1010 24 %1009 25 %1008 26 %1007 27 %1006 28 %1005 29 %1004 30 %1003 31 %1002 32 %1001 33 %1000 34 %999 35 %998 36 %997 37 %996 38 %995 39 %994 40 %993 41 %992 42 %991 43 %990 44 %989 45 %988 46 %987 47 %986 48 %985 49 %984 50 %983 51 %982 52 %981 53 %980 54 %979 55 %978 56 %977 57 %976 58 %975 59 %974
 %974 = OpLabel
-OpStore %958 %79
 OpBranch %1035
 %975 = OpLabel
-OpStore %958 %78
 OpBranch %1035
 %976 = OpLabel
-OpStore %958 %77
 OpBranch %1035
 %977 = OpLabel
-OpStore %958 %76
 OpBranch %1035
 %978 = OpLabel
 %80 = OpCompositeExtract %28 %30 0
@@ -974,7 +945,6 @@ OpBranch %1035
 %164 = OpAny %45 %163
 %165 = OpSelect %28 %164 %108 %89
 %166 = OpCompositeInsert %29 %165 %139 2
-OpStore %958 %166
 OpBranch %1035
 %979 = OpLabel
 %167 = OpCompositeExtract %28 %30 0
@@ -1058,7 +1028,6 @@ OpBranch %1035
 %245 = OpAll %45 %244
 %246 = OpSelect %28 %245 %108 %89
 %247 = OpCompositeInsert %29 %246 %220 2
-OpStore %958 %247
 OpBranch %1035
 %980 = OpLabel
 %248 = OpCompositeExtract %28 %30 0
@@ -1086,7 +1055,6 @@ OpBranch %1035
 %270 = OpCompositeInsert %97 %262 %269 6
 %271 = OpCompositeInsert %97 %263 %270 7
 %272 = OpSelect %29 %271 %37 %44
-OpStore %958 %272
 OpBranch %1035
 %981 = OpLabel
 %273 = OpCompositeExtract %28 %37 0
@@ -1162,7 +1130,6 @@ OpBranch %1035
 %343 = OpCompositeInsert %29 %335 %342 5
 %344 = OpCompositeInsert %29 %336 %343 6
 %345 = OpCompositeInsert %29 %337 %344 7
-OpStore %958 %345
 OpBranch %1035
 %982 = OpLabel
 %346 = OpCompositeExtract %28 %37 0
@@ -1238,7 +1205,6 @@ OpBranch %1035
 %416 = OpCompositeInsert %29 %408 %415 5
 %417 = OpCompositeInsert %29 %409 %416 6
 %418 = OpCompositeInsert %29 %410 %417 7
-OpStore %958 %418
 OpBranch %1035
 %983 = OpLabel
 %419 = OpCompositeExtract %28 %30 0
@@ -1274,7 +1240,6 @@ OpBranch %1035
 %451 = OpExtInst %5 %420 PackHalf2x16 %452
 %453 = OpCompositeInsert %6 %451 %449 7
 %454 = OpBitcast %29 %453
-OpStore %958 %454
 OpBranch %1035
 %984 = OpLabel
 %455 = OpCompositeExtract %28 %30 0
@@ -1317,7 +1282,6 @@ OpBranch %1035
 %492 = OpExtInst %422 %420 UnpackHalf2x16 %470
 %493 = OpCompositeExtract %28 %492 0
 %494 = OpCompositeInsert %29 %493 %491 7
-OpStore %958 %494
 OpBranch %1035
 %985 = OpLabel
 %495 = OpCompositeExtract %28 %30 0
@@ -1346,7 +1310,6 @@ OpBranch %1035
 %518 = OpCompositeInsert %6 %510 %517 7
 %519 = OpExtInst %6 %420 FindILsb %518
 %520 = OpBitcast %29 %519
-OpStore %958 %520
 OpBranch %1035
 %986 = OpLabel
 %521 = OpCompositeExtract %28 %30 0
@@ -1381,7 +1344,6 @@ OpBranch %1035
 %554 = OpIEqual %97 %552 %548
 %555 = OpBitcast %29 %553
 %556 = OpSelect %29 %554 %558 %555
-OpStore %958 %556
 OpBranch %1035
 %987 = OpLabel
 %559 = OpCompositeExtract %28 %30 0
@@ -1410,7 +1372,6 @@ OpBranch %1035
 %582 = OpCompositeInsert %6 %574 %581 7
 %583 = OpBitCount %6 %582
 %584 = OpBitcast %29 %583
-OpStore %958 %584
 OpBranch %1035
 %988 = OpLabel
 %585 = OpCompositeExtract %28 %30 0
@@ -1439,7 +1400,6 @@ OpBranch %1035
 %608 = OpCompositeInsert %6 %600 %607 7
 %609 = OpBitReverse %6 %608
 %610 = OpBitcast %29 %609
-OpStore %958 %610
 OpBranch %1035
 %989 = OpLabel
 %611 = OpDot %28 %30 %37
@@ -1448,7 +1408,6 @@ OpBranch %1035
 %614 = OpCompositeInsert %29 %613 %612 1
 %615 = OpDot %28 %37 %44
 %616 = OpCompositeInsert %29 %615 %614 2
-OpStore %958 %616
 OpBranch %1035
 %990 = OpLabel
 %617 = OpExtInst %29 %420 Trunc %30
@@ -1481,12 +1440,10 @@ OpBranch %1035
 %646 = OpFSub %29 %620 %645
 %647 = OpFAdd %29 %30 %618
 %648 = OpFAdd %29 %647 %646
-OpStore %958 %648
 OpBranch %1035
 %991 = OpLabel
 %649 = OpFOrdLessThan %97 %37 %30
 %650 = OpSelect %29 %649 %651 %652
-OpStore %958 %650
 OpBranch %1035
 %992 = OpLabel
 %653 = OpFSub %29 %37 %30
@@ -1497,7 +1454,6 @@ OpBranch %1035
 %661 = OpFSub %29 %663 %658
 %664 = OpFMul %29 %657 %657
 %665 = OpFMul %29 %664 %661
-OpStore %958 %665
 OpBranch %1035
 %993 = OpLabel
 %666 = OpFOrdGreaterThan %97 %30 %651
@@ -1506,23 +1462,19 @@ OpBranch %1035
 %671 = OpSelect %6 %667 %669 %668
 %672 = OpISub %6 %670 %671
 %673 = OpConvertSToF %29 %672
-OpStore %958 %673
 OpBranch %1035
 %994 = OpLabel
 %674 = OpFDiv %29 %652 %30
-OpStore %958 %674
 OpBranch %1035
 %995 = OpLabel
 %675 = OpExtInst %29 %420 Log2 %30
 %676 = OpFMul %29 %675 %37
 %677 = OpExtInst %29 %420 Exp2 %676
-OpStore %958 %677
 OpBranch %1035
 %996 = OpLabel
 %678 = OpFSub %29 %37 %30
 %679 = OpFMul %29 %44 %678
 %680 = OpFAdd %29 %679 %30
-OpStore %958 %680
 OpBranch %1035
 %997 = OpLabel
 %681 = OpFDiv %29 %30 %37
@@ -1533,20 +1485,16 @@ OpBranch %1035
 %686 = OpFSub %29 %620 %685
 %687 = OpSelect %29 %683 %685 %686
 %688 = OpFMul %29 %687 %37
-OpStore %958 %688
 OpBranch %1035
 %998 = OpLabel
 %689 = OpExtInst %29 %420 NMax %30 %37
 %690 = OpExtInst %29 %420 NMin %689 %44
-OpStore %958 %690
 OpBranch %1035
 %999 = OpLabel
 %691 = OpFMul %29 %30 %693
-OpStore %958 %691
 OpBranch %1035
 %1000 = OpLabel
 %694 = OpFMul %29 %30 %696
-OpStore %958 %694
 OpBranch %1035
 %1001 = OpLabel
 %697 = OpFDiv %29 %30 %37
@@ -1565,19 +1513,14 @@ OpBranch %1035
 %714 = OpSelect %29 %713 %716 %712
 %717 = OpLogicalAnd %97 %706 %707
 %718 = OpSelect %29 %717 %720 %714
-OpStore %958 %718
 OpBranch %1035
 %1002 = OpLabel
-OpStore %958 %64
 OpBranch %1035
 %1003 = OpLabel
-OpStore %958 %66
 OpBranch %1035
 %1004 = OpLabel
-OpStore %958 %67
 OpBranch %1035
 %1005 = OpLabel
-OpStore %958 %68
 OpBranch %1035
 %1006 = OpLabel
 %721 = OpCompositeExtract %28 %44 0
@@ -1677,91 +1620,69 @@ OpBranch %1035
 %818 = OpCompositeInsert %29 %810 %817 5
 %819 = OpCompositeInsert %29 %811 %818 6
 %820 = OpCompositeInsert %29 %812 %819 7
-OpStore %958 %820
 OpBranch %1035
 %1007 = OpLabel
 %821 = OpExtInst %29 %420 Fma %30 %37 %44
-OpStore %958 %821
 OpBranch %1035
 %1008 = OpLabel
 %822 = OpExtInst %29 %420 NMin %30 %37
-OpStore %958 %822
 OpBranch %1035
 %1009 = OpLabel
 %823 = OpExtInst %29 %420 NMax %30 %37
-OpStore %958 %823
 OpBranch %1035
 %1010 = OpLabel
 %824 = OpExtInst %29 %420 Floor %30
-OpStore %958 %824
 OpBranch %1035
 %1011 = OpLabel
 %825 = OpExtInst %29 %420 Ceil %30
-OpStore %958 %825
 OpBranch %1035
 %1012 = OpLabel
 %826 = OpExtInst %29 %420 Trunc %30
-OpStore %958 %826
 OpBranch %1035
 %1013 = OpLabel
 %827 = OpExtInst %29 %420 RoundEven %30
-OpStore %958 %827
 OpBranch %1035
 %1014 = OpLabel
 %828 = OpExtInst %29 %420 InverseSqrt %30
-OpStore %958 %828
 OpBranch %1035
 %1015 = OpLabel
 %829 = OpExtInst %29 %420 Sqrt %30
-OpStore %958 %829
 OpBranch %1035
 %1016 = OpLabel
 %830 = OpExtInst %29 %420 Log2 %30
-OpStore %958 %830
 OpBranch %1035
 %1017 = OpLabel
 %831 = OpExtInst %29 %420 Fract %30
-OpStore %958 %831
 OpBranch %1035
 %1018 = OpLabel
 %832 = OpExtInst %29 %420 Exp2 %30
-OpStore %958 %832
 OpBranch %1035
 %1019 = OpLabel
 %833 = OpExtInst %29 %420 Tanh %30
-OpStore %958 %833
 OpBranch %1035
 %1020 = OpLabel
 %834 = OpExtInst %29 %420 Sinh %30
-OpStore %958 %834
 OpBranch %1035
 %1021 = OpLabel
 %835 = OpExtInst %29 %420 Cosh %30
-OpStore %958 %835
 OpBranch %1035
 %1022 = OpLabel
 %836 = OpExtInst %29 %420 Atan %30
-OpStore %958 %836
 OpBranch %1035
 %1023 = OpLabel
 %837 = OpExtInst %29 %420 Asin %30
-OpStore %958 %837
 OpBranch %1035
 %1024 = OpLabel
 %838 = OpExtInst %29 %420 Acos %30
-OpStore %958 %838
 OpBranch %1035
 %1025 = OpLabel
 %839 = OpExtInst %29 %420 Tan %30
-OpStore %958 %839
 OpBranch %1035
 %1026 = OpLabel
 %840 = OpExtInst %29 %420 Sin %30
-OpStore %958 %840
 OpBranch %1035
 %1027 = OpLabel
 %841 = OpExtInst %29 %420 Cos %30
-OpStore %958 %841
 OpBranch %1035
 %1028 = OpLabel
 %842 = OpExtInst %29 %420 FAbs %30
@@ -1792,7 +1713,6 @@ OpBranch %1035
 %871 = OpCompositeInsert %29 %863 %870 5
 %872 = OpCompositeInsert %29 %864 %871 6
 %873 = OpCompositeInsert %29 %865 %872 7
-OpStore %958 %873
 OpBranch %1035
 %1029 = OpLabel
 %874 = OpIsNan %97 %30
@@ -1823,7 +1743,6 @@ OpBranch %1035
 %899 = OpCompositeInsert %29 %891 %898 5
 %900 = OpCompositeInsert %29 %892 %899 6
 %901 = OpCompositeInsert %29 %893 %900 7
-OpStore %958 %901
 OpBranch %1035
 %1030 = OpLabel
 %902 = OpIsInf %97 %30
@@ -1851,7 +1770,6 @@ OpBranch %1035
 %924 = OpCompositeInsert %29 %916 %923 5
 %925 = OpCompositeInsert %29 %917 %924 6
 %926 = OpCompositeInsert %29 %918 %925 7
-OpStore %958 %926
 OpBranch %1035
 %1031 = OpLabel
 %927 = OpIsNan %97 %30
@@ -1879,23 +1797,19 @@ OpBranch %1035
 %949 = OpCompositeInsert %29 %941 %948 5
 %950 = OpCompositeInsert %29 %942 %949 6
 %951 = OpCompositeInsert %29 %943 %950 7
-OpStore %958 %951
 OpBranch %1035
 %1032 = OpLabel
 %952 = OpExtInst %29 %420 NClamp %30 %656 %652
-OpStore %958 %952
 OpBranch %1035
 %1033 = OpLabel
 %953 = OpExtInst %29 %420 FAbs %30
-OpStore %958 %953
 OpBranch %1035
 %1034 = OpLabel
-OpStore %958 %651
 OpBranch %1035
 %1035 = OpLabel
+%954 = OpPhi %29 %651 %1034 %953 %1033 %952 %1032 %951 %1031 %926 %1030 %901 %1029 %873 %1028 %841 %1027 %840 %1026 %839 %1025 %838 %1024 %837 %1023 %836 %1022 %835 %1021 %834 %1020 %833 %1019 %832 %1018 %831 %1017 %830 %1016 %829 %1015 %828 %1014 %827 %1013 %826 %1012 %825 %1011 %824 %1010 %823 %1009 %822 %1008 %821 %1007 %820 %1006 %68 %1005 %67 %1004 %66 %1003 %64 %1002 %718 %1001 %694 %1000 %691 %999 %690 %998 %688 %997 %680 %996 %677 %995 %674 %994 %673 %993 %665 %992 %650 %991 %648 %990 %616 %989 %610 %988 %584 %987 %556 %986 %520 %985 %494 %984 %454 %983 %418 %982 %345 %981 %272 %980 %247 %979 %166 %978 %76 %977 %77 %976 %78 %975 %79 %974
 OpBranch %1036
 %1036 = OpLabel
-%954 = OpLoad %29 %958
 %955 = OpBitcast %6 %954
 %956 = OpAccessChain %25 %14 %20 %21
 OpStore %956 %955 NonPrivatePointer
