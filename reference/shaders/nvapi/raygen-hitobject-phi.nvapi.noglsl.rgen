@@ -1,0 +1,193 @@
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 120
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability ImageBuffer
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability VulkanMemoryModel
+OpCapability ShaderInvocationReorderNV
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpExtension "SPV_NV_shader_invocation_reorder"
+OpMemoryModel Logical Vulkan
+OpEntryPoint RayGenerationKHR %3 "main" %8 %12 %15 %16 %17 %18 %19 %22
+OpName %3 "main"
+OpName %8 "AS"
+OpName %12 "Buf"
+OpName %13 ""
+OpDecorate %8 DescriptorSet 0
+OpDecorate %8 Binding 0
+OpDecorate %12 DescriptorSet 0
+OpDecorate %12 Binding 0
+OpDecorate %12 NonReadable
+OpDecorate %22 BuiltIn LaunchIdKHR
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 1
+%6 = OpTypeAccelerationStructureKHR
+%7 = OpTypePointer UniformConstant %6
+%8 = OpVariable %7 UniformConstant
+%9 = OpTypeInt 32 0
+%10 = OpTypeImage %9 Buffer 0 0 0 2 R32ui
+%11 = OpTypePointer UniformConstant %10
+%12 = OpVariable %11 UniformConstant
+%13 = OpTypeStruct %9
+%14 = OpTypePointer RayPayloadKHR %13
+%15 = OpVariable %14 RayPayloadKHR
+%16 = OpVariable %14 RayPayloadKHR
+%17 = OpVariable %14 RayPayloadKHR
+%18 = OpVariable %14 RayPayloadKHR
+%19 = OpVariable %14 RayPayloadKHR
+%20 = OpTypeVector %9 3
+%21 = OpTypePointer Input %20
+%22 = OpVariable %21 Input
+%23 = OpTypePointer Input %9
+%25 = OpConstant %9 0
+%27 = OpTypeFloat 32
+%30 = OpConstant %27 10
+%32 = OpConstant %9 1
+%33 = OpTypeBool
+%41 = OpConstant %9 1065353216
+%43 = OpConstant %9 3212836864
+%44 = OpTypeVector %27 3
+%47 = OpTypeHitObjectNV
+%48 = OpTypePointer Function %47
+%51 = OpConstant %9 2
+%62 = OpTypePointer RayPayloadKHR %9
+%64 = OpConstant %9 50
+%70 = OpConstant %9 4
+%74 = OpConstant %9 255
+%75 = OpConstant %27 0
+%76 = OpConstant %27 1
+%77 = OpConstant %27 -1
+%87 = OpConstantFalse %33
+%95 = OpConstant %9 3
+%100 = OpTypeVector %9 4
+%102 = OpTypePointer Function %9
+%105 = OpTypePointer Function %33
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+%49 = OpVariable %48 Function
+%80 = OpVariable %48 Function
+%103 = OpVariable %102 Function
+%104 = OpVariable %102 Function
+%106 = OpVariable %105 Function
+OpBranch %107
+%107 = OpLabel
+%24 = OpAccessChain %23 %22 %25
+%26 = OpLoad %9 %24
+%28 = OpConvertUToF %27 %26
+%29 = OpFAdd %27 %28 %30
+%31 = OpBitwiseAnd %9 %26 %32
+%34 = OpIEqual %33 %31 %25
+OpSelectionMerge %110 None
+OpBranchConditional %34 %109 %108
+%108 = OpLabel
+%36 = OpBitcast %9 %28
+%37 = OpBitcast %9 %29
+%38 = OpBitcast %27 %25
+%39 = OpBitcast %27 %25
+%40 = OpBitcast %27 %41
+%42 = OpBitcast %27 %43
+%45 = OpCompositeConstruct %44 %28 %39 %40
+%46 = OpCompositeConstruct %44 %38 %28 %42
+OpHitObjectRecordMissNV %49 %32 %45 %28 %46 %29
+OpBranch %110
+%109 = OpLabel
+OpHitObjectRecordEmptyNV %49
+OpBranch %110
+%110 = OpLabel
+%50 = OpBitwiseAnd %9 %26 %51
+%52 = OpIEqual %33 %50 %25
+OpSelectionMerge %112 None
+OpBranchConditional %52 %112 %111
+%111 = OpLabel
+%53 = OpBitcast %9 %28
+%54 = OpBitcast %9 %29
+%55 = OpBitcast %27 %25
+%56 = OpBitcast %27 %25
+%57 = OpBitcast %27 %41
+%58 = OpBitcast %27 %43
+%59 = OpCompositeConstruct %44 %28 %56 %57
+%60 = OpCompositeConstruct %44 %55 %28 %58
+OpHitObjectRecordMissNV %49 %32 %59 %28 %60 %29
+OpBranch %112
+%112 = OpLabel
+%61 = OpLoad %6 %8
+%63 = OpInBoundsAccessChain %62 %15 %25
+OpStore %63 %64
+OpHitObjectExecuteShaderNV %49 %15
+%65 = OpLoad %9 %63
+%66 = OpLoad %6 %8
+%67 = OpInBoundsAccessChain %62 %16 %25
+OpStore %67 %65
+OpHitObjectExecuteShaderNV %49 %16
+%68 = OpLoad %9 %67
+%69 = OpBitwiseAnd %9 %26 %70
+%71 = OpIEqual %33 %69 %25
+OpSelectionMerge %115 None
+OpBranchConditional %71 %114 %113
+%113 = OpLabel
+%72 = OpLoad %6 %8
+%73 = OpInBoundsAccessChain %62 %17 %25
+OpStore %73 %68
+%78 = OpCompositeConstruct %44 %28 %75 %76
+%79 = OpCompositeConstruct %44 %75 %28 %77
+OpHitObjectTraceRayNV %80 %72 %25 %74 %25 %32 %25 %78 %28 %79 %29 %17
+%81 = OpLoad %9 %73
+%82 = OpHitObjectIsHitNV %33 %80
+%83 = OpSelect %9 %82 %32 %25
+%84 = OpINotEqual %33 %83 %25
+OpStore %104 %81
+OpStore %106 %84
+OpBranch %115
+%114 = OpLabel
+OpStore %104 %68
+OpStore %106 %87
+OpBranch %115
+%115 = OpLabel
+%86 = OpLoad %33 %106
+%85 = OpLoad %9 %104
+OpSelectionMerge %118 None
+OpBranchConditional %86 %117 %116
+%116 = OpLabel
+%88 = OpLoad %6 %8
+%89 = OpInBoundsAccessChain %62 %18 %25
+OpStore %89 %85
+%90 = OpCompositeConstruct %44 %28 %75 %76
+%91 = OpCompositeConstruct %44 %75 %28 %77
+OpHitObjectTraceRayNV %80 %88 %32 %74 %25 %32 %32 %90 %28 %91 %29 %18
+%92 = OpLoad %9 %89
+OpStore %103 %92
+OpBranch %118
+%117 = OpLabel
+OpStore %103 %85
+OpBranch %118
+%118 = OpLabel
+OpBranch %119
+%119 = OpLabel
+%93 = OpLoad %9 %103
+%94 = OpBitwiseAnd %9 %26 %95
+OpReorderThreadWithHitObjectNV %80 %94 %51
+%96 = OpLoad %6 %8
+%97 = OpInBoundsAccessChain %62 %19 %25
+OpStore %97 %93
+OpHitObjectExecuteShaderNV %80 %19
+%98 = OpLoad %9 %97
+%99 = OpLoad %10 %12
+%101 = OpCompositeConstruct %100 %98 %98 %98 %98
+OpImageWrite %99 %26 %101 NonPrivateTexel
+OpReturn
+OpFunctionEnd
+
