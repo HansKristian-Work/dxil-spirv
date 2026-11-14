@@ -280,7 +280,6 @@ struct Converter::Impl
 	spv::Id get_id_for_constant(const llvm::Constant *constant, unsigned forced_width);
 	spv::Id get_padded_constant_array(spv::Id padded_type_id, const llvm::Constant *constant);
 	spv::Id get_id_for_undef(const llvm::UndefValue *undef);
-	spv::Id get_id_for_undef_constant(const llvm::UndefValue *undef);
 	void emit_patch_output_lowering(CFGNode *node);
 
 	Vector<llvm::BasicBlock *> build_function_bb_visit_order(llvm::Function *func);
@@ -1055,8 +1054,6 @@ struct Converter::Impl
 		bool has_group_shared_access = false;
 		bool needs_auto_group_shared_barriers = false;
 		bool require_wmma = false;
-		// Should just do this always, but don't want to nuke FOZ caches needlessly.
-		bool global_undefs = false;
 
 		struct
 		{

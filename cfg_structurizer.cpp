@@ -2912,7 +2912,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 					if (itr != incoming_values.end())
 						value.id = itr->id;
 					else
-						value.id = module.get_builder().createUndefined(phi.type_id);
+						value.id = module.get_builder().createUndefinedConstant(phi.type_id);
 
 					value.block = input;
 					final_incoming.push_back(value);
@@ -2926,7 +2926,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 					if (itr != incoming_values.end())
 						value.id = itr->id;
 					else
-						value.id = module.get_builder().createUndefined(phi.type_id);
+						value.id = module.get_builder().createUndefinedConstant(phi.type_id);
 
 					value.block = frontier->pred_back_edge;
 					final_incoming.push_back(value);
@@ -2977,7 +2977,7 @@ void CFGStructurizer::insert_phi(PHINode &node)
 #endif
 				// If there is no incoming value, we need to hallucinate an undefined value.
 				IncomingValue value = {};
-				value.id = module.get_builder().createUndefined(phi.type_id);
+				value.id = module.get_builder().createUndefinedConstant(phi.type_id);
 				value.block = input;
 				frontier_phi.incoming.push_back(value);
 			}

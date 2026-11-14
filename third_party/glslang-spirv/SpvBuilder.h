@@ -306,8 +306,6 @@ public:
     Id createVariable(StorageClass, Id type, const char* name = 0);
     Id createVariableWithInitializer(StorageClass, Id type, Id initializer, const char* name = 0);
 
-    // Create an intermediate with an undefined value.
-    Id createUndefined(Id type);
     // Create at global scope.
     Id createUndefinedConstant(Id type);
 
