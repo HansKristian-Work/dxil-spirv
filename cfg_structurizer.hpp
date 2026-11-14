@@ -426,6 +426,13 @@ private:
 	void rewrite_degenerate_phi_constructs();
 	void rewrite_degenerate_interposing_frontiers();
 
+	struct SSAVariableAccess
+	{
+		Vector<CFGNode *> readers;
+		Vector<CFGNode *> writers;
+	};
+	UnorderedMap<uint32_t, SSAVariableAccess> ssa_variable_access;
+	void analyze_ssa_variable_access();
 	void clamp_ssa_variable_lifetimes();
 };
 

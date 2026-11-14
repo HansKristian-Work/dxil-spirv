@@ -737,15 +737,26 @@ void CFGStructurizer::filter_outer_idom_candidates(Vector<CFGNode *> &outer_idom
 	}
 }
 
+void CFGStructurizer::analyze_ssa_variable_access()
+{
+	for (auto *node : forward_post_visit_order)
+	{
+		for (auto &op : node->ir.operations)
+		{
+			if ((op->op == spv::OpLoad || op->op == spv::OpStore) && (op->flags & Operation::SSALoadStore) != 0)
+			{
+				auto &mapping = ssa_variable_access[op->argument(0)];
+				if (op->op == spv::OpLoad)
+					push_back_unique(mapping.readers, node);
+				else
+					push_back_unique(mapping.writers, node);
+			}
+		}
+	}
+}
+
 void CFGStructurizer::clamp_ssa_variable_lifetimes()
 {
-	UnorderedMap<uint32_t, Vector<CFGNode *>> ssa_variable_to_writers;
-
-	for (auto *node : forward_post_visit_order)
-		for (auto &op : node->ir.operations)
-			if (op->op == spv::OpStore && (op->flags & Operation::SSALoadStore) != 0)
-				push_back_unique(ssa_variable_to_writers[op->argument(0)], node);
-
 	for (auto *node : forward_post_visit_order)
 	{
 		for (auto &op : node->ir.operations)
@@ -763,8 +774,20 @@ void CFGStructurizer::clamp_ssa_variable_lifetimes()
 				if (!idom)
 					break;
 
-				auto &writers = ssa_variable_to_writers[op->argument(0)];
-				for (auto *writer : writers)
+				auto &access = ssa_variable_access[op->argument(0)];
+
+				assert(!access.readers.empty());
+
+				// If there are multiple readers (for e.g. SSA value dominance break),
+				// only handle this once.
+				if (access.readers.front() != node)
+					continue;
+
+				// Ensure that any undef we write dominates all uses of it.
+				for (auto *reader : access.readers)
+					if (reader != node)
+						idom = CFGNode::find_common_dominator(idom, reader);
+				for (auto *writer : access.writers)
 					idom = CFGNode::find_common_dominator(idom, writer);
 
 				auto *header = idom;
@@ -2048,7 +2071,11 @@ bool CFGStructurizer::run_structurizer()
 	// Fix this up now.
 	fixup_broken_value_dominance();
 
+	analyze_ssa_variable_access();
 	clamp_ssa_variable_lifetimes();
+
+	// After dealing with PHI, it's possible we can cleanup some more blocks.
+	//cleanup_degenerate_blocks();
 
 	return true;
 }
