@@ -863,8 +863,22 @@ void CFGStructurizer::insert_phi_frontiers(const Vector<CFGNode *> &frontiers, P
 				{
 					if (candidate != phi.incoming.end())
 					{
-						LOGE("Multiple dominators ... ?\n");
-						abort();
+						// Conflict, need to validate.
+
+						if (candidate->block->dominates(itr->block))
+						{
+							// This is the closer candidate. Pick itr.
+						}
+						else if (itr->block->dominates(candidate->block))
+						{
+							// We have a closer candidate already.
+							continue;
+						}
+						else
+						{
+							LOGE("Multiple dominators without dominance relationship ... ?\n");
+							abort();
+						}
 					}
 
 					candidate = itr;
@@ -995,7 +1009,19 @@ void CFGStructurizer::reintroduce_ssa_phi()
 
 		Vector<CFGNode *> frontiers;
 		if (!phi_frontiers_converge(accesses.writers, reader_idom, scope_idom, frontiers))
-			continue;
+		{
+			if (accesses.writers.size() == 1 && accesses.readers.size() == 1 &&
+				accesses.writers.front()->dominates(accesses.readers.front()))
+			{
+				// Trivial PHI with single block which only really happens in fuzzer (it's legal code).
+				// Just fixup the PHI trivially.
+				frontiers.push_back(accesses.readers.front());
+			}
+			else
+			{
+				continue;
+			}
+		}
 
 		rewrite_local_variable_to_phi(id, accesses, frontiers, reader_idom);
 		eliminated_ids.insert(id);
@@ -1050,7 +1076,7 @@ void CFGStructurizer::clamp_ssa_variable_lifetimes()
 					header = header->get_immediate_dominator_loop_header();
 
 				if (!header)
-					break;
+					continue;
 
 				// It's possible the dominator already writes a PHI variable.
 				// In that case, we just skip this.
@@ -1070,7 +1096,7 @@ void CFGStructurizer::clamp_ssa_variable_lifetimes()
 					auto *store_undef = module.allocate_op(spv::OpStore);
 					store_undef->add_id(op->argument(0));
 					store_undef->add_id(module.get_builder().createUndefinedConstant(op->type_id));
-					idom->ir.operations.push_back(store_undef);
+					header->ir.operations.push_back(store_undef);
 				}
 			}
 		}
@@ -2315,16 +2341,6 @@ bool CFGStructurizer::run_structurizer()
 	}
 #endif
 
-	cleanup_degenerate_blocks();
-
-#ifdef DXIL_SPIRV_DEBUG_DUMPING
-	if (!graphviz_path.empty())
-	{
-		auto graphviz_split = graphviz_path + ".final";
-		log_cfg_graphviz(graphviz_split.c_str());
-	}
-#endif
-
 	// It's possible SSA dominance is broken as a result of splitting loop scopes and maximal reconvergence.
 	// Fix this up now.
 	fixup_broken_value_dominance();
@@ -2335,6 +2351,14 @@ bool CFGStructurizer::run_structurizer()
 
 	// After dealing with PHI, it's possible we can cleanup some more blocks.
 	cleanup_degenerate_blocks();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".final";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+#endif
 
 	return true;
 }
