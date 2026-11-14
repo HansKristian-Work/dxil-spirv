@@ -888,6 +888,8 @@ void CFGStructurizer::insert_phi_frontiers(const Vector<CFGNode *> &frontiers, P
 			return candidate;
 		};
 
+		// FIXME: There is a bug here right now where we consume an incoming block too early.
+
 		for (auto *pred : frontier->pred)
 		{
 			auto incoming_itr = find_unique_incoming_dominator(pred);
