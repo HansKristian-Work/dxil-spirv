@@ -141,6 +141,11 @@ bool CFGNode::dominates_outer_continue(const CFGNode *loop_header) const
 	return false;
 }
 
+bool CFGNode::reaches_direct_helper(CFGNode *target)
+{
+	return reachable_direct_helpers.count(target) != 0;
+}
+
 bool CFGNode::dominates(const CFGNode *other) const
 {
 	// Follow immediate dominator graph. Either we end up at this, or entry block.

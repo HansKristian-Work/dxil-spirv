@@ -94,10 +94,12 @@ private:
 	// add fake successors from the continue block.
 	Vector<CFGNode *> fake_succ;
 	Vector<CFGNode *> fake_pred;
+	UnorderedSet<CFGNode *> reachable_direct_helpers;
 
 	CFGNode *pred_back_edge = nullptr;
 	CFGNode *succ_back_edge = nullptr;
 
+	bool reaches_direct_helper(CFGNode *target);
 	void add_unique_succ(CFGNode *node);
 	void add_unique_pred(CFGNode *node);
 	void add_unique_fake_succ(CFGNode *node);
