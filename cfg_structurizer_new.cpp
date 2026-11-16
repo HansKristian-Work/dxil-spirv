@@ -1150,7 +1150,7 @@ void CFGStructurizer::route_branches(CFGNode *node,
 		Vector<CFGNode *> handled;
 		for (auto &c : node->ir.terminator.cases)
 		{
-			if (has_element(handled, c.node))
+			if (has_element(handled, c.node) || c.node == merge_node)
 				continue;
 			handled.push_back(c.node);
 			enter_succ(node, c.node, break_levels, merge_node);
