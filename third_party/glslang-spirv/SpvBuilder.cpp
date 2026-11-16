@@ -1224,6 +1224,18 @@ void Builder::addExecutionModeId(Function* entryPoint, ExecutionMode mode, spv::
     executionModes.push_back(std::unique_ptr<Instruction>(instr));
 }
 
+void Builder::replaceNameTarget(Id oldId, Id newId)
+{
+    for (auto &name : names)
+    {
+        if (name->getIdOperand(0) == oldId)
+        {
+            name->setIdOperand(0, newId);
+            break;
+        }
+    }
+}
+
 void Builder::addName(Id id, const char* string)
 {
     Instruction* name = new Instruction(OpName);
@@ -1262,6 +1274,11 @@ void Builder::removeDecorations(const dxil_spv::UnorderedSet<spv::Id> &ids)
                 [&](const std::unique_ptr<Instruction> &inst) {
                     return inst->getOpCode() == OpDecorate && ids.count(inst->getIdOperand(0)) != 0;
                 }), decorations.end());
+}
+
+void Builder::removeLocalVariables(const dxil_spv::UnorderedSet<spv::Id> &ids)
+{
+    buildPoint->getParent().removeLocalVariables(ids);
 }
 
 bool Builder::hasDecoration(spv::Id id, spv::Decoration decoration) const
