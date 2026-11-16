@@ -72,6 +72,9 @@ private:
 	// that intends to set a simple PHI variable.
 	bool interposing = false;
 
+	// In new structurizer, marks the node as a trivial helper that is created only to funnel control flow through.
+	bool helper = false;
+
 	MergeType merge = MergeType::None;
 	CFGNode *loop_merge_block = nullptr;
 	CFGNode *loop_ladder_block = nullptr;

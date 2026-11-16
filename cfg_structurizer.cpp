@@ -58,7 +58,7 @@ CFGStructurizer::CFGStructurizer(CFGNode *entry, CFGNodePool &pool_, SPIRVModule
     , pool(pool_)
     , module(module_)
 {
-	exit_block = pool.create_node();
+	exit_block = pool.create_helper_node();
 	exit_block->name = "EXIT";
 }
 
@@ -294,7 +294,7 @@ void CFGStructurizer::eliminate_node_link_preds_to_succ(CFGNode *node)
 
 	for (auto *pred : pred_copy)
 	{
-		auto *break_node = pool.create_node();
+		auto *break_node = pool.create_helper_node();
 		break_node->name = node->name + ".break." + pred->name;
 
 		break_node->ir.terminator = node->ir.terminator;
@@ -409,7 +409,7 @@ bool CFGStructurizer::cleanup_breaking_return_constructs()
 
 		for (auto *pred : preds)
 		{
-			auto *dummy_return = pool.create_node();
+			auto *dummy_return = pool.create_helper_node();
 			dummy_return->name = split_candidate->name + ".dup";
 			dummy_return->immediate_dominator = split_candidate->immediate_dominator;
 			dummy_return->immediate_post_dominator = exit_block;
@@ -1940,7 +1940,7 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 
 		// First, rewrite PHI inputs.
 		// Since we only have one pred now, we can resolve PHIs directly.
-		auto *block = pool.create_node();
+		auto *block = pool.create_helper_node();
 		block->interposing = true;
 		block->name = node->name + ".dup." + pred->name;
 
@@ -3434,7 +3434,7 @@ void CFGStructurizer::visit_for_back_edge_analysis(CFGNode &entry)
 	// If there is more than one back edge, merge them.
 	if (entry.fake_pred.size() >= 2)
 	{
-		auto *new_back_edge = pool.create_node();
+		auto *new_back_edge = pool.create_helper_node();
 		new_back_edge->name = entry.name + ".back-edge-merge";
 		for (auto *n : entry.fake_pred)
 			n->retarget_branch_pre_traversal(&entry, new_back_edge);
@@ -3459,7 +3459,7 @@ void CFGStructurizer::visit_for_back_edge_analysis(CFGNode &entry)
 
 		for (auto *succ : rewrites)
 		{
-			auto *new_back_edge = pool.create_node();
+			auto *new_back_edge = pool.create_helper_node();
 			entry.retarget_branch_pre_traversal(succ, new_back_edge);
 
 			auto itr = std::find(succ->fake_pred.begin(), succ->fake_pred.end(), &entry);
@@ -4255,7 +4255,7 @@ void CFGStructurizer::fixup_broken_selection_merges(unsigned pass)
 				{
 					auto *target_block = node->succ[1 - trivial_merge_index];
 					// We kinda want to merge the other way, but to do that, we need an interim block.
-					auto *ladder = pool.create_node();
+					auto *ladder = pool.create_helper_node();
 					ladder->name = node->name + "." + target_block->name + ".interim";
 					ladder->add_branch(target_block);
 					ladder->ir.terminator.type = Terminator::Type::Branch;
@@ -4350,7 +4350,7 @@ void CFGStructurizer::rewrite_selection_breaks(CFGNode *header, CFGNode *ladder_
 	for (auto *inner_block : sorted_construct)
 	{
 		//LOGI("Header: %s, Inner: %s.\n", header->name.c_str(), inner_block->name.c_str());
-		auto *ladder = pool.create_node();
+		auto *ladder = pool.create_helper_node();
 		ladder->name = ladder_to->name + "." + inner_block->name + ".ladder";
 		//LOGI("Walking dominated blocks of %s, rewrite branches %s -> %s.\n", inner_block->name.c_str(),
 		//     ladder_to->name.c_str(), ladder->name.c_str());
@@ -5808,7 +5808,7 @@ CFGStructurizer::SwitchProgressMode CFGStructurizer::process_switch_blocks(unsig
 				// so try not to ruffle too many feathers.
 				if (std::find(node->succ.begin(), node->succ.end(), natural_merge) != node->succ.end())
 				{
-					auto *dummy_case = pool.create_node();
+					auto *dummy_case = pool.create_helper_node();
 					dummy_case->name = natural_merge->name + ".pred";
 					dummy_case->immediate_dominator = node;
 					dummy_case->immediate_post_dominator = natural_merge;
@@ -5861,7 +5861,7 @@ CFGStructurizer::SwitchProgressMode CFGStructurizer::process_switch_blocks(unsig
 
 				if (need_fixup && has_succ)
 				{
-					auto *dummy_break = pool.create_node();
+					auto *dummy_break = pool.create_helper_node();
 					dummy_break->name = node->name + (succ->succ_back_edge ? ".continue" : ".break");
 					dummy_break->immediate_dominator = node;
 					dummy_break->immediate_post_dominator = succ;
@@ -6335,7 +6335,7 @@ CFGStructurizer::LoopExitType CFGStructurizer::get_loop_exit_type(const CFGNode 
 
 CFGNode *CFGStructurizer::create_helper_pred_block(CFGNode *node)
 {
-	auto *pred_node = pool.create_node();
+	auto *pred_node = pool.create_helper_node();
 	pred_node->name = node->name + ".pred";
 
 	// Fixup visit order later.
@@ -6420,7 +6420,7 @@ void CFGStructurizer::retarget_succ_from(CFGNode *new_node, CFGNode *old_pred)
 
 CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 {
-	auto *succ_node = pool.create_node();
+	auto *succ_node = pool.create_helper_node();
 	succ_node->name = node->name + ".succ";
 
 	// Fixup visit order later.
@@ -6638,7 +6638,7 @@ void CFGStructurizer::rewrite_transposed_loop_inner(CFGNode *node, CFGNode *impo
 	auto *merge = analysis.merge;
 	auto *dominated_merge = analysis.dominated_merge;
 
-	auto *ladder_break = pool.create_node();
+	auto *ladder_break = pool.create_helper_node();
 	ladder_break->name = node->name + ".transposed-merge-inner.break";
 	ladder_break->ir.terminator.type = Terminator::Type::Branch;
 	ladder_break->ir.terminator.direct_block = impossible_merge_target;
@@ -6646,7 +6646,7 @@ void CFGStructurizer::rewrite_transposed_loop_inner(CFGNode *node, CFGNode *impo
 	ladder_break->forward_post_visit_order = impossible_merge_target->forward_post_visit_order;
 	ladder_break->backward_post_visit_order = impossible_merge_target->backward_post_visit_order;
 
-	auto *ladder_selection = pool.create_node();
+	auto *ladder_selection = pool.create_helper_node();
 	ladder_selection->name = node->name + ".transposed-merge-inner";
 	ladder_selection->forward_post_visit_order = impossible_merge_target->forward_post_visit_order;
 	ladder_selection->backward_post_visit_order = impossible_merge_target->backward_post_visit_order;
@@ -7336,10 +7336,10 @@ void CFGStructurizer::collect_and_dispatch_control_flow_from_anchor(
 
 	auto *anchor_pred = create_helper_pred_block(anchor_start);
 
-	auto *anchor_to_construct0 = pool.create_node();
-	auto *anchor_to_construct1 = pool.create_node();
-	auto *anchor_terminator = pool.create_node();
-	auto *anchor_dispatcher = pool.create_node();
+	auto *anchor_to_construct0 = pool.create_helper_node();
+	auto *anchor_to_construct1 = pool.create_helper_node();
+	auto *anchor_terminator = pool.create_helper_node();
+	auto *anchor_dispatcher = pool.create_helper_node();
 
 	anchor_to_construct0->name = anchor_start->name + ".anchor0";
 	anchor_to_construct1->name = anchor_start->name + ".anchor1";
@@ -7532,7 +7532,7 @@ void CFGStructurizer::collect_and_dispatch_control_flow(
 	}
 	else
 	{
-		dispatcher = pool.create_node();
+		dispatcher = pool.create_helper_node();
 		dispatcher->name = common_idom->name + ".collector";
 		dispatcher->immediate_dominator = common_idom;
 		dispatcher->immediate_post_dominator = common_pdom;
@@ -8173,7 +8173,7 @@ CFGNode *CFGStructurizer::get_target_break_block_for_inner_header(const CFGNode 
 
 CFGNode *CFGStructurizer::create_ladder_block(CFGNode *header, CFGNode *node, const char *tag)
 {
-	auto *ladder = pool.create_node();
+	auto *ladder = pool.create_helper_node();
 	ladder->name = node->name + tag;
 	ladder->add_branch(node);
 	ladder->ir.terminator.type = Terminator::Type::Branch;
@@ -8938,7 +8938,7 @@ bool CFGStructurizer::rewrite_invalid_switch_breaks()
 			if (structurally_dominates)
 				continue;
 
-			auto *dummy_break = pool.create_node();
+			auto *dummy_break = pool.create_helper_node();
 			dummy_break->name = node->name + (succ->succ_back_edge ? ".continue" : ".break");
 			dummy_break->immediate_dominator = node;
 			dummy_break->immediate_post_dominator = succ;
