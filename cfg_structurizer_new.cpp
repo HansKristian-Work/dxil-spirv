@@ -33,6 +33,14 @@
 
 namespace dxil_spv
 {
+static bool has_store_to_variable(const Vector<Operation *> &operations, spv::Id id)
+{
+	for (auto *op : operations)
+		if (op->op == spv::OpStore && op->argument(0) == id)
+			return true;
+	return false;
+}
+
 void CFGStructurizer::run_common_preamble()
 {
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
