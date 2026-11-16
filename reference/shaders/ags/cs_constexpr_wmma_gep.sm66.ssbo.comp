@@ -89,21 +89,21 @@ void main()
     _33[1u] = CoopMatFP8toFP16_1(_112);
     coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _120;
     coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _153;
-    uint _267 = 2u;
+    uint _115 = 2u;
     uint _116;
     bool _179;
     for (;;)
     {
-        uint _117 = _267 << 5u;
+        uint _117 = _115 << 5u;
         coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _119;
         coopMatLoad(_119, _20._m0, _117, 64u, gl_CooperativeMatrixLayoutRowMajor);
         _120 = _119;
-        _29[_267] = CoopMatFP8toFP16(_120);
+        _29[_115] = CoopMatFP8toFP16(_120);
         coopmat<uint8_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _152;
         coopMatLoad(_152, _20._m0, _117 + 1024u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
         _153 = _152;
-        _33[_267] = CoopMatFP8toFP16_1(_153);
-        _116 = _267 + 1u;
+        _33[_115] = CoopMatFP8toFP16_1(_153);
+        _116 = _115 + 1u;
         _179 = _116 == 5u;
         if (_179)
         {
@@ -111,20 +111,20 @@ void main()
         }
         else
         {
-            _267 = _116;
+            _115 = _116;
             continue;
         }
     }
     coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _191 = coopMatMulAdd(_29[1u], _33[1u], coopMatMulAdd(_29[0u], _33[0u], coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0.0), 0), 0);
-    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _264 = _191;
-    uint _266 = 2u;
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _192 = _191;
+    uint _194 = 2u;
     uint _195;
     coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _260;
     bool _261;
     for (;;)
     {
-        _260 = coopMatMulAdd(_29[_266], _33[_266], _264, 0);
-        _195 = _266 + 1u;
+        _260 = coopMatMulAdd(_29[_194], _33[_194], _192, 0);
+        _195 = _194 + 1u;
         _261 = _195 == 5u;
         if (_261)
         {
@@ -132,8 +132,8 @@ void main()
         }
         else
         {
-            _264 = _260;
-            _266 = _195;
+            _192 = _260;
+            _194 = _195;
             continue;
         }
     }
@@ -147,7 +147,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 280
+; Bound: 277
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -253,9 +253,6 @@ OpDecorate %24 NonReadable
 %112 = OpVariable %77 Function
 %120 = OpVariable %41 Function
 %153 = OpVariable %77 Function
-%264 = OpVariable %263 Function
-%266 = OpVariable %265 Function
-%267 = OpVariable %265 Function
 OpBranch %268
 %268 = OpLabel
 %37 = OpAccessChain %36 %20 %3 %3
@@ -282,10 +279,9 @@ OpStore %112 %111
 %113 = OpFunctionCall %8 %80 %112
 %114 = OpAccessChain %101 %33 %7
 OpStore %114 %113
-OpStore %267 %10
 OpBranch %269
 %269 = OpLabel
-%115 = OpLoad %2 %267
+%115 = OpPhi %2 %10 %268 %116 %270
 %117 = OpShiftLeftLogical %2 %115 %25
 %118 = OpAccessChain %36 %20 %3 %117
 %119 = OpCooperativeMatrixLoadKHR %35 %118 %3 %38 NonPrivatePointer
@@ -334,16 +330,12 @@ OpStore %157 %154
 %177 = OpIAdd %2 %148 %176
 %116 = OpIAdd %2 %115 %7
 %179 = OpIEqual %40 %116 %25
-OpLoopMerge %272 %271 None
+OpLoopMerge %271 %270 None
 OpBranch %270
 %270 = OpLabel
-OpSelectionMerge %278 None
-OpBranchConditional %179 %272 %271
-%278 = OpLabel
-OpUnreachable
+OpBranchConditional %179 %271 %269
 %271 = OpLabel
-OpStore %267 %116
-OpBranch %269
+OpBranch %272
 %272 = OpLabel
 %182 = OpAccessChain %71 %29 %3
 %183 = OpLoad %5 %182
@@ -355,12 +347,10 @@ OpBranch %269
 %189 = OpAccessChain %101 %33 %7
 %190 = OpLoad %8 %189
 %191 = OpCooperativeMatrixMulAddKHR %11 %188 %190 %186
-OpStore %264 %191
-OpStore %266 %10
 OpBranch %273
 %273 = OpLabel
-%194 = OpLoad %2 %266
-%192 = OpLoad %11 %264
+%192 = OpPhi %11 %191 %272 %260 %274
+%194 = OpPhi %2 %10 %272 %195 %274
 %196 = OpIMul %2 %194 %123
 %197 = OpIAdd %2 %3 %196
 %198 = OpAccessChain %71 %29 %194
@@ -400,20 +390,13 @@ OpBranch %273
 %260 = OpCooperativeMatrixMulAddKHR %11 %199 %231 %192
 %195 = OpIAdd %2 %194 %7
 %261 = OpIEqual %40 %195 %25
-OpLoopMerge %276 %275 None
+OpLoopMerge %275 %274 None
 OpBranch %274
 %274 = OpLabel
-OpSelectionMerge %279 None
-OpBranchConditional %261 %276 %275
-%279 = OpLabel
-OpUnreachable
+OpBranchConditional %261 %275 %273
 %275 = OpLabel
-OpStore %264 %260
-OpStore %266 %195
-OpBranch %273
+OpBranch %276
 %276 = OpLabel
-OpBranch %277
-%277 = OpLabel
 %262 = OpAccessChain %36 %24 %3 %3
 OpCooperativeMatrixStoreKHR %262 %260 %7 %38 NonPrivatePointer
 OpReturn

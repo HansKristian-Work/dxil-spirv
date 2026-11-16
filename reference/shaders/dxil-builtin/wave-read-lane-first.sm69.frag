@@ -78,6 +78,7 @@ OpDecorate %11 Location 0
 %11 = OpVariable %10 Input
 %12 = OpTypePointer Input %5
 %14 = OpConstant %5 0
+%17 = OpUndef %9
 %19 = OpConstant %5 1
 %23 = OpConstant %5 2
 %26 = OpTypeBool
@@ -92,7 +93,6 @@ OpDecorate %11 Location 0
 %59 = OpConstant %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%17 = OpUndef %9
 OpBranch %68
 %68 = OpLabel
 %13 = OpAccessChain %12 %11 %14

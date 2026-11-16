@@ -138,18 +138,16 @@ void main()
             uint _138 = _137 - 1u;
             uint _140 = uint(findMSB(_138)) + 1u;
             uint _145 = (int(_138) < int(0u)) ? 0u : (_137 << 0u);
-            uint _253 = gl_WorkGroupID.z;
-            uint amplification_index;
+            uint amplification_index_3 = gl_WorkGroupID.z;
             bool _148;
             for (;;)
             {
-                amplification_index = _253;
-                _148 = amplification_index < _145;
+                _148 = amplification_index_3 < _145;
                 if (!_148)
                 {
                     break;
                 }
-                uvec3 _150 = uvec3(bitfieldExtract(amplification_index, int(0u), int(_140)), 0u, 0u);
+                uvec3 _150 = uvec3(bitfieldExtract(amplification_index_3, int(0u), int(_140)), 0u, 0u);
                 WorkgroupID = _150;
                 GlobalInvocationID = (ThreadGroupSize * _150) + gl_LocalInvocationID;
                 if (all(lessThanEqual(_150, uvec3(_138, 0u, 0u))))
@@ -157,7 +155,7 @@ void main()
                     node_main();
                     barrier();
                 }
-                _253 = amplification_index + gl_NumWorkGroups.z;
+                amplification_index_3 += gl_NumWorkGroups.z;
                 continue;
             }
         }
@@ -169,18 +167,16 @@ void main()
             uint _203 = _202 - 1u;
             uint _205 = uint(findMSB(_203)) + 1u;
             uint _210 = (int(_203) < int(0u)) ? 0u : (_202 << 0u);
-            uint _254 = gl_WorkGroupID.z;
-            uint amplification_index_1;
+            uint amplification_index_2 = gl_WorkGroupID.z;
             bool _213;
             for (;;)
             {
-                amplification_index_1 = _254;
-                _213 = amplification_index_1 < _210;
+                _213 = amplification_index_2 < _210;
                 if (!_213)
                 {
                     break;
                 }
-                uvec3 _215 = uvec3(bitfieldExtract(amplification_index_1, int(0u), int(_205)), 0u, 0u);
+                uvec3 _215 = uvec3(bitfieldExtract(amplification_index_2, int(0u), int(_205)), 0u, 0u);
                 WorkgroupID = _215;
                 GlobalInvocationID = (ThreadGroupSize * _215) + gl_LocalInvocationID;
                 if (all(lessThanEqual(_215, uvec3(_203, 0u, 0u))))
@@ -188,7 +184,7 @@ void main()
                     node_main();
                     barrier();
                 }
-                _254 = amplification_index_1 + gl_NumWorkGroups.z;
+                amplification_index_2 += gl_NumWorkGroups.z;
                 continue;
             }
         }
@@ -206,24 +202,22 @@ void main()
             }
             else
             {
-                uint _255 = gl_WorkGroupID.z;
-                uint amplification_index_2;
+                uint amplification_index_1 = gl_WorkGroupID.z;
                 bool _177;
                 for (;;)
                 {
-                    amplification_index_2 = _255;
-                    _177 = amplification_index_2 < _174;
+                    _177 = amplification_index_1 < _174;
                     if (!_177)
                     {
                         break;
                     }
-                    uint _179 = amplification_index_2 / MaxBroadcastGridX;
-                    uvec3 _182 = uvec3(amplification_index_2 % MaxBroadcastGridX, _179 % MaxBroadcastGridY, _179 / MaxBroadcastGridY);
+                    uint _179 = amplification_index_1 / MaxBroadcastGridX;
+                    uvec3 _182 = uvec3(amplification_index_1 % MaxBroadcastGridX, _179 % MaxBroadcastGridY, _179 / MaxBroadcastGridY);
                     WorkgroupID = _182;
                     GlobalInvocationID = (ThreadGroupSize * _182) + gl_LocalInvocationID;
                     node_main();
                     barrier();
-                    _255 = amplification_index_2 + gl_NumWorkGroups.z;
+                    amplification_index_1 += gl_NumWorkGroups.z;
                     continue;
                 }
             }
@@ -240,24 +234,22 @@ void main()
             }
             else
             {
-                uint _256 = gl_WorkGroupID.z;
-                uint amplification_index_3;
+                uint amplification_index = gl_WorkGroupID.z;
                 bool _242;
                 for (;;)
                 {
-                    amplification_index_3 = _256;
-                    _242 = amplification_index_3 < _239;
+                    _242 = amplification_index < _239;
                     if (!_242)
                     {
                         break;
                     }
-                    uint _244 = amplification_index_3 / MaxBroadcastGridX;
-                    uvec3 _247 = uvec3(amplification_index_3 % MaxBroadcastGridX, _244 % MaxBroadcastGridY, _244 / MaxBroadcastGridY);
+                    uint _244 = amplification_index / MaxBroadcastGridX;
+                    uvec3 _247 = uvec3(amplification_index % MaxBroadcastGridX, _244 % MaxBroadcastGridY, _244 / MaxBroadcastGridY);
                     WorkgroupID = _247;
                     GlobalInvocationID = (ThreadGroupSize * _247) + gl_LocalInvocationID;
                     node_main();
                     barrier();
-                    _256 = amplification_index_3 + gl_NumWorkGroups.z;
+                    amplification_index += gl_NumWorkGroups.z;
                     continue;
                 }
             }
@@ -453,10 +445,6 @@ OpDecorate %165 BuiltIn GlobalInvocationId
 %252 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%253 = OpVariable %252 Function
-%254 = OpVariable %252 Function
-%255 = OpVariable %252 Function
-%256 = OpVariable %252 Function
 OpBranch %257
 %257 = OpLabel
 %95 = OpLoad %12 %94
@@ -517,10 +505,9 @@ OpBranchConditional %32 %270 %264
 %235 = OpCompositeExtract %5 %234 2
 %236 = OpLoad %12 %129
 %237 = OpCompositeExtract %5 %236 2
-OpStore %256 %235
 OpBranch %265
 %265 = OpLabel
-%240 = OpLoad %5 %256
+%240 = OpPhi %5 %235 %264 %241 %269
 %242 = OpULessThan %28 %240 %239
 OpLoopMerge %267 %269 None
 OpBranch %266
@@ -545,7 +532,6 @@ OpControlBarrier %60 %60 %81
 OpBranch %269
 %269 = OpLabel
 %241 = OpIAdd %5 %240 %237
-OpStore %256 %241
 OpBranch %265
 %270 = OpLabel
 %231 = OpLoad %12 %94
@@ -570,10 +556,9 @@ OpBranchConditional %32 %279 %273
 %170 = OpCompositeExtract %5 %169 2
 %171 = OpLoad %12 %129
 %172 = OpCompositeExtract %5 %171 2
-OpStore %255 %170
 OpBranch %274
 %274 = OpLabel
-%175 = OpLoad %5 %255
+%175 = OpPhi %5 %170 %273 %176 %278
 %177 = OpULessThan %28 %175 %174
 OpLoopMerge %276 %278 None
 OpBranch %275
@@ -598,7 +583,6 @@ OpControlBarrier %60 %60 %81
 OpBranch %278
 %278 = OpLabel
 %176 = OpIAdd %5 %175 %172
-OpStore %255 %176
 OpBranch %274
 %279 = OpLabel
 %166 = OpLoad %12 %94
@@ -640,10 +624,9 @@ OpStore %9 %194
 %208 = OpCompositeConstruct %12 %203 %56 %56
 %209 = OpSLessThan %28 %203 %56
 %210 = OpSelect %5 %209 %56 %207
-OpStore %254 %196
 OpBranch %284
 %284 = OpLabel
-%211 = OpLoad %5 %254
+%211 = OpPhi %5 %196 %283 %212 %290
 %213 = OpULessThan %28 %211 %210
 OpLoopMerge %286 %290 None
 OpBranch %285
@@ -673,7 +656,6 @@ OpBranch %289
 OpBranch %290
 %290 = OpLabel
 %212 = OpIAdd %5 %211 %198
-OpStore %254 %212
 OpBranch %284
 %291 = OpLabel
 %122 = OpLoad %7 %9
@@ -698,10 +680,9 @@ OpStore %9 %126
 %143 = OpCompositeConstruct %12 %138 %56 %56
 %144 = OpSLessThan %28 %138 %56
 %145 = OpSelect %5 %144 %56 %142
-OpStore %253 %128
 OpBranch %292
 %292 = OpLabel
-%146 = OpLoad %5 %253
+%146 = OpPhi %5 %128 %291 %147 %301
 %148 = OpULessThan %28 %146 %145
 OpLoopMerge %294 %301 None
 OpBranch %293
@@ -737,7 +718,6 @@ OpBranch %300
 OpBranch %301
 %301 = OpLabel
 %147 = OpIAdd %5 %146 %131
-OpStore %253 %147
 OpBranch %292
 OpFunctionEnd
 %47 = OpFunction %1 None %2

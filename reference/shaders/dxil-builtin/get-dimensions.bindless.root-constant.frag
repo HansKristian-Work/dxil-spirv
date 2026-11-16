@@ -200,6 +200,7 @@ OpDecorate %136 NonUniform
 %61 = OpTypeVector %59 2
 %64 = OpConstantNull %56
 %65 = OpTypeVector %5 4
+%67 = OpUndef %5
 %72 = OpTypePointer UniformConstant %14
 %75 = OpConstant %5 1
 %82 = OpTypePointer UniformConstant %25
@@ -211,7 +212,6 @@ OpDecorate %136 NonUniform
 %141 = OpConstant %5 32
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%67 = OpUndef %5
 OpBranch %152
 %152 = OpLabel
 %45 = OpLoad %5 %42

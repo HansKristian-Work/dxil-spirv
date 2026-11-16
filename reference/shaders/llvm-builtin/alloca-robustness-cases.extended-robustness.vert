@@ -22,21 +22,20 @@ void main()
     {
         _34[A.y] = float(uint(gl_InstanceIndex) - uint(gl_BaseInstance));
     }
-    float _100;
+    float _87;
     if (A.w == 0u)
     {
-        _100 = _63;
+        _87 = _63;
     }
     else
     {
         uint _73;
-        uint _102 = 0u;
-        uint _72;
+        bool _85;
+        uint _72 = 0u;
         uint _74;
         bool _76;
         for (;;)
         {
-            _72 = _102;
             _74 = _72 ^ 2u;
             _76 = _74 < 4u;
             float _77;
@@ -67,13 +66,14 @@ void main()
             {
                 _56[_73] = _82 + 50.0;
             }
-            if (_73 == A.w)
+            _85 = _73 == A.w;
+            if (_85)
             {
                 break;
             }
             else
             {
-                _102 = _73;
+                _72 = _73;
                 continue;
             }
         }
@@ -86,7 +86,7 @@ void main()
         {
             _86 = 0.0;
         }
-        _100 = _86;
+        _87 = _86;
     }
     float _94;
     if (A.w < 4u)
@@ -99,7 +99,7 @@ void main()
     }
     gl_Position.x = _23[min(A.z, 4u)];
     gl_Position.y = _94;
-    gl_Position.z = _100;
+    gl_Position.z = _87;
     gl_Position.w = 1.0;
 }
 
@@ -109,7 +109,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 138
+; Bound: 137
 ; Schema: 0
 OpCapability Shader
 OpCapability DrawParameters
@@ -177,13 +177,11 @@ OpDecorate %52 BuiltIn BaseVertex
 %101 = OpTypePointer Function %5
 %120 = OpConstantNull %12
 %126 = OpConstantNull %12
-%133 = OpConstantNull %12
-%137 = OpConstantNull %12
+%132 = OpConstantNull %12
+%136 = OpConstantNull %12
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %56 = OpVariable %55 Function
-%100 = OpVariable %57 Function
-%102 = OpVariable %101 Function
 OpBranch %103
 %103 = OpLabel
 %35 = OpAccessChain %6 %11 %36
@@ -230,14 +228,13 @@ OpBranch %115
 OpSelectionMerge %110 None
 OpBranchConditional %71 %109 %104
 %104 = OpLabel
-OpStore %102 %36
 OpBranch %105
 %105 = OpLabel
-%72 = OpLoad %5 %102
+%72 = OpPhi %5 %36 %104 %73 %106
 %74 = OpBitwiseXor %5 %72 %42
 %76 = OpULessThan %65 %74 %26
 %75 = OpInBoundsAccessChain %68 %34 %74
-OpLoopMerge %108 %107 None
+OpLoopMerge %107 %106 None
 OpBranch %116
 %116 = OpLabel
 OpSelectionMerge %118 None
@@ -274,42 +271,36 @@ OpBranch %128
 %85 = OpIEqual %65 %73 %46
 OpBranch %106
 %106 = OpLabel
-OpSelectionMerge %129 None
-OpBranchConditional %85 %108 %107
-%129 = OpLabel
-OpUnreachable
+OpBranchConditional %85 %107 %105
 %107 = OpLabel
-OpStore %102 %73
-OpBranch %105
-%108 = OpLabel
-OpSelectionMerge %131 None
-OpBranchConditional %66 %130 %131
+OpSelectionMerge %130 None
+OpBranchConditional %66 %129 %130
+%129 = OpLabel
+%131 = OpLoad %12 %64
+OpBranch %130
 %130 = OpLabel
-%132 = OpLoad %12 %64
-OpBranch %131
-%131 = OpLabel
-%86 = OpPhi %12 %132 %130 %133 %108
-OpStore %100 %86
+%86 = OpPhi %12 %131 %129 %132 %107
+OpBranch %108
+%108 = OpLabel
 OpBranch %110
 %109 = OpLabel
-OpStore %100 %63
 OpBranch %110
 %110 = OpLabel
+%87 = OpPhi %12 %63 %109 %86 %108
 OpBranch %111
 %111 = OpLabel
-%87 = OpLoad %12 %100
 %90 = OpExtInst %5 %89 UMin %43 %26
 %88 = OpInBoundsAccessChain %68 %25 %90
 %91 = OpLoad %12 %88
 %93 = OpULessThan %65 %46 %26
 %92 = OpInBoundsAccessChain %68 %34 %46
-OpSelectionMerge %135 None
-OpBranchConditional %93 %134 %135
+OpSelectionMerge %134 None
+OpBranchConditional %93 %133 %134
+%133 = OpLabel
+%135 = OpLoad %12 %92
+OpBranch %134
 %134 = OpLabel
-%136 = OpLoad %12 %92
-OpBranch %135
-%135 = OpLabel
-%94 = OpPhi %12 %136 %134 %137 %111
+%94 = OpPhi %12 %135 %133 %136 %111
 %96 = OpAccessChain %95 %15 %36
 OpStore %96 %91
 %97 = OpAccessChain %95 %15 %39

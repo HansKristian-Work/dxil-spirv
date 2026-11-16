@@ -14,16 +14,9 @@
 
 vec3 _37;
 f16vec2 _45;
-uvec4 _116;
 uvec4 _59;
-vec3 _90;
-f16vec2 _131;
-uvec4 _168;
-vec3 _196;
-f16vec2 _235;
-uvec4 _272;
-uvec3 _304;
-uvec2 _343;
+uvec3 _297;
+uvec2 _336;
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
 {
@@ -82,29 +75,29 @@ uvec4 WaveMultiPrefixSum(uvec4 _54, uvec4 _55, bool _56)
 
 vec3 WaveMultiPrefixSum(vec3 _85, uvec4 _86, bool _87)
 {
-    vec3 _105;
+    vec3 _104;
     if (_87)
     {
-        _105 = _90;
+        _104 = _37;
     }
     else
     {
-        uvec4 _98 = subgroupBallot(true);
-        uvec4 _99 = _98 & _86;
-        bool _102;
-        vec3 _104;
+        uvec4 _97 = subgroupBallot(true);
+        uvec4 _98 = _97 & _86;
+        bool _101;
+        vec3 _103;
         for (;;)
         {
-            _102 = all(equal(_99, subgroupBroadcastFirst(_99)));
-            if (_102)
+            _101 = all(equal(_98, subgroupBroadcastFirst(_98)));
+            if (_101)
             {
-                _104 = subgroupExclusiveAdd(_85);
+                _103 = subgroupExclusiveAdd(_85);
             }
             else
             {
-                _104 = _90;
+                _103 = _37;
             }
-            if (_102)
+            if (_101)
             {
                 break;
             }
@@ -113,36 +106,36 @@ vec3 WaveMultiPrefixSum(vec3 _85, uvec4 _86, bool _87)
                 continue;
             }
         }
-        _105 = _104;
+        _104 = _103;
     }
-    return _105;
+    return _104;
 }
 
-f16vec2 WaveMultiPrefixSum(f16vec2 _126, uvec4 _127, bool _128)
+f16vec2 WaveMultiPrefixSum(f16vec2 _124, uvec4 _125, bool _126)
 {
-    f16vec2 _146;
-    if (_128)
+    f16vec2 _143;
+    if (_126)
     {
-        _146 = _131;
+        _143 = _45;
     }
     else
     {
-        uvec4 _139 = subgroupBallot(true);
-        uvec4 _140 = _139 & _127;
-        bool _143;
-        f16vec2 _145;
+        uvec4 _136 = subgroupBallot(true);
+        uvec4 _137 = _136 & _125;
+        bool _140;
+        f16vec2 _142;
         for (;;)
         {
-            _143 = all(equal(_140, subgroupBroadcastFirst(_140)));
-            if (_143)
+            _140 = all(equal(_137, subgroupBroadcastFirst(_137)));
+            if (_140)
             {
-                _145 = subgroupExclusiveAdd(_126);
+                _142 = subgroupExclusiveAdd(_124);
             }
             else
             {
-                _145 = _131;
+                _142 = _45;
             }
-            if (_143)
+            if (_140)
             {
                 break;
             }
@@ -151,36 +144,36 @@ f16vec2 WaveMultiPrefixSum(f16vec2 _126, uvec4 _127, bool _128)
                 continue;
             }
         }
-        _146 = _145;
+        _143 = _142;
     }
-    return _146;
+    return _143;
 }
 
-uvec4 WaveMultiPrefixProduct(uvec4 _163, uvec4 _164, bool _165)
+uvec4 WaveMultiPrefixProduct(uvec4 _160, uvec4 _161, bool _162)
 {
-    uvec4 _183;
-    if (_165)
+    uvec4 _179;
+    if (_162)
     {
-        _183 = _168;
+        _179 = _59;
     }
     else
     {
-        uvec4 _176 = subgroupBallot(true);
-        uvec4 _177 = _176 & _164;
-        bool _180;
-        uvec4 _182;
+        uvec4 _172 = subgroupBallot(true);
+        uvec4 _173 = _172 & _161;
+        bool _176;
+        uvec4 _178;
         for (;;)
         {
-            _180 = all(equal(_177, subgroupBroadcastFirst(_177)));
-            if (_180)
+            _176 = all(equal(_173, subgroupBroadcastFirst(_173)));
+            if (_176)
             {
-                _182 = subgroupExclusiveMul(_163);
+                _178 = subgroupExclusiveMul(_160);
             }
             else
             {
-                _182 = _168;
+                _178 = _59;
             }
-            if (_180)
+            if (_176)
             {
                 break;
             }
@@ -189,36 +182,36 @@ uvec4 WaveMultiPrefixProduct(uvec4 _163, uvec4 _164, bool _165)
                 continue;
             }
         }
-        _183 = _182;
+        _179 = _178;
     }
-    return _183;
+    return _179;
 }
 
-vec3 WaveMultiPrefixProduct(vec3 _191, uvec4 _192, bool _193)
+vec3 WaveMultiPrefixProduct(vec3 _187, uvec4 _188, bool _189)
 {
-    vec3 _211;
-    if (_193)
+    vec3 _206;
+    if (_189)
     {
-        _211 = _196;
+        _206 = _37;
     }
     else
     {
-        uvec4 _204 = subgroupBallot(true);
-        uvec4 _205 = _204 & _192;
-        bool _208;
-        vec3 _210;
+        uvec4 _199 = subgroupBallot(true);
+        uvec4 _200 = _199 & _188;
+        bool _203;
+        vec3 _205;
         for (;;)
         {
-            _208 = all(equal(_205, subgroupBroadcastFirst(_205)));
-            if (_208)
+            _203 = all(equal(_200, subgroupBroadcastFirst(_200)));
+            if (_203)
             {
-                _210 = subgroupExclusiveMul(_191);
+                _205 = subgroupExclusiveMul(_187);
             }
             else
             {
-                _210 = _196;
+                _205 = _37;
             }
-            if (_208)
+            if (_203)
             {
                 break;
             }
@@ -227,36 +220,36 @@ vec3 WaveMultiPrefixProduct(vec3 _191, uvec4 _192, bool _193)
                 continue;
             }
         }
-        _211 = _210;
+        _206 = _205;
     }
-    return _211;
+    return _206;
 }
 
-f16vec2 WaveMultiPrefixProduct(f16vec2 _230, uvec4 _231, bool _232)
+f16vec2 WaveMultiPrefixProduct(f16vec2 _225, uvec4 _226, bool _227)
 {
-    f16vec2 _250;
-    if (_232)
+    f16vec2 _244;
+    if (_227)
     {
-        _250 = _235;
+        _244 = _45;
     }
     else
     {
-        uvec4 _243 = subgroupBallot(true);
-        uvec4 _244 = _243 & _231;
-        bool _247;
-        f16vec2 _249;
+        uvec4 _237 = subgroupBallot(true);
+        uvec4 _238 = _237 & _226;
+        bool _241;
+        f16vec2 _243;
         for (;;)
         {
-            _247 = all(equal(_244, subgroupBroadcastFirst(_244)));
-            if (_247)
+            _241 = all(equal(_238, subgroupBroadcastFirst(_238)));
+            if (_241)
             {
-                _249 = subgroupExclusiveMul(_230);
+                _243 = subgroupExclusiveMul(_225);
             }
             else
             {
-                _249 = _235;
+                _243 = _45;
             }
-            if (_247)
+            if (_241)
             {
                 break;
             }
@@ -265,36 +258,36 @@ f16vec2 WaveMultiPrefixProduct(f16vec2 _230, uvec4 _231, bool _232)
                 continue;
             }
         }
-        _250 = _249;
+        _244 = _243;
     }
-    return _250;
+    return _244;
 }
 
-uvec4 WaveMultiPrefixBitOr(uvec4 _267, uvec4 _268, bool _269)
+uvec4 WaveMultiPrefixBitOr(uvec4 _261, uvec4 _262, bool _263)
 {
-    uvec4 _287;
-    if (_269)
+    uvec4 _280;
+    if (_263)
     {
-        _287 = _272;
+        _280 = _59;
     }
     else
     {
-        uvec4 _280 = subgroupBallot(true);
-        uvec4 _281 = _280 & _268;
-        bool _284;
-        uvec4 _286;
+        uvec4 _273 = subgroupBallot(true);
+        uvec4 _274 = _273 & _262;
+        bool _277;
+        uvec4 _279;
         for (;;)
         {
-            _284 = all(equal(_281, subgroupBroadcastFirst(_281)));
-            if (_284)
+            _277 = all(equal(_274, subgroupBroadcastFirst(_274)));
+            if (_277)
             {
-                _286 = subgroupExclusiveOr(_267);
+                _279 = subgroupExclusiveOr(_261);
             }
             else
             {
-                _286 = _272;
+                _279 = _59;
             }
-            if (_284)
+            if (_277)
             {
                 break;
             }
@@ -303,36 +296,36 @@ uvec4 WaveMultiPrefixBitOr(uvec4 _267, uvec4 _268, bool _269)
                 continue;
             }
         }
-        _287 = _286;
+        _280 = _279;
     }
-    return _287;
+    return _280;
 }
 
-uvec3 WaveMultiPrefixBitAnd(uvec3 _299, uvec4 _300, bool _301)
+uvec3 WaveMultiPrefixBitAnd(uvec3 _292, uvec4 _293, bool _294)
 {
-    uvec3 _319;
-    if (_301)
+    uvec3 _312;
+    if (_294)
     {
-        _319 = _304;
+        _312 = _297;
     }
     else
     {
-        uvec4 _312 = subgroupBallot(true);
-        uvec4 _313 = _312 & _300;
-        bool _316;
-        uvec3 _318;
+        uvec4 _305 = subgroupBallot(true);
+        uvec4 _306 = _305 & _293;
+        bool _309;
+        uvec3 _311;
         for (;;)
         {
-            _316 = all(equal(_313, subgroupBroadcastFirst(_313)));
-            if (_316)
+            _309 = all(equal(_306, subgroupBroadcastFirst(_306)));
+            if (_309)
             {
-                _318 = subgroupExclusiveAnd(_299);
+                _311 = subgroupExclusiveAnd(_292);
             }
             else
             {
-                _318 = _304;
+                _311 = _297;
             }
-            if (_316)
+            if (_309)
             {
                 break;
             }
@@ -341,36 +334,36 @@ uvec3 WaveMultiPrefixBitAnd(uvec3 _299, uvec4 _300, bool _301)
                 continue;
             }
         }
-        _319 = _318;
+        _312 = _311;
     }
-    return _319;
+    return _312;
 }
 
-uvec2 WaveMultiPrefixBitXor(uvec2 _338, uvec4 _339, bool _340)
+uvec2 WaveMultiPrefixBitXor(uvec2 _331, uvec4 _332, bool _333)
 {
-    uvec2 _358;
-    if (_340)
+    uvec2 _351;
+    if (_333)
     {
-        _358 = _343;
+        _351 = _336;
     }
     else
     {
-        uvec4 _351 = subgroupBallot(true);
-        uvec4 _352 = _351 & _339;
-        bool _355;
-        uvec2 _357;
+        uvec4 _344 = subgroupBallot(true);
+        uvec4 _345 = _344 & _332;
+        bool _348;
+        uvec2 _350;
         for (;;)
         {
-            _355 = all(equal(_352, subgroupBroadcastFirst(_352)));
-            if (_355)
+            _348 = all(equal(_345, subgroupBroadcastFirst(_345)));
+            if (_348)
             {
-                _357 = subgroupExclusiveXor(_338);
+                _350 = subgroupExclusiveXor(_331);
             }
             else
             {
-                _357 = _343;
+                _350 = _336;
             }
-            if (_355)
+            if (_348)
             {
                 break;
             }
@@ -379,9 +372,9 @@ uvec2 WaveMultiPrefixBitXor(uvec2 _338, uvec4 _339, bool _340)
                 continue;
             }
         }
-        _358 = _357;
+        _351 = _350;
     }
-    return _358;
+    return _351;
 }
 
 void main()
@@ -398,58 +391,58 @@ void main()
     bool _79 = helperInvocationEXT();
     uint _80 = THR * 9u;
     _18._m0[THR * 9u] = WaveMultiPrefixSum(_10._m0[THR], uvec4(_14._m0[THR]), _79);
-    bool _108 = helperInvocationEXT();
-    vec3 _106 = WaveMultiPrefixSum(_36, uvec4(_14._m0[THR]), _108);
-    uvec4 _115;
-    _115.x = uint(_106.x);
-    _115.y = uint(_106.y);
-    _115.z = uint(_106.z);
-    _115.w = 0u;
-    _18._m0[(THR * 9u) + 1u] = _115;
-    bool _149 = helperInvocationEXT();
-    f16vec2 _147 = WaveMultiPrefixSum(_44, uvec4(_14._m0[THR]), _149);
-    uvec4 _154;
-    _154.x = uint(_147.x);
-    _154.y = uint(_147.y);
-    _154.z = 0u;
-    _154.w = 0u;
-    _18._m0[(THR * 9u) + 2u] = _154;
-    bool _186 = helperInvocationEXT();
-    _18._m0[(THR * 9u) + 3u] = WaveMultiPrefixProduct(_10._m0[THR], uvec4(_14._m0[THR]), _186);
-    bool _214 = helperInvocationEXT();
-    vec3 _212 = WaveMultiPrefixProduct(_36, uvec4(_14._m0[THR]), _214);
-    uvec4 _221;
-    _221.x = uint(_212.x);
-    _221.y = uint(_212.y);
-    _221.z = uint(_212.z);
-    _221.w = 0u;
-    _18._m0[(THR * 9u) + 4u] = _221;
-    bool _253 = helperInvocationEXT();
-    f16vec2 _251 = WaveMultiPrefixProduct(_44, uvec4(_14._m0[THR]), _253);
-    uvec4 _258;
-    _258.x = uint(_251.x);
-    _258.y = uint(_251.y);
-    _258.z = 0u;
-    _258.w = 0u;
-    _18._m0[(THR * 9u) + 5u] = _258;
-    bool _290 = helperInvocationEXT();
-    _18._m0[(THR * 9u) + 6u] = WaveMultiPrefixBitOr(_10._m0[THR], uvec4(_14._m0[THR]), _290);
-    bool _322 = helperInvocationEXT();
-    uvec3 _320 = WaveMultiPrefixBitAnd(uvec3(ivec3(_36)), uvec4(_14._m0[THR]), _322);
-    uvec4 _326;
-    _326.x = _320.x;
-    _326.y = _320.y;
-    _326.z = _320.z;
-    _326.w = 0u;
-    _18._m0[(THR * 9u) + 7u] = _326;
-    bool _361 = helperInvocationEXT();
-    uvec2 _359 = WaveMultiPrefixBitXor(uvec2(ivec2(_44)), uvec4(_14._m0[THR]), _361);
-    uvec4 _364;
-    _364.x = _359.x;
-    _364.y = _359.y;
-    _364.z = 0u;
-    _364.w = 0u;
-    _18._m0[(THR * 9u) + 8u] = _364;
+    bool _107 = helperInvocationEXT();
+    vec3 _105 = WaveMultiPrefixSum(_36, uvec4(_14._m0[THR]), _107);
+    uvec4 _114;
+    _114.x = uint(_105.x);
+    _114.y = uint(_105.y);
+    _114.z = uint(_105.z);
+    _114.w = 0u;
+    _18._m0[(THR * 9u) + 1u] = _114;
+    bool _146 = helperInvocationEXT();
+    f16vec2 _144 = WaveMultiPrefixSum(_44, uvec4(_14._m0[THR]), _146);
+    uvec4 _151;
+    _151.x = uint(_144.x);
+    _151.y = uint(_144.y);
+    _151.z = 0u;
+    _151.w = 0u;
+    _18._m0[(THR * 9u) + 2u] = _151;
+    bool _182 = helperInvocationEXT();
+    _18._m0[(THR * 9u) + 3u] = WaveMultiPrefixProduct(_10._m0[THR], uvec4(_14._m0[THR]), _182);
+    bool _209 = helperInvocationEXT();
+    vec3 _207 = WaveMultiPrefixProduct(_36, uvec4(_14._m0[THR]), _209);
+    uvec4 _216;
+    _216.x = uint(_207.x);
+    _216.y = uint(_207.y);
+    _216.z = uint(_207.z);
+    _216.w = 0u;
+    _18._m0[(THR * 9u) + 4u] = _216;
+    bool _247 = helperInvocationEXT();
+    f16vec2 _245 = WaveMultiPrefixProduct(_44, uvec4(_14._m0[THR]), _247);
+    uvec4 _252;
+    _252.x = uint(_245.x);
+    _252.y = uint(_245.y);
+    _252.z = 0u;
+    _252.w = 0u;
+    _18._m0[(THR * 9u) + 5u] = _252;
+    bool _283 = helperInvocationEXT();
+    _18._m0[(THR * 9u) + 6u] = WaveMultiPrefixBitOr(_10._m0[THR], uvec4(_14._m0[THR]), _283);
+    bool _315 = helperInvocationEXT();
+    uvec3 _313 = WaveMultiPrefixBitAnd(uvec3(ivec3(_36)), uvec4(_14._m0[THR]), _315);
+    uvec4 _319;
+    _319.x = _313.x;
+    _319.y = _313.y;
+    _319.z = _313.z;
+    _319.w = 0u;
+    _18._m0[(THR * 9u) + 7u] = _319;
+    bool _354 = helperInvocationEXT();
+    uvec2 _352 = WaveMultiPrefixBitXor(uvec2(ivec2(_44)), uvec4(_14._m0[THR]), _354);
+    uvec4 _357;
+    _357.x = _352.x;
+    _357.y = _352.y;
+    _357.z = 0u;
+    _357.w = 0u;
+    _18._m0[(THR * 9u) + 8u] = _357;
 }
 
 
@@ -458,7 +451,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 374
+; Bound: 367
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -480,13 +473,13 @@ OpName %16 "SSBO"
 OpName %20 "THR"
 OpName %57 "WaveMultiPrefixSum"
 OpName %88 "WaveMultiPrefixSum"
-OpName %129 "WaveMultiPrefixSum"
-OpName %166 "WaveMultiPrefixProduct"
-OpName %194 "WaveMultiPrefixProduct"
-OpName %233 "WaveMultiPrefixProduct"
-OpName %270 "WaveMultiPrefixBitOr"
-OpName %302 "WaveMultiPrefixBitAnd"
-OpName %341 "WaveMultiPrefixBitXor"
+OpName %127 "WaveMultiPrefixSum"
+OpName %163 "WaveMultiPrefixProduct"
+OpName %190 "WaveMultiPrefixProduct"
+OpName %228 "WaveMultiPrefixProduct"
+OpName %264 "WaveMultiPrefixBitOr"
+OpName %295 "WaveMultiPrefixBitAnd"
+OpName %334 "WaveMultiPrefixBitXor"
 OpDecorate %7 ArrayStride 16
 OpMemberDecorate %8 0 Offset 0
 OpDecorate %8 Block
@@ -531,34 +524,36 @@ OpDecorate %20 Location 0
 %24 = OpConstant %5 0
 %31 = OpTypeFloat 32
 %35 = OpTypeVector %31 3
+%37 = OpUndef %35
 %40 = OpTypeFloat 16
 %43 = OpTypeVector %40 2
+%45 = OpUndef %43
 %51 = OpTypeBool
 %52 = OpTypeVector %51 4
 %53 = OpTypeFunction %6 %6 %6 %51
+%59 = OpUndef %6
 %68 = OpConstant %5 3
 %69 = OpConstantTrue %51
 %81 = OpConstant %5 9
 %84 = OpTypeFunction %35 %35 %6 %51
-%121 = OpConstant %5 1
-%125 = OpTypeFunction %43 %43 %6 %51
-%159 = OpConstant %5 2
-%226 = OpConstant %5 4
-%263 = OpConstant %5 5
-%292 = OpConstant %5 6
-%296 = OpTypeVector %5 3
-%298 = OpTypeFunction %296 %296 %6 %51
-%331 = OpConstant %5 7
-%335 = OpTypeVector %5 2
-%337 = OpTypeFunction %335 %335 %6 %51
-%369 = OpConstant %5 8
+%119 = OpConstant %5 1
+%123 = OpTypeFunction %43 %43 %6 %51
+%156 = OpConstant %5 2
+%221 = OpConstant %5 4
+%257 = OpConstant %5 5
+%285 = OpConstant %5 6
+%289 = OpTypeVector %5 3
+%291 = OpTypeFunction %289 %289 %6 %51
+%297 = OpUndef %289
+%324 = OpConstant %5 7
+%328 = OpTypeVector %5 2
+%330 = OpTypeFunction %328 %328 %6 %51
+%336 = OpUndef %328
+%362 = OpConstant %5 8
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%37 = OpUndef %35
-%45 = OpUndef %43
-%116 = OpUndef %6
-OpBranch %373
-%373 = OpLabel
+OpBranch %366
+%366 = OpLabel
 %21 = OpLoad %5 %20
 %23 = OpAccessChain %22 %14 %24 %21
 %25 = OpLoad %6 %23
@@ -588,121 +583,121 @@ OpBranch %373
 %82 = OpIMul %5 %21 %81
 %83 = OpAccessChain %22 %18 %24 %82
 OpStore %83 %77 NonPrivatePointer
-%107 = OpCompositeConstruct %6 %47 %48 %49 %50
-%108 = OpIsHelperInvocationEXT %51
-%106 = OpFunctionCall %35 %88 %39 %107 %108
-%109 = OpCompositeExtract %31 %106 0
-%110 = OpCompositeExtract %31 %106 1
-%111 = OpCompositeExtract %31 %106 2
+%106 = OpCompositeConstruct %6 %47 %48 %49 %50
+%107 = OpIsHelperInvocationEXT %51
+%105 = OpFunctionCall %35 %88 %39 %106 %107
+%108 = OpCompositeExtract %31 %105 0
+%109 = OpCompositeExtract %31 %105 1
+%110 = OpCompositeExtract %31 %105 2
+%111 = OpConvertFToU %5 %108
 %112 = OpConvertFToU %5 %109
 %113 = OpConvertFToU %5 %110
-%114 = OpConvertFToU %5 %111
-%115 = OpCompositeInsert %6 %112 %116 0
-%117 = OpCompositeInsert %6 %113 %115 1
-%118 = OpCompositeInsert %6 %114 %117 2
-%119 = OpCompositeInsert %6 %24 %118 3
-%120 = OpIAdd %5 %80 %121
-%122 = OpIMul %5 %21 %81
-%123 = OpIAdd %5 %122 %121
-%124 = OpAccessChain %22 %18 %24 %123
-OpStore %124 %119 NonPrivatePointer
-%148 = OpCompositeConstruct %6 %47 %48 %49 %50
-%149 = OpIsHelperInvocationEXT %51
-%147 = OpFunctionCall %43 %129 %46 %148 %149
-%150 = OpCompositeExtract %40 %147 0
-%151 = OpCompositeExtract %40 %147 1
-%152 = OpConvertFToU %5 %150
-%153 = OpConvertFToU %5 %151
-%154 = OpCompositeInsert %6 %152 %116 0
-%155 = OpCompositeInsert %6 %153 %154 1
-%156 = OpCompositeInsert %6 %24 %155 2
-%157 = OpCompositeInsert %6 %24 %156 3
-%158 = OpIAdd %5 %80 %159
-%160 = OpIMul %5 %21 %81
-%161 = OpIAdd %5 %160 %159
-%162 = OpAccessChain %22 %18 %24 %161
-OpStore %162 %157 NonPrivatePointer
-%185 = OpCompositeConstruct %6 %47 %48 %49 %50
-%186 = OpIsHelperInvocationEXT %51
-%184 = OpFunctionCall %6 %166 %27 %185 %186
-%187 = OpIAdd %5 %80 %68
-%188 = OpIMul %5 %21 %81
-%189 = OpIAdd %5 %188 %68
-%190 = OpAccessChain %22 %18 %24 %189
-OpStore %190 %184 NonPrivatePointer
-%213 = OpCompositeConstruct %6 %47 %48 %49 %50
-%214 = OpIsHelperInvocationEXT %51
-%212 = OpFunctionCall %35 %194 %39 %213 %214
-%215 = OpCompositeExtract %31 %212 0
-%216 = OpCompositeExtract %31 %212 1
-%217 = OpCompositeExtract %31 %212 2
-%218 = OpConvertFToU %5 %215
-%219 = OpConvertFToU %5 %216
-%220 = OpConvertFToU %5 %217
-%221 = OpCompositeInsert %6 %218 %116 0
-%222 = OpCompositeInsert %6 %219 %221 1
-%223 = OpCompositeInsert %6 %220 %222 2
-%224 = OpCompositeInsert %6 %24 %223 3
-%225 = OpIAdd %5 %80 %226
-%227 = OpIMul %5 %21 %81
-%228 = OpIAdd %5 %227 %226
-%229 = OpAccessChain %22 %18 %24 %228
-OpStore %229 %224 NonPrivatePointer
-%252 = OpCompositeConstruct %6 %47 %48 %49 %50
-%253 = OpIsHelperInvocationEXT %51
-%251 = OpFunctionCall %43 %233 %46 %252 %253
-%254 = OpCompositeExtract %40 %251 0
-%255 = OpCompositeExtract %40 %251 1
-%256 = OpConvertFToU %5 %254
-%257 = OpConvertFToU %5 %255
-%258 = OpCompositeInsert %6 %256 %116 0
-%259 = OpCompositeInsert %6 %257 %258 1
-%260 = OpCompositeInsert %6 %24 %259 2
-%261 = OpCompositeInsert %6 %24 %260 3
-%262 = OpIAdd %5 %80 %263
-%264 = OpIMul %5 %21 %81
-%265 = OpIAdd %5 %264 %263
-%266 = OpAccessChain %22 %18 %24 %265
-OpStore %266 %261 NonPrivatePointer
-%289 = OpCompositeConstruct %6 %47 %48 %49 %50
-%290 = OpIsHelperInvocationEXT %51
-%288 = OpFunctionCall %6 %270 %27 %289 %290
-%291 = OpIAdd %5 %80 %292
-%293 = OpIMul %5 %21 %81
-%294 = OpIAdd %5 %293 %292
-%295 = OpAccessChain %22 %18 %24 %294
-OpStore %295 %288 NonPrivatePointer
-%297 = OpConvertFToS %296 %39
-%321 = OpCompositeConstruct %6 %47 %48 %49 %50
-%322 = OpIsHelperInvocationEXT %51
-%320 = OpFunctionCall %296 %302 %297 %321 %322
-%323 = OpCompositeExtract %5 %320 0
-%324 = OpCompositeExtract %5 %320 1
-%325 = OpCompositeExtract %5 %320 2
-%326 = OpCompositeInsert %6 %323 %116 0
-%327 = OpCompositeInsert %6 %324 %326 1
-%328 = OpCompositeInsert %6 %325 %327 2
-%329 = OpCompositeInsert %6 %24 %328 3
-%330 = OpIAdd %5 %80 %331
-%332 = OpIMul %5 %21 %81
-%333 = OpIAdd %5 %332 %331
-%334 = OpAccessChain %22 %18 %24 %333
-OpStore %334 %329 NonPrivatePointer
-%336 = OpConvertFToS %335 %46
-%360 = OpCompositeConstruct %6 %47 %48 %49 %50
-%361 = OpIsHelperInvocationEXT %51
-%359 = OpFunctionCall %335 %341 %336 %360 %361
-%362 = OpCompositeExtract %5 %359 0
-%363 = OpCompositeExtract %5 %359 1
-%364 = OpCompositeInsert %6 %362 %116 0
-%365 = OpCompositeInsert %6 %363 %364 1
-%366 = OpCompositeInsert %6 %24 %365 2
-%367 = OpCompositeInsert %6 %24 %366 3
-%368 = OpIAdd %5 %80 %369
-%370 = OpIMul %5 %21 %81
-%371 = OpIAdd %5 %370 %369
-%372 = OpAccessChain %22 %18 %24 %371
-OpStore %372 %367 NonPrivatePointer
+%114 = OpCompositeInsert %6 %111 %59 0
+%115 = OpCompositeInsert %6 %112 %114 1
+%116 = OpCompositeInsert %6 %113 %115 2
+%117 = OpCompositeInsert %6 %24 %116 3
+%118 = OpIAdd %5 %80 %119
+%120 = OpIMul %5 %21 %81
+%121 = OpIAdd %5 %120 %119
+%122 = OpAccessChain %22 %18 %24 %121
+OpStore %122 %117 NonPrivatePointer
+%145 = OpCompositeConstruct %6 %47 %48 %49 %50
+%146 = OpIsHelperInvocationEXT %51
+%144 = OpFunctionCall %43 %127 %46 %145 %146
+%147 = OpCompositeExtract %40 %144 0
+%148 = OpCompositeExtract %40 %144 1
+%149 = OpConvertFToU %5 %147
+%150 = OpConvertFToU %5 %148
+%151 = OpCompositeInsert %6 %149 %59 0
+%152 = OpCompositeInsert %6 %150 %151 1
+%153 = OpCompositeInsert %6 %24 %152 2
+%154 = OpCompositeInsert %6 %24 %153 3
+%155 = OpIAdd %5 %80 %156
+%157 = OpIMul %5 %21 %81
+%158 = OpIAdd %5 %157 %156
+%159 = OpAccessChain %22 %18 %24 %158
+OpStore %159 %154 NonPrivatePointer
+%181 = OpCompositeConstruct %6 %47 %48 %49 %50
+%182 = OpIsHelperInvocationEXT %51
+%180 = OpFunctionCall %6 %163 %27 %181 %182
+%183 = OpIAdd %5 %80 %68
+%184 = OpIMul %5 %21 %81
+%185 = OpIAdd %5 %184 %68
+%186 = OpAccessChain %22 %18 %24 %185
+OpStore %186 %180 NonPrivatePointer
+%208 = OpCompositeConstruct %6 %47 %48 %49 %50
+%209 = OpIsHelperInvocationEXT %51
+%207 = OpFunctionCall %35 %190 %39 %208 %209
+%210 = OpCompositeExtract %31 %207 0
+%211 = OpCompositeExtract %31 %207 1
+%212 = OpCompositeExtract %31 %207 2
+%213 = OpConvertFToU %5 %210
+%214 = OpConvertFToU %5 %211
+%215 = OpConvertFToU %5 %212
+%216 = OpCompositeInsert %6 %213 %59 0
+%217 = OpCompositeInsert %6 %214 %216 1
+%218 = OpCompositeInsert %6 %215 %217 2
+%219 = OpCompositeInsert %6 %24 %218 3
+%220 = OpIAdd %5 %80 %221
+%222 = OpIMul %5 %21 %81
+%223 = OpIAdd %5 %222 %221
+%224 = OpAccessChain %22 %18 %24 %223
+OpStore %224 %219 NonPrivatePointer
+%246 = OpCompositeConstruct %6 %47 %48 %49 %50
+%247 = OpIsHelperInvocationEXT %51
+%245 = OpFunctionCall %43 %228 %46 %246 %247
+%248 = OpCompositeExtract %40 %245 0
+%249 = OpCompositeExtract %40 %245 1
+%250 = OpConvertFToU %5 %248
+%251 = OpConvertFToU %5 %249
+%252 = OpCompositeInsert %6 %250 %59 0
+%253 = OpCompositeInsert %6 %251 %252 1
+%254 = OpCompositeInsert %6 %24 %253 2
+%255 = OpCompositeInsert %6 %24 %254 3
+%256 = OpIAdd %5 %80 %257
+%258 = OpIMul %5 %21 %81
+%259 = OpIAdd %5 %258 %257
+%260 = OpAccessChain %22 %18 %24 %259
+OpStore %260 %255 NonPrivatePointer
+%282 = OpCompositeConstruct %6 %47 %48 %49 %50
+%283 = OpIsHelperInvocationEXT %51
+%281 = OpFunctionCall %6 %264 %27 %282 %283
+%284 = OpIAdd %5 %80 %285
+%286 = OpIMul %5 %21 %81
+%287 = OpIAdd %5 %286 %285
+%288 = OpAccessChain %22 %18 %24 %287
+OpStore %288 %281 NonPrivatePointer
+%290 = OpConvertFToS %289 %39
+%314 = OpCompositeConstruct %6 %47 %48 %49 %50
+%315 = OpIsHelperInvocationEXT %51
+%313 = OpFunctionCall %289 %295 %290 %314 %315
+%316 = OpCompositeExtract %5 %313 0
+%317 = OpCompositeExtract %5 %313 1
+%318 = OpCompositeExtract %5 %313 2
+%319 = OpCompositeInsert %6 %316 %59 0
+%320 = OpCompositeInsert %6 %317 %319 1
+%321 = OpCompositeInsert %6 %318 %320 2
+%322 = OpCompositeInsert %6 %24 %321 3
+%323 = OpIAdd %5 %80 %324
+%325 = OpIMul %5 %21 %81
+%326 = OpIAdd %5 %325 %324
+%327 = OpAccessChain %22 %18 %24 %326
+OpStore %327 %322 NonPrivatePointer
+%329 = OpConvertFToS %328 %46
+%353 = OpCompositeConstruct %6 %47 %48 %49 %50
+%354 = OpIsHelperInvocationEXT %51
+%352 = OpFunctionCall %328 %334 %329 %353 %354
+%355 = OpCompositeExtract %5 %352 0
+%356 = OpCompositeExtract %5 %352 1
+%357 = OpCompositeInsert %6 %355 %59 0
+%358 = OpCompositeInsert %6 %356 %357 1
+%359 = OpCompositeInsert %6 %24 %358 2
+%360 = OpCompositeInsert %6 %24 %359 3
+%361 = OpIAdd %5 %80 %362
+%363 = OpIMul %5 %21 %81
+%364 = OpIAdd %5 %363 %362
+%365 = OpAccessChain %22 %18 %24 %364
+OpStore %365 %360 NonPrivatePointer
 OpReturn
 OpFunctionEnd
 %57 = OpFunction %6 None %53
@@ -710,7 +705,6 @@ OpFunctionEnd
 %55 = OpFunctionParameter %6
 %56 = OpFunctionParameter %51
 %58 = OpLabel
-%59 = OpUndef %6
 OpSelectionMerge %66 None
 OpBranchConditional %56 %66 %65
 %65 = OpLabel
@@ -743,263 +737,255 @@ OpFunctionEnd
 %86 = OpFunctionParameter %6
 %87 = OpFunctionParameter %51
 %89 = OpLabel
-%90 = OpUndef %35
-OpSelectionMerge %97 None
-OpBranchConditional %87 %97 %96
-%96 = OpLabel
-%98 = OpGroupNonUniformBallot %6 %68 %69
-%99 = OpBitwiseAnd %6 %98 %86
+OpSelectionMerge %96 None
+OpBranchConditional %87 %96 %95
+%95 = OpLabel
+%97 = OpGroupNonUniformBallot %6 %68 %69
+%98 = OpBitwiseAnd %6 %97 %86
+OpBranch %90
+%90 = OpLabel
+OpLoopMerge %94 %91 None
 OpBranch %91
 %91 = OpLabel
-OpLoopMerge %95 %92 None
-OpBranch %92
+%99 = OpGroupNonUniformBroadcastFirst %6 %68 %98
+%100 = OpIEqual %52 %98 %99
+%101 = OpAll %51 %100
+OpSelectionMerge %93 None
+OpBranchConditional %101 %92 %93
 %92 = OpLabel
-%100 = OpGroupNonUniformBroadcastFirst %6 %68 %99
-%101 = OpIEqual %52 %99 %100
-%102 = OpAll %51 %101
-OpSelectionMerge %94 None
-OpBranchConditional %102 %93 %94
+%102 = OpGroupNonUniformFAdd %35 %68 ExclusiveScan %85
+OpBranch %93
 %93 = OpLabel
-%103 = OpGroupNonUniformFAdd %35 %68 ExclusiveScan %85
-OpBranch %94
+%103 = OpPhi %35 %102 %92 %37 %91
+OpBranchConditional %101 %94 %90
 %94 = OpLabel
-%104 = OpPhi %35 %103 %93 %90 %92
-OpBranchConditional %102 %95 %91
-%95 = OpLabel
-OpBranch %97
-%97 = OpLabel
-%105 = OpPhi %35 %104 %95 %90 %89
-OpReturnValue %105
+OpBranch %96
+%96 = OpLabel
+%104 = OpPhi %35 %103 %94 %37 %89
+OpReturnValue %104
 OpFunctionEnd
-%129 = OpFunction %43 None %125
-%126 = OpFunctionParameter %43
-%127 = OpFunctionParameter %6
-%128 = OpFunctionParameter %51
+%127 = OpFunction %43 None %123
+%124 = OpFunctionParameter %43
+%125 = OpFunctionParameter %6
+%126 = OpFunctionParameter %51
+%128 = OpLabel
+OpSelectionMerge %135 None
+OpBranchConditional %126 %135 %134
+%134 = OpLabel
+%136 = OpGroupNonUniformBallot %6 %68 %69
+%137 = OpBitwiseAnd %6 %136 %125
+OpBranch %129
+%129 = OpLabel
+OpLoopMerge %133 %130 None
+OpBranch %130
 %130 = OpLabel
-%131 = OpUndef %43
-OpSelectionMerge %138 None
-OpBranchConditional %128 %138 %137
-%137 = OpLabel
-%139 = OpGroupNonUniformBallot %6 %68 %69
-%140 = OpBitwiseAnd %6 %139 %127
+%138 = OpGroupNonUniformBroadcastFirst %6 %68 %137
+%139 = OpIEqual %52 %137 %138
+%140 = OpAll %51 %139
+OpSelectionMerge %132 None
+OpBranchConditional %140 %131 %132
+%131 = OpLabel
+%141 = OpGroupNonUniformFAdd %43 %68 ExclusiveScan %124
 OpBranch %132
 %132 = OpLabel
-OpLoopMerge %136 %133 None
-OpBranch %133
+%142 = OpPhi %43 %141 %131 %45 %130
+OpBranchConditional %140 %133 %129
 %133 = OpLabel
-%141 = OpGroupNonUniformBroadcastFirst %6 %68 %140
-%142 = OpIEqual %52 %140 %141
-%143 = OpAll %51 %142
-OpSelectionMerge %135 None
-OpBranchConditional %143 %134 %135
-%134 = OpLabel
-%144 = OpGroupNonUniformFAdd %43 %68 ExclusiveScan %126
 OpBranch %135
 %135 = OpLabel
-%145 = OpPhi %43 %144 %134 %131 %133
-OpBranchConditional %143 %136 %132
-%136 = OpLabel
-OpBranch %138
-%138 = OpLabel
-%146 = OpPhi %43 %145 %136 %131 %130
-OpReturnValue %146
+%143 = OpPhi %43 %142 %133 %45 %128
+OpReturnValue %143
 OpFunctionEnd
-%166 = OpFunction %6 None %53
-%163 = OpFunctionParameter %6
-%164 = OpFunctionParameter %6
-%165 = OpFunctionParameter %51
-%167 = OpLabel
-%168 = OpUndef %6
-OpSelectionMerge %175 None
-OpBranchConditional %165 %175 %174
-%174 = OpLabel
-%176 = OpGroupNonUniformBallot %6 %68 %69
-%177 = OpBitwiseAnd %6 %176 %164
-OpBranch %169
-%169 = OpLabel
-OpLoopMerge %173 %170 None
-OpBranch %170
+%163 = OpFunction %6 None %53
+%160 = OpFunctionParameter %6
+%161 = OpFunctionParameter %6
+%162 = OpFunctionParameter %51
+%164 = OpLabel
+OpSelectionMerge %171 None
+OpBranchConditional %162 %171 %170
 %170 = OpLabel
-%178 = OpGroupNonUniformBroadcastFirst %6 %68 %177
-%179 = OpIEqual %52 %177 %178
-%180 = OpAll %51 %179
-OpSelectionMerge %172 None
-OpBranchConditional %180 %171 %172
+%172 = OpGroupNonUniformBallot %6 %68 %69
+%173 = OpBitwiseAnd %6 %172 %161
+OpBranch %165
+%165 = OpLabel
+OpLoopMerge %169 %166 None
+OpBranch %166
+%166 = OpLabel
+%174 = OpGroupNonUniformBroadcastFirst %6 %68 %173
+%175 = OpIEqual %52 %173 %174
+%176 = OpAll %51 %175
+OpSelectionMerge %168 None
+OpBranchConditional %176 %167 %168
+%167 = OpLabel
+%177 = OpGroupNonUniformIMul %6 %68 ExclusiveScan %160
+OpBranch %168
+%168 = OpLabel
+%178 = OpPhi %6 %177 %167 %59 %166
+OpBranchConditional %176 %169 %165
+%169 = OpLabel
+OpBranch %171
 %171 = OpLabel
-%181 = OpGroupNonUniformIMul %6 %68 ExclusiveScan %163
-OpBranch %172
-%172 = OpLabel
-%182 = OpPhi %6 %181 %171 %168 %170
-OpBranchConditional %180 %173 %169
-%173 = OpLabel
-OpBranch %175
-%175 = OpLabel
-%183 = OpPhi %6 %182 %173 %168 %167
-OpReturnValue %183
+%179 = OpPhi %6 %178 %169 %59 %164
+OpReturnValue %179
 OpFunctionEnd
-%194 = OpFunction %35 None %84
-%191 = OpFunctionParameter %35
-%192 = OpFunctionParameter %6
-%193 = OpFunctionParameter %51
-%195 = OpLabel
-%196 = OpUndef %35
-OpSelectionMerge %203 None
-OpBranchConditional %193 %203 %202
-%202 = OpLabel
-%204 = OpGroupNonUniformBallot %6 %68 %69
-%205 = OpBitwiseAnd %6 %204 %192
-OpBranch %197
+%190 = OpFunction %35 None %84
+%187 = OpFunctionParameter %35
+%188 = OpFunctionParameter %6
+%189 = OpFunctionParameter %51
+%191 = OpLabel
+OpSelectionMerge %198 None
+OpBranchConditional %189 %198 %197
 %197 = OpLabel
-OpLoopMerge %201 %198 None
+%199 = OpGroupNonUniformBallot %6 %68 %69
+%200 = OpBitwiseAnd %6 %199 %188
+OpBranch %192
+%192 = OpLabel
+OpLoopMerge %196 %193 None
+OpBranch %193
+%193 = OpLabel
+%201 = OpGroupNonUniformBroadcastFirst %6 %68 %200
+%202 = OpIEqual %52 %200 %201
+%203 = OpAll %51 %202
+OpSelectionMerge %195 None
+OpBranchConditional %203 %194 %195
+%194 = OpLabel
+%204 = OpGroupNonUniformFMul %35 %68 ExclusiveScan %187
+OpBranch %195
+%195 = OpLabel
+%205 = OpPhi %35 %204 %194 %37 %193
+OpBranchConditional %203 %196 %192
+%196 = OpLabel
 OpBranch %198
 %198 = OpLabel
-%206 = OpGroupNonUniformBroadcastFirst %6 %68 %205
-%207 = OpIEqual %52 %205 %206
-%208 = OpAll %51 %207
-OpSelectionMerge %200 None
-OpBranchConditional %208 %199 %200
-%199 = OpLabel
-%209 = OpGroupNonUniformFMul %35 %68 ExclusiveScan %191
-OpBranch %200
-%200 = OpLabel
-%210 = OpPhi %35 %209 %199 %196 %198
-OpBranchConditional %208 %201 %197
-%201 = OpLabel
-OpBranch %203
-%203 = OpLabel
-%211 = OpPhi %35 %210 %201 %196 %195
-OpReturnValue %211
+%206 = OpPhi %35 %205 %196 %37 %191
+OpReturnValue %206
 OpFunctionEnd
-%233 = OpFunction %43 None %125
-%230 = OpFunctionParameter %43
-%231 = OpFunctionParameter %6
-%232 = OpFunctionParameter %51
+%228 = OpFunction %43 None %123
+%225 = OpFunctionParameter %43
+%226 = OpFunctionParameter %6
+%227 = OpFunctionParameter %51
+%229 = OpLabel
+OpSelectionMerge %236 None
+OpBranchConditional %227 %236 %235
+%235 = OpLabel
+%237 = OpGroupNonUniformBallot %6 %68 %69
+%238 = OpBitwiseAnd %6 %237 %226
+OpBranch %230
+%230 = OpLabel
+OpLoopMerge %234 %231 None
+OpBranch %231
+%231 = OpLabel
+%239 = OpGroupNonUniformBroadcastFirst %6 %68 %238
+%240 = OpIEqual %52 %238 %239
+%241 = OpAll %51 %240
+OpSelectionMerge %233 None
+OpBranchConditional %241 %232 %233
+%232 = OpLabel
+%242 = OpGroupNonUniformFMul %43 %68 ExclusiveScan %225
+OpBranch %233
+%233 = OpLabel
+%243 = OpPhi %43 %242 %232 %45 %231
+OpBranchConditional %241 %234 %230
 %234 = OpLabel
-%235 = OpUndef %43
-OpSelectionMerge %242 None
-OpBranchConditional %232 %242 %241
-%241 = OpLabel
-%243 = OpGroupNonUniformBallot %6 %68 %69
-%244 = OpBitwiseAnd %6 %243 %231
 OpBranch %236
 %236 = OpLabel
-OpLoopMerge %240 %237 None
-OpBranch %237
-%237 = OpLabel
-%245 = OpGroupNonUniformBroadcastFirst %6 %68 %244
-%246 = OpIEqual %52 %244 %245
-%247 = OpAll %51 %246
-OpSelectionMerge %239 None
-OpBranchConditional %247 %238 %239
-%238 = OpLabel
-%248 = OpGroupNonUniformFMul %43 %68 ExclusiveScan %230
-OpBranch %239
-%239 = OpLabel
-%249 = OpPhi %43 %248 %238 %235 %237
-OpBranchConditional %247 %240 %236
-%240 = OpLabel
-OpBranch %242
-%242 = OpLabel
-%250 = OpPhi %43 %249 %240 %235 %234
-OpReturnValue %250
+%244 = OpPhi %43 %243 %234 %45 %229
+OpReturnValue %244
 OpFunctionEnd
-%270 = OpFunction %6 None %53
-%267 = OpFunctionParameter %6
-%268 = OpFunctionParameter %6
-%269 = OpFunctionParameter %51
+%264 = OpFunction %6 None %53
+%261 = OpFunctionParameter %6
+%262 = OpFunctionParameter %6
+%263 = OpFunctionParameter %51
+%265 = OpLabel
+OpSelectionMerge %272 None
+OpBranchConditional %263 %272 %271
 %271 = OpLabel
-%272 = OpUndef %6
-OpSelectionMerge %279 None
-OpBranchConditional %269 %279 %278
-%278 = OpLabel
-%280 = OpGroupNonUniformBallot %6 %68 %69
-%281 = OpBitwiseAnd %6 %280 %268
-OpBranch %273
-%273 = OpLabel
-OpLoopMerge %277 %274 None
-OpBranch %274
-%274 = OpLabel
-%282 = OpGroupNonUniformBroadcastFirst %6 %68 %281
-%283 = OpIEqual %52 %281 %282
-%284 = OpAll %51 %283
-OpSelectionMerge %276 None
-OpBranchConditional %284 %275 %276
-%275 = OpLabel
-%285 = OpGroupNonUniformBitwiseOr %6 %68 ExclusiveScan %267
-OpBranch %276
-%276 = OpLabel
-%286 = OpPhi %6 %285 %275 %272 %274
-OpBranchConditional %284 %277 %273
-%277 = OpLabel
-OpBranch %279
-%279 = OpLabel
-%287 = OpPhi %6 %286 %277 %272 %271
-OpReturnValue %287
+%273 = OpGroupNonUniformBallot %6 %68 %69
+%274 = OpBitwiseAnd %6 %273 %262
+OpBranch %266
+%266 = OpLabel
+OpLoopMerge %270 %267 None
+OpBranch %267
+%267 = OpLabel
+%275 = OpGroupNonUniformBroadcastFirst %6 %68 %274
+%276 = OpIEqual %52 %274 %275
+%277 = OpAll %51 %276
+OpSelectionMerge %269 None
+OpBranchConditional %277 %268 %269
+%268 = OpLabel
+%278 = OpGroupNonUniformBitwiseOr %6 %68 ExclusiveScan %261
+OpBranch %269
+%269 = OpLabel
+%279 = OpPhi %6 %278 %268 %59 %267
+OpBranchConditional %277 %270 %266
+%270 = OpLabel
+OpBranch %272
+%272 = OpLabel
+%280 = OpPhi %6 %279 %270 %59 %265
+OpReturnValue %280
 OpFunctionEnd
-%302 = OpFunction %296 None %298
-%299 = OpFunctionParameter %296
-%300 = OpFunctionParameter %6
-%301 = OpFunctionParameter %51
+%295 = OpFunction %289 None %291
+%292 = OpFunctionParameter %289
+%293 = OpFunctionParameter %6
+%294 = OpFunctionParameter %51
+%296 = OpLabel
+OpSelectionMerge %304 None
+OpBranchConditional %294 %304 %303
 %303 = OpLabel
-%304 = OpUndef %296
-OpSelectionMerge %311 None
-OpBranchConditional %301 %311 %310
-%310 = OpLabel
-%312 = OpGroupNonUniformBallot %6 %68 %69
-%313 = OpBitwiseAnd %6 %312 %300
-OpBranch %305
-%305 = OpLabel
-OpLoopMerge %309 %306 None
-OpBranch %306
-%306 = OpLabel
-%314 = OpGroupNonUniformBroadcastFirst %6 %68 %313
-%315 = OpIEqual %52 %313 %314
-%316 = OpAll %51 %315
-OpSelectionMerge %308 None
-OpBranchConditional %316 %307 %308
-%307 = OpLabel
-%317 = OpGroupNonUniformBitwiseAnd %296 %68 ExclusiveScan %299
-OpBranch %308
-%308 = OpLabel
-%318 = OpPhi %296 %317 %307 %304 %306
-OpBranchConditional %316 %309 %305
-%309 = OpLabel
-OpBranch %311
-%311 = OpLabel
-%319 = OpPhi %296 %318 %309 %304 %303
-OpReturnValue %319
+%305 = OpGroupNonUniformBallot %6 %68 %69
+%306 = OpBitwiseAnd %6 %305 %293
+OpBranch %298
+%298 = OpLabel
+OpLoopMerge %302 %299 None
+OpBranch %299
+%299 = OpLabel
+%307 = OpGroupNonUniformBroadcastFirst %6 %68 %306
+%308 = OpIEqual %52 %306 %307
+%309 = OpAll %51 %308
+OpSelectionMerge %301 None
+OpBranchConditional %309 %300 %301
+%300 = OpLabel
+%310 = OpGroupNonUniformBitwiseAnd %289 %68 ExclusiveScan %292
+OpBranch %301
+%301 = OpLabel
+%311 = OpPhi %289 %310 %300 %297 %299
+OpBranchConditional %309 %302 %298
+%302 = OpLabel
+OpBranch %304
+%304 = OpLabel
+%312 = OpPhi %289 %311 %302 %297 %296
+OpReturnValue %312
 OpFunctionEnd
-%341 = OpFunction %335 None %337
-%338 = OpFunctionParameter %335
-%339 = OpFunctionParameter %6
-%340 = OpFunctionParameter %51
+%334 = OpFunction %328 None %330
+%331 = OpFunctionParameter %328
+%332 = OpFunctionParameter %6
+%333 = OpFunctionParameter %51
+%335 = OpLabel
+OpSelectionMerge %343 None
+OpBranchConditional %333 %343 %342
 %342 = OpLabel
-%343 = OpUndef %335
-OpSelectionMerge %350 None
-OpBranchConditional %340 %350 %349
-%349 = OpLabel
-%351 = OpGroupNonUniformBallot %6 %68 %69
-%352 = OpBitwiseAnd %6 %351 %339
-OpBranch %344
-%344 = OpLabel
-OpLoopMerge %348 %345 None
-OpBranch %345
-%345 = OpLabel
-%353 = OpGroupNonUniformBroadcastFirst %6 %68 %352
-%354 = OpIEqual %52 %352 %353
-%355 = OpAll %51 %354
-OpSelectionMerge %347 None
-OpBranchConditional %355 %346 %347
-%346 = OpLabel
-%356 = OpGroupNonUniformBitwiseXor %335 %68 ExclusiveScan %338
-OpBranch %347
-%347 = OpLabel
-%357 = OpPhi %335 %356 %346 %343 %345
-OpBranchConditional %355 %348 %344
-%348 = OpLabel
-OpBranch %350
-%350 = OpLabel
-%358 = OpPhi %335 %357 %348 %343 %342
-OpReturnValue %358
+%344 = OpGroupNonUniformBallot %6 %68 %69
+%345 = OpBitwiseAnd %6 %344 %332
+OpBranch %337
+%337 = OpLabel
+OpLoopMerge %341 %338 None
+OpBranch %338
+%338 = OpLabel
+%346 = OpGroupNonUniformBroadcastFirst %6 %68 %345
+%347 = OpIEqual %52 %345 %346
+%348 = OpAll %51 %347
+OpSelectionMerge %340 None
+OpBranchConditional %348 %339 %340
+%339 = OpLabel
+%349 = OpGroupNonUniformBitwiseXor %328 %68 ExclusiveScan %331
+OpBranch %340
+%340 = OpLabel
+%350 = OpPhi %328 %349 %339 %336 %338
+OpBranchConditional %348 %341 %337
+%341 = OpLabel
+OpBranch %343
+%343 = OpLabel
+%351 = OpPhi %328 %350 %341 %336 %335
+OpReturnValue %351
 OpFunctionEnd
 #endif

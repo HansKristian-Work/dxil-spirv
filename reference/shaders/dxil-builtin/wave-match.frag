@@ -101,6 +101,7 @@ OpDecorate %13 Location 0
 %19 = OpConstant %5 40
 %20 = OpTypeVector %5 4
 %23 = OpTypeFunction %20 %5 %17
+%33 = OpUndef %20
 %35 = OpConstant %5 3
 %47 = OpTypeFloat 32
 %63 = OpConstant %5 20
@@ -182,7 +183,6 @@ OpFunctionEnd
 %27 = OpLabel
 OpBranch %28
 %28 = OpLabel
-%33 = OpUndef %20
 OpSelectionMerge %32 None
 OpBranchConditional %25 %32 %31
 %31 = OpLabel

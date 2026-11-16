@@ -72,12 +72,12 @@ OpDecorate %15 BuiltIn WorldRayOriginKHR
 %16 = OpTypePointer Input %5
 %18 = OpTypeInt 32 0
 %19 = OpConstant %18 0
+%22 = OpUndef %6
 %24 = OpConstant %18 1
 %28 = OpConstant %18 2
 %31 = OpTypePointer IncomingRayPayloadKHR %6
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%22 = OpUndef %6
 OpBranch %33
 %33 = OpLabel
 %17 = OpAccessChain %16 %15 %19

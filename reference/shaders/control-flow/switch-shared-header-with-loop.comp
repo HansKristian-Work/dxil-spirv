@@ -7,12 +7,9 @@ void main()
 {
     if (!(gl_GlobalInvocationID.y == 0u))
     {
-        uint _23;
-        uint _43 = 0u;
-        uint _22;
+        uint _22 = 0u;
         for (;;)
         {
-            _22 = _43;
             switch (gl_GlobalInvocationID.x)
             {
                 case 0u:
@@ -36,14 +33,14 @@ void main()
                     break;
                 }
             }
-            _23 = _22 + 1u;
+            uint _23 = _22 + 1u;
             if (_23 == gl_GlobalInvocationID.y)
             {
                 break;
             }
             else
             {
-                _43 = _23;
+                _22 = _23;
                 continue;
             }
         }
@@ -57,7 +54,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 58
+; Bound: 57
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -89,7 +86,6 @@ OpDecorate %12 BuiltIn GlobalInvocationId
 %42 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%43 = OpVariable %42 Function
 OpBranch %44
 %44 = OpLabel
 %9 = OpLoad %6 %8
@@ -101,10 +97,9 @@ OpBranch %44
 OpSelectionMerge %55 None
 OpBranchConditional %21 %55 %45
 %45 = OpLabel
-OpStore %43 %15
 OpBranch %46
 %46 = OpLabel
-%22 = OpLoad %5 %43
+%22 = OpPhi %5 %15 %45 %23 %53
 OpLoopMerge %54 %53 None
 OpBranch %47
 %47 = OpLabel
@@ -135,15 +130,11 @@ OpBranch %52
 OpImageWrite %9 %36 %39 NonPrivateTexel
 OpBranch %52
 %52 = OpLabel
+OpBranch %53
+%53 = OpLabel
 %23 = OpIAdd %5 %22 %18
 %40 = OpIEqual %20 %23 %19
-OpSelectionMerge %57 None
-OpBranchConditional %40 %54 %53
-%57 = OpLabel
-OpUnreachable
-%53 = OpLabel
-OpStore %43 %23
-OpBranch %46
+OpBranchConditional %40 %54 %46
 %54 = OpLabel
 OpBranch %55
 %55 = OpLabel

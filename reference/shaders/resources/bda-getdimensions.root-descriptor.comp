@@ -70,9 +70,9 @@ OpDecorate %20 Block
 %20 = OpTypeStruct %19
 %21 = OpTypePointer PhysicalStorageBuffer %20
 %23 = OpTypePointer PhysicalStorageBuffer %5
+%25 = OpUndef %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%25 = OpUndef %5
 OpBranch %28
 %28 = OpLabel
 %11 = OpAccessChain %10 %9 %12

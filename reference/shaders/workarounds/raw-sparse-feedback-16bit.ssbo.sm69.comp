@@ -177,6 +177,7 @@ OpDecorate %35 BuiltIn GlobalInvocationId
 %64 = OpTypePointer StorageBuffer %11
 %81 = OpConstant %5 1
 %83 = OpTypeVector %5 4
+%85 = OpUndef %83
 %93 = OpConstant %5 40
 %95 = OpConstant %5 10
 %97 = OpTypePointer StorageBuffer %5
@@ -189,7 +190,6 @@ OpDecorate %35 BuiltIn GlobalInvocationId
 %127 = OpConstant %5 6
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%85 = OpUndef %83
 OpBranch %140
 %140 = OpLabel
 %37 = OpAccessChain %36 %35 %38

@@ -6,16 +6,16 @@ uint _11 = 0u;
 void main()
 {
     _11 = uint(0u == uint(gl_SampleMaskIn[0u]));
-    float _30;
+    float _25;
     if ((_11 & 1u) != 0u)
     {
-        _30 = 2.0;
+        _25 = 2.0;
     }
     else
     {
-        _30 = 1.0;
+        _25 = 1.0;
     }
-    SV_Target = dFdxFine(_30);
+    SV_Target = dFdxFine(_25);
 }
 
 
@@ -57,7 +57,6 @@ OpDecorate %15 Flat
 %29 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%30 = OpVariable %29 Function
 OpBranch %31
 %31 = OpLabel
 %17 = OpAccessChain %16 %15 %9
@@ -71,15 +70,13 @@ OpStore %11 %21
 OpSelectionMerge %34 None
 OpBranchConditional %24 %33 %32
 %32 = OpLabel
-OpStore %30 %27
 OpBranch %34
 %33 = OpLabel
-OpStore %30 %26
 OpBranch %34
 %34 = OpLabel
+%25 = OpPhi %5 %26 %33 %27 %32
 OpBranch %35
 %35 = OpLabel
-%25 = OpLoad %5 %30
 %28 = OpDPdxFine %5 %25
 OpStore %7 %28
 OpReturn

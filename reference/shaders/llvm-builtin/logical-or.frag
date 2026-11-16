@@ -5,16 +5,16 @@ layout(location = 0) out float SV_Target;
 
 void main()
 {
-    float _31;
+    float _29;
     if (isnan(A.x))
     {
-        _31 = A.z;
+        _29 = A.z;
     }
     else
     {
-        _31 = isnan(A.y) ? A.z : A.w;
+        _29 = isnan(A.y) ? A.z : A.w;
     }
-    SV_Target = _31;
+    SV_Target = _29;
 }
 
 
@@ -53,7 +53,6 @@ OpDecorate %10 Location 0
 %30 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%31 = OpVariable %30 Function
 OpBranch %32
 %32 = OpLabel
 %12 = OpAccessChain %11 %8 %14
@@ -70,15 +69,13 @@ OpBranchConditional %20 %34 %33
 %26 = OpLoad %5 %24
 %27 = OpIsNan %19 %26
 %28 = OpSelect %5 %27 %18 %23
-OpStore %31 %28
 OpBranch %35
 %34 = OpLabel
-OpStore %31 %18
 OpBranch %35
 %35 = OpLabel
+%29 = OpPhi %5 %18 %34 %28 %33
 OpBranch %36
 %36 = OpLabel
-%29 = OpLoad %5 %31
 OpStore %10 %29
 OpReturn
 OpFunctionEnd

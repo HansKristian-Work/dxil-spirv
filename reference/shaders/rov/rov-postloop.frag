@@ -22,14 +22,14 @@ void main()
 {
     uint _23 = uint(gl_FragCoord.x);
     uint _24 = uint(gl_FragCoord.y);
-    uint _61 = 0u;
+    uint _25 = 0u;
     uint _26;
     bool _45;
     for (;;)
     {
         vec4 _27 = imageLoad(_9, ivec2(uvec2(_23, _24)));
         imageStore(_9, ivec2(uvec2(_23, _24)), vec4(_27.x + 1.0, _27.y + 2.0, _27.z + 3.0, _27.w + 4.0));
-        _26 = _61 + 1u;
+        _26 = _25 + 1u;
         _45 = _26 == 4u;
         if (_45)
         {
@@ -37,7 +37,7 @@ void main()
         }
         else
         {
-            _61 = _26;
+            _25 = _26;
             continue;
         }
     }
@@ -53,7 +53,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 69
+; Bound: 67
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -97,7 +97,6 @@ OpDecorate %12 BuiltIn FragCoord
 %60 = OpTypePointer Function %17
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%61 = OpVariable %60 Function
 OpBranch %62
 %62 = OpLabel
 %13 = OpLoad %6 %9
@@ -108,10 +107,9 @@ OpBranch %62
 %22 = OpLoad %5 %20
 %23 = OpConvertFToU %17 %19
 %24 = OpConvertFToU %17 %22
-OpStore %61 %18
 OpBranch %63
 %63 = OpLabel
-%25 = OpLoad %17 %61
+%25 = OpPhi %17 %18 %62 %26 %64
 %29 = OpCompositeConstruct %28 %23 %24
 %27 = OpImageRead %10 %13 %29 NonPrivateTexel
 %30 = OpCompositeExtract %5 %27 0
@@ -127,19 +125,13 @@ OpBranch %63
 OpImageWrite %13 %42 %43 NonPrivateTexel
 %26 = OpIAdd %17 %25 %21
 %45 = OpIEqual %44 %26 %46
-OpLoopMerge %66 %65 None
+OpLoopMerge %65 %64 None
 OpBranch %64
 %64 = OpLabel
-OpSelectionMerge %68 None
-OpBranchConditional %45 %66 %65
-%68 = OpLabel
-OpUnreachable
+OpBranchConditional %45 %65 %63
 %65 = OpLabel
-OpStore %61 %26
-OpBranch %63
+OpBranch %66
 %66 = OpLabel
-OpBranch %67
-%67 = OpLabel
 %48 = OpCompositeConstruct %28 %23 %24
 OpBeginInvocationInterlockEXT
 %47 = OpImageRead %10 %14 %48 MakeTexelVisible|NonPrivateTexel %49

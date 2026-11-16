@@ -33,19 +33,19 @@ void main()
     coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _52;
     coopMatLoad(_52, _20._m0, 1056u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
     _33[1u] = _52;
-    uint _203 = 2u;
+    uint _54 = 2u;
     uint _55;
     bool _115;
     for (;;)
     {
-        uint _56 = _203 << 5u;
+        uint _56 = _54 << 5u;
         coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _58;
         coopMatLoad(_58, _20._m0, _56, 64u, gl_CooperativeMatrixLayoutRowMajor);
-        _29[_203] = _58;
+        _29[_54] = _58;
         coopmat<floate4m3_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _89;
         coopMatLoad(_89, _20._m0, _56 + 1024u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
-        _33[_203] = _89;
-        _55 = _203 + 1u;
+        _33[_54] = _89;
+        _55 = _54 + 1u;
         _115 = _55 == 5u;
         if (_115)
         {
@@ -53,20 +53,20 @@ void main()
         }
         else
         {
-            _203 = _55;
+            _54 = _55;
             continue;
         }
     }
     coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _127 = coopMatMulAdd(_29[1u], _33[1u], coopMatMulAdd(_29[0u], _33[0u], coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0.0), 0), 0);
-    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _200 = _127;
-    uint _202 = 2u;
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _128 = _127;
+    uint _130 = 2u;
     uint _131;
     coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _196;
     bool _197;
     for (;;)
     {
-        _196 = coopMatMulAdd(_29[_202], _33[_202], _200, 0);
-        _131 = _202 + 1u;
+        _196 = coopMatMulAdd(_29[_130], _33[_130], _128, 0);
+        _131 = _130 + 1u;
         _197 = _131 == 5u;
         if (_197)
         {
@@ -74,8 +74,8 @@ void main()
         }
         else
         {
-            _200 = _196;
-            _202 = _131;
+            _128 = _196;
+            _130 = _131;
             continue;
         }
     }
@@ -89,7 +89,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 216
+; Bound: 213
 ; Schema: 0
 OpCapability Shader
 OpCapability Int8
@@ -169,9 +169,6 @@ OpDecorate %24 NonReadable
 %201 = OpTypePointer Function %2
 %14 = OpFunction %12 None %13
 %15 = OpLabel
-%200 = OpVariable %199 Function
-%202 = OpVariable %201 Function
-%203 = OpVariable %201 Function
 OpBranch %204
 %204 = OpLabel
 %36 = OpAccessChain %35 %20 %3 %3
@@ -190,10 +187,9 @@ OpStore %49 %48
 %52 = OpCooperativeMatrixLoadKHR %8 %50 %7 %37 NonPrivatePointer
 %53 = OpAccessChain %44 %33 %7
 OpStore %53 %52
-OpStore %203 %10
 OpBranch %205
 %205 = OpLabel
-%54 = OpLoad %2 %203
+%54 = OpPhi %2 %10 %204 %55 %206
 %56 = OpShiftLeftLogical %2 %54 %25
 %57 = OpAccessChain %35 %20 %3 %56
 %58 = OpCooperativeMatrixLoadKHR %5 %57 %3 %37 NonPrivatePointer
@@ -238,16 +234,12 @@ OpStore %92 %89
 %112 = OpIAdd %2 %85 %111
 %55 = OpIAdd %2 %54 %7
 %115 = OpIEqual %114 %55 %25
-OpLoopMerge %208 %207 None
+OpLoopMerge %207 %206 None
 OpBranch %206
 %206 = OpLabel
-OpSelectionMerge %214 None
-OpBranchConditional %115 %208 %207
-%214 = OpLabel
-OpUnreachable
+OpBranchConditional %115 %207 %205
 %207 = OpLabel
-OpStore %203 %55
-OpBranch %205
+OpBranch %208
 %208 = OpLabel
 %118 = OpAccessChain %39 %29 %3
 %119 = OpLoad %5 %118
@@ -259,12 +251,10 @@ OpBranch %205
 %125 = OpAccessChain %44 %33 %7
 %126 = OpLoad %8 %125
 %127 = OpCooperativeMatrixMulAddKHR %11 %124 %126 %122
-OpStore %200 %127
-OpStore %202 %10
 OpBranch %209
 %209 = OpLabel
-%130 = OpLoad %2 %202
-%128 = OpLoad %11 %200
+%128 = OpPhi %11 %127 %208 %196 %210
+%130 = OpPhi %2 %10 %208 %131 %210
 %132 = OpIMul %2 %130 %60
 %133 = OpIAdd %2 %3 %132
 %134 = OpAccessChain %39 %29 %130
@@ -304,20 +294,13 @@ OpBranch %209
 %196 = OpCooperativeMatrixMulAddKHR %11 %135 %167 %128
 %131 = OpIAdd %2 %130 %7
 %197 = OpIEqual %114 %131 %25
-OpLoopMerge %212 %211 None
+OpLoopMerge %211 %210 None
 OpBranch %210
 %210 = OpLabel
-OpSelectionMerge %215 None
-OpBranchConditional %197 %212 %211
-%215 = OpLabel
-OpUnreachable
+OpBranchConditional %197 %211 %209
 %211 = OpLabel
-OpStore %200 %196
-OpStore %202 %131
-OpBranch %209
+OpBranch %212
 %212 = OpLabel
-OpBranch %213
-%213 = OpLabel
 %198 = OpAccessChain %35 %24 %3 %3
 OpCooperativeMatrixStoreKHR %198 %196 %7 %37 NonPrivatePointer
 OpReturn

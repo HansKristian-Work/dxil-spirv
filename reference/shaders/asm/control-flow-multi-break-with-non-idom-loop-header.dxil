@@ -27,7 +27,7 @@ uint _getBranchTarget_YAII_Z(uint _26)
 void main()
 {
     uint _33;
-    bool _80;
+    bool _81;
     uint _32 = 0u;
     for (;;)
     {
@@ -36,10 +36,9 @@ void main()
         _32++;
         _33 = 18u;
         _someFn_YAXI_Z(_33);
-        _80 = _84;
         if (_getBranchTarget_YAII_Z(_33) == 20u)
         {
-            _80 = false;
+            _81 = false;
             break;
         }
         _33 = 21u;
@@ -50,30 +49,30 @@ void main()
             _someFn_YAXI_Z(_33);
             if (_getBranchTarget_YAII_Z(_33) == 30u)
             {
-                _80 = true;
+                _81 = true;
                 break;
             }
             _33 = 43u;
             _someFn_YAXI_Z(_33);
             if (_getBranchTarget_YAII_Z(_33) == 30u)
             {
-                _80 = true;
+                _81 = true;
                 break;
             }
         }
         _33 = 32u;
         _someFn_YAXI_Z(_33);
-        _80 = false;
         if (int(_32) < int(99u))
         {
             continue;
         }
         else
         {
+            _81 = false;
             break;
         }
     }
-    if (_80)
+    if (_81)
     {
         _33 = 30u;
         _someFn_YAXI_Z(_33);
@@ -153,7 +152,6 @@ OpDecorate %13 NonWritable
 %4 = OpLabel
 %32 = OpVariable %31 Function
 %33 = OpVariable %31 Function
-%80 = OpVariable %79 Function
 OpBranch %85
 %85 = OpLabel
 OpStore %32 %18
@@ -174,7 +172,6 @@ OpStore %33 %39
 %42 = OpLoad %5 %33
 %43 = OpFunctionCall %5 %27 %42
 %45 = OpIEqual %44 %43 %46
-OpStore %80 %84
 OpSelectionMerge %88 None
 OpBranchConditional %45 %96 %88
 %88 = OpLabel
@@ -207,10 +204,8 @@ OpBranchConditional %66 %92 %91
 %91 = OpLabel
 OpBranch %94
 %92 = OpLabel
-OpStore %80 %83
 OpBranch %97
 %93 = OpLabel
-OpStore %80 %83
 OpBranch %97
 %94 = OpLabel
 OpBranch %95
@@ -220,13 +215,11 @@ OpStore %33 %53
 %70 = OpFunctionCall %1 %16 %69
 %71 = OpLoad %5 %32
 %72 = OpSLessThan %44 %71 %73
-OpStore %80 %82
 OpBranchConditional %72 %86 %97
 %96 = OpLabel
-OpStore %80 %82
 OpBranch %97
 %97 = OpLabel
-%81 = OpLoad %44 %80
+%81 = OpPhi %44 %82 %96 %83 %93 %83 %92 %82 %95
 OpSelectionMerge %100 None
 OpBranchConditional %81 %98 %99
 %98 = OpLabel

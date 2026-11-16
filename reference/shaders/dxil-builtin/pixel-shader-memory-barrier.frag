@@ -19,17 +19,17 @@ void main()
     uint _38 = imageAtomicExchange(_9, int(_30 + 4294967295u), 0u);
     memoryBarrierBuffer();
     memoryBarrierImage();
-    float _49;
+    float _46;
     if (_38 == 10u)
     {
         uint _44 = imageAtomicExchange(_9, int(18u), 0u);
-        _49 = float(_44);
+        _46 = float(_44);
     }
     else
     {
-        _49 = 0.0;
+        _46 = 0.0;
     }
-    SV_Target = _49;
+    SV_Target = _46;
 }
 
 
@@ -85,7 +85,6 @@ OpDecorate %15 Location 0
 %48 = OpTypePointer Function %13
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%49 = OpVariable %48 Function
 OpBranch %50
 %50 = OpLabel
 %16 = OpLoad %6 %9
@@ -112,18 +111,16 @@ OpMemoryBarrier %28 %29
 OpSelectionMerge %53 None
 OpBranchConditional %40 %52 %51
 %51 = OpLabel
-OpStore %49 %47
 OpBranch %53
 %52 = OpLabel
 %43 = OpImageTexelPointer %25 %9 %42 %20
 %44 = OpAtomicExchange %5 %43 %28 %20 %20
 %45 = OpConvertUToF %13 %44
-OpStore %49 %45
 OpBranch %53
 %53 = OpLabel
+%46 = OpPhi %13 %45 %52 %47 %51
 OpBranch %54
 %54 = OpLabel
-%46 = OpLoad %13 %49
 OpStore %15 %46
 OpReturn
 OpFunctionEnd
