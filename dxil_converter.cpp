@@ -2505,6 +2505,14 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 		unsigned range_size = get_constant_metadata(cbv, 5);
 		unsigned cbv_size = get_constant_metadata(cbv, 6);
 
+		// Declare dynamically indexed CBV with the maximum possible size so that drivers
+		// can't optimize based on the array size, some games rely on OOB indexing here.
+		auto tracking = cbv_access_tracking.find(index);
+		bool dynamically_indexed = false;
+
+		if (tracking != cbv_access_tracking.end())
+			dynamically_indexed = tracking->second.dynamically_indexed_cbv;
+
 		if (bind_register == UINT32_MAX || bind_space == UINT32_MAX)
 		{
 			// This seems to be possible in RT shaders when explicit register() is missing?
@@ -2695,12 +2703,14 @@ bool Converter::Impl::emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *re
 			if (aliased_access.requires_alias_decoration)
 			{
 				ref.var_alias_group = create_ubo_variable_alias_group(
-						aliased_access.raw_declarations, range_size, name, cbv_size);
+						aliased_access.raw_declarations, range_size, name,
+						dynamically_indexed ? 0u : cbv_size);
 			}
 			else
 			{
 				assert(aliased_access.raw_declarations.size() == 1);
-				ref.var_id = create_ubo_variable(aliased_access.raw_declarations.front(), range_size, name, cbv_size);
+				ref.var_id = create_ubo_variable(aliased_access.raw_declarations.front(), range_size, name,
+					dynamically_indexed ? 0u : cbv_size);
 			}
 
 			ref.base_resource_is_array = range_size != 1;
