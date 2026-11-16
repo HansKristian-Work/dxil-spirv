@@ -31,6 +31,8 @@
 #include <algorithm>
 #include <assert.h>
 
+//#define PHI_DEBUG
+
 namespace dxil_spv
 {
 static bool has_store_to_variable(const Vector<Operation *> &operations, spv::Id id)
@@ -791,15 +793,575 @@ void CFGStructurizer::filter_outer_idom_candidates(Vector<CFGNode *> &outer_idom
 	}
 }
 
+void CFGStructurizer::analyze_ssa_variable_access()
+{
+	for (auto *node : forward_post_visit_order)
+	{
+		for (auto &op : node->ir.operations)
+		{
+			if ((op->op == spv::OpLoad || op->op == spv::OpStore) && (op->flags & Operation::SSALoadStore) != 0)
+			{
+				auto &mapping = ssa_variable_access[op->argument(0)];
+				if (op->op == spv::OpLoad)
+				{
+					push_back_unique(mapping.readers, node);
+					mapping.type_id = op->type_id;
+				}
+				else
+				{
+					push_back_unique(mapping.writers, node);
+				}
+			}
+		}
+	}
+}
+
+bool CFGStructurizer::path_is_purely_through_helper_blocks(CFGNode *node, CFGNode *target)
+{
+	if (target->helper)
+		return node->reaches_direct_helper(target);
+	else if (target->immediate_dominator)
+		return node->reaches_direct_helper(target->immediate_dominator);
+	else
+		return false;
+}
+
+CFGNode *CFGStructurizer::find_forward_progress_dominance_frontier(
+		CFGNode *node, CFGNode *reader_idom, bool allow_user_blocks_on_path_to_frontier)
+{
+	CFGNode *candidate = nullptr;
+
+	for (auto *df : node->dominance_frontier)
+	{
+		// Any frontier we ponder must never be a user block.
+		if (!df->helper)
+			continue;
+
+		// Find at least one path from node to frontier that does not execute user blocks.
+		bool allow = allow_user_blocks_on_path_to_frontier || path_is_purely_through_helper_blocks(node, df);
+		if (allow && !path_is_purely_through_helper_blocks(df, reader_idom))
+			allow = false;
+
+		if (allow)
+		{
+			// Need to have one unique candidate, otherwise the algorithm is not working as intended.
+			if (candidate)
+				return nullptr;
+			else
+				candidate = df;
+		}
+	}
+
+	return candidate;
+}
+
+bool CFGStructurizer::phi_frontiers_converge(
+		const Vector<CFGNode *> &writers, CFGNode *reader_idom,
+		Vector<CFGNode *> &frontiers)
+{
+	auto path = writers;
+	bool progress = true;
+
+	while (progress)
+	{
+		progress = false;
+		for (auto itr = path.begin(); itr != path.end(); )
+		{
+			auto *node = *itr;
+
+			if (node->dominates(reader_idom))
+			{
+				// We might be strictly dominating another frontier, in which case we can eliminate this block.
+				bool dominates_other_frontier = false;
+				for (auto *front : frontiers)
+				{
+					if (node != front && node->dominates(front))
+					{
+						dominates_other_frontier = true;
+						break;
+					}
+				}
+
+				if (dominates_other_frontier)
+				{
+					*itr = path.back();
+					path.pop_back();
+				}
+				else
+				{
+					// This is a candidate. Keep it around and hope it is the only remaining block.
+					++itr;
+				}
+			}
+			else
+			{
+				// There must be one code path that only traverses through helper blocks.
+				// Once we've written an SSA variable, we only consider paths
+				// that can reach reader_idom without traversing through user blocks.
+				// If SSA dominance is broken, this may not hold since there may be user code in between,
+				// but we're okay using OpVariable in that case.
+				// In first pass, allow non-helper code before reaching DF. After that, we must never execute user nodes on the way.
+				auto *df = find_forward_progress_dominance_frontier(node, reader_idom,
+				                                                    has_element(writers, node));
+
+#ifdef PHI_DEBUG
+				LOGI("Forward progress DF %s -> %s = %s\n",
+				     node->name.c_str(),
+				     reader_idom->name.c_str(), df ? df->name.c_str() : "null");
+#endif
+
+				if (has_element(frontiers, df))
+				{
+					// Already seen it, collapse.
+					*itr = path.back();
+					path.pop_back();
+				}
+				else if (df)
+				{
+					// New block, keep going.
+					*itr = df;
+					progress = true;
+					frontiers.push_back(df);
+				}
+				else
+				{
+					// Not making forward progress. Shouldn't normally happen, but bail if we do.
+					// Can keep the OpVariable if need be.
+					return false;
+				}
+			}
+		}
+	}
+
+	bool valid = !frontiers.empty() && path.size() == 1 && path.front()->dominates(reader_idom);
+
+	if (valid)
+	{
+		// Resolve frontiers top to bottom.
+		std::sort(frontiers.begin(), frontiers.end(), [](const CFGNode *a, const CFGNode *b)
+		{
+			return a->forward_post_visit_order > b->forward_post_visit_order;
+		});
+
+		// The final frontier must dominate reader.
+		valid = frontiers.back()->dominates(reader_idom);
+	}
+	return valid;
+}
+
+PHI *CFGStructurizer::insert_phi_frontiers(const Vector<CFGNode *> &frontiers, PHI &phi)
+{
+	// This is mostly a check for control flow variables where we assign a default value at the top node.
+	bool well_defined_on_all_paths = false;
+	PHI *inserted_phi = nullptr;
+
+	for (auto &incoming : phi.incoming)
+	{
+		if (incoming.block->dominates(frontiers.back()))
+		{
+			well_defined_on_all_paths = true;
+			break;
+		}
+	}
+
+	for (auto *frontier : frontiers)
+	{
+		PHI frontier_phi;
+
+		if (frontier == frontiers.back())
+			frontier_phi.id = phi.id;
+		else
+			frontier_phi.id = module.allocate_id();
+
+		frontier_phi.type_id = phi.type_id;
+		frontier_phi.relaxed = phi.relaxed;
+
+		const auto find_incoming_dominator = [&](const CFGNode *node)
+		{
+			auto candidate = phi.incoming.end();
+
+			for (auto itr = phi.incoming.begin(); itr != phi.incoming.end(); ++itr)
+			{
+				if (itr->block->dominates(node))
+				{
+					if (candidate != phi.incoming.end())
+					{
+						// Conflict, need to validate.
+
+						if (candidate->block->dominates(itr->block))
+						{
+							// This is the closer candidate. Pick itr.
+						}
+						else if (itr->block->dominates(candidate->block))
+						{
+							// We have a closer candidate already.
+							continue;
+						}
+						else
+						{
+							LOGE("Multiple dominators without dominance relationship ... ?\n");
+							abort();
+						}
+					}
+
+					candidate = itr;
+				}
+			}
+
+			return candidate;
+		};
+
+		const auto consumes_incoming_value = [&](CFGNode *incoming)
+		{
+			for (auto itr = frontiers.rbegin(); itr != frontiers.rend(); ++itr)
+			{
+				auto *later_frontier = *itr;
+				if (frontier == later_frontier)
+					break;
+
+				// If we either dominate frontier, or frontier is in the DF,
+				// we're guaranteed to dominate at least one predecessor of frontier.
+
+				// If the incoming block is a stronger block for a subsequent frontier,
+				// we have a false positive here, and we should just insert undef.
+				// We're likely resolving selection levels that have nothing to do with the target path we have in mind.
+				// If the dominance and frontier states match, we consume the incoming block.
+				// This can happen for stacked selection levels since every level dominates the subsequent level.
+				if ((incoming->dominates(later_frontier) &&
+				     !frontier->dominates(later_frontier)) ||
+				    (has_element(incoming->dominance_frontier, later_frontier) &&
+				     !has_element(frontier->dominance_frontier, later_frontier)))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		};
+
+		for (auto *pred : frontier->pred)
+		{
+			auto incoming_itr = find_incoming_dominator(pred);
+			bool has_incoming = incoming_itr != phi.incoming.end();
+
+			// Check for false positives. If this path doesn't meaningfully create a value, we use undef inputs.
+			if (has_incoming)
+				if (!well_defined_on_all_paths && !consumes_incoming_value(incoming_itr->block))
+					has_incoming  = false;
+
+			IncomingValue incoming = {};
+			incoming.block = pred;
+			incoming.id = has_incoming ? incoming_itr->id : module.get_builder().createUndefinedConstant(phi.type_id);
+			frontier_phi.incoming.push_back(incoming);
+
+#ifdef PHI_DEBUG
+			if (has_incoming)
+			{
+				LOGI("Frontier %s, pred %s, forwarding %s, value %u\n",
+				     frontier->name.c_str(),
+				     pred->name.c_str(),
+				     incoming_itr->block->name.c_str(), incoming_itr->id);
+			}
+			else
+			{
+				LOGI("Frontier %s, pred %s, undef\n",
+					 frontier->name.c_str(),
+					 pred->name.c_str());
+			}
+#endif
+		}
+
+		// It's possible all paths take the same value. Just replace the frontier with the constant instead.
+		// A loop header always needs a proper PHI since we may need to poke at it further.
+		bool degenerate_phi = frontier->pred_back_edge == nullptr;
+		for (auto &incoming : frontier_phi.incoming)
+		{
+			if (incoming.id != frontier_phi.incoming.front().id)
+			{
+				degenerate_phi = false;
+				break;
+			}
+		}
+
+		const auto is_constant = [&](spv::Id id)
+		{
+			auto *inst = module.get_builder().getInstruction(id);
+			return inst && module.get_builder().isConstantOpCode(inst->getOpCode());
+		};
+
+		if (degenerate_phi)
+			degenerate_phi = is_constant(frontier_phi.incoming.front().id);
+
+		IncomingValue frontier_incoming = {};
+		frontier_incoming.block = frontier;
+		frontier_incoming.id = frontier_phi.id;
+		if (degenerate_phi)
+			frontier_incoming.id = frontier_phi.incoming.front().id;
+
+		if (frontier == frontiers.back() && degenerate_phi)
+		{
+			// We cannot defer creating a value now. Just copy the object with new ID.
+			auto *copy_object = module.allocate_op(spv::OpCopyObject, frontier_phi.id, frontier_phi.type_id);
+			copy_object->add_id(frontier_phi.incoming.front().id);
+			frontier->ir.operations.insert(frontier->ir.operations.begin(), copy_object);
+		}
+
+		if (!degenerate_phi)
+		{
+			frontier->ir.phi.push_back(std::move(frontier_phi));
+			inserted_phi = &frontier->ir.phi.back();
+		}
+
+		phi.incoming.push_back(frontier_incoming);
+	}
+
+	return inserted_phi;
+}
+
+spv::Id CFGStructurizer::rewrite_local_variable_to_phi(spv::Id variable_id, const SSAVariableAccess &accesses,
+                                                       const Vector<CFGNode *> &frontiers,
+                                                       spv::Id back_edge_incoming_id)
+{
+	// We're good. Replace all load-store with PHI.
+	PHI phi;
+	phi.type_id = accesses.type_id;
+	phi.relaxed = module.get_builder().hasDecoration(variable_id, spv::DecorationRelaxedPrecision);
+
+	if (!accesses.readers.empty())
+	{
+		// Eliminate loads and stores.
+		auto *reader = accesses.readers.front();
+		auto itr = std::find_if(reader->ir.operations.begin(), reader->ir.operations.end(),
+		                        [&](const Operation *op)
+		                        {
+			                        return op->op == spv::OpLoad && op->argument(0) == variable_id;
+		                        });
+
+		assert(itr != reader->ir.operations.end());
+		auto *phi_load_op = *itr;
+		reader->ir.operations.erase(itr);
+		phi.id = phi_load_op->id;
+		module.get_builder().replaceNameTarget(variable_id, phi_load_op->id);
+	}
+	else
+	{
+		phi.id = module.allocate_id();
+	}
+
+	for (auto *writer : accesses.writers)
+	{
+		auto itr = std::find_if(writer->ir.operations.begin(), writer->ir.operations.end(),
+		                        [&](const Operation *op)
+		                        {
+			                        return op->op == spv::OpStore && op->argument(0) == variable_id;
+		                        });
+		assert(itr != writer->ir.operations.end());
+		auto *store_op = *itr;
+		writer->ir.operations.erase(itr);
+
+		IncomingValue incoming = {};
+		incoming.block = writer;
+		incoming.id = store_op->argument(1);
+		phi.incoming.push_back(incoming);
+	}
+
+	auto *inserted_phi = insert_phi_frontiers(frontiers, phi);
+
+	// Insert the back-edge incoming value.
+	if (back_edge_incoming_id)
+	{
+		Operation *copy_object_frontier = nullptr;
+		if (!inserted_phi)
+		{
+			assert(!frontiers.back()->ir.operations.empty());
+			copy_object_frontier = frontiers.back()->ir.operations.front();
+			assert(copy_object_frontier->id == phi.id);
+		}
+
+		assert(accesses.readers.size() == 1 && accesses.readers.front()->pred_back_edge);
+		assert(copy_object_frontier || inserted_phi);
+		assert(copy_object_frontier || inserted_phi->id == phi.id);
+		auto *header = accesses.readers.front();
+		auto *back_edge = header->pred_back_edge;
+
+		// It's possible the final frontier was placed before the loop header.
+		// In this case we may need a fixup PHI at the header that takes inserted_phi and combines with back-edge.
+		if (frontiers.back() != header)
+		{
+			PHI combined = {};
+			spv::Id pre_loop_input_id = module.allocate_id();
+
+			if (inserted_phi)
+				inserted_phi->id = pre_loop_input_id;
+			else
+				copy_object_frontier->id = pre_loop_input_id;
+
+			combined.id = phi.id;
+			combined.type_id = phi.type_id;
+			combined.relaxed = phi.relaxed;
+
+			for (auto *pred : header->pred)
+				combined.incoming.push_back({ pred, pre_loop_input_id });
+			combined.incoming.push_back({ back_edge, back_edge_incoming_id });
+
+			header->ir.phi.push_back(std::move(combined));
+		}
+		else
+		{
+			// Adjust in-place.
+			inserted_phi->incoming.push_back({ back_edge, back_edge_incoming_id });
+		}
+	}
+
+	return phi.id;
+}
+
+void CFGStructurizer::reintroduce_ssa_phi()
+{
+	// Using SSA PHI is a good way to "fix" liveness analysis issues.
+	// The fallback to use OpVariable + writing undef is ugly and looks very confusing
+	// when reading the output in SPIRV-Cross.
+
+	// Ensure stable codegen.
+	using Mapping = std::pair<uint32_t, SSAVariableAccess *>;
+	Vector<Mapping> ssa_ids;
+
+	ssa_ids.reserve(ssa_variable_access.size());
+	for (auto &id : ssa_variable_access)
+		ssa_ids.emplace_back(id.first, &id.second);
+
+	std::sort(ssa_ids.begin(), ssa_ids.end(), [](const Mapping &a, const Mapping &b)
+	{
+		return a.first < b.first;
+	});
+
+	// If we're going to use PHI, we need a simple behavior for blocks.
+	// We follow dominance frontiers of the writing blocks, and it should converge in the end
+	// to a block that dominates all uses of the variable.
+	// For loop header PHIs, we need to find convergence to back-edge, and convergence to header.
+	UnorderedSet<spv::Id> eliminated_ids;
+	Vector<CFGNode *> back_edge_frontiers;
+	Vector<CFGNode *> frontiers;
+	SSAVariableAccess pre_loop_access;
+	SSAVariableAccess back_edge_access;
+
+	for (auto &mapping : ssa_ids)
+	{
+		const auto &accesses = *mapping.second;
+		spv::Id id = mapping.first;
+		assert(!accesses.readers.empty());
+
+		CFGNode *reader_idom = accesses.readers.front();
+		for (auto *reader : accesses.readers)
+			reader_idom = CFGNode::find_common_dominator(reader_idom, reader);
+
+		// For now, don't deal with loop PHIs.
+		// Never deal with broken value dominance where there are multiple readers. Keep those as plain variables.
+		if (accesses.readers.size() > 1)
+			continue;
+
+#ifdef PHI_DEBUG
+		LOGI("Inserting phi for %s\n", accesses.readers.front()->name.c_str());
+#endif
+
+		// The final PHI node must be placed in a node that dominates reader_idom.
+		frontiers.clear();
+		back_edge_frontiers.clear();
+
+		const auto check_trivial_frontier = [](const SSAVariableAccess &access, Vector<CFGNode *> &fronts)
+		{
+			if (access.writers.size() == 1 && access.readers.size() == 1 &&
+			    access.writers.front()->dominates(access.readers.front()))
+			{
+				// Trivial PHI with single block which only really happens in fuzzer (it's legal code).
+				// Just fixup the PHI trivially.
+				fronts.push_back(access.readers.front());
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		};
+
+		if (reader_idom->pred_back_edge)
+		{
+			// Loop headers are special, since we have to resolve phis in two places.
+			// Incomings to header block, and one incoming must come from the back-edge.
+			// Fortunately, any preds that should enter the back-edge are dominated by the loop header,
+			// so we can split the analysis in two.
+			pre_loop_access.type_id = accesses.type_id;
+			pre_loop_access.writers.clear();
+			pre_loop_access.readers.clear();
+
+			back_edge_access.type_id = accesses.type_id;
+			back_edge_access.writers.clear();
+			back_edge_access.readers.clear();
+
+			for (auto *writer : accesses.writers)
+			{
+				if (reader_idom->dominates(writer))
+					back_edge_access.writers.push_back(writer);
+				else
+					pre_loop_access.writers.push_back(writer);
+			}
+
+			// Shouldn't happen, but if it does for some reason, bail ...
+			if (back_edge_access.writers.empty())
+				continue;
+
+			pre_loop_access.readers.push_back(reader_idom);
+
+			if (!check_trivial_frontier(pre_loop_access, frontiers) && !phi_frontiers_converge(pre_loop_access.writers, reader_idom, frontiers))
+				continue;
+
+			spv::Id back_edge_incoming_id;
+
+			// If there were multiple back-edges in the original code.
+			// Merging PHI for back-edges is rare.
+			bool non_trivial_back_edge =
+					back_edge_access.writers.size() > 1 ||
+					!back_edge_access.writers.front()->dominates(reader_idom->pred_back_edge);
+
+			if (non_trivial_back_edge)
+			{
+				if (!phi_frontiers_converge(back_edge_access.writers, reader_idom->pred_back_edge, back_edge_frontiers))
+					continue;
+				assert(!has_store_to_variable(reader_idom->pred_back_edge->ir.operations, id));
+				back_edge_incoming_id = rewrite_local_variable_to_phi(id, back_edge_access, back_edge_frontiers, 0);
+			}
+			else
+			{
+				auto &ops = back_edge_access.writers.front()->ir.operations;
+				auto itr = std::find_if(ops.begin(), ops.end(),
+				                        [&](const Operation *op)
+				                        {
+					                        return op->op == spv::OpStore && op->argument(0) == id;
+				                        });
+				assert(itr != ops.end());
+				auto *store_op = *itr;
+				back_edge_incoming_id = store_op->argument(1);
+				ops.erase(itr);
+			}
+
+			rewrite_local_variable_to_phi(id, pre_loop_access, frontiers, back_edge_incoming_id);
+		}
+		else
+		{
+			if (!check_trivial_frontier(accesses, frontiers) && !phi_frontiers_converge(accesses.writers, reader_idom, frontiers))
+				continue;
+			rewrite_local_variable_to_phi(id, accesses, frontiers, 0);
+		}
+
+		eliminated_ids.insert(id);
+	}
+
+	module.get_builder().removeDecorations(eliminated_ids);
+	module.get_builder().removeLocalVariables(eliminated_ids);
+}
+
 void CFGStructurizer::clamp_ssa_variable_lifetimes()
 {
-	UnorderedMap<uint32_t, Vector<CFGNode *>> ssa_variable_to_writers;
-
-	for (auto *node : forward_post_visit_order)
-		for (auto &op : node->ir.operations)
-			if (op->op == spv::OpStore && (op->flags & Operation::SSALoadStore) != 0)
-				push_back_unique(ssa_variable_to_writers[op->argument(0)], node);
-
 	for (auto *node : forward_post_visit_order)
 	{
 		for (auto &op : node->ir.operations)
@@ -2015,6 +2577,22 @@ void CFGStructurizer::cleanup_degenerate_blocks()
 		recompute_cfg();
 }
 
+void CFGStructurizer::build_helper_node_direct_reachability_network()
+{
+	// Want a fast way to determine if we can reach a node through helper nodes only.
+	for (auto *node : forward_post_visit_order)
+	{
+		if (!node->helper)
+			continue;
+
+		node->reachable_direct_helpers.insert(node);
+		for (auto *succ : node->succ)
+			if (succ->helper)
+				for (auto *target : succ->reachable_direct_helpers)
+					node->reachable_direct_helpers.insert(target);
+	}
+}
+
 bool CFGStructurizer::run_structurizer()
 {
 	limited_control_flow_analysis = true;
@@ -2085,6 +2663,16 @@ bool CFGStructurizer::run_structurizer()
 	}
 #endif
 
+	// It's possible SSA dominance is broken as a result of splitting loop scopes and maximal reconvergence.
+	// Fix this up now.
+	fixup_broken_value_dominance();
+
+	analyze_ssa_variable_access();
+	build_helper_node_direct_reachability_network();
+	reintroduce_ssa_phi();
+	clamp_ssa_variable_lifetimes();
+
+	// After dealing with PHI, it's possible we can cleanup some more blocks.
 	cleanup_degenerate_blocks();
 
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
@@ -2094,12 +2682,6 @@ bool CFGStructurizer::run_structurizer()
 		log_cfg_graphviz(graphviz_split.c_str());
 	}
 #endif
-
-	// It's possible SSA dominance is broken as a result of splitting loop scopes and maximal reconvergence.
-	// Fix this up now.
-	fixup_broken_value_dominance();
-
-	clamp_ssa_variable_lifetimes();
 
 	return true;
 }
