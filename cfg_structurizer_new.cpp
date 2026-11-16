@@ -88,7 +88,7 @@ bool CFGStructurizer::ensure_valid_phi_rewrites(CFGNode *node)
 
 		if (ib->ir.terminator.type != Terminator::Type::Branch)
 		{
-			auto *interposing = pool.create_node();
+			auto *interposing = pool.create_helper_node();
 			interposing->interposing = true;
 			interposing->name = node->name + ".interposing." + std::to_string(&incoming - incomings.data()).c_str();
 			interposing->ir.terminator.type = Terminator::Type::Branch;
@@ -337,7 +337,7 @@ void CFGStructurizer::rewrite_complex_loop_successors()
 			}
 			else
 			{
-				auto *back_edge = pool.create_node();
+				auto *back_edge = pool.create_helper_node();
 				back_edge->interposing = true;
 				back_edge->name = node->name + ".back-edge";
 
@@ -363,7 +363,7 @@ void CFGStructurizer::rewrite_complex_loop_successors()
 			// The traversal assumes that once we reach a back-edge we should stop, which breaks things,
 			// and dealing with it inline is too awkward.
 			// Workaround it by creating an interposing branch as always.
-			auto *back_edge = pool.create_node();
+			auto *back_edge = pool.create_helper_node();
 			back_edge->interposing = true;
 			back_edge->name = node->name + ".back-edge";
 			back_edge->ir.terminator.type = Terminator::Type::Branch;
@@ -524,7 +524,7 @@ void CFGStructurizer::rewrite_switch_blocks()
 					return candidate.node == n;
 				}), cases.end());
 
-				current_residual = pool.create_node();
+				current_residual = pool.create_helper_node();
 				current_residual->name = node->name + ".residual";
 
 				current_node->ir.terminator.type = Terminator::Type::Condition;
@@ -950,10 +950,10 @@ void CFGStructurizer::analyze_levels_skippability(CFGNode *node,
 		}
 #endif
 
-		level.input_node = pool.create_node();
+		level.input_node = pool.create_helper_node();
 		level.input_node->name = node->name + ".level.input." + level_str.c_str();
 
-		level.output_node = pool.create_node();
+		level.output_node = pool.create_helper_node();
 		level.output_node->name = node->name + ".level.output." + level_str.c_str();
 
 		for (auto *path: level.paths)
@@ -1245,7 +1245,7 @@ void CFGStructurizer::route_branches(CFGNode *node,
 		}
 #endif
 
-		auto *merge_node = pool.create_node();
+		auto *merge_node = pool.create_helper_node();
 		// Reconvene execution at the merge node.
 		// This is mostly irrelevant, but it avoids special casing some other paths.
 		merge_node->name = node->name + ".merge";
@@ -1281,7 +1281,7 @@ void CFGStructurizer::route_branches(CFGNode *node,
 
 		CFGNode *merge_node = nullptr;
 		if (true_non_trivial && false_non_trivial)
-			merge_node = pool.create_node();
+			merge_node = pool.create_helper_node();
 
 		// Cannot declare both selection merge and loop merge in same block.
 		// There is a risk that we may have to force a selection merge after resolving branches, so be conservative for now.
@@ -1410,7 +1410,7 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		organize_levels(node, outer_idom, outer_levels, out_loop_levels, nullptr, true);
 		analyze_levels_skippability(node, outer_levels, out_loop_levels);
 
-		auto *merge_node = pool.create_node();
+		auto *merge_node = pool.create_helper_node();
 		merge_node->name = node->name + ".loop-merge";
 		node->ir.merge_info.merge_type = MergeType::Loop;
 		node->ir.merge_info.continue_block = node->pred_back_edge;
@@ -1486,7 +1486,7 @@ CFGNode *CFGStructurizer::route_conditional_break(CFGNode *node, spv::Id var_id,
 	load_op->add_id(var_id);
 	node->ir.operations.push_back(load_op);
 
-	auto *merge = pool.create_node();
+	auto *merge = pool.create_helper_node();
 	merge->name = node->name + tag;
 
 	node->add_branch(break_candidate);
@@ -1852,7 +1852,7 @@ bool CFGStructurizer::select_path(CFGNode *node, const SerializationLevel *level
 
 	if (level || outer_continue)
 	{
-		auto *interposing = pool.create_node();
+		auto *interposing = pool.create_helper_node();
 		interposing->name = node->name + tag;
 		interposing->ir.terminator.type = Terminator::Type::Branch;
 		interposing->ir.terminator.direct_block = path;

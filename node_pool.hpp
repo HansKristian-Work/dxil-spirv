@@ -40,6 +40,7 @@ public:
 	~CFGNodePool();
 
 	CFGNode *create_node();
+	CFGNode *create_helper_node();
 
 	template <typename Op>
 	void for_each_node(const Op &op)

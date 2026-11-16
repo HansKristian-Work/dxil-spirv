@@ -44,4 +44,11 @@ CFGNode *CFGNodePool::create_node()
 	return ret;
 }
 
+CFGNode *CFGNodePool::create_helper_node()
+{
+	auto *node = create_node();
+	node->helper = true;
+	return node;
+}
+
 } // namespace dxil_spv
