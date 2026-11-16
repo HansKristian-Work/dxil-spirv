@@ -26,23 +26,29 @@ void main()
     vec4 _27 = imageLoad(_10, ivec2(uvec2(_25, _26)));
     imageStore(_10, ivec2(uvec2(_25, _26)), vec4(_27.x + 1.0, _27.y + 2.0, _27.z + 3.0, _27.w + 4.0));
     SPIRV_Cross_beginInvocationInterlock();
-    bool _92 = false;
+    bool _94;
     if (gl_FragCoord.x < 10.0)
     {
         vec4 _60 = imageLoad(_8, ivec2(uvec2(_25, _26)));
         imageStore(_8, ivec2(uvec2(_25, _26)), vec4(_60.x + 1.0, _60.y + 2.0, _60.z + 3.0, _60.w + 4.0));
-        if (!(imageLoad(_10, ivec2(uvec2(_25, _26))).z > 100.0))
+        bool _96;
+        if (imageLoad(_10, ivec2(uvec2(_25, _26))).z > 100.0)
         {
-            _92 = true;
+            _96 = false;
         }
+        else
+        {
+            _96 = true;
+        }
+        _94 = _96;
     }
     else
     {
         vec4 _47 = imageLoad(_9, ivec2(uvec2(_25, _26)));
         imageStore(_9, ivec2(uvec2(_25, _26)), vec4(_47.x + 1.0, _47.y + 2.0, _47.z + 3.0, _47.w + 4.0));
-        _92 = true;
+        _94 = true;
     }
-    if (_92)
+    if (_94)
     {
         uint _77 = _25 ^ 1u;
         uint _78 = _26 ^ 1u;
@@ -58,7 +64,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 105
+; Bound: 106
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -108,9 +114,8 @@ OpDecorate %13 BuiltIn FragCoord
 %95 = OpConstantTrue %44
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%92 = OpVariable %91 Function
-OpBranch %96
-%96 = OpLabel
+OpBranch %97
+%97 = OpLabel
 %14 = OpLoad %6 %10
 %15 = OpLoad %6 %9
 %16 = OpLoad %6 %8
@@ -135,10 +140,9 @@ OpBranch %96
 OpImageWrite %14 %42 %43 NonPrivateTexel
 %45 = OpFOrdLessThan %44 %21 %46
 OpBeginInvocationInterlockEXT
-OpStore %92 %93
-OpSelectionMerge %101 None
-OpBranchConditional %45 %98 %97
-%97 = OpLabel
+OpSelectionMerge %102 None
+OpBranchConditional %45 %99 %98
+%98 = OpLabel
 %48 = OpCompositeConstruct %28 %25 %26
 %47 = OpImageRead %11 %15 %48 MakeTexelVisible|NonPrivateTexel %49
 %50 = OpCompositeExtract %5 %47 0
@@ -152,9 +156,8 @@ OpBranchConditional %45 %98 %97
 %58 = OpCompositeConstruct %28 %25 %26
 %59 = OpCompositeConstruct %11 %54 %55 %56 %57
 OpImageWrite %15 %58 %59 MakeTexelAvailable|NonPrivateTexel %49
-OpStore %92 %95
-OpBranch %101
-%98 = OpLabel
+OpBranch %102
+%99 = OpLabel
 %61 = OpCompositeConstruct %28 %25 %26
 %60 = OpImageRead %11 %16 %61 MakeTexelVisible|NonPrivateTexel %49
 %62 = OpCompositeExtract %5 %60 0
@@ -172,18 +175,18 @@ OpImageWrite %16 %70 %71 MakeTexelAvailable|NonPrivateTexel %49
 %72 = OpImageRead %11 %14 %73 NonPrivateTexel
 %74 = OpCompositeExtract %5 %72 2
 %75 = OpFOrdGreaterThan %44 %74 %76
-OpSelectionMerge %100 None
-OpBranchConditional %75 %100 %99
-%99 = OpLabel
-OpStore %92 %95
-OpBranch %100
+OpSelectionMerge %101 None
+OpBranchConditional %75 %101 %100
 %100 = OpLabel
 OpBranch %101
 %101 = OpLabel
-%94 = OpLoad %44 %92
-OpSelectionMerge %103 None
-OpBranchConditional %94 %102 %103
+%96 = OpPhi %44 %93 %99 %95 %100
+OpBranch %102
 %102 = OpLabel
+%94 = OpPhi %44 %96 %101 %95 %98
+OpSelectionMerge %104 None
+OpBranchConditional %94 %103 %104
+%103 = OpLabel
 %77 = OpBitwiseXor %19 %25 %23
 %78 = OpBitwiseXor %19 %26 %23
 %80 = OpCompositeConstruct %28 %77 %78
@@ -199,10 +202,10 @@ OpBranchConditional %94 %102 %103
 %89 = OpCompositeConstruct %28 %77 %78
 %90 = OpCompositeConstruct %11 %85 %86 %87 %88
 OpImageWrite %14 %89 %90 NonPrivateTexel
-OpBranch %103
-%103 = OpLabel
 OpBranch %104
 %104 = OpLabel
+OpBranch %105
+%105 = OpLabel
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

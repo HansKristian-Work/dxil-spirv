@@ -19,16 +19,16 @@ void main()
         }
     }
     bool _25 = helperInvocationEXT();
-    float _53;
-    float _54;
-    float _55;
-    float _56;
+    float _42;
+    float _43;
+    float _44;
+    float _45;
     if (_25)
     {
-        _53 = 0.0;
-        _54 = 0.0;
-        _55 = 0.0;
-        _56 = 0.0;
+        _42 = 0.0;
+        _43 = 0.0;
+        _44 = 0.0;
+        _45 = 0.0;
     }
     else
     {
@@ -36,15 +36,15 @@ void main()
         bool _34 = helperInvocationEXT();
         bool _37 = helperInvocationEXT();
         bool _40 = helperInvocationEXT();
-        _53 = subgroupExclusiveAdd(_30 ? 0.0 : TEXCOORD.x);
-        _54 = subgroupExclusiveAdd(_34 ? 0.0 : TEXCOORD.y);
-        _55 = subgroupExclusiveAdd(_37 ? 0.0 : (TEXCOORD.x * TEXCOORD.x));
-        _56 = subgroupExclusiveAdd(_40 ? 0.0 : (TEXCOORD.y * TEXCOORD.y));
+        _42 = subgroupExclusiveAdd(_30 ? 0.0 : TEXCOORD.x);
+        _43 = subgroupExclusiveAdd(_34 ? 0.0 : TEXCOORD.y);
+        _44 = subgroupExclusiveAdd(_37 ? 0.0 : (TEXCOORD.x * TEXCOORD.x));
+        _45 = subgroupExclusiveAdd(_40 ? 0.0 : (TEXCOORD.y * TEXCOORD.y));
     }
-    SV_Target.x = _53;
-    SV_Target.y = _54;
-    SV_Target.z = _55;
-    SV_Target.w = _56;
+    SV_Target.x = _42;
+    SV_Target.y = _43;
+    SV_Target.z = _44;
+    SV_Target.w = _45;
 }
 
 
@@ -91,10 +91,6 @@ OpDecorate %11 Location 0
 %52 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%53 = OpVariable %52 Function
-%54 = OpVariable %52 Function
-%55 = OpVariable %52 Function
-%56 = OpVariable %52 Function
 OpBranch %57
 %57 = OpLabel
 %13 = OpAccessChain %12 %8 %15
@@ -135,24 +131,16 @@ OpBranchConditional %25 %64 %63
 %40 = OpIsHelperInvocationEXT %20
 %41 = OpSelect %5 %40 %31 %27
 %39 = OpGroupNonUniformFAdd %5 %29 ExclusiveScan %41
-OpStore %53 %28
-OpStore %54 %33
-OpStore %55 %36
-OpStore %56 %39
 OpBranch %65
 %64 = OpLabel
-OpStore %53 %31
-OpStore %54 %31
-OpStore %55 %31
-OpStore %56 %31
 OpBranch %65
 %65 = OpLabel
+%42 = OpPhi %5 %31 %64 %28 %63
+%43 = OpPhi %5 %31 %64 %33 %63
+%44 = OpPhi %5 %31 %64 %36 %63
+%45 = OpPhi %5 %31 %64 %39 %63
 OpBranch %66
 %66 = OpLabel
-%45 = OpLoad %5 %56
-%44 = OpLoad %5 %55
-%43 = OpLoad %5 %54
-%42 = OpLoad %5 %53
 %47 = OpAccessChain %46 %11 %15
 OpStore %47 %42
 %48 = OpAccessChain %46 %11 %18

@@ -8,19 +8,19 @@ layout(location = 1) flat out uvec2 COLOR;
 
 void main()
 {
-    uint _51 = 0u;
+    uint _21 = 0u;
     uint _23;
     bool _49;
     for (;;)
     {
-        gl_Position.x = gl_in[_51].gl_Position.x;
-        gl_Position.y = gl_in[_51].gl_Position.y;
-        gl_Position.z = gl_in[_51].gl_Position.z;
-        gl_Position.w = gl_in[_51].gl_Position.w;
-        COLOR.x = SV_RenderTargetArrayIndex[_51];
-        COLOR.y = SV_ViewportArrayIndex[_51];
+        gl_Position.x = gl_in[_21].gl_Position.x;
+        gl_Position.y = gl_in[_21].gl_Position.y;
+        gl_Position.z = gl_in[_21].gl_Position.z;
+        gl_Position.w = gl_in[_21].gl_Position.w;
+        COLOR.x = SV_RenderTargetArrayIndex[_21];
+        COLOR.y = SV_ViewportArrayIndex[_21];
         EmitVertex();
-        _23 = _51 + 1u;
+        _23 = _21 + 1u;
         _49 = _23 == 3u;
         if (_49)
         {
@@ -28,7 +28,7 @@ void main()
         }
         else
         {
-            _51 = _23;
+            _21 = _23;
             continue;
         }
     }
@@ -40,7 +40,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 59
+; Bound: 57
 ; Schema: 0
 OpCapability Shader
 OpCapability Geometry
@@ -93,13 +93,11 @@ OpDecorate %20 Location 1
 %50 = OpTypePointer Function %7
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%51 = OpVariable %50 Function
 OpBranch %52
 %52 = OpLabel
-OpStore %51 %22
 OpBranch %53
 %53 = OpLabel
-%21 = OpLoad %7 %51
+%21 = OpPhi %7 %22 %52 %23 %54
 %25 = OpAccessChain %24 %11 %21 %22
 %26 = OpLoad %5 %25
 %27 = OpAccessChain %24 %11 %21 %28
@@ -127,19 +125,13 @@ OpStore %47 %39
 OpEmitVertex
 %23 = OpIAdd %7 %21 %28
 %49 = OpIEqual %48 %23 %8
-OpLoopMerge %56 %55 None
+OpLoopMerge %55 %54 None
 OpBranch %54
 %54 = OpLabel
-OpSelectionMerge %58 None
-OpBranchConditional %49 %56 %55
-%58 = OpLabel
-OpUnreachable
+OpBranchConditional %49 %55 %53
 %55 = OpLabel
-OpStore %51 %23
-OpBranch %53
+OpBranch %56
 %56 = OpLabel
-OpBranch %57
-%57 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

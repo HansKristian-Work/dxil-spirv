@@ -59,6 +59,7 @@ OpDecorate %28 Flat
 %13 = OpVariable %12 Output
 %15 = OpTypePointer Input %5
 %17 = OpConstant %9 0
+%20 = OpUndef %6
 %22 = OpConstant %9 1
 %26 = OpConstant %9 3
 %27 = OpConstant %9 2
@@ -67,7 +68,6 @@ OpDecorate %28 Flat
 %36 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%20 = OpUndef %6
 OpBranch %40
 %40 = OpLabel
 %14 = OpLoad %9 %11

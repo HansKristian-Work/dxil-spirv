@@ -28,18 +28,18 @@ void main()
     SPIRV_Cross_beginInvocationInterlock();
     if (!(_45 == 0u))
     {
-        uint _65 = 0u;
+        uint _48 = 0u;
         uint _49;
         bool _63;
         for (;;)
         {
             vec4 _50 = imageLoad(_8, ivec2(uvec2(_26, _27)));
             imageStore(_8, ivec2(uvec2(_26, _27)), vec4(_50.x + 1.0, _50.y + 2.0, _50.z + 3.0, _50.w + 4.0));
-            _49 = _65 + 1u;
+            _49 = _48 + 1u;
             _63 = _49 < _45;
             if (_63)
             {
-                _65 = _49;
+                _48 = _49;
                 continue;
             }
             else
@@ -57,7 +57,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 75
+; Bound: 73
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -101,7 +101,6 @@ OpDecorate %12 BuiltIn FragCoord
 %64 = OpTypePointer Function %17
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%65 = OpVariable %64 Function
 OpBranch %66
 %66 = OpLabel
 %13 = OpLoad %6 %9
@@ -130,13 +129,12 @@ OpImageWrite %13 %43 %44 NonPrivateTexel
 %45 = OpConvertFToU %17 %25
 %47 = OpIEqual %46 %45 %18
 OpBeginInvocationInterlockEXT
-OpSelectionMerge %72 None
-OpBranchConditional %47 %72 %67
+OpSelectionMerge %71 None
+OpBranchConditional %47 %71 %67
 %67 = OpLabel
-OpStore %65 %18
 OpBranch %68
 %68 = OpLabel
-%48 = OpLoad %17 %65
+%48 = OpPhi %17 %18 %67 %49 %69
 %51 = OpCompositeConstruct %29 %26 %27
 %50 = OpImageRead %10 %14 %51 MakeTexelVisible|NonPrivateTexel %52
 %53 = OpCompositeExtract %5 %50 0
@@ -152,21 +150,15 @@ OpBranch %68
 OpImageWrite %14 %61 %62 MakeTexelAvailable|NonPrivateTexel %52
 %49 = OpIAdd %17 %48 %21
 %63 = OpULessThan %46 %49 %45
-OpLoopMerge %71 %70 None
+OpLoopMerge %70 %69 None
 OpBranch %69
 %69 = OpLabel
-OpSelectionMerge %74 None
-OpBranchConditional %63 %70 %71
-%74 = OpLabel
-OpUnreachable
+OpBranchConditional %63 %68 %70
 %70 = OpLabel
-OpStore %65 %49
-OpBranch %68
+OpBranch %71
 %71 = OpLabel
 OpBranch %72
 %72 = OpLabel
-OpBranch %73
-%73 = OpLabel
 OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd

@@ -19,17 +19,17 @@ void main()
     float _33 = float(gl_GlobalInvocationID.x) + 0.5;
     float _35 = float(gl_GlobalInvocationID.y) + 0.5;
     uvec4 _40 = floatBitsToUint(_16._m0[0u]);
-    uint _65;
+    uint _44;
     if (_40.y == 0u)
     {
-        _65 = 0u;
+        _44 = 0u;
     }
     else
     {
-        _65 = 1u;
+        _44 = 1u;
     }
     uint _45 = _40.x;
-    rayQueryInitializeEXT(RayQueryHeap[_65], _8[_45], 4u, 255u, vec3(_33, _35, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
+    rayQueryInitializeEXT(RayQueryHeap[_44], _8[_45], 4u, 255u, vec3(_33, _35, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
     rayQueryInitializeEXT(RayQueryHeap[1u], _8[_45], 4u, 255u, vec3(_33, _35, -1.0), 0.100000001490116119384765625, vec3(0.0, 0.0, 1.0), 1000.0);
 }
 
@@ -105,7 +105,6 @@ OpDecorate %50 NonUniform
 %64 = OpTypePointer Function %9
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%65 = OpVariable %64 Function
 OpBranch %66
 %66 = OpLabel
 %26 = OpAccessChain %25 %24 %27
@@ -124,15 +123,13 @@ OpBranch %66
 OpSelectionMerge %69 None
 OpBranchConditional %43 %68 %67
 %67 = OpLabel
-OpStore %65 %10
 OpBranch %69
 %68 = OpLabel
-OpStore %65 %27
 OpBranch %69
 %69 = OpLabel
+%44 = OpPhi %9 %27 %68 %10 %67
 OpBranch %70
 %70 = OpLabel
-%44 = OpLoad %9 %65
 %45 = OpCompositeExtract %9 %40 0
 %47 = OpAccessChain %46 %8 %45
 %48 = OpLoad %5 %47

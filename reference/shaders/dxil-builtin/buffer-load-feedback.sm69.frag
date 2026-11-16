@@ -14,13 +14,13 @@ struct _46
     uint _m1;
 };
 
+vec2 _58;
+
 struct _89
 {
     vec2 _m0;
     uint _m1;
 };
-
-vec2 _58;
 
 layout(set = 0, binding = 1) uniform usamplerBuffer _8;
 layout(set = 0, binding = 2) uniform usamplerBuffer _9;
@@ -142,12 +142,12 @@ OpDecorate %19 Location 0
 %51 = OpTypeBool
 %55 = OpConstant %16 1
 %56 = OpConstant %16 0
+%58 = OpUndef %17
 %89 = OpTypeStruct %17 %5
 %123 = OpTypePointer Output %16
 %125 = OpConstant %5 0
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%58 = OpUndef %17
 OpBranch %128
 %128 = OpLabel
 %20 = OpLoad %5 %15

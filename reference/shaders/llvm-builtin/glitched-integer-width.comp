@@ -11,18 +11,18 @@ layout(set = 0, binding = 0) uniform writeonly image2DArray _8;
 void main()
 {
     uint _24 = floatBitsToUint(_15._m0[0u]).x + 4294967295u;
-    bool _48;
+    bool _38;
     if (_24 < 11u)
     {
         uint _32 = bitfieldExtract(440u, int(0u), int(11u));
         uint _37 = bitfieldExtract(0u, int(0u), int(11u));
-        _48 = bitfieldExtract((_32 >> bitfieldExtract(bitfieldExtract(_24, int(0u), int(11u)), int(0u), int(11u))) & 1u, int(0u), int(11u)) != _37;
+        _38 = bitfieldExtract((_32 >> bitfieldExtract(bitfieldExtract(_24, int(0u), int(11u)), int(0u), int(11u))) & 1u, int(0u), int(11u)) != _37;
     }
     else
     {
-        _48 = true;
+        _38 = true;
     }
-    if (_48)
+    if (_38)
     {
         imageStore(_8, ivec3(uvec3(1u)), vec4(0.0));
     }
@@ -83,7 +83,6 @@ OpDecorate %15 Binding 0
 %47 = OpTypePointer Function %26
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%48 = OpVariable %47 Function
 OpBranch %49
 %49 = OpLabel
 %16 = OpLoad %6 %8
@@ -96,7 +95,6 @@ OpBranch %49
 OpSelectionMerge %52 None
 OpBranchConditional %27 %51 %50
 %50 = OpLabel
-OpStore %48 %39
 OpBranch %52
 %51 = OpLabel
 %29 = OpBitFieldUExtract %9 %24 %17 %28
@@ -107,10 +105,9 @@ OpBranch %52
 %36 = OpBitFieldUExtract %9 %34 %17 %28
 %37 = OpBitFieldUExtract %9 %17 %17 %28
 %35 = OpINotEqual %26 %36 %37
-OpStore %48 %35
 OpBranch %52
 %52 = OpLabel
-%38 = OpLoad %26 %48
+%38 = OpPhi %26 %35 %51 %39 %50
 OpSelectionMerge %55 None
 OpBranchConditional %38 %54 %53
 %53 = OpLabel

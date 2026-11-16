@@ -20,13 +20,14 @@ layout(buffer_reference) buffer PhysicalPointerHalf3;
 layout(buffer_reference) buffer PhysicalPointerHalf4Array;
 layout(buffer_reference) buffer PhysicalPointerUint2Array;
 
+float16_t _82;
+
 struct AddCarry
 {
     uint _m0;
     uint _m1;
 };
 
-float16_t _82;
 uint _132;
 
 layout(buffer_reference, buffer_reference_align = 4, std430) readonly buffer PhysicalPointerFloat4NonWriteArray
@@ -207,6 +208,7 @@ OpDecorate %127 Block
 %77 = OpTypePointer PhysicalStorageBuffer %76
 %79 = OpTypePointer PhysicalStorageBuffer %74
 %81 = OpConstant %74 0x1p+0
+%82 = OpUndef %74
 %85 = OpConstant %5 4
 %86 = OpTypeVector %74 2
 %87 = OpTypeRuntimeArray %86
@@ -232,10 +234,9 @@ OpDecorate %127 Block
 %127 = OpTypeStruct %126
 %128 = OpTypePointer PhysicalStorageBuffer %127
 %130 = OpTypePointer PhysicalStorageBuffer %6
+%132 = OpUndef %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%82 = OpUndef %74
-%132 = OpUndef %5
 OpBranch %134
 %134 = OpLabel
 %11 = OpAccessChain %10 %9 %12

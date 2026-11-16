@@ -105,6 +105,7 @@ OpDecorate %14 Location 0
 %47 = OpConstant %5 10
 %48 = OpTypeVector %19 4
 %49 = OpTypeFunction %5 %19 %24 %19
+%60 = OpUndef %5
 %62 = OpConstantTrue %19
 %3 = OpFunction %1 None %2
 %4 = OpLabel
@@ -155,7 +156,6 @@ OpFunctionEnd
 %51 = OpFunctionParameter %24
 %52 = OpFunctionParameter %19
 %54 = OpLabel
-%60 = OpUndef %5
 OpSelectionMerge %59 None
 OpBranchConditional %52 %59 %58
 %58 = OpLabel

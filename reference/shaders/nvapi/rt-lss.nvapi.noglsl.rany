@@ -59,6 +59,7 @@ OpDecorate %78 BuiltIn HitSphereRadiusNV
 %35 = OpVariable %34 Input
 %37 = OpTypePointer Input %33
 %38 = OpVariable %37 Input
+%65 = OpUndef %7
 %74 = OpTypePointer Input %30
 %75 = OpVariable %74 Input
 %77 = OpTypePointer Input %6
@@ -69,7 +70,6 @@ OpDecorate %78 BuiltIn HitSphereRadiusNV
 %102 = OpConstant %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%65 = OpUndef %7
 OpBranch %103
 %103 = OpLabel
 %19 = OpLoad %16 %18

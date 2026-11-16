@@ -504,6 +504,7 @@ OpDecorate %501 Binding 3
 %424 = OpConstant %303 25
 %428 = OpConstant %303 28
 %459 = OpTypeVector %5 4
+%462 = OpUndef %5
 %467 = OpTypeFloat 32
 %468 = OpTypeVector %467 3
 %473 = OpConstant %467 40
@@ -526,7 +527,6 @@ OpDecorate %501 Binding 3
 %541 = OpConstant %5 72
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%462 = OpUndef %5
 OpBranch %491
 %491 = OpLabel
 %42 = OpFunctionCall %5 %32

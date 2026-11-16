@@ -51,15 +51,12 @@ void main()
     _24[registers._m4]._m0[gl_LocalInvocationIndex] = uvec4(floatBitsToUint(0.0), floatBitsToUint(0.0), floatBitsToUint(0.0), floatBitsToUint(0.0));
     if (!(floatBitsToUint(_42[registers._m5]._m0[0u]).x == 0u))
     {
-        uint _95;
-        uint _148 = 0u;
-        uint _94;
+        uint _94 = 0u;
         uint _98;
         uint _101;
         bool _103;
         for (;;)
         {
-            _94 = _148;
             _98 = (_94 << 8u) + gl_LocalInvocationIndex;
             _101 = _13[registers._m1]._m0[_98];
             groupMemoryBarrier();
@@ -71,10 +68,10 @@ void main()
                 vec4 _114 = uintBitsToFloat(_24[registers._m4]._m0[_101]);
                 _24[registers._m4]._m0[_101] = uvec4(floatBitsToUint(_114.x + _107.x), floatBitsToUint(_114.y + _107.y), floatBitsToUint(_114.z + _107.z), floatBitsToUint(_114.w + _107.w));
             }
-            _95 = _94 + 1u;
+            uint _95 = _94 + 1u;
             if (_95 < floatBitsToUint(_42[registers._m5]._m0[0u]).x)
             {
-                _148 = _95;
+                _94 = _95;
                 continue;
             }
             else
@@ -93,7 +90,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 160
+; Bound: 159
 ; Schema: 0
 OpCapability Shader
 OpCapability RuntimeDescriptorArray
@@ -224,7 +221,6 @@ OpDecorate %76 BuiltIn LocalInvocationIndex
 %147 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%148 = OpVariable %147 Function
 OpBranch %149
 %149 = OpLabel
 %46 = OpAccessChain %45 %8 %47
@@ -264,10 +260,9 @@ OpStore %85 %83 MakePointerAvailable|NonPrivatePointer %50
 OpSelectionMerge %157 None
 OpBranchConditional %93 %157 %150
 %150 = OpLabel
-OpStore %148 %86
 OpBranch %151
 %151 = OpLabel
-%94 = OpLoad %5 %148
+%94 = OpPhi %5 %86 %150 %95 %155
 %96 = OpShiftLeftLogical %5 %94 %97
 %98 = OpIAdd %5 %96 %77
 %100 = OpAccessChain %99 %67 %86 %98
@@ -307,19 +302,15 @@ OpBranchConditional %103 %153 %154
 OpStore %128 %127 MakePointerAvailable|NonPrivatePointer %50
 OpBranch %154
 %154 = OpLabel
+OpBranch %155
+%155 = OpLabel
 %95 = OpIAdd %5 %94 %56
 %129 = OpAccessChain %87 %71 %86 %86
 %130 = OpLoad %36 %129
 %131 = OpBitcast %14 %130
 %132 = OpCompositeExtract %5 %131 0
 %133 = OpULessThan %92 %95 %132
-OpSelectionMerge %159 None
-OpBranchConditional %133 %155 %156
-%159 = OpLabel
-OpUnreachable
-%155 = OpLabel
-OpStore %148 %95
-OpBranch %151
+OpBranchConditional %133 %151 %156
 %156 = OpLabel
 OpBranch %157
 %157 = OpLabel

@@ -68,6 +68,7 @@ OpDecorate %10 Location 0
 %15 = OpTypeFloat 32
 %18 = OpConstant %5 1
 %20 = OpTypeVector %15 2
+%22 = OpUndef %20
 %24 = OpTypeVector %12 2
 %28 = OpConstant %5 3
 %31 = OpConstant %5 0
@@ -82,7 +83,6 @@ OpDecorate %10 Location 0
 %52 = OpTypeVector %5 4
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%22 = OpUndef %20
 OpBranch %54
 %54 = OpLabel
 %11 = OpLoad %5 %10

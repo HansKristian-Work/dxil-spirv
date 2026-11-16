@@ -1,148 +1,390 @@
 #version 460
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
+uint _84;
+
 layout(set = 0, binding = 0, r32ui) uniform uimageBuffer _8;
 
 void main()
 {
     uint _13 = imageAtomicAdd(_8, int(0u), 1u);
-    bool _75 = false;
-    uint _69;
-    uint _70;
-    uint _73;
+    uint _45;
+    bool _77;
+    uint _98;
+    uint _113;
     if ((_13 & 13u) == 0u)
     {
-        bool _78 = false;
-        uint _72;
+        uint _50;
+        bool _79;
+        uint _95;
+        uint _110;
+        uint _140;
+        bool _149;
         if ((_13 & 1u) == 0u)
         {
-            bool _80 = false;
-            uint _71;
+            uint _58;
+            bool _81;
+            uint _93;
+            uint _108;
+            uint _131;
+            uint _139;
+            bool _148;
+            bool _158;
             if ((_13 & 2u) == 0u)
             {
                 uint _26 = imageAtomicAdd(_8, int(0u), _13);
+                uint _92;
+                uint _107;
+                uint _122;
+                uint _130;
+                uint _138;
+                bool _147;
+                bool _157;
+                bool _167;
                 if ((_26 & 13u) == 0u)
                 {
+                    uint _91;
+                    uint _106;
+                    uint _121;
+                    uint _129;
+                    uint _137;
+                    bool _146;
+                    bool _156;
+                    bool _166;
                     if ((_26 & 1u) == 0u)
                     {
+                        uint _90;
+                        uint _105;
+                        uint _120;
+                        uint _128;
+                        uint _136;
+                        bool _145;
+                        bool _155;
+                        bool _165;
                         if ((_26 & 2u) == 0u)
                         {
                             uint _34 = imageAtomicAdd(_8, int(0u), _26);
+                            uint _89;
+                            uint _104;
+                            uint _119;
+                            uint _127;
+                            uint _135;
+                            bool _144;
+                            bool _154;
+                            bool _164;
                             if ((_34 & 13u) == 0u)
                             {
+                                uint _88;
+                                uint _103;
+                                uint _118;
+                                uint _126;
+                                uint _134;
+                                bool _143;
+                                bool _153;
+                                bool _163;
                                 if ((_34 & 1u) == 0u)
                                 {
+                                    uint _87;
+                                    uint _102;
+                                    uint _117;
+                                    uint _125;
+                                    uint _133;
+                                    bool _142;
+                                    bool _152;
+                                    bool _162;
                                     if ((_34 & 2u) == 0u)
                                     {
                                         uint _42 = imageAtomicAdd(_8, int(0u), _34);
+                                        uint _86;
+                                        uint _101;
+                                        uint _116;
+                                        uint _124;
+                                        uint _132;
+                                        bool _141;
+                                        bool _151;
+                                        bool _161;
                                         if ((_42 & 13u) == 0u)
                                         {
+                                            uint _85;
+                                            uint _100;
+                                            uint _115;
+                                            uint _123;
+                                            bool _150;
+                                            bool _160;
                                             if ((_42 & 1u) == 0u)
                                             {
+                                                uint _83;
+                                                uint _99;
+                                                uint _114;
+                                                bool _159;
                                                 if ((_42 & 2u) == 0u)
                                                 {
-                                                    _69 = 0u;
-                                                    _70 = _42;
+                                                    _83 = 0u;
+                                                    _99 = _42;
+                                                    _114 = _84;
+                                                    _159 = false;
                                                 }
                                                 else
                                                 {
-                                                    _71 = _42;
-                                                    _80 = true;
+                                                    _83 = _84;
+                                                    _99 = _84;
+                                                    _114 = _42;
+                                                    _159 = true;
                                                 }
+                                                _85 = _83;
+                                                _100 = _99;
+                                                _115 = _114;
+                                                _123 = _84;
+                                                _150 = false;
+                                                _160 = _159;
                                             }
                                             else
                                             {
-                                                _72 = _42;
-                                                _78 = true;
+                                                _85 = _84;
+                                                _100 = _84;
+                                                _115 = _84;
+                                                _123 = _42;
+                                                _150 = true;
+                                                _160 = false;
                                             }
+                                            _86 = _85;
+                                            _101 = _100;
+                                            _116 = _115;
+                                            _124 = _123;
+                                            _132 = _84;
+                                            _141 = false;
+                                            _151 = _150;
+                                            _161 = _160;
                                         }
                                         else
                                         {
-                                            _73 = _42;
-                                            _75 = true;
+                                            _86 = _84;
+                                            _101 = _84;
+                                            _116 = _84;
+                                            _124 = _84;
+                                            _132 = _42;
+                                            _141 = true;
+                                            _151 = false;
+                                            _161 = false;
                                         }
+                                        _87 = _86;
+                                        _102 = _101;
+                                        _117 = _116;
+                                        _125 = _124;
+                                        _133 = _132;
+                                        _142 = _141;
+                                        _152 = _151;
+                                        _162 = _161;
                                     }
                                     else
                                     {
-                                        _71 = _34;
-                                        _80 = true;
+                                        _87 = _84;
+                                        _102 = _84;
+                                        _117 = _34;
+                                        _125 = _84;
+                                        _133 = _84;
+                                        _142 = false;
+                                        _152 = false;
+                                        _162 = true;
                                     }
+                                    _88 = _87;
+                                    _103 = _102;
+                                    _118 = _117;
+                                    _126 = _125;
+                                    _134 = _133;
+                                    _143 = _142;
+                                    _153 = _152;
+                                    _163 = _162;
                                 }
                                 else
                                 {
-                                    _72 = _34;
-                                    _78 = true;
+                                    _88 = _84;
+                                    _103 = _84;
+                                    _118 = _84;
+                                    _126 = _34;
+                                    _134 = _84;
+                                    _143 = false;
+                                    _153 = true;
+                                    _163 = false;
                                 }
+                                _89 = _88;
+                                _104 = _103;
+                                _119 = _118;
+                                _127 = _126;
+                                _135 = _134;
+                                _144 = _143;
+                                _154 = _153;
+                                _164 = _163;
                             }
                             else
                             {
-                                _73 = _34;
-                                _75 = true;
+                                _89 = _84;
+                                _104 = _84;
+                                _119 = _84;
+                                _127 = _84;
+                                _135 = _34;
+                                _144 = true;
+                                _154 = false;
+                                _164 = false;
                             }
+                            _90 = _89;
+                            _105 = _104;
+                            _120 = _119;
+                            _128 = _127;
+                            _136 = _135;
+                            _145 = _144;
+                            _155 = _154;
+                            _165 = _164;
                         }
                         else
                         {
-                            _71 = _26;
-                            _80 = true;
+                            _90 = _84;
+                            _105 = _84;
+                            _120 = _26;
+                            _128 = _84;
+                            _136 = _84;
+                            _145 = false;
+                            _155 = false;
+                            _165 = true;
                         }
+                        _91 = _90;
+                        _106 = _105;
+                        _121 = _120;
+                        _129 = _128;
+                        _137 = _136;
+                        _146 = _145;
+                        _156 = _155;
+                        _166 = _165;
                     }
                     else
                     {
-                        _72 = _26;
-                        _78 = true;
+                        _91 = _84;
+                        _106 = _84;
+                        _121 = _84;
+                        _129 = _26;
+                        _137 = _84;
+                        _146 = false;
+                        _156 = true;
+                        _166 = false;
                     }
+                    _92 = _91;
+                    _107 = _106;
+                    _122 = _121;
+                    _130 = _129;
+                    _138 = _137;
+                    _147 = _146;
+                    _157 = _156;
+                    _167 = _166;
                 }
                 else
                 {
-                    _73 = _26;
-                    _75 = true;
+                    _92 = _84;
+                    _107 = _84;
+                    _122 = _84;
+                    _130 = _84;
+                    _138 = _26;
+                    _147 = true;
+                    _157 = false;
+                    _167 = false;
                 }
+                _93 = _92;
+                _108 = _107;
+                _58 = _122;
+                _131 = _130;
+                _139 = _138;
+                _148 = _147;
+                _158 = _157;
+                _81 = _167;
             }
             else
             {
-                _71 = _13;
-                _80 = true;
+                _93 = _84;
+                _108 = _84;
+                _58 = _13;
+                _131 = _84;
+                _139 = _84;
+                _148 = false;
+                _158 = false;
+                _81 = true;
             }
-            if (_80)
+            uint _94;
+            uint _109;
+            if (_81)
             {
-                uint _60 = imageAtomicOr(_8, int(0u), _71);
-                _69 = 3u;
-                _70 = _60;
+                uint _60 = imageAtomicOr(_8, int(0u), _58);
+                _94 = 3u;
+                _109 = _60;
             }
+            else
+            {
+                _94 = _93;
+                _109 = _108;
+            }
+            _95 = _94;
+            _110 = _109;
+            _50 = _131;
+            _140 = _139;
+            _149 = _148;
+            _79 = _158;
         }
         else
         {
-            _72 = _13;
-            _78 = true;
+            _95 = _84;
+            _110 = _84;
+            _50 = _13;
+            _140 = _84;
+            _149 = false;
+            _79 = true;
         }
-        if (_78)
+        uint _97;
+        uint _112;
+        if (_79)
         {
-            if ((_72 & 4u) == 0u)
+            uint _111;
+            if ((_50 & 4u) == 0u)
             {
-                _69 = 2u;
-                _70 = _72;
+                _111 = _50;
             }
             else
             {
-                uint _55 = imageAtomicOr(_8, int(0u), _72);
-                _69 = 2u;
-                _70 = _55;
+                uint _55 = imageAtomicOr(_8, int(0u), _50);
+                _111 = _55;
             }
+            _97 = 2u;
+            _112 = _111;
         }
+        else
+        {
+            _97 = _95;
+            _112 = _110;
+        }
+        _98 = _97;
+        _113 = _112;
+        _45 = _140;
+        _77 = _149;
     }
     else
     {
-        _73 = _13;
-        _75 = true;
+        _98 = _84;
+        _113 = _84;
+        _45 = _13;
+        _77 = true;
     }
-    if (_75)
+    uint _61;
+    uint _63;
+    if (_77)
     {
-        uint _47 = imageAtomicAdd(_8, int(0u), _73);
-        _69 = 1u;
-        _70 = _47;
+        uint _47 = imageAtomicAdd(_8, int(0u), _45);
+        _61 = 1u;
+        _63 = _47;
     }
-    uint _65 = imageAtomicAdd(_8, int(0u), _70);
-    uint _67 = imageAtomicAdd(_8, int(0u), _69);
+    else
+    {
+        _61 = _98;
+        _63 = _113;
+    }
+    uint _65 = imageAtomicAdd(_8, int(0u), _63);
+    uint _67 = imageAtomicAdd(_8, int(0u), _61);
 }
 
 
@@ -151,7 +393,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 130
+; Bound: 218
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -181,212 +423,257 @@ OpDecorate %8 Binding 0
 %74 = OpTypePointer Function %18
 %76 = OpConstantFalse %18
 %82 = OpConstantTrue %18
+%84 = OpUndef %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%69 = OpVariable %68 Function
-%70 = OpVariable %68 Function
-%71 = OpVariable %68 Function
-%72 = OpVariable %68 Function
-%73 = OpVariable %68 Function
-%75 = OpVariable %74 Function
-%78 = OpVariable %74 Function
-%80 = OpVariable %74 Function
-OpBranch %83
-%83 = OpLabel
+OpBranch %168
+%168 = OpLabel
 %9 = OpLoad %6 %8
 %12 = OpImageTexelPointer %11 %8 %10 %10
 %13 = OpAtomicIAdd %5 %12 %14 %10 %15
 %16 = OpBitwiseAnd %5 %13 %17
 %19 = OpIEqual %18 %16 %10
-OpStore %75 %76
-OpSelectionMerge %126 None
-OpBranchConditional %19 %85 %84
-%84 = OpLabel
-OpStore %73 %13
-OpStore %75 %82
-OpBranch %126
-%85 = OpLabel
+OpSelectionMerge %213 None
+OpBranchConditional %19 %170 %169
+%169 = OpLabel
+OpBranch %213
+%170 = OpLabel
 %20 = OpBitwiseAnd %5 %13 %15
 %21 = OpIEqual %18 %20 %10
-OpStore %78 %76
-OpSelectionMerge %120 None
-OpBranchConditional %21 %87 %86
-%86 = OpLabel
-OpStore %72 %13
-OpStore %78 %82
-OpBranch %120
-%87 = OpLabel
+OpSelectionMerge %206 None
+OpBranchConditional %21 %172 %171
+%171 = OpLabel
+OpBranch %206
+%172 = OpLabel
 %22 = OpBitwiseAnd %5 %13 %23
 %24 = OpIEqual %18 %22 %10
-OpStore %80 %76
-OpSelectionMerge %117 None
-OpBranchConditional %24 %89 %88
-%88 = OpLabel
-OpStore %71 %13
-OpStore %80 %82
-OpBranch %117
-%89 = OpLabel
+OpSelectionMerge %202 None
+OpBranchConditional %24 %174 %173
+%173 = OpLabel
+OpBranch %202
+%174 = OpLabel
 %25 = OpImageTexelPointer %11 %8 %10 %10
 %26 = OpAtomicIAdd %5 %25 %14 %10 %13
 %27 = OpBitwiseAnd %5 %26 %17
 %28 = OpIEqual %18 %27 %10
-OpSelectionMerge %116 None
-OpBranchConditional %28 %91 %90
-%90 = OpLabel
-OpStore %73 %26
-OpStore %75 %82
-OpBranch %116
-%91 = OpLabel
+OpSelectionMerge %201 None
+OpBranchConditional %28 %176 %175
+%175 = OpLabel
+OpBranch %201
+%176 = OpLabel
 %29 = OpBitwiseAnd %5 %26 %15
 %30 = OpIEqual %18 %29 %10
-OpSelectionMerge %115 None
-OpBranchConditional %30 %93 %92
-%92 = OpLabel
-OpStore %72 %26
-OpStore %78 %82
-OpBranch %115
-%93 = OpLabel
+OpSelectionMerge %200 None
+OpBranchConditional %30 %178 %177
+%177 = OpLabel
+OpBranch %200
+%178 = OpLabel
 %31 = OpBitwiseAnd %5 %26 %23
 %32 = OpIEqual %18 %31 %10
-OpSelectionMerge %114 None
-OpBranchConditional %32 %95 %94
-%94 = OpLabel
-OpStore %71 %26
-OpStore %80 %82
-OpBranch %114
-%95 = OpLabel
+OpSelectionMerge %199 None
+OpBranchConditional %32 %180 %179
+%179 = OpLabel
+OpBranch %199
+%180 = OpLabel
 %33 = OpImageTexelPointer %11 %8 %10 %10
 %34 = OpAtomicIAdd %5 %33 %14 %10 %26
 %35 = OpBitwiseAnd %5 %34 %17
 %36 = OpIEqual %18 %35 %10
-OpSelectionMerge %113 None
-OpBranchConditional %36 %97 %96
-%96 = OpLabel
-OpStore %73 %34
-OpStore %75 %82
-OpBranch %113
-%97 = OpLabel
+OpSelectionMerge %198 None
+OpBranchConditional %36 %182 %181
+%181 = OpLabel
+OpBranch %198
+%182 = OpLabel
 %37 = OpBitwiseAnd %5 %34 %15
 %38 = OpIEqual %18 %37 %10
-OpSelectionMerge %112 None
-OpBranchConditional %38 %99 %98
-%98 = OpLabel
-OpStore %72 %34
-OpStore %78 %82
-OpBranch %112
-%99 = OpLabel
+OpSelectionMerge %197 None
+OpBranchConditional %38 %184 %183
+%183 = OpLabel
+OpBranch %197
+%184 = OpLabel
 %39 = OpBitwiseAnd %5 %34 %23
 %40 = OpIEqual %18 %39 %10
-OpSelectionMerge %111 None
-OpBranchConditional %40 %101 %100
-%100 = OpLabel
-OpStore %71 %34
-OpStore %80 %82
-OpBranch %111
-%101 = OpLabel
+OpSelectionMerge %196 None
+OpBranchConditional %40 %186 %185
+%185 = OpLabel
+OpBranch %196
+%186 = OpLabel
 %41 = OpImageTexelPointer %11 %8 %10 %10
 %42 = OpAtomicIAdd %5 %41 %14 %10 %34
 %43 = OpBitwiseAnd %5 %42 %17
 %44 = OpIEqual %18 %43 %10
-OpSelectionMerge %110 None
-OpBranchConditional %44 %103 %102
-%102 = OpLabel
-OpStore %73 %42
-OpStore %75 %82
-OpBranch %110
-%103 = OpLabel
+OpSelectionMerge %195 None
+OpBranchConditional %44 %188 %187
+%187 = OpLabel
+OpBranch %195
+%188 = OpLabel
 %48 = OpBitwiseAnd %5 %42 %15
 %49 = OpIEqual %18 %48 %10
-OpSelectionMerge %109 None
-OpBranchConditional %49 %105 %104
-%104 = OpLabel
-OpStore %72 %42
-OpStore %78 %82
-OpBranch %109
-%105 = OpLabel
+OpSelectionMerge %194 None
+OpBranchConditional %49 %190 %189
+%189 = OpLabel
+OpBranch %194
+%190 = OpLabel
 %56 = OpBitwiseAnd %5 %42 %23
 %57 = OpIEqual %18 %56 %10
-OpSelectionMerge %108 None
-OpBranchConditional %57 %107 %106
-%106 = OpLabel
-OpStore %71 %42
-OpStore %80 %82
-OpBranch %108
-%107 = OpLabel
-OpStore %69 %10
-OpStore %70 %42
-OpBranch %108
-%108 = OpLabel
-OpBranch %109
-%109 = OpLabel
-OpBranch %110
-%110 = OpLabel
-OpBranch %111
-%111 = OpLabel
-OpBranch %112
-%112 = OpLabel
-OpBranch %113
-%113 = OpLabel
-OpBranch %114
-%114 = OpLabel
-OpBranch %115
-%115 = OpLabel
-OpBranch %116
-%116 = OpLabel
-OpBranch %117
-%117 = OpLabel
-%81 = OpLoad %18 %80
-OpSelectionMerge %119 None
-OpBranchConditional %81 %118 %119
-%118 = OpLabel
-%58 = OpLoad %5 %71
+OpSelectionMerge %193 None
+OpBranchConditional %57 %192 %191
+%191 = OpLabel
+OpBranch %193
+%192 = OpLabel
+OpBranch %193
+%193 = OpLabel
+%83 = OpPhi %5 %10 %192 %84 %191
+%99 = OpPhi %5 %42 %192 %84 %191
+%114 = OpPhi %5 %84 %192 %42 %191
+%159 = OpPhi %18 %76 %192 %82 %191
+OpBranch %194
+%194 = OpLabel
+%85 = OpPhi %5 %83 %193 %84 %189
+%100 = OpPhi %5 %99 %193 %84 %189
+%115 = OpPhi %5 %114 %193 %84 %189
+%123 = OpPhi %5 %84 %193 %42 %189
+%150 = OpPhi %18 %76 %193 %82 %189
+%160 = OpPhi %18 %159 %193 %76 %189
+OpBranch %195
+%195 = OpLabel
+%86 = OpPhi %5 %85 %194 %84 %187
+%101 = OpPhi %5 %100 %194 %84 %187
+%116 = OpPhi %5 %115 %194 %84 %187
+%124 = OpPhi %5 %123 %194 %84 %187
+%132 = OpPhi %5 %84 %194 %42 %187
+%141 = OpPhi %18 %76 %194 %82 %187
+%151 = OpPhi %18 %150 %194 %76 %187
+%161 = OpPhi %18 %160 %194 %76 %187
+OpBranch %196
+%196 = OpLabel
+%87 = OpPhi %5 %86 %195 %84 %185
+%102 = OpPhi %5 %101 %195 %84 %185
+%117 = OpPhi %5 %116 %195 %34 %185
+%125 = OpPhi %5 %124 %195 %84 %185
+%133 = OpPhi %5 %132 %195 %84 %185
+%142 = OpPhi %18 %141 %195 %76 %185
+%152 = OpPhi %18 %151 %195 %76 %185
+%162 = OpPhi %18 %161 %195 %82 %185
+OpBranch %197
+%197 = OpLabel
+%88 = OpPhi %5 %87 %196 %84 %183
+%103 = OpPhi %5 %102 %196 %84 %183
+%118 = OpPhi %5 %117 %196 %84 %183
+%126 = OpPhi %5 %125 %196 %34 %183
+%134 = OpPhi %5 %133 %196 %84 %183
+%143 = OpPhi %18 %142 %196 %76 %183
+%153 = OpPhi %18 %152 %196 %82 %183
+%163 = OpPhi %18 %162 %196 %76 %183
+OpBranch %198
+%198 = OpLabel
+%89 = OpPhi %5 %88 %197 %84 %181
+%104 = OpPhi %5 %103 %197 %84 %181
+%119 = OpPhi %5 %118 %197 %84 %181
+%127 = OpPhi %5 %126 %197 %84 %181
+%135 = OpPhi %5 %134 %197 %34 %181
+%144 = OpPhi %18 %143 %197 %82 %181
+%154 = OpPhi %18 %153 %197 %76 %181
+%164 = OpPhi %18 %163 %197 %76 %181
+OpBranch %199
+%199 = OpLabel
+%90 = OpPhi %5 %89 %198 %84 %179
+%105 = OpPhi %5 %104 %198 %84 %179
+%120 = OpPhi %5 %119 %198 %26 %179
+%128 = OpPhi %5 %127 %198 %84 %179
+%136 = OpPhi %5 %135 %198 %84 %179
+%145 = OpPhi %18 %144 %198 %76 %179
+%155 = OpPhi %18 %154 %198 %76 %179
+%165 = OpPhi %18 %164 %198 %82 %179
+OpBranch %200
+%200 = OpLabel
+%91 = OpPhi %5 %90 %199 %84 %177
+%106 = OpPhi %5 %105 %199 %84 %177
+%121 = OpPhi %5 %120 %199 %84 %177
+%129 = OpPhi %5 %128 %199 %26 %177
+%137 = OpPhi %5 %136 %199 %84 %177
+%146 = OpPhi %18 %145 %199 %76 %177
+%156 = OpPhi %18 %155 %199 %82 %177
+%166 = OpPhi %18 %165 %199 %76 %177
+OpBranch %201
+%201 = OpLabel
+%92 = OpPhi %5 %91 %200 %84 %175
+%107 = OpPhi %5 %106 %200 %84 %175
+%122 = OpPhi %5 %121 %200 %84 %175
+%130 = OpPhi %5 %129 %200 %84 %175
+%138 = OpPhi %5 %137 %200 %26 %175
+%147 = OpPhi %18 %146 %200 %82 %175
+%157 = OpPhi %18 %156 %200 %76 %175
+%167 = OpPhi %18 %166 %200 %76 %175
+OpBranch %202
+%202 = OpLabel
+%93 = OpPhi %5 %92 %201 %84 %173
+%108 = OpPhi %5 %107 %201 %84 %173
+%58 = OpPhi %5 %122 %201 %13 %173
+%131 = OpPhi %5 %130 %201 %84 %173
+%139 = OpPhi %5 %138 %201 %84 %173
+%148 = OpPhi %18 %147 %201 %76 %173
+%158 = OpPhi %18 %157 %201 %76 %173
+%81 = OpPhi %18 %167 %201 %82 %173
+OpBranch %203
+%203 = OpLabel
+OpSelectionMerge %205 None
+OpBranchConditional %81 %204 %205
+%204 = OpLabel
 %59 = OpImageTexelPointer %11 %8 %10 %10
 %60 = OpAtomicOr %5 %59 %14 %10 %58
-OpStore %69 %62
-OpStore %70 %60
-OpBranch %119
-%119 = OpLabel
-OpBranch %120
-%120 = OpLabel
-%79 = OpLoad %18 %78
-OpSelectionMerge %125 None
-OpBranchConditional %79 %121 %125
-%121 = OpLabel
-%50 = OpLoad %5 %72
+OpBranch %205
+%205 = OpLabel
+%94 = OpPhi %5 %93 %203 %62 %204
+%109 = OpPhi %5 %108 %203 %60 %204
+OpBranch %206
+%206 = OpLabel
+%95 = OpPhi %5 %94 %205 %84 %171
+%110 = OpPhi %5 %109 %205 %84 %171
+%50 = OpPhi %5 %131 %205 %13 %171
+%140 = OpPhi %5 %139 %205 %84 %171
+%149 = OpPhi %18 %148 %205 %76 %171
+%79 = OpPhi %18 %158 %205 %82 %171
+OpBranch %207
+%207 = OpLabel
+OpSelectionMerge %212 None
+OpBranchConditional %79 %208 %212
+%208 = OpLabel
 %51 = OpBitwiseAnd %5 %50 %52
 %53 = OpIEqual %18 %51 %10
-OpSelectionMerge %124 None
-OpBranchConditional %53 %123 %122
-%122 = OpLabel
+OpSelectionMerge %211 None
+OpBranchConditional %53 %210 %209
+%209 = OpLabel
 %54 = OpImageTexelPointer %11 %8 %10 %10
 %55 = OpAtomicOr %5 %54 %14 %10 %50
-OpStore %69 %23
-OpStore %70 %55
-OpBranch %124
-%123 = OpLabel
-OpStore %69 %23
-OpStore %70 %50
-OpBranch %124
-%124 = OpLabel
-OpBranch %125
-%125 = OpLabel
-OpBranch %126
-%126 = OpLabel
-%77 = OpLoad %18 %75
-OpSelectionMerge %128 None
-OpBranchConditional %77 %127 %128
-%127 = OpLabel
-%45 = OpLoad %5 %73
+OpBranch %211
+%210 = OpLabel
+OpBranch %211
+%211 = OpLabel
+%111 = OpPhi %5 %50 %210 %55 %209
+OpBranch %212
+%212 = OpLabel
+%97 = OpPhi %5 %95 %207 %23 %211
+%112 = OpPhi %5 %110 %207 %111 %211
+OpBranch %213
+%213 = OpLabel
+%98 = OpPhi %5 %97 %212 %84 %169
+%113 = OpPhi %5 %112 %212 %84 %169
+%45 = OpPhi %5 %140 %212 %13 %169
+%77 = OpPhi %18 %149 %212 %82 %169
+OpBranch %214
+%214 = OpLabel
+OpSelectionMerge %216 None
+OpBranchConditional %77 %215 %216
+%215 = OpLabel
 %46 = OpImageTexelPointer %11 %8 %10 %10
 %47 = OpAtomicIAdd %5 %46 %14 %10 %45
-OpStore %69 %15
-OpStore %70 %47
-OpBranch %128
-%128 = OpLabel
-OpBranch %129
-%129 = OpLabel
-%63 = OpLoad %5 %70
-%61 = OpLoad %5 %69
+OpBranch %216
+%216 = OpLabel
+%61 = OpPhi %5 %98 %214 %15 %215
+%63 = OpPhi %5 %113 %214 %47 %215
+OpBranch %217
+%217 = OpLabel
 %64 = OpImageTexelPointer %11 %8 %10 %10
 %65 = OpAtomicIAdd %5 %64 %14 %10 %63
 %66 = OpImageTexelPointer %11 %8 %10 %10

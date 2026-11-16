@@ -118,19 +118,19 @@ OpDecorate %17 BuiltIn GlobalInvocationId
 %25 = OpTypeFloat 32
 %26 = OpTypeVector %25 4
 %28 = OpTypeVector %25 2
+%30 = OpUndef %26
 %37 = OpConstant %5 1
 %45 = OpTypeFloat 16
 %49 = OpTypeVector %45 3
+%51 = OpUndef %49
 %54 = OpTypeVector %25 3
 %72 = OpConstant %25 0
 %77 = OpConstant %5 2
 %86 = OpTypeFloat 64
 %91 = OpTypeVector %86 4
+%93 = OpUndef %91
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%30 = OpUndef %26
-%51 = OpUndef %49
-%93 = OpUndef %91
 OpBranch %118
 %118 = OpLabel
 %19 = OpAccessChain %18 %17 %20

@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 158
+; Bound: 157
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageMultisample
@@ -56,11 +56,6 @@ OpDecorate %18 BuiltIn GlobalInvocationId
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %32 = OpVariable %31 Function
-%139 = OpVariable %80 Function
-%140 = OpVariable %80 Function
-%141 = OpVariable %80 Function
-%142 = OpVariable %80 Function
-%144 = OpVariable %143 Function
 OpBranch %145
 %145 = OpLabel
 %20 = OpAccessChain %19 %18 %21
@@ -135,10 +130,9 @@ OpBranchConditional %79 %154 %149
 %83 = OpImageRead %54 %82 %84 Sample|MakeTexelVisible|NonPrivateTexel %21 %27
 %85 = OpCompositeExtract %5 %83 0
 OpStore %81 %85
-OpStore %144 %24
 OpBranch %150
 %150 = OpLabel
-%86 = OpLoad %12 %144
+%86 = OpPhi %12 %24 %149 %87 %151
 %88 = OpLoad %9 %11
 %90 = OpCompositeConstruct %16 %22 %25 %28
 %89 = OpImageRead %54 %88 %90 Sample|MakeTexelVisible|NonPrivateTexel %86 %27
@@ -147,17 +141,11 @@ OpBranch %150
 OpStore %92 %91
 %87 = OpIAdd %12 %86 %24
 %93 = OpIEqual %37 %87 %29
-OpLoopMerge %153 %152 None
+OpLoopMerge %152 %151 None
 OpBranch %151
 %151 = OpLabel
-OpSelectionMerge %157 None
-OpBranchConditional %93 %153 %152
-%157 = OpLabel
-OpUnreachable
+OpBranchConditional %93 %152 %150
 %152 = OpLabel
-OpStore %144 %87
-OpBranch %150
-%153 = OpLabel
 %94 = OpLoad %5 %81
 %95 = OpInBoundsAccessChain %80 %32 %24
 %96 = OpLoad %5 %95
@@ -165,10 +153,8 @@ OpBranch %150
 %98 = OpLoad %5 %97
 %99 = OpInBoundsAccessChain %80 %32 %36
 %100 = OpLoad %5 %99
-OpStore %139 %100
-OpStore %140 %98
-OpStore %141 %96
-OpStore %142 %94
+OpBranch %153
+%153 = OpLabel
 OpBranch %155
 %154 = OpLabel
 %101 = OpLoad %6 %8
@@ -191,18 +177,14 @@ OpStore %112 %111
 %115 = OpCompositeExtract %5 %113 0
 %116 = OpAccessChain %80 %32 %36
 OpStore %116 %115
-OpStore %139 %115
-OpStore %140 %111
-OpStore %141 %107
-OpStore %142 %104
 OpBranch %155
 %155 = OpLabel
+%117 = OpPhi %5 %115 %154 %100 %153
+%118 = OpPhi %5 %111 %154 %98 %153
+%119 = OpPhi %5 %107 %154 %96 %153
+%120 = OpPhi %5 %104 %154 %94 %153
 OpBranch %156
 %156 = OpLabel
-%120 = OpLoad %5 %142
-%119 = OpLoad %5 %141
-%118 = OpLoad %5 %140
-%117 = OpLoad %5 %139
 %121 = OpShiftLeftLogical %12 %28 %29
 %122 = OpShiftLeftLogical %12 %25 %27
 %123 = OpIAdd %12 %122 %22

@@ -12,9 +12,8 @@
 #define SPIRV_CROSS_LOOP
 #endif
 
-uvec4 _70;
 uvec4 _18;
-vec4 _119;
+vec4 _118;
 
 layout(location = 0) flat in uvec4 A;
 layout(location = 1) flat in uvec4 B;
@@ -33,42 +32,42 @@ uvec4 UDiv(uvec4 num, uvec4 den)
     {
         _69 = num.x / den.x;
     }
-    uvec4 _71;
-    _71.x = _69;
-    uint _79;
+    uvec4 _70;
+    _70.x = _69;
+    uint _78;
     SPIRV_CROSS_FLATTEN
     if (den.y == 0u)
     {
-        _79 = 4294967295u;
+        _78 = 4294967295u;
     }
     else
     {
-        _79 = num.y / den.y;
+        _78 = num.y / den.y;
     }
-    _71.y = _79;
-    uint _88;
+    _70.y = _78;
+    uint _87;
     SPIRV_CROSS_FLATTEN
     if (den.z == 0u)
     {
-        _88 = 4294967295u;
+        _87 = 4294967295u;
     }
     else
     {
-        _88 = num.z / den.z;
+        _87 = num.z / den.z;
     }
-    _71.z = _88;
-    uint _97;
+    _70.z = _87;
+    uint _96;
     SPIRV_CROSS_FLATTEN
     if (den.w == 0u)
     {
-        _97 = 4294967295u;
+        _96 = 4294967295u;
     }
     else
     {
-        _97 = num.w / den.w;
+        _96 = num.w / den.w;
     }
-    _71.w = _97;
-    return _71;
+    _70.w = _96;
+    return _70;
 }
 
 void main()
@@ -88,19 +87,19 @@ void main()
     _45.y = A.y;
     _45.z = A.z;
     _45.w = A.w;
-    vec4 _109 = vec4((_45 * _33) + _17);
-    float _110 = _109.x;
-    float _117 = inversesqrt(dot(vec4(_110, _109.yzw), vec4(_110, _109.yzw)));
-    vec4 _118;
-    _118.x = _117;
-    _118.y = _117;
-    _118.z = _117;
-    _118.w = _117;
-    uvec4 _126 = min(uvec4(sqrt(vec4(_45 + UDiv(_33, _17)))), uvec4(cos(_118 * _109)));
-    SV_Target.x = _126.x;
-    SV_Target.y = _126.y;
-    SV_Target.z = _126.z;
-    SV_Target.w = _126.w;
+    vec4 _108 = vec4((_45 * _33) + _17);
+    float _109 = _108.x;
+    float _116 = inversesqrt(dot(vec4(_109, _108.yzw), vec4(_109, _108.yzw)));
+    vec4 _117;
+    _117.x = _116;
+    _117.y = _116;
+    _117.z = _116;
+    _117.w = _116;
+    uvec4 _125 = min(uvec4(sqrt(vec4(_45 + UDiv(_33, _17)))), uvec4(cos(_117 * _108)));
+    SV_Target.x = _125.x;
+    SV_Target.y = _125.y;
+    SV_Target.z = _125.z;
+    SV_Target.w = _125.w;
 }
 
 
@@ -109,11 +108,11 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 137
+; Bound: 136
 ; Schema: 0
 OpCapability Shader
 OpCapability VulkanMemoryModel
-%106 = OpExtInstImport "GLSL.std.450"
+%105 = OpExtInstImport "GLSL.std.450"
 OpMemoryModel Logical Vulkan
 OpEntryPoint Fragment %3 "main" %8 %9 %10 %12
 OpExecutionMode %3 OriginUpperLeft
@@ -144,6 +143,7 @@ OpDecorate %12 Location 0
 %12 = OpVariable %11 Output
 %13 = OpTypePointer Input %5
 %15 = OpConstant %5 0
+%18 = OpUndef %6
 %20 = OpConstant %5 1
 %24 = OpConstant %5 2
 %28 = OpConstant %5 3
@@ -151,19 +151,17 @@ OpDecorate %12 Location 0
 %60 = OpConstant %5 4294967295
 %65 = OpTypeBool
 %67 = OpConstantNull %5
-%70 = OpUndef %6
-%77 = OpConstantNull %5
-%86 = OpConstantNull %5
-%95 = OpConstantNull %5
-%103 = OpTypeFloat 32
-%104 = OpTypeVector %103 4
-%128 = OpTypePointer Output %5
+%76 = OpConstantNull %5
+%85 = OpConstantNull %5
+%94 = OpConstantNull %5
+%102 = OpTypeFloat 32
+%103 = OpTypeVector %102 4
+%118 = OpUndef %103
+%127 = OpTypePointer Output %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%18 = OpUndef %6
-%119 = OpUndef %104
-OpBranch %136
-%136 = OpLabel
+OpBranch %135
+%135 = OpLabel
 %14 = OpAccessChain %13 %10 %15
 %16 = OpLoad %5 %14
 %17 = OpCompositeInsert %6 %16 %18 0
@@ -200,42 +198,42 @@ OpBranch %136
 %52 = OpAccessChain %13 %8 %28
 %53 = OpLoad %5 %52
 %54 = OpCompositeInsert %6 %53 %51 3
-%99 = OpFunctionCall %6 %58 %42 %30
-%100 = OpIAdd %6 %54 %99
-%101 = OpIMul %6 %54 %42
-%102 = OpIAdd %6 %101 %30
-%105 = OpConvertUToF %104 %100
-%107 = OpExtInst %104 %106 Sqrt %105
-%108 = OpConvertFToU %6 %107
-%109 = OpConvertUToF %104 %102
-%110 = OpCompositeExtract %103 %109 0
-%111 = OpCompositeExtract %103 %109 1
-%112 = OpCompositeExtract %103 %109 2
-%113 = OpCompositeExtract %103 %109 3
-%115 = OpCompositeConstruct %104 %110 %111 %112 %113
-%116 = OpCompositeConstruct %104 %110 %111 %112 %113
-%114 = OpDot %103 %115 %116
-%117 = OpExtInst %103 %106 InverseSqrt %114
-%118 = OpCompositeInsert %104 %117 %119 0
-%120 = OpCompositeInsert %104 %117 %118 1
-%121 = OpCompositeInsert %104 %117 %120 2
-%122 = OpCompositeInsert %104 %117 %121 3
-%123 = OpFMul %104 %122 %109
-%124 = OpExtInst %104 %106 Cos %123
-%125 = OpConvertFToU %6 %124
-%126 = OpExtInst %6 %106 UMin %108 %125
-%127 = OpCompositeExtract %5 %126 0
-%129 = OpAccessChain %128 %12 %15
-OpStore %129 %127
-%130 = OpCompositeExtract %5 %126 1
-%131 = OpAccessChain %128 %12 %20
-OpStore %131 %130
-%132 = OpCompositeExtract %5 %126 2
-%133 = OpAccessChain %128 %12 %24
-OpStore %133 %132
-%134 = OpCompositeExtract %5 %126 3
-%135 = OpAccessChain %128 %12 %28
-OpStore %135 %134
+%98 = OpFunctionCall %6 %58 %42 %30
+%99 = OpIAdd %6 %54 %98
+%100 = OpIMul %6 %54 %42
+%101 = OpIAdd %6 %100 %30
+%104 = OpConvertUToF %103 %99
+%106 = OpExtInst %103 %105 Sqrt %104
+%107 = OpConvertFToU %6 %106
+%108 = OpConvertUToF %103 %101
+%109 = OpCompositeExtract %102 %108 0
+%110 = OpCompositeExtract %102 %108 1
+%111 = OpCompositeExtract %102 %108 2
+%112 = OpCompositeExtract %102 %108 3
+%114 = OpCompositeConstruct %103 %109 %110 %111 %112
+%115 = OpCompositeConstruct %103 %109 %110 %111 %112
+%113 = OpDot %102 %114 %115
+%116 = OpExtInst %102 %105 InverseSqrt %113
+%117 = OpCompositeInsert %103 %116 %118 0
+%119 = OpCompositeInsert %103 %116 %117 1
+%120 = OpCompositeInsert %103 %116 %119 2
+%121 = OpCompositeInsert %103 %116 %120 3
+%122 = OpFMul %103 %121 %108
+%123 = OpExtInst %103 %105 Cos %122
+%124 = OpConvertFToU %6 %123
+%125 = OpExtInst %6 %105 UMin %107 %124
+%126 = OpCompositeExtract %5 %125 0
+%128 = OpAccessChain %127 %12 %15
+OpStore %128 %126
+%129 = OpCompositeExtract %5 %125 1
+%130 = OpAccessChain %127 %12 %20
+OpStore %130 %129
+%131 = OpCompositeExtract %5 %125 2
+%132 = OpAccessChain %127 %12 %24
+OpStore %132 %131
+%133 = OpCompositeExtract %5 %125 3
+%134 = OpAccessChain %127 %12 %28
+OpStore %134 %133
 OpReturn
 OpFunctionEnd
 %58 = OpFunction %6 None %55
@@ -252,40 +250,40 @@ OpBranchConditional %66 %62 %61
 OpBranch %62
 %62 = OpLabel
 %69 = OpPhi %5 %60 %59 %68 %61
-%71 = OpCompositeInsert %6 %69 %70 0
-%74 = OpCompositeExtract %5 %56 1
-%75 = OpCompositeExtract %5 %57 1
-%76 = OpIEqual %65 %75 %77
-OpSelectionMerge %73 Flatten
-OpBranchConditional %76 %73 %72
+%70 = OpCompositeInsert %6 %69 %18 0
+%73 = OpCompositeExtract %5 %56 1
+%74 = OpCompositeExtract %5 %57 1
+%75 = OpIEqual %65 %74 %76
+OpSelectionMerge %72 Flatten
+OpBranchConditional %75 %72 %71
+%71 = OpLabel
+%77 = OpUDiv %5 %73 %74
+OpBranch %72
 %72 = OpLabel
-%78 = OpUDiv %5 %74 %75
-OpBranch %73
-%73 = OpLabel
-%79 = OpPhi %5 %60 %62 %78 %72
-%80 = OpCompositeInsert %6 %79 %71 1
-%83 = OpCompositeExtract %5 %56 2
-%84 = OpCompositeExtract %5 %57 2
-%85 = OpIEqual %65 %84 %86
-OpSelectionMerge %82 Flatten
-OpBranchConditional %85 %82 %81
+%78 = OpPhi %5 %60 %62 %77 %71
+%79 = OpCompositeInsert %6 %78 %70 1
+%82 = OpCompositeExtract %5 %56 2
+%83 = OpCompositeExtract %5 %57 2
+%84 = OpIEqual %65 %83 %85
+OpSelectionMerge %81 Flatten
+OpBranchConditional %84 %81 %80
+%80 = OpLabel
+%86 = OpUDiv %5 %82 %83
+OpBranch %81
 %81 = OpLabel
-%87 = OpUDiv %5 %83 %84
-OpBranch %82
-%82 = OpLabel
-%88 = OpPhi %5 %60 %73 %87 %81
-%89 = OpCompositeInsert %6 %88 %80 2
-%92 = OpCompositeExtract %5 %56 3
-%93 = OpCompositeExtract %5 %57 3
-%94 = OpIEqual %65 %93 %95
-OpSelectionMerge %91 Flatten
-OpBranchConditional %94 %91 %90
+%87 = OpPhi %5 %60 %72 %86 %80
+%88 = OpCompositeInsert %6 %87 %79 2
+%91 = OpCompositeExtract %5 %56 3
+%92 = OpCompositeExtract %5 %57 3
+%93 = OpIEqual %65 %92 %94
+OpSelectionMerge %90 Flatten
+OpBranchConditional %93 %90 %89
+%89 = OpLabel
+%95 = OpUDiv %5 %91 %92
+OpBranch %90
 %90 = OpLabel
-%96 = OpUDiv %5 %92 %93
-OpBranch %91
-%91 = OpLabel
-%97 = OpPhi %5 %60 %82 %96 %90
-%98 = OpCompositeInsert %6 %97 %89 3
-OpReturnValue %98
+%96 = OpPhi %5 %60 %81 %95 %89
+%97 = OpCompositeInsert %6 %96 %88 3
+OpReturnValue %97
 OpFunctionEnd
 #endif

@@ -27,19 +27,19 @@ void main()
 {
     coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _32[2];
     coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _33[2];
-    uint _301 = 0u;
+    uint _34 = 0u;
     uint _35;
     bool _102;
     for (;;)
     {
-        uint _36 = _301 << 5u;
+        uint _36 = _34 << 5u;
         coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseA> _42;
         coopMatLoad(_42, _20._m0, _36, 64u, gl_CooperativeMatrixLayoutRowMajor);
-        _33[_301] = _42;
+        _33[_34] = _42;
         coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _75;
         coopMatLoad(_75, _20._m0, _36 + 1024u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
-        _32[_301] = _75;
-        _35 = _301 + 1u;
+        _32[_34] = _75;
+        _35 = _34 + 1u;
         _102 = _35 == 2u;
         if (_102)
         {
@@ -47,7 +47,7 @@ void main()
         }
         else
         {
-            _301 = _35;
+            _34 = _35;
             continue;
         }
     }
@@ -65,15 +65,15 @@ void main()
     coopmat<float16_t, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseB> _143;
     coopMatLoad(_143, _20._m0, 1024u, 64u, gl_CooperativeMatrixLayoutColumnMajor);
     _28[0u] = _143;
-    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _299 = coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0.0);
-    uint _300 = 0u;
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _154 = coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator>(0.0);
+    uint _156 = 0u;
     uint _157;
     coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _222;
     bool _223;
     for (;;)
     {
-        _222 = coopMatMulAdd(_33[_300], _32[_300], _299, 0);
-        _157 = _300 + 1u;
+        _222 = coopMatMulAdd(_33[_156], _32[_156], _154, 0);
+        _157 = _156 + 1u;
         _223 = _157 == 2u;
         if (_223)
         {
@@ -81,20 +81,20 @@ void main()
         }
         else
         {
-            _299 = _222;
-            _300 = _157;
+            _154 = _222;
+            _156 = _157;
             continue;
         }
     }
-    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _296 = _222;
-    uint _298 = 0u;
+    coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _224 = _222;
+    uint _226 = 0u;
     uint _227;
     coopmat<float, gl_ScopeSubgroup, 16u, 16u, gl_MatrixUseAccumulator> _292;
     bool _293;
     for (;;)
     {
-        _292 = coopMatMulAdd(_31[_298], _28[_298], _296, 0);
-        _227 = _298 + 1u;
+        _292 = coopMatMulAdd(_31[_226], _28[_226], _224, 0);
+        _227 = _226 + 1u;
         _293 = _227 == 2u;
         if (_293)
         {
@@ -102,8 +102,8 @@ void main()
         }
         else
         {
-            _296 = _292;
-            _298 = _227;
+            _224 = _292;
+            _226 = _227;
             continue;
         }
     }
@@ -117,7 +117,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 319
+; Bound: 315
 ; Schema: 0
 OpCapability Shader
 OpCapability Float16
@@ -206,17 +206,11 @@ OpDecorate %24 NonReadable
 %31 = OpVariable %30 Function
 %32 = OpVariable %27 Function
 %33 = OpVariable %30 Function
-%296 = OpVariable %295 Function
-%298 = OpVariable %297 Function
-%299 = OpVariable %295 Function
-%300 = OpVariable %297 Function
-%301 = OpVariable %297 Function
 OpBranch %302
 %302 = OpLabel
-OpStore %301 %3
 OpBranch %303
 %303 = OpLabel
-%34 = OpLoad %2 %301
+%34 = OpPhi %2 %3 %302 %35 %304
 %36 = OpShiftLeftLogical %2 %34 %37
 %40 = OpAccessChain %39 %20 %3 %36
 %42 = OpCooperativeMatrixLoadKHR %5 %40 %3 %41 NonPrivatePointer
@@ -261,16 +255,12 @@ OpStore %79 %75
 %99 = OpIAdd %2 %70 %98
 %35 = OpIAdd %2 %34 %7
 %102 = OpIEqual %101 %35 %10
-OpLoopMerge %306 %305 None
+OpLoopMerge %305 %304 None
 OpBranch %304
 %304 = OpLabel
-OpSelectionMerge %316 None
-OpBranchConditional %102 %306 %305
-%316 = OpLabel
-OpUnreachable
+OpBranchConditional %102 %305 %303
 %305 = OpLabel
-OpStore %301 %35
-OpBranch %303
+OpBranch %306
 %306 = OpLabel
 %103 = OpAccessChain %39 %20 %3 %104
 %105 = OpCooperativeMatrixLoadKHR %5 %103 %3 %41 NonPrivatePointer
@@ -288,12 +278,10 @@ OpStore %134 %133
 %143 = OpCooperativeMatrixLoadKHR %8 %142 %7 %41 NonPrivatePointer
 %144 = OpAccessChain %78 %28 %3
 OpStore %144 %143
-OpStore %299 %153
-OpStore %300 %3
 OpBranch %307
 %307 = OpLabel
-%156 = OpLoad %2 %300
-%154 = OpLoad %11 %299
+%154 = OpPhi %11 %153 %306 %222 %308
+%156 = OpPhi %2 %3 %306 %157 %308
 %158 = OpIMul %2 %156 %44
 %159 = OpIAdd %2 %7 %158
 %162 = OpIMul %2 %156 %44
@@ -333,24 +321,17 @@ OpBranch %307
 %222 = OpCooperativeMatrixMulAddKHR %11 %165 %197 %154
 %157 = OpIAdd %2 %156 %7
 %223 = OpIEqual %101 %157 %10
-OpLoopMerge %310 %309 None
+OpLoopMerge %309 %308 None
 OpBranch %308
 %308 = OpLabel
-OpSelectionMerge %317 None
-OpBranchConditional %223 %310 %309
-%317 = OpLabel
-OpUnreachable
+OpBranchConditional %223 %309 %307
 %309 = OpLabel
-OpStore %299 %222
-OpStore %300 %157
-OpBranch %307
+OpBranch %310
 %310 = OpLabel
-OpStore %296 %222
-OpStore %298 %3
 OpBranch %311
 %311 = OpLabel
-%226 = OpLoad %2 %298
-%224 = OpLoad %11 %296
+%224 = OpPhi %11 %222 %310 %292 %312
+%226 = OpPhi %2 %3 %310 %227 %312
 %228 = OpIMul %2 %226 %44
 %229 = OpIAdd %2 %7 %228
 %232 = OpIMul %2 %226 %44
@@ -390,20 +371,13 @@ OpBranch %311
 %292 = OpCooperativeMatrixMulAddKHR %11 %235 %267 %224
 %227 = OpIAdd %2 %226 %7
 %293 = OpIEqual %101 %227 %10
-OpLoopMerge %314 %313 None
+OpLoopMerge %313 %312 None
 OpBranch %312
 %312 = OpLabel
-OpSelectionMerge %318 None
-OpBranchConditional %293 %314 %313
-%318 = OpLabel
-OpUnreachable
+OpBranchConditional %293 %313 %311
 %313 = OpLabel
-OpStore %296 %292
-OpStore %298 %227
-OpBranch %311
+OpBranch %314
 %314 = OpLabel
-OpBranch %315
-%315 = OpLabel
 %294 = OpAccessChain %39 %24 %3 %3
 OpCooperativeMatrixStoreKHR %294 %292 %7 %41 NonPrivatePointer
 OpReturn

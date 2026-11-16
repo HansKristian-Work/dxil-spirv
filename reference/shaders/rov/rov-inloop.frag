@@ -36,15 +36,15 @@ void main()
     vec4 _54 = imageLoad(_9, ivec2(uvec2(_29, _30)));
     imageStore(_9, ivec2(uvec2(_29, _30)), vec4(_54.x + 1.0, _54.y + 2.0, _54.z + 3.0, _54.w + 4.0));
     SPIRV_Cross_beginInvocationInterlock();
-    uint _95 = 0u;
+    uint _67 = 0u;
     uint _68;
     bool _86;
     for (;;)
     {
         vec4 _69 = imageLoad(_8, ivec2(uvec2(_29, _30)));
         imageStore(_8, ivec2(uvec2(_29, _30)), vec4(_69.x + 1.0, _69.y + 2.0, _69.z + 3.0, _69.w + 4.0));
-        _28[_95] = imageLoad(_8, ivec2(uvec2(_29, _30))).y;
-        _68 = _95 + 1u;
+        _28[_67] = imageLoad(_8, ivec2(uvec2(_29, _30))).y;
+        _68 = _67 + 1u;
         _86 = _68 == 4u;
         if (_86)
         {
@@ -52,7 +52,7 @@ void main()
         }
         else
         {
-            _95 = _68;
+            _67 = _68;
             continue;
         }
     }
@@ -66,7 +66,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 103
+; Bound: 101
 ; Schema: 0
 OpCapability Shader
 OpCapability StorageImageWriteWithoutFormat
@@ -127,7 +127,6 @@ OpDecorate %14 Location 0
 %3 = OpFunction %1 None %2
 %4 = OpLabel
 %28 = OpVariable %27 Function
-%95 = OpVariable %94 Function
 OpBranch %96
 %96 = OpLabel
 %15 = OpLoad %6 %9
@@ -168,10 +167,9 @@ OpStore %51 %53
 %66 = OpCompositeConstruct %10 %61 %62 %63 %64
 OpImageWrite %15 %65 %66 NonPrivateTexel
 OpBeginInvocationInterlockEXT
-OpStore %95 %20
 OpBranch %97
 %97 = OpLabel
-%67 = OpLoad %19 %95
+%67 = OpPhi %19 %20 %96 %68 %98
 %70 = OpCompositeConstruct %55 %29 %30
 %69 = OpImageRead %10 %16 %70 MakeTexelVisible|NonPrivateTexel %46
 %71 = OpCompositeExtract %5 %69 0
@@ -192,19 +190,13 @@ OpImageWrite %16 %79 %80 MakeTexelAvailable|NonPrivateTexel %46
 OpStore %84 %83
 %68 = OpIAdd %19 %67 %23
 %86 = OpIEqual %85 %68 %43
-OpLoopMerge %100 %99 None
+OpLoopMerge %99 %98 None
 OpBranch %98
 %98 = OpLabel
-OpSelectionMerge %102 None
-OpBranchConditional %86 %100 %99
-%102 = OpLabel
-OpUnreachable
+OpBranchConditional %86 %99 %97
 %99 = OpLabel
-OpStore %95 %68
-OpBranch %97
+OpBranch %100
 %100 = OpLabel
-OpBranch %101
-%101 = OpLabel
 OpEndInvocationInterlockEXT
 %87 = OpAccessChain %17 %12 %40
 %88 = OpLoad %5 %87

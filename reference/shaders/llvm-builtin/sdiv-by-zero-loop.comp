@@ -58,13 +58,13 @@ void main()
     uint _55 = SRem(65536u, _29);
     if (!(_29 == 0u))
     {
-        uint _68 = 0u;
+        uint _57 = 0u;
         uint _58;
         bool _66;
         for (;;)
         {
-            imageStore(_8, int(_68 + gl_GlobalInvocationID.x), uvec4(_55 + _43));
-            _58 = _68 + 1u;
+            imageStore(_8, int(_57 + gl_GlobalInvocationID.x), uvec4(_55 + _43));
+            _58 = _57 + 1u;
             _66 = _58 == floatBitsToUint(_15._m0[0u]).x;
             if (_66)
             {
@@ -72,7 +72,7 @@ void main()
             }
             else
             {
-                _68 = _58;
+                _57 = _58;
                 continue;
             }
         }
@@ -85,7 +85,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 78
+; Bound: 76
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -139,7 +139,6 @@ OpDecorate %19 BuiltIn GlobalInvocationId
 %67 = OpTypePointer Function %5
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%68 = OpVariable %67 Function
 OpBranch %69
 %69 = OpLabel
 %16 = OpLoad %6 %8
@@ -152,13 +151,12 @@ OpBranch %69
 %43 = OpFunctionCall %5 %33 %44 %29
 %55 = OpFunctionCall %5 %47 %44 %29
 %56 = OpIEqual %38 %29 %22
-OpSelectionMerge %75 None
-OpBranchConditional %56 %75 %70
+OpSelectionMerge %74 None
+OpBranchConditional %56 %74 %70
 %70 = OpLabel
-OpStore %68 %22
 OpBranch %71
 %71 = OpLabel
-%57 = OpLoad %5 %68
+%57 = OpPhi %5 %22 %70 %58 %72
 %59 = OpIAdd %5 %55 %43
 %60 = OpIAdd %5 %57 %23
 %61 = OpCompositeConstruct %27 %59 %59 %59 %59
@@ -169,21 +167,15 @@ OpImageWrite %16 %60 %61 NonPrivateTexel
 %64 = OpBitcast %27 %63
 %65 = OpCompositeExtract %5 %64 0
 %66 = OpIEqual %38 %58 %65
-OpLoopMerge %74 %73 None
+OpLoopMerge %73 %72 None
 OpBranch %72
 %72 = OpLabel
-OpSelectionMerge %77 None
-OpBranchConditional %66 %74 %73
-%77 = OpLabel
-OpUnreachable
+OpBranchConditional %66 %73 %71
 %73 = OpLabel
-OpStore %68 %58
-OpBranch %71
+OpBranch %74
 %74 = OpLabel
 OpBranch %75
 %75 = OpLabel
-OpBranch %76
-%76 = OpLabel
 OpReturn
 OpFunctionEnd
 %33 = OpFunction %5 None %30

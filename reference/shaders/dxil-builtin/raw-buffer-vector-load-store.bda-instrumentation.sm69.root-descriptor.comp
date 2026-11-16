@@ -638,6 +638,7 @@ OpDecorate %571 Binding 3
 %507 = OpTypeRuntimeArray %56
 %508 = OpTypeStruct %507
 %509 = OpTypePointer PhysicalStorageBuffer %508
+%514 = OpUndef %56
 %519 = OpTypeRuntimeArray %447
 %520 = OpTypeStruct %519
 %521 = OpTypePointer PhysicalStorageBuffer %520
@@ -670,7 +671,6 @@ OpDecorate %571 Binding 3
 %625 = OpConstant %5 10
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%514 = OpUndef %56
 OpBranch %560
 %560 = OpLabel
 %34 = OpFunctionCall %5 %24

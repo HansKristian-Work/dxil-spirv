@@ -69,12 +69,12 @@ OpDecorate %15 BuiltIn RayTmaxKHR
 %13 = OpVariable %12 HitAttributeKHR
 %14 = OpTypePointer Input %5
 %15 = OpVariable %14 Input
+%18 = OpUndef %6
 %21 = OpTypePointer IncomingRayPayloadKHR %6
 %23 = OpTypeInt 32 0
 %24 = OpConstant %23 0
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%18 = OpUndef %6
 OpBranch %25
 %25 = OpLabel
 %16 = OpLoad %5 %15

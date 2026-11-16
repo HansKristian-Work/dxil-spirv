@@ -4,8 +4,6 @@
 layout(primitive_culling);
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-uint _412;
-
 layout(set = 0, binding = 0) uniform accelerationStructureEXT _10;
 layout(set = 0, binding = 1, r32ui) uniform writeonly uimageBuffer _14;
 layout(set = 0, binding = 2, r32ui) uniform writeonly uimageBuffer _15;
@@ -18,29 +16,23 @@ void main()
 {
     rayQueryInitializeEXT(_28, _10, 132u, 170u, vec3(1.0, 2.0, 3.0), 4.0, vec3(5.0, 6.0, 7.0), 8.0);
     bool _43 = rayQueryProceedEXT(_28);
-    uint _402;
-    uint _403;
-    uint _404;
-    uint _405;
+    uint _212;
+    uint _213;
+    uint _214;
+    uint _215;
     if (_43)
     {
         uint _47;
         uint _50;
         uint _52;
-        uint _409 = 0u;
-        uint _410 = 0u;
-        uint _411 = 0u;
-        uint _46;
-        uint _49;
-        uint _51;
+        uint _46 = 0u;
+        uint _49 = 0u;
+        uint _51 = 0u;
         uint _54;
         uint _175;
         bool _176;
         for (;;)
         {
-            _51 = _411;
-            _49 = _410;
-            _46 = _409;
             uint _53 = rayQueryGetIntersectionInstanceIdEXT(_28, bool(0u));
             _54 = gl_LocalInvocationIndex << 6u;
             imageStore(_14, int(gl_LocalInvocationIndex * 64u), uvec4(_53));
@@ -90,9 +82,6 @@ void main()
             imageStore(_17, int(_166 + 2u), uvec4(floatBitsToUint(_153[0].z)));
             _175 = rayQueryGetIntersectionTypeEXT(_28, bool(0u));
             _176 = _175 == 0u;
-            uint _408 = _412;
-            uint _407 = _412;
-            uint _406 = _412;
             if (_176)
             {
                 float _186 = rayQueryGetIntersectionTEXT(_28, bool(0u));
@@ -102,31 +91,34 @@ void main()
                 bool _201 = rayQueryGetIntersectionFrontFaceEXT(_28, bool(0u));
                 imageStore(_14, int((gl_LocalInvocationIndex * 64u) + 8u), uvec4(_201 ? 100u : 10u));
                 rayQueryConfirmIntersectionEXT(_28);
-                _406 = _46 + 1u;
-                _407 = _49;
-                _408 = _51;
+                _47 = _46 + 1u;
+                _50 = _49;
+                _52 = _51;
             }
             else
             {
+                uint _412;
+                uint _413;
+                uint _414;
                 if (_175 == 1u)
                 {
                     bool _178 = rayQueryGetIntersectionCandidateAABBOpaqueEXT(_28);
                     uint _180 = uint(!_178);
                     rayQueryGenerateIntersectionEXT(_28, 0.5);
-                    _406 = _46;
-                    _407 = _180 + _49;
-                    _408 = (_180 ^ 1u) + _51;
+                    _412 = _46;
+                    _413 = _180 + _49;
+                    _414 = (_180 ^ 1u) + _51;
                 }
                 else
                 {
-                    _406 = _46;
-                    _407 = _49;
-                    _408 = _51;
+                    _412 = _46;
+                    _413 = _49;
+                    _414 = _51;
                 }
+                _47 = _412;
+                _50 = _413;
+                _52 = _414;
             }
-            _52 = _408;
-            _50 = _407;
-            _47 = _406;
             if (_47 == 4u)
             {
                 rayQueryTerminateEXT(_28);
@@ -134,9 +126,9 @@ void main()
             bool _211 = rayQueryProceedEXT(_28);
             if (_211)
             {
-                _409 = _47;
-                _410 = _50;
-                _411 = _52;
+                _46 = _47;
+                _49 = _50;
+                _51 = _52;
                 continue;
             }
             else
@@ -144,43 +136,43 @@ void main()
                 break;
             }
         }
-        _402 = _54;
-        _403 = _47;
-        _404 = _50;
-        _405 = _52;
+        _212 = _54;
+        _213 = _47;
+        _214 = _50;
+        _215 = _52;
     }
     else
     {
-        _402 = gl_LocalInvocationIndex << 6u;
-        _403 = 0u;
-        _404 = 0u;
-        _405 = 0u;
+        _212 = gl_LocalInvocationIndex << 6u;
+        _213 = 0u;
+        _214 = 0u;
+        _215 = 0u;
     }
     uint _216 = rayQueryGetRayFlagsEXT(_28);
-    imageStore(_14, int((_402 | 9u) + 0u), uvec4(_216));
+    imageStore(_14, int((_212 | 9u) + 0u), uvec4(_216));
     vec3 _221 = rayQueryGetWorldRayOriginEXT(_28);
-    imageStore(_15, int((_402 | 10u) + 0u), uvec4(floatBitsToUint(_221.x)));
+    imageStore(_15, int((_212 | 10u) + 0u), uvec4(floatBitsToUint(_221.x)));
     vec3 _227 = rayQueryGetWorldRayDirectionEXT(_28);
-    imageStore(_15, int((_402 | 11u) + 0u), uvec4(floatBitsToUint(_227.y)));
+    imageStore(_15, int((_212 | 11u) + 0u), uvec4(floatBitsToUint(_227.y)));
     float _234 = rayQueryGetRayTMinEXT(_28);
-    imageStore(_15, int((_402 | 12u) + 0u), uvec4(floatBitsToUint(_234)));
+    imageStore(_15, int((_212 | 12u) + 0u), uvec4(floatBitsToUint(_234)));
     uint _239 = rayQueryGetIntersectionTypeEXT(_28, bool(1u));
     if (!(_239 == 0u))
     {
         uint _241 = rayQueryGetIntersectionInstanceIdEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 32u) + 0u), uvec4(_241));
+        imageStore(_14, int((_212 | 32u) + 0u), uvec4(_241));
         uint _246 = rayQueryGetIntersectionInstanceCustomIndexEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 33u) + 0u), uvec4(_246));
+        imageStore(_14, int((_212 | 33u) + 0u), uvec4(_246));
         uint _251 = rayQueryGetIntersectionGeometryIndexEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 34u) + 0u), uvec4(_251));
+        imageStore(_14, int((_212 | 34u) + 0u), uvec4(_251));
         uint _256 = rayQueryGetIntersectionPrimitiveIndexEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 35u) + 0u), uvec4(_256));
+        imageStore(_14, int((_212 | 35u) + 0u), uvec4(_256));
         vec3 _261 = rayQueryGetIntersectionObjectRayOriginEXT(_28, bool(1u));
-        imageStore(_15, int((_402 | 36u) + 0u), uvec4(floatBitsToUint(_261.x)));
+        imageStore(_15, int((_212 | 36u) + 0u), uvec4(floatBitsToUint(_261.x)));
         vec3 _268 = rayQueryGetIntersectionObjectRayDirectionEXT(_28, bool(1u));
-        imageStore(_15, int((_402 | 37u) + 0u), uvec4(floatBitsToUint(_268.y)));
+        imageStore(_15, int((_212 | 37u) + 0u), uvec4(floatBitsToUint(_268.y)));
         uint _275 = rayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 38u) + 0u), uvec4(_275));
+        imageStore(_14, int((_212 | 38u) + 0u), uvec4(_275));
         mat4x3 _280 = rayQueryGetIntersectionWorldToObjectEXT(_28, bool(1u));
         mat4x3 _282 = rayQueryGetIntersectionWorldToObjectEXT(_28, bool(1u));
         mat4x3 _284 = rayQueryGetIntersectionWorldToObjectEXT(_28, bool(1u));
@@ -215,26 +207,26 @@ void main()
         imageStore(_17, int(_358 + 1u), uvec4(floatBitsToUint(_337[0].y)));
         imageStore(_17, int(_358 + 2u), uvec4(floatBitsToUint(_339[0].z)));
         float _367 = rayQueryGetIntersectionTEXT(_28, bool(1u));
-        imageStore(_15, int((_402 | 43u) + 0u), uvec4(floatBitsToUint(_367)));
+        imageStore(_15, int((_212 | 43u) + 0u), uvec4(floatBitsToUint(_367)));
     }
     uint _373 = rayQueryGetIntersectionTypeEXT(_28, bool(1u));
     if (_373 == 1u)
     {
-        imageStore(_14, int((_402 | 13u) + 0u), uvec4(_403));
+        imageStore(_14, int((_212 | 13u) + 0u), uvec4(_213));
         vec2 _388 = rayQueryGetIntersectionBarycentricsEXT(_28, bool(1u));
-        imageStore(_15, int((_402 | 44u) + 0u), uvec4(floatBitsToUint(_388.y)));
+        imageStore(_15, int((_212 | 44u) + 0u), uvec4(floatBitsToUint(_388.y)));
         bool _395 = rayQueryGetIntersectionFrontFaceEXT(_28, bool(1u));
-        imageStore(_14, int((_402 | 45u) + 0u), uvec4(_395 ? 100u : 10u));
+        imageStore(_14, int((_212 | 45u) + 0u), uvec4(_395 ? 100u : 10u));
     }
     else
     {
         if (_373 == 2u)
         {
-            imageStore(_14, int((_402 | 14u) + 0u), uvec4(_404));
+            imageStore(_14, int((_212 | 14u) + 0u), uvec4(_214));
         }
         else
         {
-            imageStore(_14, int((_402 | 15u) + 0u), uvec4(_405));
+            imageStore(_14, int((_212 | 15u) + 0u), uvec4(_215));
         }
     }
 }
@@ -245,7 +237,7 @@ void main()
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 439
+; Bound: 441
 ; Schema: 0
 OpCapability Shader
 OpCapability ImageBuffer
@@ -349,21 +341,10 @@ OpDecorate %24 BuiltIn LocalInvocationIndex
 %391 = OpConstant %11 44
 %398 = OpConstant %11 45
 %401 = OpTypePointer Function %11
-%412 = OpUndef %11
 %3 = OpFunction %1 None %2
 %4 = OpLabel
-%402 = OpVariable %401 Function
-%403 = OpVariable %401 Function
-%404 = OpVariable %401 Function
-%405 = OpVariable %401 Function
-%406 = OpVariable %401 Function
-%407 = OpVariable %401 Function
-%408 = OpVariable %401 Function
-%409 = OpVariable %401 Function
-%410 = OpVariable %401 Function
-%411 = OpVariable %401 Function
-OpBranch %413
-%413 = OpLabel
+OpBranch %415
+%415 = OpLabel
 %18 = OpLoad %12 %17
 %19 = OpLoad %12 %16
 %20 = OpLoad %12 %15
@@ -374,24 +355,17 @@ OpBranch %413
 %41 = OpCompositeConstruct %38 %33 %35 %37
 OpRayQueryInitializeKHR %28 %22 %29 %30 %39 %40 %41 %42
 %43 = OpRayQueryProceedKHR %5 %28
-OpSelectionMerge %428 None
-OpBranchConditional %43 %415 %414
-%414 = OpLabel
-%44 = OpShiftLeftLogical %11 %25 %45
-OpStore %402 %44
-OpStore %403 %48
-OpStore %404 %48
-OpStore %405 %48
-OpBranch %428
-%415 = OpLabel
-OpStore %409 %48
-OpStore %410 %48
-OpStore %411 %48
-OpBranch %416
+OpSelectionMerge %431 None
+OpBranchConditional %43 %417 %416
 %416 = OpLabel
-%51 = OpLoad %11 %411
-%49 = OpLoad %11 %410
-%46 = OpLoad %11 %409
+%44 = OpShiftLeftLogical %11 %25 %45
+OpBranch %431
+%417 = OpLabel
+OpBranch %418
+%418 = OpLabel
+%46 = OpPhi %11 %48 %417 %47 %428
+%49 = OpPhi %11 %48 %417 %50 %428
+%51 = OpPhi %11 %48 %417 %52 %428
 %53 = OpRayQueryGetIntersectionInstanceIdKHR %11 %28 %48
 %54 = OpShiftLeftLogical %11 %25 %45
 %55 = OpIMul %11 %25 %56
@@ -527,24 +501,18 @@ OpImageWrite %18 %172 %171 NonPrivateTexel
 OpImageWrite %18 %174 %173 NonPrivateTexel
 %175 = OpRayQueryGetIntersectionTypeKHR %11 %28 %48
 %176 = OpIEqual %5 %175 %48
-OpLoopMerge %427 %426 None
-OpBranch %417
-%417 = OpLabel
-OpStore %408 %412
-OpStore %407 %412
-OpStore %406 %412
-OpSelectionMerge %423 None
-OpBranchConditional %176 %422 %418
-%418 = OpLabel
-%177 = OpIEqual %5 %175 %61
-OpSelectionMerge %421 None
-OpBranchConditional %177 %420 %419
+OpLoopMerge %429 %428 None
+OpBranch %419
 %419 = OpLabel
-OpStore %406 %46
-OpStore %407 %49
-OpStore %408 %51
-OpBranch %421
+OpSelectionMerge %425 None
+OpBranchConditional %176 %424 %420
 %420 = OpLabel
+%177 = OpIEqual %5 %175 %61
+OpSelectionMerge %423 None
+OpBranchConditional %177 %422 %421
+%421 = OpLabel
+OpBranch %423
+%422 = OpLabel
 %178 = OpRayQueryGetIntersectionCandidateAABBOpaqueKHR %5 %28
 %179 = OpLogicalNot %5 %178
 %180 = OpSelect %11 %179 %61 %48
@@ -552,13 +520,13 @@ OpBranch %421
 %182 = OpBitwiseXor %11 %180 %61
 %183 = OpIAdd %11 %182 %51
 OpRayQueryGenerateIntersectionKHR %28 %184
-OpStore %406 %46
-OpStore %407 %181
-OpStore %408 %183
-OpBranch %421
-%421 = OpLabel
 OpBranch %423
-%422 = OpLabel
+%423 = OpLabel
+%412 = OpPhi %11 %46 %422 %46 %421
+%413 = OpPhi %11 %181 %422 %49 %421
+%414 = OpPhi %11 %183 %422 %51 %421
+OpBranch %425
+%424 = OpLabel
 %185 = OpIAdd %11 %46 %61
 %186 = OpRayQueryGetIntersectionTKHR %31 %28 %48
 %187 = OpBitwiseOr %11 %54 %45
@@ -583,42 +551,31 @@ OpImageWrite %20 %198 %200 NonPrivateTexel
 %209 = OpCompositeConstruct %57 %202 %202 %202 %202
 OpImageWrite %21 %208 %209 NonPrivateTexel
 OpRayQueryConfirmIntersectionKHR %28
-OpStore %406 %185
-OpStore %407 %49
-OpStore %408 %51
-OpBranch %423
-%423 = OpLabel
-%52 = OpLoad %11 %408
-%50 = OpLoad %11 %407
-%47 = OpLoad %11 %406
-%210 = OpIEqual %5 %47 %80
-OpSelectionMerge %425 None
-OpBranchConditional %210 %424 %425
-%424 = OpLabel
-OpRayQueryTerminateKHR %28
 OpBranch %425
 %425 = OpLabel
-%211 = OpRayQueryProceedKHR %5 %28
-OpSelectionMerge %438 None
-OpBranchConditional %211 %426 %427
-%438 = OpLabel
-OpUnreachable
+%47 = OpPhi %11 %185 %424 %412 %423
+%50 = OpPhi %11 %49 %424 %413 %423
+%52 = OpPhi %11 %51 %424 %414 %423
+%210 = OpIEqual %5 %47 %80
+OpSelectionMerge %427 None
+OpBranchConditional %210 %426 %427
 %426 = OpLabel
-OpStore %409 %47
-OpStore %410 %50
-OpStore %411 %52
-OpBranch %416
+OpRayQueryTerminateKHR %28
+OpBranch %427
 %427 = OpLabel
-OpStore %402 %54
-OpStore %403 %47
-OpStore %404 %50
-OpStore %405 %52
 OpBranch %428
 %428 = OpLabel
-%215 = OpLoad %11 %405
-%214 = OpLoad %11 %404
-%213 = OpLoad %11 %403
-%212 = OpLoad %11 %402
+%211 = OpRayQueryProceedKHR %5 %28
+OpBranchConditional %211 %418 %429
+%429 = OpLabel
+OpBranch %430
+%430 = OpLabel
+OpBranch %431
+%431 = OpLabel
+%212 = OpPhi %11 %54 %430 %44 %416
+%213 = OpPhi %11 %47 %430 %48 %416
+%214 = OpPhi %11 %50 %430 %48 %416
+%215 = OpPhi %11 %52 %430 %48 %416
 %216 = OpRayQueryGetRayFlagsKHR %11 %28
 %217 = OpBitwiseOr %11 %212 %218
 %219 = OpIAdd %11 %217 %48
@@ -646,9 +603,9 @@ OpImageWrite %20 %231 %233 NonPrivateTexel
 OpImageWrite %20 %236 %238 NonPrivateTexel
 %239 = OpRayQueryGetIntersectionTypeKHR %11 %28 %61
 %240 = OpIEqual %5 %239 %48
-OpSelectionMerge %430 None
-OpBranchConditional %240 %430 %429
-%429 = OpLabel
+OpSelectionMerge %433 None
+OpBranchConditional %240 %433 %432
+%432 = OpLabel
 %241 = OpRayQueryGetIntersectionInstanceIdKHR %11 %28 %61
 %242 = OpBitwiseOr %11 %212 %243
 %244 = OpIAdd %11 %242 %48
@@ -787,31 +744,31 @@ OpImageWrite %18 %366 %365 NonPrivateTexel
 %371 = OpBitcast %11 %367
 %372 = OpCompositeConstruct %57 %371 %371 %371 %371
 OpImageWrite %20 %370 %372 NonPrivateTexel
-OpBranch %430
-%430 = OpLabel
+OpBranch %433
+%433 = OpLabel
 %373 = OpRayQueryGetIntersectionTypeKHR %11 %28 %61
 %374 = OpIEqual %5 %373 %61
-OpSelectionMerge %436 None
-OpBranchConditional %374 %435 %431
-%431 = OpLabel
+OpSelectionMerge %439 None
+OpBranchConditional %374 %438 %434
+%434 = OpLabel
 %375 = OpIEqual %5 %373 %67
-OpSelectionMerge %434 None
-OpBranchConditional %375 %433 %432
-%432 = OpLabel
+OpSelectionMerge %437 None
+OpBranchConditional %375 %436 %435
+%435 = OpLabel
 %376 = OpBitwiseOr %11 %212 %377
 %378 = OpIAdd %11 %376 %48
 %379 = OpCompositeConstruct %57 %215 %215 %215 %215
 OpImageWrite %21 %378 %379 NonPrivateTexel
-OpBranch %434
-%433 = OpLabel
+OpBranch %437
+%436 = OpLabel
 %380 = OpBitwiseOr %11 %212 %381
 %382 = OpIAdd %11 %380 %48
 %383 = OpCompositeConstruct %57 %214 %214 %214 %214
 OpImageWrite %21 %382 %383 NonPrivateTexel
-OpBranch %434
-%434 = OpLabel
-OpBranch %436
-%435 = OpLabel
+OpBranch %437
+%437 = OpLabel
+OpBranch %439
+%438 = OpLabel
 %384 = OpBitwiseOr %11 %212 %385
 %386 = OpIAdd %11 %384 %48
 %387 = OpCompositeConstruct %57 %213 %213 %213 %213
@@ -829,10 +786,10 @@ OpImageWrite %20 %392 %394 NonPrivateTexel
 %399 = OpIAdd %11 %397 %48
 %400 = OpCompositeConstruct %57 %396 %396 %396 %396
 OpImageWrite %21 %399 %400 NonPrivateTexel
-OpBranch %436
-%436 = OpLabel
-OpBranch %437
-%437 = OpLabel
+OpBranch %439
+%439 = OpLabel
+OpBranch %440
+%440 = OpLabel
 OpReturn
 OpFunctionEnd
 #endif

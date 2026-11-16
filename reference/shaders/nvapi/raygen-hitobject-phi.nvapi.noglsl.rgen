@@ -80,9 +80,6 @@ OpDecorate %22 BuiltIn LaunchIdKHR
 %4 = OpLabel
 %49 = OpVariable %48 Function
 %80 = OpVariable %48 Function
-%103 = OpVariable %102 Function
-%104 = OpVariable %102 Function
-%106 = OpVariable %105 Function
 OpBranch %107
 %107 = OpLabel
 %24 = OpAccessChain %23 %22 %25
@@ -149,16 +146,12 @@ OpHitObjectTraceRayNV %80 %72 %25 %74 %25 %32 %25 %78 %28 %79 %29 %17
 %82 = OpHitObjectIsHitNV %33 %80
 %83 = OpSelect %9 %82 %32 %25
 %84 = OpINotEqual %33 %83 %25
-OpStore %104 %81
-OpStore %106 %84
 OpBranch %115
 %114 = OpLabel
-OpStore %104 %68
-OpStore %106 %87
 OpBranch %115
 %115 = OpLabel
-%86 = OpLoad %33 %106
-%85 = OpLoad %9 %104
+%85 = OpPhi %9 %68 %114 %81 %113
+%86 = OpPhi %33 %87 %114 %84 %113
 OpSelectionMerge %118 None
 OpBranchConditional %86 %117 %116
 %116 = OpLabel
@@ -169,15 +162,13 @@ OpStore %89 %85
 %91 = OpCompositeConstruct %44 %75 %28 %77
 OpHitObjectTraceRayNV %80 %88 %32 %74 %25 %32 %32 %90 %28 %91 %29 %18
 %92 = OpLoad %9 %89
-OpStore %103 %92
 OpBranch %118
 %117 = OpLabel
-OpStore %103 %85
 OpBranch %118
 %118 = OpLabel
+%93 = OpPhi %9 %85 %117 %92 %116
 OpBranch %119
 %119 = OpLabel
-%93 = OpLoad %9 %103
 %94 = OpBitwiseAnd %9 %26 %95
 OpReorderThreadWithHitObjectNV %80 %94 %51
 %96 = OpLoad %6 %8
