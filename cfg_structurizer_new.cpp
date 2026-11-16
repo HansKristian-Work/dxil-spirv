@@ -425,6 +425,27 @@ void CFGStructurizer::rewrite_switch_blocks()
 	{
 		if (node->ir.terminator.type == Terminator::Type::Switch)
 		{
+			bool degenerate_switch = true;
+			for (auto &c : node->ir.terminator.cases)
+			{
+				if (c.node != node->ir.terminator.cases.front().node)
+				{
+					degenerate_switch = false;
+					break;
+				}
+			}
+
+			if (degenerate_switch)
+			{
+				// We only had one degenerate default branch somehow ...
+				node->ir.terminator.type = Terminator::Type::Branch;
+				node->ir.terminator.direct_block = node->ir.terminator.cases.front().node;
+				node->ir.terminator.conditional_id = 0;
+				node->ir.terminator.cases.clear();
+				rewrote = true;
+				continue;
+			}
+
 			if (CFGNode *merge = switch_block_trivially_merges(node))
 			{
 				// Do it early, otherwise we lose information about the switch merge target.
@@ -462,14 +483,7 @@ void CFGStructurizer::rewrite_switch_blocks()
 
 			// Pretty sure there must be a default case?
 			assert(default_case.node);
-
-			if (cases.empty())
-			{
-				// We only had one degenerate default branch somehow ...
-				node->ir.terminator.type = Terminator::Type::Branch;
-				node->ir.terminator.direct_block = default_case.node;
-				continue;
-			}
+			assert(!cases.empty());
 
 			node->clear_branches();
 
