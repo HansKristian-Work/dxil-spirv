@@ -195,7 +195,7 @@ static bool validate_fuzzing_result(Device &device, FuzzState &state)
 			       std::to_string(cond_index) + " {" + std::to_string(state.conditions[cond_index]) + "}";
 		}
 
-		throw std::logic_error("Unexpected feedback encoding.");
+		return "???";
 	};
 
 	size_t words = state.structured_result->get_create_info().size / sizeof(uint32_t);
