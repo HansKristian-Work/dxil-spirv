@@ -333,6 +333,7 @@ private:
 
 	void run_common_preamble();
 	void rewrite_switch_blocks();
+	static bool dominates_any_back_edge_on_dominance_path(CFGNode *node, CFGNode *end_node);
 	CFGNode *switch_block_trivially_merges(CFGNode *node);
 	void rewrite_complex_loop_successors();
 	void convert_phi_to_variables();

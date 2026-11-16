@@ -385,6 +385,21 @@ void CFGStructurizer::rewrite_complex_loop_successors()
 		recompute_cfg();
 }
 
+bool CFGStructurizer::dominates_any_back_edge_on_dominance_path(CFGNode *node, CFGNode *end_node)
+{
+	if (node == end_node)
+		return false;
+
+	if (node->succ_back_edge)
+		return true;
+
+	for (auto *child : node->idom_children)
+		if (dominates_any_back_edge_on_dominance_path(child, end_node))
+			return true;
+
+	return false;
+}
+
 CFGNode *CFGStructurizer::switch_block_trivially_merges(CFGNode *node)
 {
 	if (node->idom_children.empty())
@@ -408,6 +423,11 @@ CFGNode *CFGStructurizer::switch_block_trivially_merges(CFGNode *node)
 		if (df != direct_merge_candidate)
 			return nullptr;
 	}
+
+	// A switch cannot start inside a loop and end outside the loop.
+	// If we got here, the switch dominates all paths. If we dominate any back-edge, bail.
+	if (direct_merge_candidate && dominates_any_back_edge_on_dominance_path(node, direct_merge_candidate))
+		direct_merge_candidate = nullptr;
 
 	return direct_merge_candidate;
 }
