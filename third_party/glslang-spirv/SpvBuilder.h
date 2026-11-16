@@ -273,9 +273,11 @@ public:
     void addExecutionMode(Function*, ExecutionMode mode, int value1 = -1, int value2 = -1, int value3 = -1);
     void addExecutionModeId(Function*, ExecutionMode mode, spv::Id id1 = 0, spv::Id id2 = 0, spv::Id id3 = 0);
     void addName(Id, const char* name);
+    void replaceNameTarget(Id oldId, Id newId);
     void addMemberName(Id, int member, const char* name);
     void addDecoration(Id, Decoration, int num = -1);
     void removeDecorations(const dxil_spv::UnorderedSet<spv::Id> &ids);
+    void removeLocalVariables(const dxil_spv::UnorderedSet<spv::Id> &ids);
     bool hasDecoration(Id, Decoration) const;
     void addUniqueDecoration(Id, Decoration, int num = -1);
     void addMemberDecoration(Id, unsigned int member, Decoration, int num = -1);

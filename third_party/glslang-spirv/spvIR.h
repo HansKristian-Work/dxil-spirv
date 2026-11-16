@@ -301,6 +301,7 @@ public:
     Id getReturnType() const { return functionInstruction.getTypeId(); }
 
     void moveLocalDeclarationsFrom(Function* other);
+    void removeLocalVariables(const dxil_spv::UnorderedSet<spv::Id> &ids);
 
     void setImplicitThis() { implicitThis = true; }
     bool hasImplicitThis() const { return implicitThis; }
@@ -446,6 +447,15 @@ __inline void Function::moveLocalDeclarationsFrom(Function* other)
                 });
         b->instructions.erase(itr, b->instructions.end());
     }
+}
+
+__inline void Function::removeLocalVariables(const dxil_spv::UnorderedSet<spv::Id> &ids)
+{
+    auto &locals = blocks[0]->localVariables;
+    locals.erase(std::remove_if(locals.begin(), locals.end(), [&](const std::unique_ptr<Instruction> &inst)
+    {
+        return ids.count(inst->getResultId()) != 0;
+    }), locals.end());
 }
 
 __inline void Function::addLocalVariable(std::unique_ptr<Instruction> inst)
