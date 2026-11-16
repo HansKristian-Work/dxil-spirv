@@ -1175,9 +1175,6 @@ void CFGStructurizer::route_branches(CFGNode *node,
 		// Reconvene execution at the merge node.
 		// This is mostly irrelevant, but it avoids special casing some other paths.
 		merge_node->name = node->name + ".merge";
-		merge_node->ir.terminator.type = Terminator::Type::Branch;
-		merge_node->ir.terminator.direct_block = node->ir.merge_info.merge_block;
-		merge_node->add_branch(node->ir.merge_info.merge_block);
 		node->ir.merge_info.merge_block = merge_node;
 
 		// We will never write to write complex path variables here, so can take easy paths.
