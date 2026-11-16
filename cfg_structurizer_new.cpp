@@ -1914,15 +1914,19 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths_entry()
 
 void CFGStructurizer::cleanup_degenerate_blocks()
 {
-	Vector<CFGNode *> merge_blocks;
+	UnorderedSet<CFGNode *> merge_blocks_or_phi_incoming;
 
 	// We cannot remove blocks that are merge blocks for others.
 	for (auto *node : forward_post_visit_order)
 	{
 		if (node->ir.merge_info.merge_block)
-			merge_blocks.push_back(node->ir.merge_info.merge_block);
+			merge_blocks_or_phi_incoming.insert(node->ir.merge_info.merge_block);
 		if (node->ir.merge_info.continue_block)
-			merge_blocks.push_back(node->ir.merge_info.continue_block);
+			merge_blocks_or_phi_incoming.insert(node->ir.merge_info.continue_block);
+
+		if (!node->ir.phi.empty())
+			for (auto &incoming : node->ir.phi.front().incoming)
+				merge_blocks_or_phi_incoming.insert(incoming.block);
 	}
 
 	bool rewrote_cfg = false;
@@ -1941,7 +1945,11 @@ void CFGStructurizer::cleanup_degenerate_blocks()
 			if (succ->succ_back_edge || succ->pred_back_edge)
 				return;
 
-			if (node->dominates(succ) && !has_element(merge_blocks, succ))
+			// Rewriting PHIs is annoying at this point, and it's extremely unlikely we should remove this block anyway.
+			if (!succ->ir.phi.empty())
+				return;
+
+			if (node->dominates(succ) && !has_element(merge_blocks_or_phi_incoming, succ))
 			{
 				// Cannot fuse operations if it needs to be executed conditionally.
 				if (node->ir.terminator.type == Terminator::Type::Condition && !succ->ir.operations.empty())
