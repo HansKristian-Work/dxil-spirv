@@ -3171,6 +3171,7 @@ void CFGStructurizer::reset_traversal()
 		node.idom_children.clear();
 		node.fake_pred.clear();
 		node.fake_succ.clear();
+		node.reachable_direct_helpers.clear();
 		node.headers.clear();
 
 		if (!node.freeze_structured_analysis)
