@@ -349,7 +349,7 @@ private:
 
 	bool resolve_direct_path(CFGNode *from, CFGNode *succ, const SerializationLevel *level);
 
-	bool resolve_complex_breaks(CFGNode *from, CFGNode *rerouted_succ, CFGNode *intended_succ);
+	bool resolve_complex_breaks(CFGNode *from, CFGNode *rerouted_succ);
 
 	void serialize_merge_levels_for_dominated_paths_entry();
 	static const SerializationLevel *find_level_for_block(const Vector<SerializationLevel> &levels, CFGNode *block);

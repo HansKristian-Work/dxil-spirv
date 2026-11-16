@@ -86,6 +86,16 @@ bool CFGStructurizer::ensure_valid_phi_rewrites(CFGNode *node)
 	{
 		auto *ib = incoming.block;
 
+		// Back-edges should not have interposing blocks.
+		// We will rely on SSA PHI to get the behavior we want.
+		// If we introduce interposers we won't be able to reasonably do PHI fixup
+		// since the interposing block will be outside loop and continue block is inside loop,
+		// so dominance may break unintentionally.
+		// If we cannot do SSA PHI for some reason, the loop header will clear the PHI write to reset to default value.
+		// For normal DXIL driven PHI, all preds that can reach target will write explicit value anyway.
+		if (ib->succ_back_edge)
+			continue;
+
 		if (ib->ir.terminator.type != Terminator::Type::Branch)
 		{
 			auto *interposing = pool.create_helper_node();
@@ -240,7 +250,9 @@ void CFGStructurizer::convert_phi_to_variables()
 
 			for (auto &incoming : phi.incoming)
 			{
-				assert(incoming.block->ir.terminator.type == Terminator::Type::Branch);
+				assert(incoming.block->ir.terminator.type == Terminator::Type::Branch ||
+				       incoming.block->succ_back_edge);
+
 				auto *store_op = module.allocate_op(spv::OpStore);
 				store_op->flags |= Operation::SSALoadStore;
 				store_op->add_id(alloca_id);
@@ -1508,22 +1520,28 @@ CFGNode *CFGStructurizer::route_loop_bypass(CFGNode *header, CFGNode *merge,
 {
 	if (bypass_break_id != 0)
 	{
-		auto *store_op = module.allocate_op(spv::OpStore);
-		store_op->flags |= Operation::SSALoadStore;
-		store_op->add_id(bypass_break_id);
-		store_op->add_id(module.get_builder().makeBoolConstant(false));
-		header->ir.operations.push_back(store_op);
+		if (!has_store_to_variable(header->ir.operations, bypass_break_id))
+		{
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
+			store_op->add_id(bypass_break_id);
+			store_op->add_id(module.get_builder().makeBoolConstant(false));
+			header->ir.operations.push_back(store_op);
+		}
 
 		merge = route_conditional_break(merge, bypass_break_id, outer_scope.merge_block, ".post-break");
 	}
 
 	if (bypass_continue_id != 0)
 	{
-		auto *store_op = module.allocate_op(spv::OpStore);
-		store_op->flags |= Operation::SSALoadStore;
-		store_op->add_id(bypass_continue_id);
-		store_op->add_id(module.get_builder().makeBoolConstant(false));
-		header->ir.operations.push_back(store_op);
+		if (!has_store_to_variable(header->ir.operations, bypass_continue_id))
+		{
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
+			store_op->add_id(bypass_continue_id);
+			store_op->add_id(module.get_builder().makeBoolConstant(false));
+			header->ir.operations.push_back(store_op);
+		}
 
 		merge = route_conditional_break(merge, bypass_continue_id, outer_scope.continue_block, ".post-continue");
 	}
@@ -1556,10 +1574,9 @@ CFGStructurizer::LoopScope *CFGStructurizer::find_outer_continue_scope_for_block
 	return scope && scope->continue_block == node ? scope : nullptr;
 }
 
-bool CFGStructurizer::resolve_complex_breaks(CFGNode *from, CFGNode *rerouted_succ, CFGNode *intended_succ)
+bool CFGStructurizer::resolve_complex_breaks(CFGNode *from, CFGNode *rerouted_succ)
 {
 	bool has_side_effect = false;
-	bool masked_write = from->ir.terminator.type == Terminator::Type::Condition && intended_succ;
 
 	// Check if we're doing multiple levels of loops.
 	// Need to setup routing variables that are run after the loop(s) merge.
@@ -1569,35 +1586,27 @@ bool CFGStructurizer::resolve_complex_breaks(CFGNode *from, CFGNode *rerouted_su
 		auto *end_itr = loop_scopes.data() + loop_scopes.size();
 		assert(scope != end_itr);
 
-		spv::Id cond_id;
-		if (masked_write)
-		{
-			cond_id = from->ir.terminator.conditional_id;
-			assert(from->ir.terminator.true_block == intended_succ || from->ir.terminator.false_block == intended_succ);
-
-			if (from->ir.terminator.false_block == intended_succ)
-			{
-				auto *selector = module.allocate_op(spv::OpLogicalNot, module.allocate_id(), module.get_builder().makeBoolType());
-				selector->add_id(cond_id);
-				from->ir.operations.push_back(selector);
-				cond_id = selector->id;
-			}
-		}
-		else
-		{
-			cond_id = module.get_builder().makeBoolConstant(true);
-		}
-
 		if (scope->continue_block == rerouted_succ)
 		{
 			scope++;
 			if (scope->bypass_continue_id == 0)
 				scope->bypass_continue_id = module.create_variable(spv::StorageClassFunction, module.get_builder().makeBoolType());
 
+			if (from->succ_back_edge && !has_store_to_variable(from->succ_back_edge->ir.operations, scope->bypass_continue_id))
+			{
+				// If we don't take the branch after all, we will potentially falsely retain the SSA value.
+				// Clear the write in loop header.
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(scope->bypass_continue_id);
+				store_op->add_id(module.get_builder().makeBoolConstant(false));
+				from->succ_back_edge->ir.operations.insert(from->succ_back_edge->ir.operations.begin(), store_op);
+			}
+
 			auto *store_op = module.allocate_op(spv::OpStore);
 			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(scope->bypass_continue_id);
-			store_op->add_id(cond_id);
+			store_op->add_id(module.get_builder().makeBoolConstant(true));
 			from->ir.operations.push_back(store_op);
 			has_side_effect = true;
 		}
@@ -1609,10 +1618,21 @@ bool CFGStructurizer::resolve_complex_breaks(CFGNode *from, CFGNode *rerouted_su
 			if (scope->bypass_break_id == 0)
 				scope->bypass_break_id = module.create_variable(spv::StorageClassFunction, module.get_builder().makeBoolType());
 
+			if (from->succ_back_edge && !has_store_to_variable(from->succ_back_edge->ir.operations, scope->bypass_break_id))
+			{
+				// If we don't take the branch after all, we will potentially falsely retain the SSA value.
+				// Clear the write in loop header.
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(scope->bypass_break_id);
+				store_op->add_id(module.get_builder().makeBoolConstant(false));
+				from->succ_back_edge->ir.operations.insert(from->succ_back_edge->ir.operations.begin(), store_op);
+			}
+
 			auto *store_op = module.allocate_op(spv::OpStore);
 			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(scope->bypass_break_id);
-			store_op->add_id(cond_id);
+			store_op->add_id(module.get_builder().makeBoolConstant(true));
 			from->ir.operations.push_back(store_op);
 			has_side_effect = true;
 		}
@@ -1625,51 +1645,36 @@ bool CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const Se
 {
 	bool has_side_effect = false;
 
-	// We cannot create interposing blocks, so do the conditional write as selects instead.
-	// Normally we expect only back-edges to hit this path.
-	bool masked_write = from->ir.terminator.type == Terminator::Type::Condition;
-
 	for (size_t i = 0, n = (level ? level->paths.size() : 0); i < n; i++)
 	{
 		if (level->paths[i] != succ)
 			continue;
 
-		has_side_effect = resolve_complex_breaks(from, level->breaking_branch ? level->breaking_branch : succ, succ);
+		has_side_effect = resolve_complex_breaks(from, level->breaking_branch ? level->breaking_branch : succ);
 
 		uint32_t num_paths = level->paths.size() + level->skippable;
 
 		if (num_paths >= 3)
 		{
+			if (from->succ_back_edge && !has_store_to_variable(from->succ_back_edge->ir.operations, level->path_selector_id))
+			{
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(level->path_selector_id);
+
+				// If the level is not skippable, all paths leading to the target dispatch node must write a proper value.
+				// Use undef phi here if the loop header cannot take the branch to avoid false loop variable.
+				store_op->add_id(
+					level->skippable
+						? module.get_builder().makeIntConstant(-1)
+						: module.get_builder().createUndefinedConstant(module.get_builder().makeIntType(32)));
+				from->succ_back_edge->ir.operations.insert(from->succ_back_edge->ir.operations.begin(), store_op);
+			}
+
 			auto *store_op = module.allocate_op(spv::OpStore);
 			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(level->path_selector_id);
-
-			// If the level is not skippable, we can write garbage. It must be overwritten by someone else on the way.
-			if (masked_write && level->skippable)
-			{
-				auto *selector = module.allocate_op(spv::OpSelect, module.allocate_id(), module.get_builder().makeIntType(32));
-				selector->add_id(from->ir.terminator.conditional_id);
-
-				assert(from->ir.terminator.true_block == succ || from->ir.terminator.false_block == succ);
-
-				if (succ == from->ir.terminator.true_block)
-				{
-					selector->add_id(module.get_builder().makeIntConstant(i));
-					selector->add_id(module.get_builder().makeIntConstant(-1));
-				}
-				else
-				{
-					selector->add_id(module.get_builder().makeIntConstant(-1));
-					selector->add_id(module.get_builder().makeIntConstant(i));
-				}
-
-				from->ir.operations.push_back(selector);
-				store_op->add_id(selector->id);
-			}
-			else
-			{
-				store_op->add_id(module.get_builder().makeIntConstant(i));
-			}
+			store_op->add_id(module.get_builder().makeIntConstant(i));
 
 			from->ir.operations.push_back(store_op);
 			has_side_effect = true;
@@ -1677,29 +1682,27 @@ bool CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const Se
 		}
 		else if (num_paths == 2)
 		{
+			if (from->succ_back_edge && !has_store_to_variable(from->succ_back_edge->ir.operations, level->path_selector_id))
+			{
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(level->path_selector_id);
+
+				// If the level is not skippable, all paths leading to the target dispatch node must write a proper value.
+				// Use undef phi here if the loop header cannot take the branch to avoid false loop variable.
+				store_op->add_id(
+					level->skippable
+						? module.get_builder().makeBoolConstant(false)
+						: module.get_builder().createUndefinedConstant(module.get_builder().makeBoolType()));
+				from->succ_back_edge->ir.operations.insert(from->succ_back_edge->ir.operations.begin(), store_op);
+			}
+
 			auto *store_op = module.allocate_op(spv::OpStore);
 			store_op->flags |= Operation::SSALoadStore;
 			store_op->add_id(level->path_selector_id);
 
 			bool path_is_true = bool(i) || level->skippable;
-
-			// If we're going to write false regardless of path being taken or not, no need to be fancy.
-			if (masked_write && path_is_true)
-			{
-				spv::Id cond_id = from->ir.terminator.conditional_id;
-				if (succ == from->ir.terminator.false_block)
-				{
-					auto *selector = module.allocate_op(spv::OpLogicalNot, module.allocate_id(), module.get_builder().makeBoolType());
-					selector->add_id(cond_id);
-					from->ir.operations.push_back(selector);
-					cond_id = selector->id;
-				}
-				store_op->add_id(cond_id);
-			}
-			else
-			{
-				store_op->add_id(module.get_builder().makeBoolConstant(path_is_true));
-			}
+			store_op->add_id(module.get_builder().makeBoolConstant(path_is_true));
 
 			from->ir.operations.push_back(store_op);
 			has_side_effect = true;
@@ -1709,7 +1712,7 @@ bool CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const Se
 
 	// We might be doing a complex backwards branch instead.
 	if (!level)
-		has_side_effect = resolve_complex_breaks(from, succ, succ);
+		has_side_effect = resolve_complex_breaks(from, succ);
 
 	return has_side_effect;
 }
@@ -1727,7 +1730,7 @@ void CFGStructurizer::enter_succ(
 		resolve_direct_path(node, succ, level);
 		node->retarget_branch_pre_traversal(succ, level->breaking_branch ? loop_scopes.back().merge_block : merge_node);
 	}
-	else if (resolve_complex_breaks(node, succ, succ))
+	else if (resolve_complex_breaks(node, succ))
 	{
 		// Could happen for direct continue to outer loop header. It won't show up as a level.
 		node->retarget_branch_pre_traversal(succ, loop_scopes.back().merge_block);
@@ -1813,7 +1816,7 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 
 		// If we branch to same level, we must also take the same multi-break routing to get there.
 		if (level.breaking_branch)
-			resolve_complex_breaks(node, level.breaking_branch, nullptr);
+			resolve_complex_breaks(node, level.breaking_branch);
 
 		auto *rewrite_target = level.breaking_branch ? loop_scopes.back().merge_block : merge_node;
 		if (rewrite_target)
