@@ -427,7 +427,29 @@ private:
 	void rewrite_degenerate_phi_constructs();
 	void rewrite_degenerate_interposing_frontiers();
 
+	struct SSAVariableAccess
+	{
+		spv::Id type_id = 0;
+		Vector<CFGNode *> readers;
+		Vector<CFGNode *> writers;
+	};
+	UnorderedMap<uint32_t, SSAVariableAccess> ssa_variable_access;
+	void analyze_ssa_variable_access();
+	void reintroduce_ssa_phi();
+
+	spv::Id rewrite_local_variable_to_phi(spv::Id variable_id, const SSAVariableAccess &accesses,
+	                                      const Vector<CFGNode *> &frontiers, spv::Id back_edge_incoming_id);
+
 	void clamp_ssa_variable_lifetimes();
+
+	bool phi_frontiers_converge(const Vector<CFGNode *> &writers, CFGNode *reader_idom,
+	                            Vector<CFGNode *> &frontiers);
+	PHI *insert_phi_frontiers(const Vector<CFGNode *> &frontiers, PHI &phi);
+
+	static CFGNode *find_forward_progress_dominance_frontier(CFGNode *node, CFGNode *reader_idom,
+	                                                         bool allow_user_blocks_on_path_to_frontier);
+	static bool path_is_purely_through_helper_blocks(CFGNode *from, CFGNode *to);
+	void build_helper_node_direct_reachability_network();
 };
 
 template <typename Container, typename T>
