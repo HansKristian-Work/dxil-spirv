@@ -129,11 +129,14 @@ bool CFGStructurizer::ensure_valid_phi_rewrites(CFGNode *node)
 			else if (has_existing_interposing)
 			{
 				// Need to figure out which succ is the correct path and rewrite in that direction.
-				// If we have interposers it's all direct branches.
+				// If we have interposers it's all direct branches through helper blocks.
 				for (auto *succ : ib->succ)
 				{
 					auto *scan = succ;
-					while (scan != node && scan->succ.size() == 1)
+
+					// Do not traverse through user blocks. Multiple paths could lead to node, but only one path
+					// can lead there through helpers only.
+					while (scan != node && scan->succ.size() == 1 && scan->helper)
 						scan = scan->succ.front();
 
 					if (scan == node || scan->succ_back_edge == node)
