@@ -1203,6 +1203,75 @@ static bool emit_nvapi_extn_op_rt_get_intersection_cluster_id(Converter::Impl &i
 	return false;
 }
 
+static void emit_nvapi_triangle_object_positions(Converter::Impl &impl, spv::Id positions)
+{
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+
+	for (unsigned v = 0; v < 3; v++)
+	{
+		for (unsigned c = 0; c < 3; c++)
+		{
+			auto *extract = impl.allocate(spv::OpCompositeExtract, float32);
+			extract->add_id(positions);
+			extract->add_literal(v);
+			extract->add_literal(c);
+			impl.add(extract);
+
+			auto *cast = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+			cast->add_id(extract->id);
+			impl.add(cast);
+			impl.nvapi.fake_doorbell_outputs[3 * v + c] = cast->id;
+		}
+	}
+}
+
+static bool emit_nvapi_extn_op_rt_triangle_object_positions(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+	auto vec3float32 = builder.makeVectorType(float32, 3);
+	auto array3vec3float32 = builder.makeArrayType(vec3float32, builder.makeUintConstant(3), 0);
+
+	builder.addExtension("SPV_KHR_ray_tracing_position_fetch");
+	builder.addCapability(spv::CapabilityRayTracingPositionFetchKHR);
+
+	auto *positions = impl.allocate(spv::OpLoad, array3vec3float32);
+	positions->add_id(impl.spirv_module.get_builtin_shader_input(spv::BuiltInHitTriangleVertexPositionsKHR));
+	impl.add(positions);
+
+	emit_nvapi_triangle_object_positions(impl, positions->id);
+	return true;
+}
+
+static bool emit_nvapi_extn_op_rt_intersection_triangle_object_positions(Converter::Impl &impl,
+                                                                         spv::RayQueryIntersection intersection)
+{
+	auto *ray_flags = llvm::dyn_cast<llvm::CallInst>(impl.nvapi.fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0]);
+	if (!ray_flags)
+		return false;
+
+	spv::Id ray_object_id = 0;
+	if (!build_ray_query_object(impl, ray_flags->getOperand(1), ray_object_id))
+		return false;
+
+	auto &builder = impl.builder();
+	auto float32 = builder.makeFloatType(32);
+	auto vec3float32 = builder.makeVectorType(float32, 3);
+	auto array3vec3float32 = builder.makeArrayType(vec3float32, builder.makeUintConstant(3), 0);
+
+	builder.addExtension("SPV_KHR_ray_tracing_position_fetch");
+	builder.addCapability(spv::CapabilityRayQueryPositionFetchKHR);
+
+	auto *positions = impl.allocate(spv::OpRayQueryGetIntersectionTriangleVertexPositionsKHR, array3vec3float32);
+	positions->add_id(ray_object_id);
+	positions->add_id(builder.makeUintConstant(intersection));
+	impl.add(positions);
+
+	emit_nvapi_triangle_object_positions(impl, positions->id);
+	return true;
+}
+
 static void emit_nvapi_sphere_position_and_radius(Converter::Impl &impl, spv::Id position, spv::Id radius)
 {
 	auto &builder = impl.builder();
@@ -1645,6 +1714,13 @@ bool NVAPIState::can_commit_opcode()
 		case NV_EXTN_OP_RT_GET_COMMITTED_CLUSTER_ID:
 			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
 
+		case NV_EXTN_OP_RT_TRIANGLE_OBJECT_POSITIONS:
+			return true;
+
+		case NV_EXTN_OP_RT_CANDIDATE_TRIANGLE_OBJECT_POSITIONS:
+		case NV_EXTN_OP_RT_COMMITTED_TRIANGLE_OBJECT_POSITIONS:
+			return fake_doorbell_inputs[NVAPI_ARGUMENT_SRC0U + 0] != nullptr;
+
 		case NV_EXTN_OP_RT_SPHERE_OBJECT_POSITION_AND_RADIUS:
 		case NV_EXTN_OP_RT_LSS_OBJECT_POSITIONS_AND_RADII:
 			return true;
@@ -1818,6 +1894,31 @@ bool NVAPIState::commit_opcode(Converter::Impl &impl, bool analysis)
 			impl.spirv_module.set_override_spirv_version(0x10400);
 			impl.nvapi.num_expected_clock_outputs = 1;
 			if (!analysis && !emit_nvapi_extn_op_rt_get_intersection_cluster_id(impl, spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_TRIANGLE_OBJECT_POSITIONS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 9;
+			if (!analysis && !emit_nvapi_extn_op_rt_triangle_object_positions(impl))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_CANDIDATE_TRIANGLE_OBJECT_POSITIONS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 9;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_triangle_object_positions(impl,
+			                                                                  spv::RayQueryIntersectionRayQueryCandidateIntersectionKHR))
+				return false;
+			break;
+
+		case NV_EXTN_OP_RT_COMMITTED_TRIANGLE_OBJECT_POSITIONS:
+			impl.spirv_module.set_override_spirv_version(0x10400);
+			impl.nvapi.num_expected_clock_outputs = 9;
+			if (!analysis &&
+			    !emit_nvapi_extn_op_rt_intersection_triangle_object_positions(impl,
+			                                                                  spv::RayQueryIntersectionRayQueryCommittedIntersectionKHR))
 				return false;
 			break;
 

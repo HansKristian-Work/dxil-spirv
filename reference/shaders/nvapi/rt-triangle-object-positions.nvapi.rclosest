@@ -1,0 +1,144 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_ray_tracing_position_fetch : require
+
+struct _7
+{
+    vec3 _m0;
+    vec3 _m1;
+    vec3 _m2;
+};
+
+struct _11
+{
+    vec2 _m0;
+};
+
+vec3 _49;
+
+layout(location = 0) rayPayloadInEXT _7 payload;
+hitAttributeEXT _11 hit;
+
+void main()
+{
+    vec3 _48;
+    _48.x = uintBitsToFloat(floatBitsToUint(gl_HitTriangleVertexPositionsEXT[0].x));
+    _48.y = uintBitsToFloat(floatBitsToUint(gl_HitTriangleVertexPositionsEXT[0].y));
+    _48.z = uintBitsToFloat(floatBitsToUint(gl_HitTriangleVertexPositionsEXT[0].z));
+    vec3 _52;
+    _52.x = uintBitsToFloat(floatBitsToUint(gl_HitTriangleVertexPositionsEXT[1].x));
+    _52.y = uintBitsToFloat(floatBitsToUint(gl_HitTriangleVertexPositionsEXT[1].y));
+    _52.z = uintBitsToFloat(floatBitsToUint(gl_HitTriangleVertexPositionsEXT[1].z));
+    vec3 _55;
+    _55.x = uintBitsToFloat(floatBitsToUint(gl_HitTriangleVertexPositionsEXT[2].x));
+    _55.y = uintBitsToFloat(floatBitsToUint(gl_HitTriangleVertexPositionsEXT[2].y));
+    _55.z = uintBitsToFloat(floatBitsToUint(gl_HitTriangleVertexPositionsEXT[2].z));
+    payload._m0 = _48;
+    payload._m1 = _52;
+    payload._m2 = _55;
+}
+
+
+#if 0
+// SPIR-V disassembly
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 66
+; Schema: 0
+OpCapability Shader
+OpCapability UniformBufferArrayDynamicIndexing
+OpCapability SampledImageArrayDynamicIndexing
+OpCapability StorageBufferArrayDynamicIndexing
+OpCapability StorageImageArrayDynamicIndexing
+OpCapability RayTracingKHR
+OpCapability RuntimeDescriptorArray
+OpCapability UniformBufferArrayNonUniformIndexing
+OpCapability SampledImageArrayNonUniformIndexing
+OpCapability StorageBufferArrayNonUniformIndexing
+OpCapability StorageImageArrayNonUniformIndexing
+OpCapability RayTracingPositionFetchKHR
+OpCapability VulkanMemoryModel
+OpExtension "SPV_EXT_descriptor_indexing"
+OpExtension "SPV_KHR_ray_tracing"
+OpExtension "SPV_KHR_ray_tracing_position_fetch"
+OpMemoryModel Logical Vulkan
+OpEntryPoint ClosestHitKHR %3 "main" %9 %13 %20
+OpName %3 "main"
+OpName %7 ""
+OpName %9 "payload"
+OpName %11 ""
+OpName %13 "hit"
+OpDecorate %20 BuiltIn HitTriangleVertexPositionsKHR
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeFloat 32
+%6 = OpTypeVector %5 3
+%7 = OpTypeStruct %6 %6 %6
+%8 = OpTypePointer IncomingRayPayloadKHR %7
+%9 = OpVariable %8 IncomingRayPayloadKHR
+%10 = OpTypeVector %5 2
+%11 = OpTypeStruct %10
+%12 = OpTypePointer HitAttributeKHR %11
+%13 = OpVariable %12 HitAttributeKHR
+%15 = OpTypeInt 32 0
+%16 = OpConstant %15 3
+%17 = OpTypeArray %6 %16
+%19 = OpTypePointer Input %17
+%20 = OpVariable %19 Input
+%49 = OpUndef %6
+%58 = OpTypePointer IncomingRayPayloadKHR %6
+%60 = OpConstant %15 0
+%62 = OpConstant %15 1
+%64 = OpConstant %15 2
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %65
+%65 = OpLabel
+%18 = OpLoad %17 %20
+%21 = OpCompositeExtract %5 %18 0 0
+%22 = OpBitcast %15 %21
+%23 = OpCompositeExtract %5 %18 0 1
+%24 = OpBitcast %15 %23
+%25 = OpCompositeExtract %5 %18 0 2
+%26 = OpBitcast %15 %25
+%27 = OpCompositeExtract %5 %18 1 0
+%28 = OpBitcast %15 %27
+%29 = OpCompositeExtract %5 %18 1 1
+%30 = OpBitcast %15 %29
+%31 = OpCompositeExtract %5 %18 1 2
+%32 = OpBitcast %15 %31
+%33 = OpCompositeExtract %5 %18 2 0
+%34 = OpBitcast %15 %33
+%35 = OpCompositeExtract %5 %18 2 1
+%36 = OpBitcast %15 %35
+%37 = OpCompositeExtract %5 %18 2 2
+%38 = OpBitcast %15 %37
+%39 = OpBitcast %5 %22
+%40 = OpBitcast %5 %24
+%41 = OpBitcast %5 %26
+%42 = OpBitcast %5 %28
+%43 = OpBitcast %5 %30
+%44 = OpBitcast %5 %32
+%45 = OpBitcast %5 %34
+%46 = OpBitcast %5 %36
+%47 = OpBitcast %5 %38
+%48 = OpCompositeInsert %6 %39 %49 0
+%50 = OpCompositeInsert %6 %40 %48 1
+%51 = OpCompositeInsert %6 %41 %50 2
+%52 = OpCompositeInsert %6 %42 %49 0
+%53 = OpCompositeInsert %6 %43 %52 1
+%54 = OpCompositeInsert %6 %44 %53 2
+%55 = OpCompositeInsert %6 %45 %49 0
+%56 = OpCompositeInsert %6 %46 %55 1
+%57 = OpCompositeInsert %6 %47 %56 2
+%59 = OpInBoundsAccessChain %58 %9 %60
+OpStore %59 %51
+%61 = OpInBoundsAccessChain %58 %9 %62
+OpStore %61 %54
+%63 = OpInBoundsAccessChain %58 %9 %64
+OpStore %63 %57
+OpReturn
+OpFunctionEnd
+#endif
