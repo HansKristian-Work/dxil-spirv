@@ -3,12 +3,12 @@
 
 layout(set = 0, binding = 0, std140) uniform _10_13
 {
-    vec4 _m0[4];
+    vec4 _m0[4096];
 } _13[];
 
 layout(set = 1, binding = 0, std140) uniform _15_19
 {
-    vec4 _m0[4];
+    vec4 _m0[4096];
 } _19[100];
 
 layout(location = 0) flat in uint INDEX;
@@ -70,7 +70,7 @@ OpDecorate %44 NonUniform
 %1 = OpTypeVoid
 %2 = OpTypeFunction %1
 %5 = OpTypeInt 32 0
-%6 = OpConstant %5 4
+%6 = OpConstant %5 4096
 %7 = OpTypeFloat 32
 %8 = OpTypeVector %7 4
 %9 = OpTypeArray %8 %6

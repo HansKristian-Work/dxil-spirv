@@ -7,12 +7,12 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std140) uniform _23_25
 {
-    vec4 _m0[1024];
+    vec4 _m0[4096];
 } _25;
 
 layout(set = 0, binding = 1, std140) uniform _27_30
 {
-    vec4 _m0[1024];
+    vec4 _m0[4096];
 } _30[2];
 
 layout(set = 0, binding = 0) uniform usamplerBuffer _8;
@@ -105,7 +105,7 @@ OpDecorate %43 BuiltIn WorkgroupId
 %17 = OpTypeImage %5 Buffer 0 0 0 2 R32ui
 %18 = OpTypePointer UniformConstant %17
 %19 = OpVariable %18 UniformConstant
-%20 = OpConstant %5 1024
+%20 = OpConstant %5 4096
 %21 = OpTypeVector %13 4
 %22 = OpTypeArray %21 %20
 %23 = OpTypeStruct %22

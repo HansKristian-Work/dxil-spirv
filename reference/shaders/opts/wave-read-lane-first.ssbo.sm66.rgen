@@ -33,12 +33,12 @@ layout(set = 0, binding = 0, std430) buffer USSBO
 
 layout(set = 0, binding = 0, std140) uniform CUBO
 {
-    vec4 _m0[1024];
+    vec4 _m0[4096];
 } C;
 
 layout(set = 0, binding = 1, std140) uniform CsUBO
 {
-    vec4 _m0[1024];
+    vec4 _m0[4096];
 } Cs[2];
 
 layout(set = 0, binding = 3) uniform samplerBuffer B;
@@ -196,7 +196,7 @@ OpDecorate %49 BuiltIn LaunchIdKHR
 %30 = OpTypeStruct %29
 %31 = OpTypePointer StorageBuffer %30
 %32 = OpVariable %31 StorageBuffer
-%33 = OpConstant %5 1024
+%33 = OpConstant %5 4096
 %34 = OpTypeVector %21 4
 %35 = OpTypeArray %34 %33
 %36 = OpTypeStruct %35

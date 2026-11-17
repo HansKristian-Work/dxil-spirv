@@ -32,12 +32,12 @@ layout(set = 0, binding = 0, std430) buffer _30_32
 
 layout(set = 0, binding = 0, std140) uniform _36_38
 {
-    vec4 _m0[1024];
+    vec4 _m0[4096];
 } _38;
 
 layout(set = 0, binding = 1, std140) uniform _40_43
 {
-    vec4 _m0[1024];
+    vec4 _m0[4096];
 } _43[2];
 
 layout(set = 0, binding = 3) uniform samplerBuffer _24;
@@ -182,7 +182,7 @@ OpDecorate %54 BuiltIn WorkgroupId
 %30 = OpTypeStruct %29
 %31 = OpTypePointer StorageBuffer %30
 %32 = OpVariable %31 StorageBuffer
-%33 = OpConstant %5 1024
+%33 = OpConstant %5 4096
 %34 = OpTypeVector %21 4
 %35 = OpTypeArray %34 %33
 %36 = OpTypeStruct %35
