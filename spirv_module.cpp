@@ -278,6 +278,9 @@ spv::Id SPIRVModule::Impl::get_type_for_builtin(spv::BuiltIn builtin, bool &requ
 	case spv::BuiltInClusterIDNV:
 		return builder.makeUintType(32);
 
+	case spv::BuiltInHitTriangleVertexPositionsKHR:
+		return builder.makeArrayType(builder.makeVectorType(builder.makeFloatType(32), 3), builder.makeUintConstant(3), 0);
+
 	case spv::BuiltInHitLSSPositionsNV:
 		return builder.makeArrayType(builder.makeVectorType(builder.makeFloatType(32), 3), builder.makeUintConstant(2), 0);
 

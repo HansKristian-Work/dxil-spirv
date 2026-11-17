@@ -1,0 +1,38 @@
+#define NV_SHADER_EXTN_SLOT u127
+#define NV_SHADER_EXTN_REGISTER_SPACE space0
+#include "nvHLSLExtns.h"
+
+RaytracingAccelerationStructure RTAS : register(t0);
+RWStructuredBuffer<float3> Positions : register(u1);
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	RayQuery<RAY_FLAG_FORCE_NON_OPAQUE> q;
+	RayDesc ray;
+	ray.Origin = float3(1, 2, 3);
+	ray.TMin = 0;
+	ray.Direction = float3(0, 0, 1);
+	ray.TMax = 100;
+	q.TraceRayInline(RTAS, RAY_FLAG_NONE, 0xff, ray);
+
+	while (q.Proceed())
+	{
+		if (q.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
+		{
+			float3x3 positions = NvRtCandidateTriangleObjectPositions(q);
+			Positions[6 * thr + 0] = positions[0];
+			Positions[6 * thr + 1] = positions[1];
+			Positions[6 * thr + 2] = positions[2];
+			q.CommitNonOpaqueTriangleHit();
+		}
+	}
+
+	if (q.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
+	{
+		float3x3 positions = NvRtCommittedTriangleObjectPositions(q);
+		Positions[6 * thr + 3] = positions[0];
+		Positions[6 * thr + 4] = positions[1];
+		Positions[6 * thr + 5] = positions[2];
+	}
+}
