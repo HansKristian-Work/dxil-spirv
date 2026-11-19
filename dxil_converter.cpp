@@ -9141,6 +9141,55 @@ bool Converter::Impl::composite_is_accessed(const llvm::Value *composite) const
 	return llvm_composite_meta.find(composite) != llvm_composite_meta.end();
 }
 
+bool Converter::Impl::declares_globally_coherent_images()
+{
+	for (auto &use : llvm_annotate_handle_uses)
+	{
+		auto &annotation = use.second;
+		if ((annotation.coherent || annotation.rov) &&
+			annotation.resource_kind != DXIL::ResourceKind::RawBuffer &&
+		    annotation.resource_kind != DXIL::ResourceKind::StructuredBuffer)
+		{
+			return true;
+		}
+	}
+
+	auto &module = bitcode_parser.get_module();
+	auto *resource_meta = module.getNamedMetadata("dx.resources");
+	if (!resource_meta)
+		return false;
+
+	auto *metas = resource_meta->getOperand(0);
+
+	if (!metas->getOperand(1))
+		return false;
+
+	auto *uavs = llvm::dyn_cast<llvm::MDNode>(metas->getOperand(1));
+	if (!uavs)
+		return false;
+
+	unsigned num_uavs = uavs->getNumOperands();
+	for (unsigned i = 0; i < num_uavs; i++)
+	{
+		auto *uav = llvm::cast<llvm::MDNode>(uavs->getOperand(i));
+
+		auto resource_kind = static_cast<DXIL::ResourceKind>(get_constant_metadata(uav, 6));
+		bool is_rov = get_constant_metadata(uav, 9) != 0;
+		bool globally_coherent = get_constant_metadata(uav, 7) != 0 || is_rov;
+
+		// Technically, we don't know if we're going to map a buffer into texel buffer,
+		// but this is only for workaround purposes.
+		if (globally_coherent &&
+		    resource_kind != DXIL::ResourceKind::RawBuffer &&
+		    resource_kind != DXIL::ResourceKind::StructuredBuffer)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 ConvertedFunction Converter::Impl::convert_entry_point()
 {
 	ConvertedFunction result = {};
@@ -9250,6 +9299,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		return result;
 	if (!analyze_instructions(func, visit_order))
 		return result;
+
+	if (options.quirks.legacy_memory_model_coherent_images &&
+	    declares_globally_coherent_images() &&
+	    !shader_analysis.require_wmma)
+	{
+		execution_mode_meta.memory_model = spv::MemoryModelGLSL450;
+	}
 
 	spirv_module.emit_entry_point(get_execution_model(module, entry_point_meta), "main", need_bda,
 	                              execution_mode_meta.memory_model);
@@ -9994,6 +10050,11 @@ void Converter::Impl::set_option(const OptionBase &cap)
 
 		case ShaderQuirk::ForceDenormPreserveFP16Conversions:
 			options.quirks.force_denorm_preserve_fp16_conversions = true;
+			break;
+
+		case ShaderQuirk::LegacyMemoryModelCoherentImages:
+			// Workaround for RADV pre 26.3.1.
+			options.quirks.legacy_memory_model_coherent_images = true;
 			break;
 
 		default:

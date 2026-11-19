@@ -443,6 +443,7 @@ struct Converter::Impl
 	bool emit_cbvs(const llvm::MDNode *cbvs, const llvm::MDNode *refl);
 	bool emit_samplers(const llvm::MDNode *samplers, const llvm::MDNode *refl);
 	bool emit_shader_record_buffer();
+	bool declares_globally_coherent_images();
 	spv::Id emit_shader_record_buffer_block_type(bool physical_storage);
 	void register_resource_meta_reference(const llvm::MDOperand &operand, DXIL::ResourceType type, unsigned index);
 	void emit_root_constants(unsigned num_descriptors, unsigned num_constant_words);
@@ -864,6 +865,7 @@ struct Converter::Impl
 			bool non_semantic_signal_concurrent_workgroup = false;
 			bool force_nonuniform = false;
 			bool force_denorm_preserve_fp16_conversions = false;
+			bool legacy_memory_model_coherent_images = false;
 		} quirks;
 
 		struct

@@ -794,7 +794,8 @@ enum class ShaderQuirk : uint32_t
 	ClampWaveSizeToThreadGroup32,
     NonSemanticSignalConcurrentWorkgroup,
 	ForceNonUniform,
-	ForceDenormPreserveFP16Conversions
+	ForceDenormPreserveFP16Conversions,
+	LegacyMemoryModelCoherentImages
 };
 
 struct OptionShaderQuirk : OptionBase
