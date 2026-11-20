@@ -986,7 +986,7 @@ bool CFGStructurizer::rewrite_rov_lock_region()
 void CFGStructurizer::rewrite_multiple_back_edges()
 {
 	reset_traversal();
-	visit_for_back_edge_analysis(*entry_block);
+	visit_for_back_edge_analysis();
 }
 
 void CFGStructurizer::sink_ssa_constructs()
@@ -3406,68 +3406,64 @@ void CFGStructurizer::backwards_visit(CFGNode &entry)
 	backward_post_visit_order.push_back(&entry);
 }
 
-void CFGStructurizer::visit_for_back_edge_analysis(CFGNode &entry)
+void CFGStructurizer::visit_for_back_edge_analysis_push(CFGNode *entry)
 {
-	entry.visited = true;
-	entry.traversing = true;
-	reachable_nodes.insert(&entry);
-
+	forward_visit_push(entry);
 	// Just keep track of visit ordering somehow. Reuse visit order here.
-	entry.backward_post_visit_order = backward_post_visit_order.size();
-	backward_post_visit_order.push_back(&entry);
+	entry->backward_post_visit_order = backward_post_visit_order.size();
+	backward_post_visit_order.push_back(entry);
+}
 
-	for (auto *succ : entry.succ)
+void CFGStructurizer::visit_for_back_edge_analysis_resolve(CFGNode *entry)
+{
+	for (auto *succ : entry->succ)
 	{
 		// Reuse the existing vector to keep track of back edges.
 		if (succ->traversing)
 		{
-			succ->fake_pred.push_back(&entry);
+			succ->fake_pred.push_back(entry);
 			// We might have two different back-edges.
-			entry.fake_succ.push_back(succ);
+			entry->fake_succ.push_back(succ);
 		}
-		else if (!succ->visited)
-			visit_for_back_edge_analysis(*succ);
 	}
-
-	entry.traversing = false;
 
 	// After we get here, we must have observed all back edges.
 	// If there is more than one back edge, merge them.
-	if (entry.fake_pred.size() >= 2)
+	if (entry->fake_pred.size() >= 2)
 	{
 		auto *new_back_edge = pool.create_helper_node();
-		new_back_edge->name = entry.name + ".back-edge-merge";
-		for (auto *n : entry.fake_pred)
-			n->retarget_branch_pre_traversal(&entry, new_back_edge);
-		new_back_edge->succ.push_back(&entry);
+		new_back_edge->name = entry->name + ".back-edge-merge";
+		for (auto *n : entry->fake_pred)
+			n->retarget_branch_pre_traversal(entry, new_back_edge);
+		new_back_edge->succ.push_back(entry);
 		new_back_edge->ir.terminator.type = Terminator::Type::Branch;
-		new_back_edge->ir.terminator.direct_block = &entry;
-		new_back_edge->add_branch(&entry);
+		new_back_edge->ir.terminator.direct_block = entry;
+		new_back_edge->add_branch(entry);
 	}
 
-	if (entry.fake_succ.size() >= 2)
+	if (entry->fake_succ.size() >= 2)
 	{
 		// A node cannot have more than one back-edge in our implementation. Add interposing blocks to disambiguate.
 		// Only the innermost node should remain.
-		std::sort(entry.fake_succ.begin(), entry.fake_succ.end(), [](const CFGNode *a, const CFGNode *b)
+		std::sort(entry->fake_succ.begin(), entry->fake_succ.end(), [](const CFGNode *a, const CFGNode *b)
 		{
 			return a->backward_post_visit_order < b->backward_post_visit_order;
 		});
 
-		entry.fake_succ.pop_back();
+		entry->fake_succ.pop_back();
 		Vector<CFGNode *> rewrites;
-		std::swap(rewrites, entry.fake_succ);
+		std::swap(rewrites, entry->fake_succ);
 
 		for (auto *succ : rewrites)
 		{
 			auto *new_back_edge = pool.create_helper_node();
-			entry.retarget_branch_pre_traversal(succ, new_back_edge);
+			entry->retarget_branch_pre_traversal(succ, new_back_edge);
 
-			auto itr = std::find(succ->fake_pred.begin(), succ->fake_pred.end(), &entry);
+			auto itr = std::find(succ->fake_pred.begin(), succ->fake_pred.end(), entry);
 			assert(itr != succ->fake_pred.end());
 			*itr = new_back_edge;
 
-			new_back_edge->name = entry.name + ".long-edge";
+			new_back_edge->name = entry->name + ".long-edge";
 			new_back_edge->add_branch(succ);
 			new_back_edge->ir.terminator.type = Terminator::Type::Branch;
 			new_back_edge->ir.terminator.direct_block = succ;
@@ -3486,9 +3482,6 @@ void CFGStructurizer::push_visit_stack(CFGNode *node)
 
 void CFGStructurizer::forward_visit_resolve(CFGNode *entry)
 {
-	if (!entry->traversing)
-		return;
-
 	for (auto *succ : entry->succ)
 	{
 		if (succ->traversing)
@@ -3521,7 +3514,6 @@ void CFGStructurizer::forward_visit_resolve(CFGNode *entry)
 			entry->pred.erase(itr);
 	}
 
-	entry->traversing = false;
 	entry->forward_post_visit_order = forward_post_visit_order.size();
 	forward_post_visit_order.push_back(entry);
 }
@@ -3561,7 +3553,12 @@ void CFGStructurizer::forward_visit(CFGNode *node, const PushOp &push_op, const 
 		// Resolve the stack.
 		while (!visit_stack.empty() && visit_stack.back()->visited)
 		{
-			resolve_op(visit_stack.back());
+			auto *node = visit_stack.back();
+			if (node->traversing)
+			{
+				resolve_op(node);
+				node->traversing = false;
+			}
 			visit_stack.pop_back();
 		}
 	}
@@ -3570,8 +3567,15 @@ void CFGStructurizer::forward_visit(CFGNode *node, const PushOp &push_op, const 
 void CFGStructurizer::forward_visit()
 {
 	forward_visit(entry_block,
-		[this](CFGNode *node) { forward_visit_push(node); },
-		[this](CFGNode *node) { forward_visit_resolve(node); });
+	              [this](CFGNode *node) { forward_visit_push(node); },
+	              [this](CFGNode *node) { forward_visit_resolve(node); });
+}
+
+void CFGStructurizer::visit_for_back_edge_analysis()
+{
+	forward_visit(entry_block,
+	              [this](CFGNode *node) { visit_for_back_edge_analysis_push(node); },
+	              [this](CFGNode *node) { visit_for_back_edge_analysis_resolve(node); });
 }
 
 void CFGStructurizer::merge_to_succ(CFGNode *node, unsigned index)
