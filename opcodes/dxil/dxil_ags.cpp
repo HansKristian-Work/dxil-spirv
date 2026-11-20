@@ -1551,6 +1551,10 @@ static spv::Id get_matmul_result_type(Converter::Impl &impl, uint32_t opcode)
 		scalar_type = builder.makeFloatType(16);
 		break;
 
+	case AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X16_I8:
+		scalar_type = builder.makeIntType(32);
+		break;
+
 	default:
 		return 0;
 	}
@@ -1558,8 +1562,285 @@ static spv::Id get_matmul_result_type(Converter::Impl &impl, uint32_t opcode)
 	return builder.makeCooperativeMatrixType(scalar_type, rows_cols, rows_cols, use);
 }
 
+static uint32_t wmma_type_immediate(uint32_t fmt, uint32_t use)
+{
+	return (fmt << AmdExtD3DShaderIntrinsicsWaveMatrixModifier_DataFormatFlagShift) |
+	       (use << AmdExtD3DShaderIntrinsicsWaveMatrixModifier_MatrixTypeFlagShift) |
+	       (AmdExtD3DShaderIntrinsicsWaveMatrixShape_16X16 << AmdExtD3DShaderIntrinsicsWaveMatrixModifier_ShapeShift);
+}
+
+static bool get_matmul_operand_formats(uint32_t opcode, uint32_t *ab_fmt, uint32_t *c_fmt)
+{
+	switch (opcode)
+	{
+	case AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F32_16X16X16_FP8_FP8:
+		*ab_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8;
+		*c_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32;
+		return true;
+	case AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F32_16X16X16_F16:
+		*ab_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16;
+		*c_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32;
+		return true;
+	case AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_F16_16X16X16_F16:
+		*ab_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16;
+		*c_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16;
+		return true;
+	case AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_WMMA_I32_16X16X16_I8:
+		*ab_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I8;
+		*c_fmt = AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I32;
+		return true;
+	default:
+		return false;
+	}
+}
+
+// A 16x16 matrix in a wave32 holds 8 elements per invocation. In the register form the AGS channel passes,
+// they are packed little-endian into dwords: one F32 or I32, two F16 or four FP8 or I8 elements per dword.
+static constexpr uint32_t RawFragmentElements = 8;
+
+static uint32_t raw_fragment_elements_per_dword(uint32_t fmt)
+{
+	switch (fmt)
+	{
+	case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32:
+	case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I32:
+		return 1;
+	case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16:
+		return 2;
+	case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8:
+	case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I8:
+		return 4;
+	default:
+		return 0;
+	}
+}
+
+static spv::Id raw_fragment_scalar_type(Converter::Impl &impl, uint32_t fmt)
+{
+	auto &builder = impl.builder();
+	switch (fmt)
+	{
+	case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32:
+		return builder.makeFloatType(32);
+	case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16:
+		return builder.makeFloatType(16);
+	case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I32:
+		return builder.makeIntType(32);
+	case AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I8:
+		return builder.makeIntType(8);
+	default:
+		return make_fp8_type(impl, false);
+	}
+}
+
+static bool raw_fragment_is_integer(uint32_t fmt)
+{
+	return fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I8 ||
+	       fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I32;
+}
+
+// build_coopmat_type only knows the formats the tracked path loads and stores. The integer ones are used by raw
+// fragments only: they carry signed components (the multiply-add sets the signed operands).
+static spv::Id build_raw_coopmat_type(Converter::Impl &impl, uint32_t type_imm)
+{
+	uint32_t fmt = get_type_data_format(type_imm);
+	if (!raw_fragment_is_integer(fmt))
+		return build_coopmat_type(impl, type_imm, false);
+
+	auto &builder = impl.builder();
+	auto use = convert_matrix_use(get_matrix_type(type_imm));
+	if (get_matrix_shape(type_imm) != AmdExtD3DShaderIntrinsicsWaveMatrixShape_16X16 ||
+	    use == spv::CooperativeMatrixUseMax)
+		return 0;
+	if ((fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_I32) !=
+	    (use == spv::CooperativeMatrixUseMatrixAccumulatorKHR))
+		return 0;
+
+	spv::Id rows_cols = builder.makeUintConstant(16);
+	return builder.makeCooperativeMatrixType(raw_fragment_scalar_type(impl, fmt), rows_cols, rows_cols,
+	                                         builder.makeUintConstant(use));
+}
+
+static bool validate_raw_fragment_registers(Converter::Impl &impl, uint32_t base,
+                                            AmdExtD3DShaderIntrinsicsWaveMatrixRegType reg_type)
+{
+	for (uint32_t i = 0; i < 4; i++)
+	{
+		const auto &inst = impl.ags.instructions[base + i];
+		if (inst.phase != 0)
+			return false;
+		if ((inst.immediate >> AmdExtD3DShaderIntrinsicsWaveMatrixModifier_MatrixTileShift) != 0)
+			return false;
+		if (get_matrix_io_type(inst.immediate) != uint32_t(reg_type) ||
+		    get_matrix_io_channel(inst.immediate) != i % 2 || get_matrix_io_register(inst.immediate) != i / 2)
+			return false;
+	}
+	return true;
+}
+
+// Builds the coopmat of one operand from the 8 dwords of its 4 phase-0 instructions.
+static spv::Id build_raw_fragment(Converter::Impl &impl, uint32_t base, uint32_t type_imm)
+{
+	auto &builder = impl.builder();
+	uint32_t fmt = get_type_data_format(type_imm);
+	uint32_t per_dword = raw_fragment_elements_per_dword(fmt);
+	spv::Id coop_type = build_raw_coopmat_type(impl, type_imm);
+	if (!per_dword || !coop_type)
+		return 0;
+	if (fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 && !impl.options.wmma_fp8)
+		return 0;
+
+	spv::Id scalar_type = raw_fragment_scalar_type(impl, fmt);
+	spv::Id zero = fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F32 ? builder.makeFloatConstant(0.0f) :
+	                                                                          builder.makeNullConstant(scalar_type);
+	auto *fill = impl.allocate(spv::OpCompositeConstruct, coop_type);
+	fill->add_id(zero);
+	impl.add(fill);
+	spv::Id id = fill->id;
+
+	for (uint32_t d = 0; d < RawFragmentElements / per_dword; d++)
+	{
+		const llvm::Value *dword = impl.ags.backdoor_instructions[base + d / 2]->getOperand(5 + d % 2);
+		spv::Id dword_id = impl.get_id_for_value(dword);
+		spv::Id lanes_id = dword_id;
+
+		if (per_dword > 1)
+		{
+			spv::Id lane_type =
+			    fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 ? builder.makeUintType(8) : scalar_type;
+			auto *cast = impl.allocate(spv::OpBitcast, builder.makeVectorType(lane_type, per_dword));
+			cast->add_id(dword_id);
+			impl.add(cast);
+			lanes_id = cast->id;
+		}
+
+		for (uint32_t e = 0; e < per_dword; e++)
+		{
+			spv::Id elem_id;
+			if (per_dword == 1)
+			{
+				auto *cast = impl.allocate(spv::OpBitcast, scalar_type);
+				cast->add_id(lanes_id);
+				impl.add(cast);
+				elem_id = cast->id;
+			}
+			else
+			{
+				auto *ext = impl.allocate(
+				    spv::OpCompositeExtract,
+				    fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 ? builder.makeUintType(8) : scalar_type);
+				ext->add_id(lanes_id);
+				ext->add_literal(e);
+				impl.add(ext);
+				elem_id = ext->id;
+				if (fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
+				{
+					auto *cast = impl.allocate(spv::OpBitcast, scalar_type);
+					cast->add_id(elem_id);
+					impl.add(cast);
+					elem_id = cast->id;
+				}
+			}
+
+			auto *insert = impl.allocate(spv::OpCompositeInsert, coop_type);
+			insert->add_id(elem_id);
+			insert->add_id(id);
+			insert->add_literal(d * per_dword + e);
+			impl.add(insert);
+			id = insert->id;
+		}
+	}
+
+	return id;
+}
+
+// Rewrites the 8 phase-2 results to the dwords of `coopmat` in the register form (unused dwords are 0).
+static bool emit_raw_fragment_results(Converter::Impl &impl, spv::Id coopmat, uint32_t fmt)
+{
+	auto &builder = impl.builder();
+	uint32_t per_dword = raw_fragment_elements_per_dword(fmt);
+	if (!per_dword || !validate_wmma_io_registers(impl, impl.ags.num_instructions - 8,
+	                                              AmdExtD3DShaderIntrinsicsWaveMatrixRegType_RetVal_Reg, 2, false))
+		return false;
+
+	spv::Id scalar_type = raw_fragment_scalar_type(impl, fmt);
+	for (uint32_t d = 0; d < 8; d++)
+	{
+		auto *inst = impl.ags.backdoor_instructions[impl.ags.num_instructions - 8 + d];
+		spv::Id dword_id;
+
+		if (d >= RawFragmentElements / per_dword)
+		{
+			dword_id = builder.makeUintConstant(0);
+		}
+		else
+		{
+			spv::Id elems[4];
+			for (uint32_t e = 0; e < per_dword; e++)
+			{
+				auto *ext = impl.allocate(spv::OpCompositeExtract, scalar_type);
+				ext->add_id(coopmat);
+				ext->add_literal(d * per_dword + e);
+				impl.add(ext);
+				elems[e] = ext->id;
+			}
+
+			spv::Id packed = per_dword == 1 ? elems[0] : impl.build_vector(scalar_type, elems, per_dword);
+			auto *cast = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+			cast->add_id(packed);
+			impl.add(cast);
+			dword_id = cast->id;
+		}
+
+		impl.rewrite_value(inst, dword_id);
+	}
+
+	return true;
+}
+
+static bool emit_wmma_muladd_raw(Converter::Impl &impl)
+{
+	if (!validate_raw_fragment_registers(impl, 0, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_A_TempReg) ||
+	    !validate_raw_fragment_registers(impl, 4, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_B_TempReg) ||
+	    !validate_raw_fragment_registers(impl, 8, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_Accumulator_TempReg) ||
+	    impl.ags.instructions[12].phase != 1)
+		return false;
+
+	auto opcode = (impl.ags.instructions[12].immediate >> AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_OpsShift) &
+	              AmdExtD3DShaderIntrinsicsWaveMatrixOpcode_OpsMask;
+	uint32_t ab_fmt, c_fmt;
+	spv::Id type = get_matmul_result_type(impl, opcode);
+	if (!type || !get_matmul_operand_formats(opcode, &ab_fmt, &c_fmt))
+		return false;
+
+	spv::Id a = build_raw_fragment(impl, 0, wmma_type_immediate(ab_fmt, AmdExtD3DShaderIntrinsicsWaveMatrixType_A));
+	spv::Id b = build_raw_fragment(impl, 4, wmma_type_immediate(ab_fmt, AmdExtD3DShaderIntrinsicsWaveMatrixType_B));
+	spv::Id c =
+	    build_raw_fragment(impl, 8, wmma_type_immediate(c_fmt, AmdExtD3DShaderIntrinsicsWaveMatrixType_Accumulator));
+	if (!a || !b || !c)
+		return false;
+
+	auto *muladd = impl.allocate(spv::OpCooperativeMatrixMulAddKHR, type);
+	muladd->add_id(a);
+	muladd->add_id(b);
+	muladd->add_id(c);
+	if (raw_fragment_is_integer(ab_fmt))
+	{
+		muladd->add_literal(spv::CooperativeMatrixOperandsMatrixASignedComponentsKHRMask |
+		                    spv::CooperativeMatrixOperandsMatrixBSignedComponentsKHRMask |
+		                    spv::CooperativeMatrixOperandsMatrixCSignedComponentsKHRMask |
+		                    spv::CooperativeMatrixOperandsMatrixResultSignedComponentsKHRMask);
+	}
+	impl.add(muladd);
+
+	return emit_raw_fragment_results(impl, muladd->id, c_fmt);
+}
+
 static bool emit_wmma_muladd(Converter::Impl &impl)
 {
+	if (impl.ags.raw_fragments)
+		return emit_wmma_muladd_raw(impl);
+
 	if (!validate_wmma_io_registers(impl, 0, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_A_TempReg, 0, true))
 		return false;
 	if (!validate_wmma_io_registers(impl, 4, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_B_TempReg, 0, true))
@@ -1700,8 +1981,119 @@ static spv::Id emit_wmma_complex_convert(Converter::Impl &impl, spv::Id coopmat,
 	return coopmat;
 }
 
+// Raw fragments convert element by element within the invocation (element i of the input dwords becomes element i
+// of the output dwords), which is what the matrix-type changes do on RDNA4, where the accumulator and B layouts
+// coincide. No coopmat is involved, so this works at any wave size.
+static spv::Id convert_raw_element(Converter::Impl &impl, spv::Id value, uint32_t in_fmt, uint32_t out_fmt)
+{
+	if (in_fmt == out_fmt)
+		return value;
+	auto *conv = impl.allocate(spv::OpFConvert, raw_fragment_scalar_type(impl, out_fmt));
+	conv->add_id(value);
+	impl.add(conv);
+	return conv->id;
+}
+
+static bool emit_wmma_convert_raw(Converter::Impl &impl)
+{
+	auto &builder = impl.builder();
+	if (!validate_raw_fragment_registers(impl, 0, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_RetVal_Reg) ||
+	    impl.ags.instructions[4].phase != 1 ||
+	    !validate_wmma_io_registers(impl, impl.ags.num_instructions - 8,
+	                                AmdExtD3DShaderIntrinsicsWaveMatrixRegType_RetVal_Reg, 2, false))
+		return false;
+
+	uint32_t output_immediate = 0, saturating = 0;
+	if (!get_constant_operand(impl.ags.backdoor_instructions[4], 5, &output_immediate) ||
+	    !get_constant_operand(impl.ags.backdoor_instructions[4], 6, &saturating) || saturating)
+		return false;
+
+	uint32_t input_immediate = impl.ags.instructions[4].immediate;
+	if (!validate_convert_compatibility(input_immediate, output_immediate))
+		return false;
+
+	uint32_t in_fmt = get_type_data_format(input_immediate);
+	uint32_t out_fmt = get_type_data_format(output_immediate);
+	uint32_t in_per_dword = raw_fragment_elements_per_dword(in_fmt);
+	uint32_t out_per_dword = raw_fragment_elements_per_dword(out_fmt);
+	if (!in_per_dword || !out_per_dword || raw_fragment_is_integer(in_fmt) || raw_fragment_is_integer(out_fmt))
+		return false;
+	if ((in_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 ||
+	     out_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8) &&
+	    !impl.options.wmma_fp8)
+		return false;
+
+	spv::Id elements[RawFragmentElements];
+	for (uint32_t d = 0; d < RawFragmentElements / in_per_dword; d++)
+	{
+		spv::Id dword_id = impl.get_id_for_value(impl.ags.backdoor_instructions[d / 2]->getOperand(5 + d % 2));
+		spv::Id lane_type = in_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8 ?
+		                        builder.makeUintType(8) :
+		                        raw_fragment_scalar_type(impl, in_fmt);
+		spv::Id lanes_id = dword_id;
+		if (in_per_dword > 1)
+		{
+			auto *cast = impl.allocate(spv::OpBitcast, builder.makeVectorType(lane_type, in_per_dword));
+			cast->add_id(dword_id);
+			impl.add(cast);
+			lanes_id = cast->id;
+		}
+
+		for (uint32_t e = 0; e < in_per_dword; e++)
+		{
+			spv::Id elem_id = lanes_id;
+			if (in_per_dword > 1)
+			{
+				auto *ext = impl.allocate(spv::OpCompositeExtract, lane_type);
+				ext->add_id(lanes_id);
+				ext->add_literal(e);
+				impl.add(ext);
+				elem_id = ext->id;
+			}
+			if (in_per_dword == 1 || in_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_FP8)
+			{
+				auto *cast = impl.allocate(spv::OpBitcast, raw_fragment_scalar_type(impl, in_fmt));
+				cast->add_id(elem_id);
+				impl.add(cast);
+				elem_id = cast->id;
+			}
+			elements[d * in_per_dword + e] = convert_raw_element(impl, elem_id, in_fmt, out_fmt);
+		}
+	}
+
+	spv::Id out_scalar = raw_fragment_scalar_type(impl, out_fmt);
+	for (uint32_t d = 0; d < 8; d++)
+	{
+		auto *inst = impl.ags.backdoor_instructions[impl.ags.num_instructions - 8 + d];
+		spv::Id dword_id;
+		if (d >= RawFragmentElements / out_per_dword)
+		{
+			dword_id = builder.makeUintConstant(0);
+		}
+		else
+		{
+			spv::Id packed = out_per_dword == 1 ?
+			                     elements[d] :
+			                     impl.build_vector(out_scalar, elements + d * out_per_dword, out_per_dword);
+			auto *cast = impl.allocate(spv::OpBitcast, builder.makeUintType(32));
+			cast->add_id(packed);
+			impl.add(cast);
+			dword_id = cast->id;
+		}
+		impl.rewrite_value(inst, dword_id);
+	}
+
+	if (in_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16 ||
+	    out_fmt == AmdExtD3DShaderIntrinsicsWaveMatrixDataFormat_F16)
+		builder.addCapability(spv::CapabilityFloat16);
+	return true;
+}
+
 static bool emit_wmma_convert(Converter::Impl &impl)
 {
+	if (impl.ags.raw_fragments)
+		return emit_wmma_convert_raw(impl);
+
 	if (!validate_wmma_io_registers(impl, 0, AmdExtD3DShaderIntrinsicsWaveMatrixRegType_RetVal_Reg, 0, true))
 		return false;
 
@@ -2245,6 +2637,10 @@ bool analyze_magic_ags_instruction(Converter::Impl &impl)
 	if (impl.ags.num_instructions == 0)
 		return true;
 
+	// Raw fragments are plain dwords: nothing to track through phis, allocas and stores.
+	if (impl.ags.raw_fragments)
+		return true;
+
 	bool has_wmma_return_values = false;
 	spv::Id type_id = 0;
 	uint32_t phase = 0;
@@ -2361,6 +2757,34 @@ bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 
 		impl.add(op);
 		builder.addCapability(spv::CapabilityGroupNonUniformBallot);
+		impl.ags.num_instructions = 0;
+		break;
+	}
+
+	case AmdExtD3DShaderIntrinsicsOpcode_FloatConversion:
+	{
+		// F32 -> F16 bits in the low half; the shader's float controls make the conversion round to nearest even.
+		if (impl.ags.instructions[0].immediate != AmdExtD3DShaderIntrinsicsFloatConversionOp_FToF16Near)
+			return false;
+
+		auto *value = impl.allocate(spv::OpBitcast, builder.makeFloatType(32));
+		value->add_id(impl.get_id_for_value(instruction->getOperand(5)));
+		impl.add(value);
+
+		auto *half = impl.allocate(spv::OpFConvert, builder.makeFloatType(16));
+		half->add_id(value->id);
+		impl.add(half);
+
+		auto *bits = impl.allocate(spv::OpBitcast, builder.makeUintType(16));
+		bits->add_id(half->id);
+		impl.add(bits);
+
+		auto *op = impl.allocate(spv::OpUConvert, instruction);
+		op->add_id(bits->id);
+		impl.add(op);
+
+		builder.addCapability(spv::CapabilityFloat16);
+		builder.addCapability(spv::CapabilityInt16);
 		impl.ags.num_instructions = 0;
 		break;
 	}
@@ -2593,6 +3017,61 @@ bool emit_magic_ags_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	return true;
 }
 
+static bool is_tracked_wmma_operand(const llvm::Value *value)
+{
+	return llvm::isa<llvm::Constant>(value) || llvm::isa<llvm::PHINode>(value) || llvm::isa<llvm::LoadInst>(value) ||
+	       value_is_dx_op_instrinsic(value, DXIL::Op::AtomicCompareExchange);
+}
+
+void analyze_ags_raw_fragments(Converter::Impl &impl, const llvm::BasicBlock *bb)
+{
+	// Phase-0 calls of the sequence being collected. The inputs of a sequence are the last 12 (MulAcc) or 4 (Copy)
+	// of them before its phase-1 call: a Copy can be preceded by dummy calls with constant data, which
+	// analyze_magic_ags_instruction shifts away.
+	Vector<const llvm::CallInst *> phase0;
+	uint32_t sequence_opcode = 0;
+
+	for (auto &inst : *bb)
+	{
+		auto *call = llvm::dyn_cast<llvm::CallInst>(&inst);
+		uint32_t code = 0;
+		if (!call || !value_is_dx_op_instrinsic(call, DXIL::Op::AtomicCompareExchange) ||
+		    !get_constant_operand(call, 2, &code) || !is_ags_magic(code))
+			continue;
+
+		auto ags_inst = decode_ags_instruction(code);
+		if (ags_inst.opcode != AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixMulAcc &&
+		    ags_inst.opcode != AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixCopy)
+		{
+			phase0.clear();
+			continue;
+		}
+
+		if (ags_inst.opcode != sequence_opcode)
+			phase0.clear();
+		sequence_opcode = ags_inst.opcode;
+
+		if (ags_inst.phase == 0)
+		{
+			phase0.push_back(call);
+			if (!is_tracked_wmma_operand(call->getOperand(5)) || !is_tracked_wmma_operand(call->getOperand(6)))
+				impl.ags.raw_fragments = true;
+		}
+		else if (ags_inst.phase == 1)
+		{
+			// Tracked matrices are never constants, so a shader that passes real data as constants is raw too.
+			size_t inputs = ags_inst.opcode == AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixMulAcc ? 12 : 4;
+			for (size_t i = phase0.size() > inputs ? phase0.size() - inputs : 0; i < phase0.size(); i++)
+			{
+				if (llvm::isa<llvm::Constant>(phase0[i]->getOperand(5)) ||
+				    llvm::isa<llvm::Constant>(phase0[i]->getOperand(6)))
+					impl.ags.raw_fragments = true;
+			}
+			phase0.clear();
+		}
+	}
+}
+
 void push_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
 	uint32_t op = 0;
@@ -2617,6 +3096,8 @@ void push_ags_instruction(Converter::Impl &impl, const llvm::CallInst *instructi
 	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixLength:
 	case AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixElementExtract:
 	case AmdExtD3DShaderIntrinsicsOpcode_MatrixElementWiseArithmetic:
+		if (impl.ags.raw_fragments && inst.opcode == AmdExtD3DShaderIntrinsicsOpcode_WaveMatrixCopy)
+			break;
 		impl.shader_analysis.require_subgroups = true;
 		impl.shader_analysis.require_wmma = true;
 		break;
@@ -2931,7 +3412,7 @@ static spv::Id ags_build_cexpr_gep(Converter::Impl &impl, const llvm::Value *loa
 
 bool ags_llvm_load_filter_cexpr(Converter::Impl &impl, const llvm::LoadInst *instruction)
 {
-	if (!impl.shader_analysis.require_wmma)
+	if (!impl.shader_analysis.require_wmma || impl.ags.raw_fragments)
 		return false;
 
 	uint32_t split_elem = 0;
@@ -2953,7 +3434,7 @@ bool ags_llvm_load_filter_cexpr(Converter::Impl &impl, const llvm::LoadInst *ins
 
 bool ags_store_filter(Converter::Impl &impl, const llvm::StoreInst *instruction)
 {
-	if (!impl.shader_analysis.require_wmma)
+	if (!impl.shader_analysis.require_wmma || impl.ags.raw_fragments)
 		return false;
 
 	uint32_t split_elem = 0;
