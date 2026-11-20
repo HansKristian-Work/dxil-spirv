@@ -3534,12 +3534,15 @@ void CFGStructurizer::forward_visit_push(CFGNode *node)
 		push_visit_stack(succ);
 }
 
-void CFGStructurizer::forward_visit()
+template <typename PushOp, typename ResolveOp>
+void CFGStructurizer::forward_visit(CFGNode *node, const PushOp &push_op, const ResolveOp &resolve_op)
 {
-	push_visit_stack(entry_block);
+	if (node)
+		push_visit_stack(node);
+
 	bool keep_iterating;
 
-	do
+	while (!visit_stack.empty())
 	{
 		// Fan-out.
 		do
@@ -3547,7 +3550,7 @@ void CFGStructurizer::forward_visit()
 			CFGNode *to_visit = visit_stack.back();
 			size_t last_visited_size = visit_stack.size();
 
-			forward_visit_push(to_visit);
+			push_op(to_visit);
 
 			keep_iterating = last_visited_size != visit_stack.size();
 			// Reverse to avoid nuking shader caches. The first recursion entry will be picked first.
@@ -3558,10 +3561,17 @@ void CFGStructurizer::forward_visit()
 		// Resolve the stack.
 		while (!visit_stack.empty() && visit_stack.back()->visited)
 		{
-			forward_visit_resolve(visit_stack.back());
+			resolve_op(visit_stack.back());
 			visit_stack.pop_back();
 		}
-	} while (!visit_stack.empty());
+	}
+}
+
+void CFGStructurizer::forward_visit()
+{
+	forward_visit(entry_block,
+		[this](CFGNode *node) { forward_visit_push(node); },
+		[this](CFGNode *node) { forward_visit_resolve(node); });
 }
 
 void CFGStructurizer::merge_to_succ(CFGNode *node, unsigned index)
