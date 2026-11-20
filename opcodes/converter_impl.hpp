@@ -284,9 +284,6 @@ struct Converter::Impl
 
 	Vector<llvm::BasicBlock *> build_function_bb_visit_order(llvm::Function *func);
 	Vector<llvm::BasicBlock *> build_function_bb_visit_order_and_register(llvm::Function *func, CFGNodePool &pool);
-	void build_function_bb_visit_order(Vector<llvm::BasicBlock *> &bbs,
-	                                   UnorderedSet<llvm::BasicBlock *> &visited,
-	                                   llvm::BasicBlock *bb);
 	void build_function_bb_visit_register(llvm::BasicBlock *bb, CFGNodePool &pool, String tag);
 
 	bool emit_stage_input_variables();
