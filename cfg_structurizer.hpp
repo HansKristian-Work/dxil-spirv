@@ -83,7 +83,11 @@ private:
 
 	UnorderedSet<const CFGNode *> reachable_nodes;
 	UnorderedSet<const CFGNode *> structured_loop_merge_targets;
-	void visit(CFGNode &entry);
+	Vector<CFGNode *> visit_stack;
+	void forward_visit();
+	void push_visit_stack(CFGNode *node);
+	void forward_visit_push(CFGNode *node);
+	void forward_visit_resolve(CFGNode *node);
 	void visit_for_back_edge_analysis(CFGNode &entry);
 	void backwards_visit();
 	void backwards_visit(CFGNode &entry);

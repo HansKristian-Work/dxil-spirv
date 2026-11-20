@@ -67,7 +67,7 @@ void CFGStructurizer::run_common_preamble()
 	if (!graphviz_path.empty())
 	{
 		reset_traversal();
-		visit(*entry_block);
+		forward_visit();
 		auto graphviz_input = graphviz_path + ".input";
 		log_cfg_graphviz(graphviz_input.c_str());
 	}
