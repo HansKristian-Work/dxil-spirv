@@ -3271,8 +3271,19 @@ void CFGStructurizer::backwards_visit()
 			leaf_nodes.push_back(node);
 	}
 
-	for (auto *leaf : leaf_nodes)
-		backwards_visit(*leaf);
+	// Ensure stable shader caches compared to the recursive code.
+	const auto visit_nodes = [this](const Vector<CFGNode *> &nodes)
+	{
+		for (auto itr = nodes.rbegin(); itr != nodes.rend(); ++itr)
+			visit_stack.push_back(*itr);
+
+		recursive_visit(nullptr,
+		                [this](CFGNode *node) { backwards_visit_push(node); },
+		                [this](CFGNode *node) { backwards_visit_resolve(node); },
+		                [](CFGNode *node) { return node->backward_visited; });
+	};
+
+	visit_nodes(leaf_nodes);
 
 	// It might be case that some continue blocks are not reachable through backwards traversal.
 	// This effectively means that our flipped CFG is not reducible, which is rather annoying.
@@ -3379,8 +3390,7 @@ void CFGStructurizer::backwards_visit()
 			node->backward_post_visit_order = 0;
 		}
 
-		for (auto *leaf : leaf_nodes)
-			backwards_visit(*leaf);
+		visit_nodes(leaf_nodes);
 	}
 
 	exit_block->backward_post_visit_order = backward_post_visit_order.size();
@@ -3390,20 +3400,20 @@ void CFGStructurizer::backwards_visit()
 		leaf->immediate_post_dominator = exit_block;
 }
 
-void CFGStructurizer::backwards_visit(CFGNode &entry)
+void CFGStructurizer::backwards_visit_push(CFGNode *node)
 {
-	entry.backward_visited = true;
+	node->backward_visited = true;
+	node->traversing = true;
+	for (auto *pred : node->pred)
+		push_visit_stack_backwards(pred);
+	for (auto *pred : node->fake_pred)
+		push_visit_stack_backwards(pred);
+}
 
-	for (auto *pred : entry.pred)
-		if (!pred->backward_visited)
-			backwards_visit(*pred);
-
-	for (auto *pred : entry.fake_pred)
-		if (!pred->backward_visited)
-			backwards_visit(*pred);
-
-	entry.backward_post_visit_order = backward_post_visit_order.size();
-	backward_post_visit_order.push_back(&entry);
+void CFGStructurizer::backwards_visit_resolve(CFGNode *entry)
+{
+	entry->backward_post_visit_order = backward_post_visit_order.size();
+	backward_post_visit_order.push_back(entry);
 }
 
 void CFGStructurizer::visit_for_back_edge_analysis_push(CFGNode *entry)
@@ -3480,6 +3490,12 @@ void CFGStructurizer::push_visit_stack(CFGNode *node)
 	}
 }
 
+void CFGStructurizer::push_visit_stack_backwards(CFGNode *node)
+{
+	if (!node->backward_visited)
+		visit_stack.push_back(node);
+}
+
 void CFGStructurizer::forward_visit_resolve(CFGNode *entry)
 {
 	for (auto *succ : entry->succ)
@@ -3526,8 +3542,10 @@ void CFGStructurizer::forward_visit_push(CFGNode *node)
 		push_visit_stack(succ);
 }
 
-template <typename PushOp, typename ResolveOp>
-void CFGStructurizer::forward_visit(CFGNode *node, const PushOp &push_op, const ResolveOp &resolve_op)
+template <typename PushOp, typename ResolveOp, typename VisitedOp>
+void CFGStructurizer::recursive_visit(CFGNode *node,
+                                      const PushOp &push_op, const ResolveOp &resolve_op,
+                                      const VisitedOp &is_visited_op)
 {
 	if (node)
 		push_visit_stack(node);
@@ -3551,7 +3569,7 @@ void CFGStructurizer::forward_visit(CFGNode *node, const PushOp &push_op, const 
 		} while (keep_iterating);
 
 		// Resolve the stack.
-		while (!visit_stack.empty() && visit_stack.back()->visited)
+		while (!visit_stack.empty() && is_visited_op(visit_stack.back()))
 		{
 			auto *node = visit_stack.back();
 			if (node->traversing)
@@ -3566,16 +3584,18 @@ void CFGStructurizer::forward_visit(CFGNode *node, const PushOp &push_op, const 
 
 void CFGStructurizer::forward_visit()
 {
-	forward_visit(entry_block,
-	              [this](CFGNode *node) { forward_visit_push(node); },
-	              [this](CFGNode *node) { forward_visit_resolve(node); });
+	recursive_visit(entry_block,
+	                [this](CFGNode *node) { forward_visit_push(node); },
+	                [this](CFGNode *node) { forward_visit_resolve(node); },
+	                [this](CFGNode *node) { return node->visited; });
 }
 
 void CFGStructurizer::visit_for_back_edge_analysis()
 {
-	forward_visit(entry_block,
-	              [this](CFGNode *node) { visit_for_back_edge_analysis_push(node); },
-	              [this](CFGNode *node) { visit_for_back_edge_analysis_resolve(node); });
+	recursive_visit(entry_block,
+	                [this](CFGNode *node) { visit_for_back_edge_analysis_push(node); },
+	                [this](CFGNode *node) { visit_for_back_edge_analysis_resolve(node); },
+	                [this](CFGNode *node) { return node->visited; });
 }
 
 void CFGStructurizer::merge_to_succ(CFGNode *node, unsigned index)

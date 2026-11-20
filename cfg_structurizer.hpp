@@ -85,9 +85,12 @@ private:
 	UnorderedSet<const CFGNode *> structured_loop_merge_targets;
 	Vector<CFGNode *> visit_stack;
 
-	template <typename PushOp, typename ResolveOp>
-	void forward_visit(CFGNode *node, const PushOp &push_op, const ResolveOp &resolve_op);
+	template <typename PushOp, typename ResolveOp, typename VisitedOp>
+	void recursive_visit(CFGNode *node,
+	                     const PushOp &push_op, const ResolveOp &resolve_op,
+	                     const VisitedOp &is_visited_op);
 	void push_visit_stack(CFGNode *node);
+	void push_visit_stack_backwards(CFGNode *node);
 
 	void forward_visit();
 	void forward_visit_push(CFGNode *node);
@@ -98,7 +101,9 @@ private:
 	void visit_for_back_edge_analysis_resolve(CFGNode *entry);
 
 	void backwards_visit();
-	void backwards_visit(CFGNode &entry);
+	void backwards_visit_push(CFGNode *node);
+	void backwards_visit_resolve(CFGNode *entry);
+
 	void build_immediate_dominators();
 	void build_immediate_post_dominators();
 	void build_reachability();
