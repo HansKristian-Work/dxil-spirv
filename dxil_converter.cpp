@@ -8385,40 +8385,6 @@ Converter::Impl::build_hull_main(const Vector<llvm::BasicBlock *> &visit_order,
 	return { entry, spirv_module.get_entry_function(), false, false };
 }
 
-void Converter::Impl::build_function_bb_visit_order(
-	Vector<llvm::BasicBlock *> &bbs, UnorderedSet<llvm::BasicBlock *> &visited,
-	llvm::BasicBlock *bb)
-{
-	if (visited.count(bb))
-		return;
-	visited.insert(bb);
-
-	// Check for special case where we optimize to direct branch.
-	auto *term = bb->getTerminator();
-	if (auto *inst = llvm::dyn_cast<llvm::BranchInst>(term))
-	{
-		if (inst->isConditional())
-		{
-			bool cond_value;
-			if (can_optimize_conditional_branch_to_static(*this, inst->getCondition(), cond_value))
-			{
-				auto *succ = inst->getSuccessor(cond_value ? 0 : 1);
-				build_function_bb_visit_order(bbs, visited, succ);
-				bbs.push_back(bb);
-				return;
-			}
-		}
-	}
-
-	for (auto itr = llvm::succ_begin(bb); itr != llvm::succ_end(bb); ++itr)
-	{
-		auto *succ = *itr;
-		build_function_bb_visit_order(bbs, visited, succ);
-	}
-
-	bbs.push_back(bb);
-}
-
 Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order_and_register(
 		llvm::Function *func, CFGNodePool &pool)
 {
@@ -8465,10 +8431,76 @@ Vector<llvm::BasicBlock *> Converter::Impl::build_function_bb_visit_order(llvm::
 	if (!func || func->empty())
 		return {};
 
+	UnorderedSet<llvm::BasicBlock *> resolved;
 	UnorderedSet<llvm::BasicBlock *> visited;
 	Vector<llvm::BasicBlock *> visit_order;
 	auto *entry = &func->getEntryBlock();
-	build_function_bb_visit_order(visit_order, visited, entry);
+
+	// Vaguely copy-paste from the structurizer. The types are completely different
+	// and trying to make some frankenstein abstracted template is just not worth it.
+	Vector<llvm::BasicBlock *> visit_stack;
+	visit_stack.push_back(entry);
+	bool keep_iterating;
+
+	const auto push_op = [&](llvm::BasicBlock *bb)
+	{
+		if (visited.count(bb))
+			return;
+		visited.insert(bb);
+
+		// Check for special case where we optimize to direct branch.
+		auto *term = bb->getTerminator();
+		if (auto *inst = llvm::dyn_cast<llvm::BranchInst>(term))
+		{
+			if (inst->isConditional())
+			{
+				bool cond_value;
+				if (can_optimize_conditional_branch_to_static(*this, inst->getCondition(), cond_value))
+				{
+					auto *succ = inst->getSuccessor(cond_value ? 0 : 1);
+					if (!has_element(visited, succ))
+						visit_stack.push_back(succ);
+					return;
+				}
+			}
+		}
+
+		for (auto itr = llvm::succ_begin(bb); itr != llvm::succ_end(bb); ++itr)
+		{
+			auto *succ = *itr;
+			if (!has_element(visited, succ))
+				visit_stack.push_back(succ);
+		}
+	};
+
+	while (!visit_stack.empty())
+	{
+		// Fan-out
+		do
+		{
+			auto *to_visit = visit_stack.back();
+			size_t last_visited_size = visit_stack.size();
+
+			push_op(to_visit);
+			keep_iterating = last_visited_size != visit_stack.size();
+			// Reverse to avoid nuking shader caches. The first recursion entry will be picked first.
+			if (keep_iterating)
+				std::reverse(visit_stack.begin() + last_visited_size, visit_stack.end());
+		} while (keep_iterating);
+
+		// Resolve the stack.
+		while (!visit_stack.empty() && has_element(visited, visit_stack.back()))
+		{
+			auto *node = visit_stack.back();
+			if (!has_element(resolved, node))
+			{
+				visit_order.push_back(node);
+				resolved.insert(node);
+			}
+			visit_stack.pop_back();
+		}
+	}
+
 	// Get natural traverse order, input is post-traversal order.
 	std::reverse(visit_order.begin(), visit_order.end());
 	return visit_order;

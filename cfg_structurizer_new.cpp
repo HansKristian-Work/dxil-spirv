@@ -67,7 +67,7 @@ void CFGStructurizer::run_common_preamble()
 	if (!graphviz_path.empty())
 	{
 		reset_traversal();
-		visit(*entry_block);
+		forward_visit();
 		auto graphviz_input = graphviz_path + ".input";
 		log_cfg_graphviz(graphviz_input.c_str());
 	}
@@ -1707,11 +1707,14 @@ void CFGStructurizer::organize_levels(CFGNode *node, const Vector<CFGNode *> &ch
 		levels.push_back({ std::move(level_blocks) });
 }
 
-void CFGStructurizer::traverse_routes(
+CFGStructurizer::SerializeContinuation
+CFGStructurizer::traverse_routes_with_continuation(
 		Vector<SerializationLevel> &&levels,
 		size_t num_traverse_levels,
 		CFGNode *start_node, CFGNode *outer_merge)
 {
+	SerializeContinuation cont;
+
 	// All execution should have been collected at merge_node.
 	// Dispatch execution to those now.
 	for (size_t i = 0; i < num_traverse_levels; i++)
@@ -1724,27 +1727,26 @@ void CFGStructurizer::traverse_routes(
 		start_node->ir.terminator.type = Terminator::Type::Branch;
 		start_node->ir.terminator.direct_block = level.input_node;
 
+		// These paths should be quite shallow w.r.t. stack usage.
+		// The last level may continue on.
 		start_node = level.output_node;
 		for (auto *path : level.paths)
-			serialize_merge_levels_for_dominated_paths(path, levels, level.output_node);
+		{
+			if (i + 1 == num_traverse_levels && path == level.paths.back())
+			{
+				// The last level is generally a single path that continues indefinitely can't risk recursing here.
+				cont = serialize_merge_levels_for_dominated_paths_with_continuation(path, levels, level.output_node);
+			}
+			else
+			{
+				assert(cont.kind == SerializeContinuation::Kind::None);
+				serialize_merge_levels_for_dominated_paths_recursive(path, levels, level.output_node);
+			}
+		}
 	}
 
-	if (start_node != outer_merge)
-	{
-		if (outer_merge)
-		{
-			// Branch from last level to outer_merge.
-			// If we dominate everything in the path to exit, there is nothing to exit to.
-			start_node->add_branch(outer_merge);
-			start_node->ir.terminator.type = Terminator::Type::Branch;
-			start_node->ir.terminator.direct_block = outer_merge;
-		}
-		else
-		{
-			// Nowhere to branch, this must be a return.
-			start_node->ir.terminator.type = Terminator::Type::Return;
-		}
-	}
+	link_nodes(start_node, outer_merge);
+	return cont;
 }
 
 bool CFGStructurizer::level_has_non_breaking_non_continue_path(CFGNode *succ, const SerializationLevel *level)
@@ -1763,10 +1765,12 @@ bool CFGStructurizer::level_has_non_breaking_non_continue_path(CFGNode *succ, co
 	return true;
 }
 
-void CFGStructurizer::route_branches(CFGNode *node,
-                                     const Vector<SerializationLevel> &outer_levels,
-                                     const Vector<SerializationLevel> &levels,
-                                     CFGNode *outer_merge)
+CFGStructurizer::SerializeContinuation
+CFGStructurizer::route_branches_with_continuation(
+	CFGNode *node,
+	const Vector<SerializationLevel> &outer_levels,
+	const Vector<SerializationLevel> &levels,
+	CFGNode *outer_merge)
 {
 	if (node->succ_back_edge)
 	{
@@ -1790,11 +1794,16 @@ void CFGStructurizer::route_branches(CFGNode *node,
 		}
 		else
 		{
-			enter_succ(node, node->ir.terminator.direct_block, outer_levels, outer_merge);
+			SerializeContinuation cont;
+			cont.kind = SerializeContinuation::Kind::EnterSuccDirect;
+			cont.node = node;
+			cont.outer_levels = outer_levels;
+			cont.outer_merge = outer_merge;
+			return cont;
 		}
 
 		// Direct branches need not do anything since it can only branch backwards to header anyway.
-		return;
+		return {};
 	}
 
 	if (node->ir.terminator.type == Terminator::Type::Switch)
@@ -1835,11 +1844,17 @@ void CFGStructurizer::route_branches(CFGNode *node,
 			if (has_element(handled, c.node) || c.node == merge_node)
 				continue;
 			handled.push_back(c.node);
-			enter_succ(node, c.node, break_levels, merge_node);
+			enter_succ_recursive(node, c.node, break_levels, merge_node);
 		}
 
 		// And now traverse post-merge paths.
-		traverse_routes(std::move(break_levels), levels.size(), merge_node, outer_merge);
+		SerializeContinuation cont;
+		cont.kind = SerializeContinuation::Kind::TraverseRoutes;
+		cont.levels = std::move(break_levels);
+		cont.num_traverse_levels = levels.size();
+		cont.merge_node = merge_node;
+		cont.outer_merge = outer_merge;
+		return cont;
 	}
 	else if (node->ir.terminator.type == Terminator::Type::Condition)
 	{
@@ -1905,12 +1920,31 @@ void CFGStructurizer::route_branches(CFGNode *node,
 
 		// If this branch is a conditional continue or break, we don't need resolve any scopes.
 		if (merge_node)
-			traverse_routes(std::move(break_levels), levels.size(), merge_node, outer_merge);
+		{
+			SerializeContinuation cont;
+			cont.kind = SerializeContinuation::Kind::TraverseRoutes;
+			cont.levels = std::move(break_levels);
+			cont.num_traverse_levels = levels.size();
+			cont.merge_node = merge_node;
+			cont.outer_merge = outer_merge;
+			return cont;
+		}
+		else
+		{
+			return {};
+		}
 	}
 	else if (node->ir.terminator.type == Terminator::Type::Branch)
 	{
-		enter_succ(node, node->ir.terminator.direct_block, outer_levels, outer_merge);
+		SerializeContinuation cont;
+		cont.kind = SerializeContinuation::Kind::EnterSuccDirect;
+		cont.node = node;
+		cont.outer_levels = outer_levels;
+		cont.outer_merge = outer_merge;
+		return cont;
 	}
+
+	return {};
 }
 
 void CFGStructurizer::move_interposing_nodes_into_loop(
@@ -1959,7 +1993,8 @@ void CFGStructurizer::move_interposing_nodes_into_loop(
 	}
 }
 
-void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
+CFGStructurizer::SerializeContinuation
+CFGStructurizer::serialize_merge_levels_for_dominated_paths_with_continuation(
 		CFGNode *node, const Vector<SerializationLevel> &outer_levels, CFGNode *outer_merge)
 {
 	if (node->pred_back_edge)
@@ -2016,14 +2051,14 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 		analyze_levels_skippability(node, merge_levels, in_loop_levels);
 
 		// Route the inner scope.
-		route_branches(node, merge_levels, in_loop_levels, merge_node);
+		route_branches_recursive(node, merge_levels, in_loop_levels, merge_node);
 
 		assert(!loop_scopes.empty());
 
 		// It's possible we never visited the continue block in some cases. Force a visit now to make
 		// sure branches are re-directed to merge block properly.
 		if (!loop_scopes.back().visited_continue_block)
-			route_branches(node->ir.merge_info.continue_block, merge_levels, in_loop_levels, merge_node);
+			route_branches_recursive(node->ir.merge_info.continue_block, merge_levels, in_loop_levels, merge_node);
 
 		scope = loop_scopes.back();
 		loop_scopes.pop_back();
@@ -2043,14 +2078,28 @@ void CFGStructurizer::serialize_merge_levels_for_dominated_paths(
 
 		// Resolve the outer branches. Do not use route_branches here since we've already dealt with branches.
 		// We're effectively starting routing from the merge node now.
-		traverse_routes(std::move(merge_levels), out_loop_levels.size(), merge_node, outer_merge);
+		SerializeContinuation cont;
+		cont.kind = SerializeContinuation::Kind::TraverseRoutes;
+		cont.levels = std::move(merge_levels);
+		cont.num_traverse_levels = out_loop_levels.size();
+		cont.merge_node = merge_node;
+		cont.outer_merge = outer_merge;
+		return cont;
 	}
 	else
 	{
 		Vector<SerializationLevel> levels;
 		organize_levels(node, node->idom_children, outer_levels, levels, nullptr, false);
 		analyze_levels_skippability(node, outer_levels, levels);
-		route_branches(node, outer_levels, levels, outer_merge);
+
+		// Avoid deep recursion if possible. Stacked if/else would potentially trigger unbounded stack usage.
+		SerializeContinuation cont;
+		cont.kind = SerializeContinuation::Kind::RouteBranches;
+		cont.node = node;
+		cont.outer_levels = outer_levels;
+		cont.levels = std::move(levels);
+		cont.outer_merge = outer_merge;
+		return cont;
 	}
 }
 
@@ -2282,8 +2331,9 @@ bool CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const Se
 	return has_side_effect;
 }
 
-void CFGStructurizer::enter_succ(
-		CFGNode *node, CFGNode *succ, const Vector<SerializationLevel> &levels, CFGNode *merge_node)
+CFGStructurizer::SerializeContinuation
+CFGStructurizer::enter_succ_with_continuation(
+	CFGNode *node, CFGNode *succ, const Vector<SerializationLevel> &levels, CFGNode *merge_node)
 {
 	if (node->succ_back_edge)
 		find_scope_for_block(node)->visited_continue_block = true;
@@ -2303,8 +2353,10 @@ void CFGStructurizer::enter_succ(
 	else if (!is_backwards_branch(succ))
 	{
 		assert(node->dominates(succ));
-		serialize_merge_levels_for_dominated_paths(succ, levels, merge_node);
+		return serialize_merge_levels_for_dominated_paths_with_continuation(succ, levels, merge_node);
 	}
+
+	return {};
 }
 
 void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *false_path, spv::Id cond,
@@ -2324,9 +2376,9 @@ void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *fal
 		// Just walk the graph in both directions as normal.
 		// Never walk backwards though.
 		if (!is_backwards_branch(true_path))
-			serialize_merge_levels_for_dominated_paths(true_path, levels, merge_node);
+			serialize_merge_levels_for_dominated_paths_recursive(true_path, levels, merge_node);
 		if (!is_backwards_branch(false_path))
-			serialize_merge_levels_for_dominated_paths(false_path, levels, merge_node);
+			serialize_merge_levels_for_dominated_paths_recursive(false_path, levels, merge_node);
 	}
 	else if (true_level && true_level == false_level)
 	{
@@ -2468,16 +2520,86 @@ bool CFGStructurizer::select_path(CFGNode *node, const SerializationLevel *level
 	}
 	else if (!is_backwards_branch(path))
 	{
-		serialize_merge_levels_for_dominated_paths(path, levels, merge_node);
+		serialize_merge_levels_for_dominated_paths_recursive(path, levels, merge_node);
 	}
 
 	return false;
 }
 
+void CFGStructurizer::link_nodes(CFGNode *from, CFGNode *to)
+{
+	if (from != to)
+	{
+		if (to)
+		{
+			// Branch from last level to outer_merge.
+			// If we dominate everything in the path to exit, there is nothing to exit to.
+			// Need to do this after we have resolved the continuations otherwise it goes on too long.
+			from->add_branch(to);
+			from->ir.terminator.type = Terminator::Type::Branch;
+			from->ir.terminator.direct_block = to;
+		}
+		else
+		{
+			// Nowhere to branch, this must be a return.
+			from->ir.terminator.type = Terminator::Type::Return;
+		}
+	}
+}
+
+void CFGStructurizer::iterate_continuation(SerializeContinuation cont)
+{
+	while (cont.kind != SerializeContinuation::Kind::None)
+	{
+		switch (cont.kind)
+		{
+		case SerializeContinuation::Kind::RouteBranches:
+			cont = route_branches_with_continuation(
+				cont.node, cont.outer_levels, cont.levels, cont.outer_merge);
+			break;
+
+		case SerializeContinuation::Kind::TraverseRoutes:
+			cont = traverse_routes_with_continuation(
+				std::move(cont.levels), cont.num_traverse_levels, cont.merge_node, cont.outer_merge);
+			break;
+
+		case SerializeContinuation::Kind::EnterSuccDirect:
+			cont = enter_succ_with_continuation(
+				cont.node, cont.node->ir.terminator.direct_block, cont.outer_levels, cont.outer_merge);
+			break;
+
+		default:
+			break;
+		}
+	}
+}
+
+void CFGStructurizer::serialize_merge_levels_for_dominated_paths_recursive(
+		CFGNode *node, const Vector<SerializationLevel> &levels, CFGNode *merge_node)
+{
+	auto cont = serialize_merge_levels_for_dominated_paths_with_continuation(node, levels, merge_node);
+	iterate_continuation(std::move(cont));
+}
+
 void CFGStructurizer::serialize_merge_levels_for_dominated_paths_entry()
 {
 	Vector<SerializationLevel> levels;
-	serialize_merge_levels_for_dominated_paths(entry_block, levels, nullptr);
+	serialize_merge_levels_for_dominated_paths_recursive(entry_block, levels, nullptr);
+}
+
+void CFGStructurizer::enter_succ_recursive(CFGNode *from, CFGNode *succ,
+                                           const Vector<SerializationLevel> &levels, CFGNode *merge_node)
+{
+	auto cont = enter_succ_with_continuation(from, succ, levels, merge_node);
+	iterate_continuation(std::move(cont));
+}
+
+void CFGStructurizer::route_branches_recursive(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
+                                               const Vector<SerializationLevel> &levels,
+                                               CFGNode *outer_merge)
+{
+	auto cont = route_branches_with_continuation(node, outer_levels, levels, outer_merge);
+	iterate_continuation(std::move(cont));
 }
 
 void CFGStructurizer::cleanup_degenerate_blocks()
