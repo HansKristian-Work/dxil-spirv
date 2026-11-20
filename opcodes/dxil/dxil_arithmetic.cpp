@@ -625,16 +625,16 @@ bool emit_dxil_wide_arith_instruction_add(spv::Op opcode, Converter::Impl &impl,
 
 bool emit_dxbc_udiv_instruction(Converter::Impl &impl, const llvm::CallInst *instruction)
 {
-	auto &builder = impl.builder();
 	spv::Id id0 = impl.get_id_for_value(instruction->getOperand(1));
 	spv::Id id1 = impl.get_id_for_value(instruction->getOperand(2));
 
-	spv::Id type_id = impl.get_type_id(instruction->getType());
-	spv::Id quot_id = impl.spirv_module.get_helper_call_id(HelperCall::UDiv, type_id);
-	spv::Id rem_id = impl.spirv_module.get_helper_call_id(HelperCall::UMod, type_id);
+	spv::Id arg_type_id = impl.get_type_id(instruction->getOperand(1)->getType());
 
-	auto *quot = impl.allocate(spv::OpFunctionCall, type_id);
-	auto *rem = impl.allocate(spv::OpFunctionCall, type_id);
+	spv::Id quot_id = impl.spirv_module.get_helper_call_id(HelperCall::UDiv, arg_type_id);
+	spv::Id rem_id = impl.spirv_module.get_helper_call_id(HelperCall::UMod, arg_type_id);
+
+	auto *quot = impl.allocate(spv::OpFunctionCall, arg_type_id);
+	auto *rem = impl.allocate(spv::OpFunctionCall, arg_type_id);
 
 	quot->add_id(quot_id);
 	quot->add_id(id0);
@@ -646,8 +646,11 @@ bool emit_dxbc_udiv_instruction(Converter::Impl &impl, const llvm::CallInst *ins
 	rem->add_id(id1);
 	impl.add(rem);
 
-	spv::Id elems[2] = { quot->id, rem->id };
-	impl.rewrite_value(instruction, impl.build_vector(builder.makeUintType(32), elems, 2));
+	// Result can be either a vector or a struct
+	auto *construct = impl.allocate(spv::OpCompositeConstruct, instruction);
+	construct->add_id(quot->id);
+	construct->add_id(rem->id);
+	impl.add(construct);
 	return true;
 }
 
