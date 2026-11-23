@@ -83,10 +83,27 @@ private:
 
 	UnorderedSet<const CFGNode *> reachable_nodes;
 	UnorderedSet<const CFGNode *> structured_loop_merge_targets;
-	void visit(CFGNode &entry);
-	void visit_for_back_edge_analysis(CFGNode &entry);
+	Vector<CFGNode *> visit_stack;
+
+	template <typename PushOp, typename ResolveOp, typename VisitedOp>
+	void recursive_visit(CFGNode *node,
+	                     const PushOp &push_op, const ResolveOp &resolve_op,
+	                     const VisitedOp &is_visited_op);
+	void push_visit_stack(CFGNode *node);
+	void push_visit_stack_backwards(CFGNode *node);
+
+	void forward_visit();
+	void forward_visit_push(CFGNode *node);
+	void forward_visit_resolve(CFGNode *node);
+
+	void visit_for_back_edge_analysis();
+	void visit_for_back_edge_analysis_push(CFGNode *entry);
+	void visit_for_back_edge_analysis_resolve(CFGNode *entry);
+
 	void backwards_visit();
-	void backwards_visit(CFGNode &entry);
+	void backwards_visit_push(CFGNode *node);
+	void backwards_visit_resolve(CFGNode *entry);
+
 	void build_immediate_dominators();
 	void build_immediate_post_dominators();
 	void build_reachability();
@@ -337,11 +354,36 @@ private:
 	CFGNode *switch_block_trivially_merges(CFGNode *node);
 	void rewrite_complex_loop_successors();
 	void convert_phi_to_variables();
-	void serialize_merge_levels_for_dominated_paths(
+
+	// Ideally we just recurse, but there will always be the most ridiculous shader out there ... <_<
+	struct SerializeContinuation
+	{
+		enum class Kind { None, TraverseRoutes, RouteBranches, EnterSuccDirect };
+		Kind kind = Kind::None;
+		CFGNode *node = nullptr;
+		Vector<SerializationLevel> outer_levels;
+		Vector<SerializationLevel> levels;
+		size_t num_traverse_levels = 0;
+		CFGNode *merge_node = nullptr;
+		CFGNode *outer_merge = nullptr;
+	};
+
+	void iterate_continuation(SerializeContinuation cont);
+	static void link_nodes(CFGNode *from, CFGNode *to);
+
+	void serialize_merge_levels_for_dominated_paths_recursive(
 		CFGNode *node, const Vector<SerializationLevel> &levels, CFGNode *merge_node);
 
-	void enter_succ(CFGNode *from, CFGNode *succ,
-	                const Vector<SerializationLevel> &levels, CFGNode *merge_node);
+	SerializeContinuation
+	serialize_merge_levels_for_dominated_paths_with_continuation(
+		CFGNode *node, const Vector<SerializationLevel> &levels, CFGNode *merge_node);
+
+	SerializeContinuation
+	enter_succ_with_continuation(CFGNode *from, CFGNode *succ,
+	           const Vector<SerializationLevel> &levels, CFGNode *merge_node);
+
+	void enter_succ_recursive(CFGNode *from, CFGNode *succ,
+	                          const Vector<SerializationLevel> &levels, CFGNode *merge_node);
 
 	void enter_succ(CFGNode *from, CFGNode *true_path, CFGNode *false_path, spv::Id cond,
 	                const SerializationLevel *true_level, const SerializationLevel *false_level,
@@ -379,12 +421,18 @@ private:
 	void analyze_levels_skippability(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
 	                                 Vector<SerializationLevel> &levels);
 
-	void route_branches(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
-	                    const Vector<SerializationLevel> &levels,
-	                    CFGNode *outer_merge);
+	SerializeContinuation
+	route_branches_with_continuation(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
+	                                 const Vector<SerializationLevel> &levels,
+	                                 CFGNode *outer_merge);
 
-	void traverse_routes(Vector<SerializationLevel> &&levels, size_t num_traverse_levels,
-	                     CFGNode *start_node, CFGNode *outer_merge);
+	void route_branches_recursive(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
+	                              const Vector<SerializationLevel> &levels,
+	                              CFGNode *outer_merge);
+
+	SerializeContinuation
+	traverse_routes_with_continuation(Vector<SerializationLevel> &&levels, size_t num_traverse_levels,
+	                                  CFGNode *start_node, CFGNode *outer_merge);
 
 	bool select_path(CFGNode *node, const SerializationLevel *level, CFGNode *path, const char *tag,
 	                 const Vector<SerializationLevel> &levels, CFGNode *merge_node);
