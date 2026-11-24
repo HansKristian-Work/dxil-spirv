@@ -1,0 +1,16 @@
+RWByteAddressBuffer RW : register(u0);
+
+// A raw buffer used with 64-bit atomics carries only the Atomic64Use tag
+// in its extended properties. Its plain loads and stores must still be
+// addressed as a raw buffer (no structured stride, no element offset).
+
+[numthreads(64, 1, 1)]
+void main(uint thr : SV_DispatchThreadID)
+{
+	uint addr = RW.Load(4 * thr);
+	uint v = RW.Load(addr);
+	uint2 w = RW.Load2(addr + 4);
+	uint64_t o;
+	RW.InterlockedAdd64(8 * thr, uint64_t(v) | (uint64_t(w.y) << 32), o);
+	RW.Store(addr + 12, uint(o));
+}

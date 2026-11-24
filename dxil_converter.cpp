@@ -177,6 +177,34 @@ static T get_constant_metadata(const llvm::MDNode *node, unsigned index)
 	    llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(index))->getValue()->getUniqueInteger().getSExtValue());
 }
 
+// The extended properties of a resource are a list of (tag, value) pairs.
+// A tag can be absent and the pairs need not start with a given tag,
+// e.g. a RWByteAddressBuffer used with 64-bit atomics carries only { Atomic64Use, 1 }.
+enum class ResourceTag : uint32_t
+{
+	TypedBufferElementType = 0,
+	StructuredBufferElementStride = 1,
+	SamplerFeedbackKind = 2,
+	Atomic64Use = 3
+};
+
+static bool get_resource_tag(const llvm::MDNode *tags, ResourceTag tag, uint32_t &value)
+{
+	if (!tags)
+		return false;
+
+	for (unsigned i = 0; i + 1 < tags->getNumOperands(); i += 2)
+	{
+		if (get_constant_metadata(tags, i) == uint32_t(tag))
+		{
+			value = get_constant_metadata(tags, i + 1);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static String get_string_metadata(const llvm::MDNode *node, unsigned index)
 {
 #ifdef HAVE_LLVMBC
@@ -1304,19 +1332,18 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		auto effective_component_type = actual_component_type;
 
 		unsigned stride = 0;
+		uint32_t element_type = 0;
 
-		if (tags && get_constant_metadata(tags, 0) == 0)
+		if (get_resource_tag(tags, ResourceTag::TypedBufferElementType, element_type))
 		{
 			// Sampled format.
-			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)));
+			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(element_type));
 			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 		}
 		else
 		{
 			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
-			// Field 1 is stride, but we don't care about that unless we will support an SSBO path.
-			if (tags)
-				stride = get_constant_metadata(tags, 1);
+			get_resource_tag(tags, ResourceTag::StructuredBufferElementStride, stride);
 		}
 
 		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
@@ -1880,6 +1907,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			tags = llvm::dyn_cast<llvm::MDNode>(uav->getOperand(10));
 
 		unsigned stride = 0;
+		uint32_t element_type = 0;
 		spv::ImageFormat format = spv::ImageFormatUnknown;
 
 		auto actual_component_type = DXIL::ComponentType::U32;
@@ -1916,10 +1944,10 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			actual_component_type = DXIL::ComponentType::U64;
 			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 		}
-		else if (tags && get_constant_metadata(tags, 0) == 0)
+		else if (get_resource_tag(tags, ResourceTag::TypedBufferElementType, element_type))
 		{
 			// Sampled format.
-			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(get_constant_metadata(tags, 1)));
+			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(element_type));
 			if (access_meta.has_atomic_64bit)
 			{
 				// The component type in DXIL is u32, even if the resource itself is u64 in meta reflection data ...
@@ -1941,10 +1969,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		else
 		{
 			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
-			// Field 1 is stride, but we don't care about that unless we will support an SSBO path.
 			format = spv::ImageFormatR32ui;
-			if (tags)
-				stride = get_constant_metadata(tags, 1);
+			get_resource_tag(tags, ResourceTag::StructuredBufferElementStride, stride);
 		}
 
 		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
@@ -3343,8 +3369,7 @@ Converter::Impl::get_raw_buffer_meta(DXIL::ResourceType resource_type, unsigned 
 			llvm::MDNode *tags = nullptr;
 			if (entry->getNumOperands() > tag_index && entry->getOperand(tag_index))
 				tags = llvm::dyn_cast<llvm::MDNode>(entry->getOperand(tag_index));
-			if (tags)
-				meta.stride = get_constant_metadata(tags, 1);
+			get_resource_tag(tags, ResourceTag::StructuredBufferElementStride, meta.stride);
 			return meta;
 		}
 	}
