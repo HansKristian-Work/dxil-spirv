@@ -872,13 +872,13 @@ bool CFGStructurizer::phi_frontiers_converge(
 		{
 			auto *node = *itr;
 
-			if (node->dominates(reader_idom))
+			if (fast_dominates(node, reader_idom))
 			{
 				// We might be strictly dominating another frontier, in which case we can eliminate this block.
 				bool dominates_other_frontier = false;
 				for (auto *front : frontiers)
 				{
-					if (node != front && node->dominates(front))
+					if (node != front && fast_dominates(node, front))
 					{
 						dominates_other_frontier = true;
 						break;
@@ -936,7 +936,7 @@ bool CFGStructurizer::phi_frontiers_converge(
 		}
 	}
 
-	bool valid = !frontiers.empty() && path.size() == 1 && path.front()->dominates(reader_idom);
+	bool valid = !frontiers.empty() && path.size() == 1 && fast_dominates(path.front(), reader_idom);
 
 	if (valid)
 	{
@@ -947,9 +947,97 @@ bool CFGStructurizer::phi_frontiers_converge(
 		});
 
 		// The final frontier must dominate reader.
-		valid = frontiers.back()->dominates(reader_idom);
+		valid = fast_dominates(frontiers.back(), reader_idom);
 	}
 	return valid;
+}
+
+void CFGStructurizer::compute_dominance_intervals()
+{
+	// a dominates b (CFGNode::dominates) iff a is on b's chain of immediate dominators,
+	// i.e. a is an ancestor-or-self of b in the dominator tree. Number that tree in DFS
+	// pre- and post-order so the test is two comparisons. Nodes outside forward_post_visit_order
+	// keep an older epoch and fall back to the chain walk.
+	dominance_epoch++;
+	dominance_intervals_valid = false;
+
+	Vector<std::pair<CFGNode *, CFGNode *>> edges; // (parent, child)
+	edges.reserve(forward_post_visit_order.size());
+	for (auto *node : forward_post_visit_order)
+	{
+		node->dominance_epoch = dominance_epoch;
+		node->dominance_pre = 0;
+		node->dominance_post = 0;
+		auto *idom = node->immediate_dominator;
+		if (idom && idom != node)
+			edges.emplace_back(idom, node);
+	}
+
+	// Children lists as ranges of one sorted array; the order only affects the numbering.
+	std::sort(edges.begin(), edges.end(), [](const std::pair<CFGNode *, CFGNode *> &a,
+	                                          const std::pair<CFGNode *, CFGNode *> &b) {
+		return a.first->forward_post_visit_order > b.first->forward_post_visit_order ||
+		       (a.first == b.first &&
+		        a.second->forward_post_visit_order > b.second->forward_post_visit_order);
+	});
+
+	const auto children_begin = [&](const CFGNode *parent) {
+		return std::lower_bound(edges.begin(), edges.end(), parent,
+		                        [](const std::pair<CFGNode *, CFGNode *> &e, const CFGNode *p) {
+			                        return e.first->forward_post_visit_order > p->forward_post_visit_order;
+		                        });
+	};
+
+	uint32_t counter = 0;
+	struct Frame
+	{
+		CFGNode *node;
+		Vector<std::pair<CFGNode *, CFGNode *>>::iterator next;
+	};
+	Vector<Frame> stack;
+
+	for (auto *root : forward_post_visit_order)
+	{
+		auto *idom = root->immediate_dominator;
+		if (idom && idom != root)
+			continue;
+
+		root->dominance_pre = ++counter;
+		stack.push_back({ root, children_begin(root) });
+		while (!stack.empty())
+		{
+			auto &top = stack.back();
+			if (top.next != edges.end() && top.next->first == top.node)
+			{
+				auto *child = top.next->second;
+				++top.next;
+				// A child reached twice would mean a cycle in the idom graph; leave it unnumbered.
+				if (child->dominance_pre)
+					continue;
+				child->dominance_pre = ++counter;
+				stack.push_back({ child, children_begin(child) });
+			}
+			else
+			{
+				top.node->dominance_post = ++counter;
+				stack.pop_back();
+			}
+		}
+	}
+
+	dominance_intervals_valid = true;
+}
+
+bool CFGStructurizer::fast_dominates(const CFGNode *a, const CFGNode *b) const
+{
+	if (dominance_intervals_valid &&
+	    a->dominance_epoch == dominance_epoch && b->dominance_epoch == dominance_epoch &&
+	    a->dominance_post && b->dominance_post)
+	{
+		return a->dominance_pre <= b->dominance_pre && b->dominance_post <= a->dominance_post;
+	}
+
+	return a->dominates(b);
 }
 
 PHI *CFGStructurizer::insert_phi_frontiers(const Vector<CFGNode *> &frontiers, PHI &phi)
@@ -960,7 +1048,7 @@ PHI *CFGStructurizer::insert_phi_frontiers(const Vector<CFGNode *> &frontiers, P
 
 	for (auto &incoming : phi.incoming)
 	{
-		if (incoming.block->dominates(frontiers.back()))
+		if (fast_dominates(incoming.block, frontiers.back()))
 		{
 			well_defined_on_all_paths = true;
 			break;
@@ -985,17 +1073,17 @@ PHI *CFGStructurizer::insert_phi_frontiers(const Vector<CFGNode *> &frontiers, P
 
 			for (auto itr = phi.incoming.begin(); itr != phi.incoming.end(); ++itr)
 			{
-				if (itr->block->dominates(node))
+				if (fast_dominates(itr->block, node))
 				{
 					if (candidate != phi.incoming.end())
 					{
 						// Conflict, need to validate.
 
-						if (candidate->block->dominates(itr->block))
+						if (fast_dominates(candidate->block, itr->block))
 						{
 							// This is the closer candidate. Pick itr.
 						}
-						else if (itr->block->dominates(candidate->block))
+						else if (fast_dominates(itr->block, candidate->block))
 						{
 							// We have a closer candidate already.
 							continue;
@@ -1030,8 +1118,8 @@ PHI *CFGStructurizer::insert_phi_frontiers(const Vector<CFGNode *> &frontiers, P
 				// We're likely resolving selection levels that have nothing to do with the target path we have in mind.
 				// If the dominance and frontier states match, we consume the incoming block.
 				// This can happen for stacked selection levels since every level dominates the subsequent level.
-				if ((incoming->dominates(later_frontier) &&
-				     !frontier->dominates(later_frontier)) ||
+				if ((fast_dominates(incoming, later_frontier) &&
+				     !fast_dominates(frontier, later_frontier)) ||
 				    (has_element(incoming->dominance_frontier, later_frontier) &&
 				     !has_element(frontier->dominance_frontier, later_frontier)))
 				{
@@ -1221,6 +1309,9 @@ spv::Id CFGStructurizer::rewrite_local_variable_to_phi(spv::Id variable_id, cons
 
 void CFGStructurizer::reintroduce_ssa_phi()
 {
+	// No CFG edits in this pass, so dominance can be precomputed.
+	compute_dominance_intervals();
+
 	// Using SSA PHI is a good way to "fix" liveness analysis issues.
 	// The fallback to use OpVariable + writing undef is ugly and looks very confusing
 	// when reading the output in SPIRV-Cross.
@@ -1361,6 +1452,7 @@ void CFGStructurizer::reintroduce_ssa_phi()
 
 	module.get_builder().removeDecorations(eliminated_ids);
 	module.get_builder().removeLocalVariables(eliminated_ids);
+	dominance_intervals_valid = false;
 }
 
 void CFGStructurizer::clamp_ssa_variable_lifetimes()

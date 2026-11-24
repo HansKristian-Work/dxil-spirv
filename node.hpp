@@ -60,6 +60,11 @@ private:
 
 	CFGNodePool &pool;
 	uint32_t forward_post_visit_order = 0;
+	// Pre- and post-order numbers in the immediate-dominator tree, for the epoch in
+	// CFGStructurizer::dominance_epoch only. See CFGStructurizer::fast_dominates().
+	uint32_t dominance_pre = 0;
+	uint32_t dominance_post = 0;
+	uint32_t dominance_epoch = 0;
 	uint32_t backward_post_visit_order = 0;
 	bool visited = false;
 	bool backward_visited = false;

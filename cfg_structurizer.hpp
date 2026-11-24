@@ -494,6 +494,13 @@ private:
 	                            Vector<CFGNode *> &frontiers);
 	PHI *insert_phi_frontiers(const Vector<CFGNode *> &frontiers, PHI &phi);
 
+	// CFGNode::dominates() walks the immediate-dominator chain, which is O(depth). For passes that
+	// do not change the CFG, number the dominator tree once and answer in O(1).
+	void compute_dominance_intervals();
+	bool fast_dominates(const CFGNode *a, const CFGNode *b) const;
+	uint32_t dominance_epoch = 0;
+	bool dominance_intervals_valid = false;
+
 	static CFGNode *find_forward_progress_dominance_frontier(CFGNode *node, CFGNode *reader_idom,
 	                                                         bool allow_user_blocks_on_path_to_frontier);
 	static bool path_is_purely_through_helper_blocks(CFGNode *from, CFGNode *to);
