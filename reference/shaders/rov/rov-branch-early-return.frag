@@ -48,6 +48,7 @@ void main()
         imageStore(_9, ivec2(uvec2(_25, _26)), vec4(_47.x + 1.0, _47.y + 2.0, _47.z + 3.0, _47.w + 4.0));
         _94 = true;
     }
+    SPIRV_Cross_endInvocationInterlock();
     if (_94)
     {
         uint _77 = _25 ^ 1u;
@@ -55,7 +56,6 @@ void main()
         vec4 _79 = imageLoad(_10, ivec2(uvec2(_77, _78)));
         imageStore(_10, ivec2(uvec2(_77, _78)), vec4(_79.x + 1.0, _79.y + 2.0, _79.z + 3.0, _79.w + 4.0));
     }
-    SPIRV_Cross_endInvocationInterlock();
 }
 
 
@@ -184,6 +184,7 @@ OpBranch %101
 OpBranch %102
 %102 = OpLabel
 %94 = OpPhi %44 %96 %101 %95 %98
+OpEndInvocationInterlockEXT
 OpSelectionMerge %104 None
 OpBranchConditional %94 %103 %104
 %103 = OpLabel
@@ -206,7 +207,6 @@ OpBranch %104
 %104 = OpLabel
 OpBranch %105
 %105 = OpLabel
-OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd
 #endif

@@ -150,9 +150,9 @@ OpBranch %75
 OpImageWrite %16 %70 %71 MakeTexelAvailable|NonPrivateTexel %49
 OpBranch %75
 %75 = OpLabel
+OpEndInvocationInterlockEXT
 OpBranch %76
 %76 = OpLabel
-OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd
 #endif
