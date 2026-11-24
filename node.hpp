@@ -26,8 +26,6 @@
 
 #include "thread_local_allocator.hpp"
 #include "ir.hpp"
-
-#include <algorithm>
 #include <stdint.h>
 
 namespace dxil_spv
@@ -64,8 +62,6 @@ private:
 	bool visited = false;
 	bool backward_visited = false;
 	bool traversing = false;
-	bool freeze_structured_analysis = false;
-	bool is_pseudo_back_edge = false;
 
 	// In new structurizer, marks the node as inheriting its loop scope from its lone pred.
 	// This ensures that we don't end up needing super awkward ladder resolves just to get to a block
@@ -75,11 +71,6 @@ private:
 	// In new structurizer, marks the node as a trivial helper that is created only to funnel control flow through.
 	bool helper = false;
 
-	MergeType merge = MergeType::None;
-	CFGNode *loop_merge_block = nullptr;
-	CFGNode *loop_ladder_block = nullptr;
-	CFGNode *selection_merge_block = nullptr;
-	Vector<CFGNode *> headers;
 	Vector<CFGNode *> idom_children;
 
 	CFGNode *immediate_dominator = nullptr;
@@ -104,97 +95,23 @@ private:
 	void add_unique_pred(CFGNode *node);
 	void add_unique_fake_succ(CFGNode *node);
 	void add_unique_fake_pred(CFGNode *node);
-	void add_unique_header(CFGNode *node);
 	unsigned num_forward_preds() const;
 	bool has_pred_back_edges() const;
 	bool dominates(const CFGNode *other) const;
-	bool reaches_domination_frontier_before_merge(const CFGNode *merge) const;
-	bool dominates_outer_continue(const CFGNode *loop_header) const;
-	bool can_loop_merge_to(const CFGNode *other) const;
 	bool post_dominates(const CFGNode *other) const;
-	bool post_dominates_perfect_structured_construct() const;
-	bool dominates_all_reachable_exits() const;
 	static CFGNode *find_common_dominator(CFGNode *a, CFGNode *b);
 	static CFGNode *find_common_post_dominator(CFGNode *a, CFGNode *b);
 	CFGNode *get_immediate_dominator_loop_header();
-	bool can_backtrace_to(const CFGNode *parent) const;
 	bool can_backtrace_to_with_blockers(const CFGNode *parent, const Vector<CFGNode *> &block_nodes) const;
-	bool can_backtrace_to(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const;
 	bool can_backtrace_to_with_blockers(const CFGNode *parent, const Vector<CFGNode *> &block_nodes,
 	                                    UnorderedSet<const CFGNode *> &node_cache) const;
-	bool post_dominates_any_work() const;
-	unsigned count_post_dominates_work_from_incoming_preds() const;
-	bool post_dominates_any_work(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const;
-	bool reaches_backward_visited_node() const;
-
-	void retarget_branch(CFGNode *to_prev, CFGNode *to_next);
 	void retarget_branch_pre_traversal(CFGNode *to_prev, CFGNode *to_next);
 	void collapse_conditional_to_direct(CFGNode *to_next);
-	void retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *to_next);
-	CFGNode *rewrite_branch_through_intermediate_node(CFGNode *to_prev, CFGNode *to_next);
-
-	void fixup_merge_info_after_branch_rewrite(CFGNode *from, CFGNode *to);
-
-	template <typename Op>
-	void walk_cfg_from(const Op &op) const;
 
 	void recompute_immediate_dominator();
 	void recompute_immediate_post_dominator();
 
-	template <typename Op>
-	void traverse_dominated_blocks(const Op &op) const;
-
-	CFGNode *get_outer_selection_dominator();
-	CFGNode *get_outer_header_dominator();
-
 	Vector<CFGNode *> dominance_frontier;
 	Vector<CFGNode *> post_dominance_frontier;
-
-	bool block_is_jump_thread_ladder() const;
-
-private:
-	bool dominates_all_reachable_exits(UnorderedSet<const CFGNode *>& completed, const CFGNode &header) const;
-
-	template <typename Op>
-	void traverse_dominated_blocks(UnorderedSet<const CFGNode *> &completed,
-	                                    const CFGNode &header, const Op &op) const;
-
-	void retarget_fake_succ(CFGNode *from, CFGNode *to);
-	bool reaches_backward_visited_node(UnorderedSet<const CFGNode *> &completed) const;
 };
-
-template <typename Op>
-void CFGNode::walk_cfg_from(const Op &op) const
-{
-	if (!op(this))
-		return;
-
-	for (auto *s : succ)
-		s->walk_cfg_from(op);
-}
-
-template <typename Op>
-void CFGNode::traverse_dominated_blocks(UnorderedSet<const CFGNode *> &completed,
-                                        const CFGNode &header, const Op &op) const
-{
-	for (auto *node : succ)
-	{
-		bool can_visit = completed.count(node) == 0;
-		if (can_visit)
-			completed.insert(node);
-
-		if (can_visit && header.dominates(node))
-		{
-			if (op(node))
-				node->traverse_dominated_blocks(completed, header, op);
-		}
-	}
-}
-
-template <typename Op>
-void CFGNode::traverse_dominated_blocks(const Op &op) const
-{
-	UnorderedSet<const CFGNode *> completed;
-	traverse_dominated_blocks(completed, *this, op);
-}
 } // namespace dxil_spv

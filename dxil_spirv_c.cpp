@@ -423,7 +423,6 @@ struct dxil_spv_converter_s
 	bool active_table = false;
 	bool uses_subgroup_size = false;
 	bool is_multiview_compatible = false;
-	bool legacy_structurizer = false;
 	bool can_feed_rasterizer = true;
 	uint32_t workgroup_size[3] = {};
 	uint32_t patch_vertex_count = 0;
@@ -808,7 +807,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 	}
 
 	{
-		dxil_spv::CFGStructurizer structurizer(entry_point.entry.entry, *entry_point.node_pool, module);
+		CFGStructurizer structurizer(entry_point.entry.entry, *entry_point.node_pool, module);
 
 		module.set_entry_build_point(entry_point.entry.func);
 
@@ -816,15 +815,28 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 			structurizer.run_trivial();
 		else if (GlobalConfiguration::get().experimental_unstructured_control_flow)
 			structurizer.run_experimental_unstructured();
-		else if (converter->legacy_structurizer)
-			structurizer.run_legacy_structurizer();
 		else
 			structurizer.run_structurizer();
 
-		if (entry_point.entry.needs_stage_io_analysis)
+		if (entry_point.entry.fixup_passes.rewrite_auto_group_shared_barrier)
+			structurizer.rewrite_auto_group_shared_barrier();
+
+		if (entry_point.entry.fixup_passes.stage_io_analysis)
 			structurizer.fixup_partial_stage_output_writes();
 
-		module.emit_entry_point_function_body(structurizer);
+		if (entry_point.entry.fixup_passes.rov_analysis && !structurizer.rewrite_rov_lock_region())
+		{
+			auto wrapped_main = dxil_converter.create_rov_main_wrapper(*entry_point.node_pool);
+			module.emit_leaf_function_body(wrapped_main.func, structurizer);
+
+			CFGStructurizer dummy_struct(wrapped_main.entry, *entry_point.node_pool, module);
+			dummy_struct.run_trivial();
+			module.emit_entry_point_function_body(dummy_struct);
+		}
+		else
+		{
+			module.emit_entry_point_function_body(structurizer);
+		}
 	}
 
 	for (auto &leaf : entry_point.leaf_functions)
@@ -841,13 +853,8 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 			structurizer.run_trivial();
 		else if (GlobalConfiguration::get().experimental_unstructured_control_flow)
 			structurizer.run_experimental_unstructured();
-		else if (converter->legacy_structurizer)
-			structurizer.run_legacy_structurizer();
 		else
 			structurizer.run_structurizer();
-
-		if (leaf.needs_stage_io_analysis)
-			structurizer.fixup_partial_stage_output_writes();
 
 		module.emit_leaf_function_body(leaf.func, structurizer);
 	}
@@ -1550,17 +1557,6 @@ dxil_spv_result dxil_spv_converter_add_option(dxil_spv_converter converter, cons
 		OptionConservativeSSBOVectorization helper;
 		auto *cons = reinterpret_cast<const dxil_spv_option_conservative_ssbo_vectorization *>(option);
 		helper.enabled = cons->enabled == DXIL_SPV_TRUE;
-
-		converter->options.emplace_back(duplicate(helper));
-		break;
-	}
-
-	case DXIL_SPV_OPTION_LEGACY_STRUCTURIZER:
-	{
-		OptionLegacyStructurizer helper;
-		auto *legacy = reinterpret_cast<const dxil_spv_option_legacy_structurizer *>(option);
-		helper.enabled = legacy->enabled == DXIL_SPV_TRUE;
-		converter->legacy_structurizer = helper.enabled;
 
 		converter->options.emplace_back(duplicate(helper));
 		break;

@@ -170,6 +170,11 @@ ConvertedFunction Converter::convert_entry_point()
 	return impl->convert_entry_point();
 }
 
+ConvertedFunction::Function Converter::create_rov_main_wrapper(CFGNodePool &pool)
+{
+	return impl->create_rov_main_wrapper(pool);
+}
+
 template <typename T = uint32_t>
 static T get_constant_metadata(const llvm::MDNode *node, unsigned index)
 {
@@ -8053,40 +8058,6 @@ bool Converter::Impl::emit_execution_modes()
 }
 
 ConvertedFunction::Function
-Converter::Impl::build_rov_main(const Vector<llvm::BasicBlock *> &visit_order,
-                                CFGNodePool &pool,
-                                Vector<ConvertedFunction::Function> &leaves)
-{
-	auto *code_main = convert_function(visit_order, true);
-
-	// Need to figure out if our ROV use is trivial. If not, we will wrap the entire function in ROV pairs.
-	CFGStructurizer cfg{code_main, pool, spirv_module};
-	bool trivial_rewrite = cfg.rewrite_rov_lock_region();
-
-	if (trivial_rewrite)
-		return { code_main, spirv_module.get_entry_function(), false, true };
-
-	// If we need to fallback we need a wrapper function. Replace the entry point.
-
-	spv::Block *code_entry;
-	auto *code_func =
-	    builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "code_main", {}, {}, &code_entry);
-
-	code_func->moveLocalDeclarationsFrom(spirv_module.get_entry_function());
-
-	auto *entry = pool.create_node();
-	entry->ir.operations.push_back(allocate(spv::OpBeginInvocationInterlockEXT));
-	auto *call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
-	call_op->add_id(code_func->getId());
-	entry->ir.operations.push_back(call_op);
-	entry->ir.operations.push_back(allocate(spv::OpEndInvocationInterlockEXT));
-	entry->ir.terminator.type = Terminator::Type::Return;
-	leaves.push_back({ code_main, code_func, false, true });
-	return { entry, spirv_module.get_entry_function() };
-}
-
-
-ConvertedFunction::Function
 Converter::Impl::build_node_main(const Vector<llvm::BasicBlock *> &visit_order,
                                  CFGNodePool &pool,
                                  Vector<ConvertedFunction::Function> &leaves)
@@ -9236,6 +9207,24 @@ bool Converter::Impl::declares_globally_coherent_images()
 	return false;
 }
 
+ConvertedFunction::Function Converter::Impl::create_rov_main_wrapper(CFGNodePool &pool)
+{
+	spv::Block *code_entry;
+	auto *code_func =
+		builder().makeFunctionEntry(spv::NoPrecision, builder().makeVoidType(), "code_main", {}, {}, &code_entry);
+
+	code_func->moveLocalDeclarationsFrom(spirv_module.get_entry_function());
+
+	auto *entry = pool.create_node();
+	entry->ir.operations.push_back(allocate(spv::OpBeginInvocationInterlockEXT));
+	auto *call_op = allocate(spv::OpFunctionCall, builder().makeVoidType());
+	call_op->add_id(code_func->getId());
+	entry->ir.operations.push_back(call_op);
+	entry->ir.operations.push_back(allocate(spv::OpEndInvocationInterlockEXT));
+	entry->ir.terminator.type = Terminator::Type::Return;
+	return { entry, code_func };
+}
+
 ConvertedFunction Converter::Impl::convert_entry_point()
 {
 	ConvertedFunction result = {};
@@ -9245,7 +9234,7 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	execution_model = get_execution_model(module, entry_point_meta);
 	execution_model_lib_target = get_execution_model_lib_target(module, entry_point_meta);
 
-	if (!module_is_dxbc_spirv(module) && !options.legacy_structurizer)
+	if (!module_is_dxbc_spirv(module))
 	{
 		// New code, just finally go with SPIR-V 1.6 + VkMM by default.
 		spirv_module.set_override_spirv_version(0x10600);
@@ -9431,19 +9420,13 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 
 	if (execution_model == spv::ExecutionModelTessellationControl)
 		result.entry = build_hull_main(visit_order, patch_visit_order, pool, result.leaf_functions);
-	else if (execution_mode_meta.declares_rov)
-		result.entry = build_rov_main(visit_order, pool, result.leaf_functions);
 	else if (execution_model_lib_target && execution_model == spv::ExecutionModelGLCompute)
 		result.entry = build_node_main(visit_order, pool, result.leaf_functions);
 	else
 	{
 		result.entry.entry = convert_function(visit_order, true);
-		if (shader_analysis.needs_auto_group_shared_barriers && options.quirks.group_shared_auto_barrier)
-		{
-			CFGStructurizer cfg{result.entry.entry, pool, spirv_module};
-			cfg.rewrite_auto_group_shared_barrier();
-		}
 
+		// These passes can be run before structurization.
 		if (shader_analysis.require_subgroup_shuffles)
 		{
 			CFGStructurizer cfg{result.entry.entry, pool, spirv_module};
@@ -9457,10 +9440,15 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 		}
 
 		result.entry.func = spirv_module.get_entry_function();
-		result.entry.needs_stage_io_analysis =
+
+		// These passes cannot and should not be run before structurizer.
+		result.entry.fixup_passes.stage_io_analysis =
 			execution_model == spv::ExecutionModelVertex ||
 			execution_model == spv::ExecutionModelFragment ||
 			execution_model == spv::ExecutionModelTessellationEvaluation;
+		result.entry.fixup_passes.rov_analysis = execution_mode_meta.declares_rov;
+		result.entry.fixup_passes.rewrite_auto_group_shared_barrier =
+			shader_analysis.needs_auto_group_shared_barriers && options.quirks.group_shared_auto_barrier;
 		// TESC is handled by build_hull.
 		// Geometry is too weird to deal with here. Every EmitVertex makes everything undef.
 		// Compute doesn't have stage output. Mesh cannot be fixed up.
@@ -10206,13 +10194,6 @@ void Converter::Impl::set_option(const OptionBase &cap)
 	{
 		auto &c = static_cast<const OptionConservativeSSBOVectorization &>(cap);
 		options.conservative_ssbo_vectorization = c.enabled;
-		break;
-	}
-
-	case Option::LegacyStructurizer:
-	{
-		auto &c = static_cast<const OptionLegacyStructurizer &>(cap);
-		options.legacy_structurizer = c.enabled;
 		break;
 	}
 

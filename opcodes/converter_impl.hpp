@@ -261,15 +261,13 @@ struct Converter::Impl
 	Vector<std::pair<llvm::BasicBlock *, llvm::BasicBlock *>> skip_phi_preds;
 
 	ConvertedFunction convert_entry_point();
+	ConvertedFunction::Function create_rov_main_wrapper(CFGNodePool &pool);
 	CFGNode *convert_function(const Vector<llvm::BasicBlock *> &bbs, bool primary_code);
 	CFGNode *build_hull_passthrough_function(CFGNodePool &pool);
 	ConvertedFunction::Function build_hull_main(const Vector<llvm::BasicBlock *> &bbs,
 	                                            const Vector<llvm::BasicBlock *> &patch_bbs,
 	                                            CFGNodePool &pool,
 	                                            Vector<ConvertedFunction::Function> &leaves);
-	ConvertedFunction::Function build_rov_main(const Vector<llvm::BasicBlock *> &bbs,
-	                                           CFGNodePool &pool,
-	                                           Vector<ConvertedFunction::Function> &leaves);
 	ConvertedFunction::Function build_node_main(const Vector<llvm::BasicBlock *> &bbs,
 	                                            CFGNodePool &pool,
 	                                            Vector<ConvertedFunction::Function> &leaves);
@@ -815,7 +813,6 @@ struct Converter::Impl
 		bool nv_cooperative_matrix2_conversions = false;
 		bool ssbo_wraps_32bit_before_robustness = false;
 		bool raw_access_chain_wraps_32bit_before_robustness = false;
-		bool legacy_structurizer = false;
 		struct
 		{
 			bool enabled = false;
