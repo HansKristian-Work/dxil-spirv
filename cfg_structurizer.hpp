@@ -507,6 +507,12 @@ static inline bool has_element(const Container &c, const T &value)
 	return itr != c.end();
 }
 
+template <typename T>
+static inline bool has_element(const UnorderedSet<T> &c, const T &value)
+{
+	return c.count(value) != 0;
+}
+
 template <typename Container, typename T>
 static inline void push_back_unique(Container &c, const T &value)
 {
