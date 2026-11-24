@@ -818,6 +818,11 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 		else
 			structurizer.run_structurizer();
 
+		if (entry_point.entry.fixup_passes.fixup_loop_header_undef_phis)
+			structurizer.fixup_loop_header_undef_phis();
+		if (entry_point.entry.fixup_passes.flatten_subgroup_shuffles)
+			structurizer.flatten_subgroup_shuffles();
+
 		if (entry_point.entry.fixup_passes.rewrite_auto_group_shared_barrier)
 			structurizer.rewrite_auto_group_shared_barrier();
 

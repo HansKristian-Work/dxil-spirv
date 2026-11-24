@@ -48,6 +48,8 @@ struct ConvertedFunction
 
 		struct
 		{
+			bool flatten_subgroup_shuffles;
+			bool fixup_loop_header_undef_phis;
 			bool stage_io_analysis;
 			bool rov_analysis;
 			bool rewrite_auto_group_shared_barrier;
