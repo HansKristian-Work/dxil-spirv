@@ -1801,7 +1801,7 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 							impl.add(is_in_bounds);
 
 							ExpectAssumeCodes code;
-							if (address_space == DXIL::AddressSpace::Thread)
+							if (address_space == DXIL::AddressSpace::GroupShared)
 								code = ExpectAssumeGroupSharedGEPOOB;
 							else if (global_var && global_var->hasInitializer() && global_var->isConstant())
 								code = ExpectAssumeConstantGEPOOB;
