@@ -157,9 +157,9 @@ OpBranchConditional %63 %68 %70
 %70 = OpLabel
 OpBranch %71
 %71 = OpLabel
+OpEndInvocationInterlockEXT
 OpBranch %72
 %72 = OpLabel
-OpEndInvocationInterlockEXT
 OpReturn
 OpFunctionEnd
 #endif

@@ -195,9 +195,9 @@ OpBranch %98
 %98 = OpLabel
 OpBranchConditional %86 %99 %97
 %99 = OpLabel
+OpEndInvocationInterlockEXT
 OpBranch %100
 %100 = OpLabel
-OpEndInvocationInterlockEXT
 %87 = OpAccessChain %17 %12 %40
 %88 = OpLoad %5 %87
 %89 = OpFDiv %5 %35 %88
