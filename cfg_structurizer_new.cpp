@@ -651,7 +651,7 @@ void CFGStructurizer::split_loop_inner_outer(
 
 	for (auto *remain : remaining)
 	{
-		if (remain->dominates(back_edge))
+		if (lazy_dominates(remain, back_edge))
 		{
 			push_back_unique(back_edge_candidates, remain);
 			// Also makes sure that back-edges are still considered in-loop.
@@ -673,11 +673,12 @@ void CFGStructurizer::split_loop_inner_outer(
 			// or we can form a chain of dominance frontiers that terminate at the back-edge.
 			// query_reachable would also work, but we'd like to avoid relying too much on that since we don't want to
 			// compute that all the time. It's also quite murky with the amount of CFG rewrites we're doing inline ...
-			bool can_jump_back = remain->dominates(back_edge);
+			bool can_jump_back = lazy_dominates(remain, back_edge);
 
 			const auto should_remain = [&](CFGNode *n)
 			{
-				return has_element(remaining, n) || has_element(back_edge_candidates, n) || n->dominates(back_edge);
+				return has_element(remaining, n) || has_element(back_edge_candidates, n) ||
+				       lazy_dominates(n, back_edge);
 			};
 
 			if (!can_jump_back)
@@ -696,7 +697,7 @@ void CFGStructurizer::split_loop_inner_outer(
 			// A back-edge will have loop header in the DF in Mesa's impl.
 			// Make sure we don't mistake a long back-edge as staying inside the construct.
 			if (!can_jump_back && remain->succ_back_edge &&
-				top_level_header->dominates(remain->succ_back_edge) &&
+				lazy_dominates(top_level_header, remain->succ_back_edge) &&
 				should_remain(remain->succ_back_edge))
 			{
 				can_jump_back = true;
@@ -712,12 +713,12 @@ void CFGStructurizer::split_loop_inner_outer(
 				{
 					// Never accept our own block as ground-truth here.
 					return candidate != remain && candidate->pred_back_edge &&
-					       remain->dominates(candidate->pred_back_edge) && should_remain(candidate);
+					       lazy_dominates(remain, candidate->pred_back_edge) && should_remain(candidate);
 				};
 
-				const auto can_iterate_idom = [top_level_header](const CFGNode *candidate)
+				const auto can_iterate_idom = [this, top_level_header](const CFGNode *candidate)
 				{
-					return top_level_header->dominates(candidate) &&
+					return lazy_dominates(top_level_header, candidate) &&
 					       top_level_header != candidate &&
 					       candidate->immediate_dominator != candidate &&
 					       candidate->immediate_dominator;
@@ -956,36 +957,45 @@ void CFGStructurizer::compute_dominance_intervals()
 {
 	// a dominates b (CFGNode::dominates) iff a is on b's chain of immediate dominators,
 	// i.e. a is an ancestor-or-self of b in the dominator tree. Number that tree in DFS
-	// pre- and post-order so the test is two comparisons. Nodes outside forward_post_visit_order
-	// keep an older epoch and fall back to the chain walk.
+	// pre- and post-order so the test is two comparisons. Nodes on no chain from
+	// forward_post_visit_order keep an older epoch and fall back to the chain walk.
 	dominance_epoch++;
 	dominance_intervals_valid = false;
 
-	Vector<std::pair<CFGNode *, CFGNode *>> edges; // (parent, child)
-	edges.reserve(forward_post_visit_order.size());
-	for (auto *node : forward_post_visit_order)
+	// Blocks made since the last traversal are not in forward_post_visit_order,
+	// but can be on the idom chain of blocks that are, so take every chain to its end.
+	Vector<CFGNode *> nodes;
+	nodes.reserve(forward_post_visit_order.size());
+	for (auto *start : forward_post_visit_order)
 	{
-		node->dominance_epoch = dominance_epoch;
-		node->dominance_pre = 0;
-		node->dominance_post = 0;
+		for (auto *node = start; node && node->dominance_epoch != dominance_epoch; node = node->immediate_dominator)
+		{
+			node->dominance_epoch = dominance_epoch;
+			node->dominance_pre = 0;
+			node->dominance_post = 0;
+			nodes.push_back(node);
+		}
+	}
+
+	Vector<std::pair<CFGNode *, CFGNode *>> edges; // (parent, child)
+	edges.reserve(nodes.size());
+	for (auto *node : nodes)
+	{
 		auto *idom = node->immediate_dominator;
 		if (idom && idom != node)
 			edges.emplace_back(idom, node);
 	}
 
-	// Children lists as ranges of one sorted array; the order only affects the numbering.
-	std::sort(edges.begin(), edges.end(), [](const std::pair<CFGNode *, CFGNode *> &a,
-	                                          const std::pair<CFGNode *, CFGNode *> &b) {
-		return a.first->forward_post_visit_order > b.first->forward_post_visit_order ||
-		       (a.first == b.first &&
-		        a.second->forward_post_visit_order > b.second->forward_post_visit_order);
-	});
+	// Children lists as ranges of one array sorted by parent; the order only affects the numbering.
+	std::sort(edges.begin(), edges.end(),
+	          [](const std::pair<CFGNode *, CFGNode *> &a, const std::pair<CFGNode *, CFGNode *> &b)
+	          { return std::less<CFGNode *>()(a.first, b.first); });
 
-	const auto children_begin = [&](const CFGNode *parent) {
+	const auto children_begin = [&](CFGNode *parent)
+	{
 		return std::lower_bound(edges.begin(), edges.end(), parent,
-		                        [](const std::pair<CFGNode *, CFGNode *> &e, const CFGNode *p) {
-			                        return e.first->forward_post_visit_order > p->forward_post_visit_order;
-		                        });
+		                        [](const std::pair<CFGNode *, CFGNode *> &e, CFGNode *p)
+		                        { return std::less<CFGNode *>()(e.first, p); });
 	};
 
 	uint32_t counter = 0;
@@ -996,7 +1006,7 @@ void CFGStructurizer::compute_dominance_intervals()
 	};
 	Vector<Frame> stack;
 
-	for (auto *root : forward_post_visit_order)
+	for (auto *root : nodes)
 	{
 		auto *idom = root->immediate_dominator;
 		if (idom && idom != root)
@@ -1038,6 +1048,25 @@ bool CFGStructurizer::fast_dominates(const CFGNode *a, const CFGNode *b) const
 	}
 
 	return a->dominates(b);
+}
+
+bool CFGStructurizer::lazy_dominates(const CFGNode *a, const CFGNode *b)
+{
+	if (dominance_intervals_valid)
+		return fast_dominates(a, b);
+
+	// Most loops are small and a few chain walks are cheaper than numbering the tree.
+	// Number it once the walks have cost about as much as that would.
+	while (a != b && b->immediate_dominator && b != b->immediate_dominator)
+	{
+		b = b->immediate_dominator;
+		dominance_walk_steps++;
+	}
+
+	if (dominance_walk_steps > 16 * forward_post_visit_order.size())
+		compute_dominance_intervals();
+
+	return a == b;
 }
 
 PHI *CFGStructurizer::insert_phi_frontiers(const Vector<CFGNode *> &frontiers, PHI &phi)
@@ -2100,7 +2129,10 @@ CFGStructurizer::serialize_merge_levels_for_dominated_paths_with_continuation(
 		push_back_unique(back_edge_candidates, node);
 
 		Vector<CFGNode *> outer_idom;
+		// The split only reads the CFG, so it can number the dominator tree once its queries get long.
+		dominance_walk_steps = 0;
 		split_loop_inner_outer(node, node->pred_back_edge, back_edge_candidates, outer_idom);
+		dominance_intervals_valid = false;
 		move_interposing_nodes_into_loop(node, outer_levels, back_edge_candidates, outer_idom);
 		filter_outer_idom_candidates(outer_idom);
 
