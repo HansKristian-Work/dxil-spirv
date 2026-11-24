@@ -69,7 +69,9 @@ add_library(dxil-converter STATIC
         llvm_bitcode_parser.hpp llvm_bitcode_parser.cpp
         dxil.hpp
         dxil_converter.hpp dxil_converter.cpp
-        cfg_structurizer.hpp cfg_structurizer.cpp cfg_structurizer_new.cpp
+        cfg_structurizer.hpp cfg_structurizer.cpp
+        cfg_structurizer_debug.cpp cfg_structurizer_operations.cpp
+        cfg_structurizer_passes.cpp cfg_structurizer_traversal.cpp
         node_pool.hpp node_pool.cpp
         node.hpp node.cpp
         dxil_parser.hpp dxil_parser.cpp

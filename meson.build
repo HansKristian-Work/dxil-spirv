@@ -59,7 +59,10 @@ dxil_spirv_src = [
 
   'dxil_converter.cpp',
   'cfg_structurizer.cpp',
-  'cfg_structurizer_new.cpp',
+  'cfg_structurizer_debug.cpp',
+  'cfg_structurizer_operations.cpp',
+  'cfg_structurizer_passes.cpp',
+  'cfg_structurizer_traversal.cpp',
   'node_pool.cpp',
   'node.cpp',
   'dxil_parser.cpp',
