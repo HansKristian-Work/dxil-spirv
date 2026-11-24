@@ -2763,7 +2763,7 @@ void CFGStructurizer::cleanup_degenerate_blocks()
 			if (!succ->ir.phi.empty())
 				return;
 
-			if (node->dominates(succ) && !has_element(merge_blocks_or_phi_incoming, succ))
+			if (node->dominates(succ) && !merge_blocks_or_phi_incoming.count(succ))
 			{
 				// Cannot fuse operations if it needs to be executed conditionally.
 				if (node->ir.terminator.type == Terminator::Type::Condition && !succ->ir.operations.empty())
