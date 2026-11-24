@@ -844,4 +844,16 @@ enum
 {
 	MaxLongVectorComponents = 1024
 };
+
+// The extended properties of a resource are a list of (tag, value) pairs.
+// A tag can be absent and the pairs need not start with a given tag,
+// e.g. a RWByteAddressBuffer used with 64-bit atomics carries only { Atomic64Use, 1 }.
+enum ResourceTag : uint32_t
+{
+	TypedBufferElementTypeTag = 0,
+	StructuredBufferElementStrideTag = 1,
+	SamplerFeedbackKindTag = 2,
+	Atomic64UseTag = 3,
+	ReorderCoherentTag = 4
+};
 } // namespace DXIL

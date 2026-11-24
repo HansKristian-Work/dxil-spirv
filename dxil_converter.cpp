@@ -177,25 +177,14 @@ static T get_constant_metadata(const llvm::MDNode *node, unsigned index)
 	    llvm::cast<llvm::ConstantAsMetadata>(node->getOperand(index))->getValue()->getUniqueInteger().getSExtValue());
 }
 
-// The extended properties of a resource are a list of (tag, value) pairs.
-// A tag can be absent and the pairs need not start with a given tag,
-// e.g. a RWByteAddressBuffer used with 64-bit atomics carries only { Atomic64Use, 1 }.
-enum class ResourceTag : uint32_t
-{
-	TypedBufferElementType = 0,
-	StructuredBufferElementStride = 1,
-	SamplerFeedbackKind = 2,
-	Atomic64Use = 3
-};
-
-static bool get_resource_tag(const llvm::MDNode *tags, ResourceTag tag, uint32_t &value)
+static bool get_resource_tag(const llvm::MDNode *tags, DXIL::ResourceTag tag, uint32_t &value)
 {
 	if (!tags)
 		return false;
 
 	for (unsigned i = 0; i + 1 < tags->getNumOperands(); i += 2)
 	{
-		if (get_constant_metadata(tags, i) == uint32_t(tag))
+		if (get_constant_metadata(tags, i) == tag)
 		{
 			value = get_constant_metadata(tags, i + 1);
 			return true;
@@ -1331,10 +1320,10 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		auto actual_component_type = DXIL::ComponentType::U32;
 		auto effective_component_type = actual_component_type;
 
-		unsigned stride = 0;
 		uint32_t element_type = 0;
+		uint32_t stride = 0;
 
-		if (get_resource_tag(tags, ResourceTag::TypedBufferElementType, element_type))
+		if (get_resource_tag(tags, DXIL::TypedBufferElementTypeTag, element_type))
 		{
 			// Sampled format.
 			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(element_type));
@@ -1343,7 +1332,7 @@ bool Converter::Impl::emit_srvs(const llvm::MDNode *srvs, const llvm::MDNode *re
 		else
 		{
 			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
-			get_resource_tag(tags, ResourceTag::StructuredBufferElementStride, stride);
+			get_resource_tag(tags, DXIL::StructuredBufferElementStrideTag, stride);
 		}
 
 		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
@@ -1906,8 +1895,8 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		if (uav->getNumOperands() >= 11 && uav->getOperand(10))
 			tags = llvm::dyn_cast<llvm::MDNode>(uav->getOperand(10));
 
-		unsigned stride = 0;
 		uint32_t element_type = 0;
+		uint32_t stride = 0;
 		spv::ImageFormat format = spv::ImageFormatUnknown;
 
 		auto actual_component_type = DXIL::ComponentType::U32;
@@ -1944,7 +1933,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 			actual_component_type = DXIL::ComponentType::U64;
 			effective_component_type = get_effective_typed_resource_type(actual_component_type);
 		}
-		else if (get_resource_tag(tags, ResourceTag::TypedBufferElementType, element_type))
+		else if (get_resource_tag(tags, DXIL::TypedBufferElementTypeTag, element_type))
 		{
 			// Sampled format.
 			actual_component_type = normalize_component_type(static_cast<DXIL::ComponentType>(element_type));
@@ -1970,7 +1959,7 @@ bool Converter::Impl::emit_uavs(const llvm::MDNode *uavs, const llvm::MDNode *re
 		{
 			// Structured/Raw buffers, just use uint for good measure, we'll bitcast as needed.
 			format = spv::ImageFormatR32ui;
-			get_resource_tag(tags, ResourceTag::StructuredBufferElementStride, stride);
+			get_resource_tag(tags, DXIL::StructuredBufferElementStrideTag, stride);
 		}
 
 		unsigned alignment = resource_kind == DXIL::ResourceKind::RawBuffer ? 16 : (stride & -int(stride));
@@ -3369,7 +3358,7 @@ Converter::Impl::get_raw_buffer_meta(DXIL::ResourceType resource_type, unsigned 
 			llvm::MDNode *tags = nullptr;
 			if (entry->getNumOperands() > tag_index && entry->getOperand(tag_index))
 				tags = llvm::dyn_cast<llvm::MDNode>(entry->getOperand(tag_index));
-			get_resource_tag(tags, ResourceTag::StructuredBufferElementStride, meta.stride);
+			get_resource_tag(tags, DXIL::StructuredBufferElementStrideTag, meta.stride);
 			return meta;
 		}
 	}

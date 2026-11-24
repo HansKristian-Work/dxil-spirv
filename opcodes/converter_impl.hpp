@@ -495,7 +495,7 @@ struct Converter::Impl
 		DXIL::ResourceType resource_type;
 		DXIL::ComponentType component_type;
 		AccessTracking tracking;
-		unsigned stride;
+		uint32_t stride;
 		bool coherent;
 		bool rov;
 		bool counter;
@@ -555,7 +555,7 @@ struct Converter::Impl
 		DXIL::ResourceKind kind;
 		DXIL::ComponentType component_type;
 		unsigned raw_component_vecsize;
-		unsigned stride;
+		uint32_t stride;
 
 		spv::Id var_id;
 		Vector<RawDeclarationVariable> var_alias_group;
@@ -1014,7 +1014,7 @@ struct Converter::Impl
 	struct RawBufferMeta
 	{
 		DXIL::ResourceKind kind;
-		unsigned stride;
+		uint32_t stride;
 	};
 	RawBufferMeta get_raw_buffer_meta(DXIL::ResourceType resource_type, unsigned meta_index);
 
