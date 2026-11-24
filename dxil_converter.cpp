@@ -9426,20 +9426,10 @@ ConvertedFunction Converter::Impl::convert_entry_point()
 	{
 		result.entry.entry = convert_function(visit_order, true);
 
-		// These passes can be run before structurization.
-		if (shader_analysis.require_subgroup_shuffles)
-		{
-			CFGStructurizer cfg{result.entry.entry, pool, spirv_module};
-			cfg.flatten_subgroup_shuffles();
-		}
-
-		if (options.quirks.fixup_loop_header_undef_phis)
-		{
-			CFGStructurizer cfg{result.entry.entry, pool, spirv_module};
-			cfg.fixup_loop_header_undef_phis();
-		}
-
 		result.entry.func = spirv_module.get_entry_function();
+
+		result.entry.fixup_passes.flatten_subgroup_shuffles = shader_analysis.require_subgroup_shuffles;
+		result.entry.fixup_passes.fixup_loop_header_undef_phis = options.quirks.fixup_loop_header_undef_phis;
 
 		// These passes cannot and should not be run before structurizer.
 		result.entry.fixup_passes.stage_io_analysis =
