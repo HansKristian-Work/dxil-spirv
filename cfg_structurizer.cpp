@@ -1,4 +1,4 @@
-/* Copyright (c) 2019-2022 Hans-Kristian Arntzen for Valve Corporation
+/* Copyright (c) 2019-2026 Hans-Kristian Arntzen for Valve Corporation
  *
  * SPDX-License-Identifier: MIT
  *
@@ -42,815 +42,6 @@ CFGStructurizer::CFGStructurizer(CFGNode *entry, CFGNodePool &pool_, SPIRVModule
 	exit_block->name = "EXIT";
 }
 
-#ifdef DXIL_SPIRV_DEBUG_DUMPING
-void CFGStructurizer::log_cfg_graphviz(const char *path) const
-{
-	FILE *file = fopen(path, "w");
-	if (!file)
-	{
-		LOGE("Failed to open graphviz dump path: %s\n", path);
-		return;
-	}
-
-	UnorderedMap<const CFGNode *, uint32_t> node_to_id;
-	uint32_t accum_id = 0;
-
-	const auto get_node_id = [&](const CFGNode *node) -> uint32_t {
-		auto itr = node_to_id.find(node);
-		if (itr == node_to_id.end())
-		{
-			const char *shape = nullptr;
-			if (node->ir.merge_info.merge_type == MergeType::Loop)
-				shape = "circle";
-			else if (node->ir.merge_info.merge_type == MergeType::Selection)
-				shape = "triangle";
-			else
-				shape = "box";
-
-			node_to_id[node] = ++accum_id;
-			fprintf(file, "%u [label=\"%s\", shape=\"%s\"];\n", accum_id, node->name.c_str(), shape);
-			return accum_id;
-		}
-		else
-			return itr->second;
-	};
-
-	fprintf(file, "digraph {\n");
-	for (auto index = forward_post_visit_order.size(); index; index--)
-	{
-		auto *node = forward_post_visit_order[index - 1];
-		switch (node->ir.terminator.type)
-		{
-		case Terminator::Type::Branch:
-			fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(node->ir.terminator.direct_block));
-			break;
-
-		case Terminator::Type::Condition:
-			fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(node->ir.terminator.true_block));
-			fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(node->ir.terminator.false_block));
-			break;
-
-		case Terminator::Type::Switch:
-			for (auto &c : node->ir.terminator.cases)
-				fprintf(file, "%u -> %u;\n", get_node_id(node), get_node_id(c.node));
-			break;
-
-		default:
-			break;
-		}
-
-		if (node->ir.merge_info.merge_type == MergeType::Loop)
-		{
-			if (node->ir.merge_info.continue_block)
-				fprintf(file, "%u -> %u [style=\"dotted\"];\n", get_node_id(node), get_node_id(node->ir.merge_info.continue_block));
-			else if (node->pred_back_edge)
-				fprintf(file, "%u -> %u [style=\"dotted\"];\n", get_node_id(node), get_node_id(node->pred_back_edge));
-
-			if (node->ir.merge_info.merge_block)
-				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->ir.merge_info.merge_block));
-		}
-		else if (node->ir.merge_info.merge_type == MergeType::Selection)
-		{
-			if (node->ir.merge_info.merge_block)
-				fprintf(file, "%u -> %u [style=\"dashed\"];\n", get_node_id(node), get_node_id(node->ir.merge_info.merge_block));
-		}
-	}
-
-	fprintf(file, "}\n");
-	fclose(file);
-}
-
-void CFGStructurizer::log_cfg(const char *tag) const
-{
-	LOGI("\n======== %s =========\n", tag);
-	for (auto index = forward_post_visit_order.size(); index; index--)
-	{
-		auto *node = forward_post_visit_order[index - 1];
-
-		LOGI("%s:\n", node->name.c_str());
-		switch (node->ir.terminator.type)
-		{
-		case Terminator::Type::Branch:
-			LOGI("  Branch -> %s\n", node->ir.terminator.direct_block->name.c_str());
-			break;
-
-		case Terminator::Type::Condition:
-			LOGI("  Cond -> %s | %s\n", node->ir.terminator.true_block->name.c_str(),
-			     node->ir.terminator.false_block->name.c_str());
-			break;
-
-		case Terminator::Type::Return:
-			LOGI("  Return\n");
-			break;
-
-		case Terminator::Type::Unreachable:
-			LOGI("  Unreachable\n");
-			break;
-
-		case Terminator::Type::Switch:
-			LOGI("  Switch\n");
-			for (auto &c : node->ir.terminator.cases)
-			{
-				if (c.is_default)
-					LOGI("    Default -> %s\n", c.node->name.c_str());
-				else
-					LOGI("    Case %u -> %s\n", c.value, c.node->name.c_str());
-			}
-			break;
-
-		case Terminator::Type::Kill:
-			LOGI("  Kill\n");
-			break;
-		}
-
-		switch (node->ir.merge_info.merge_type)
-		{
-		case MergeType::Selection:
-			LOGI("  SelectionMerge -> %s\n",
-			     node->ir.merge_info.merge_block ? node->ir.merge_info.merge_block->name.c_str() : "N/A");
-			break;
-
-		case MergeType::Loop:
-			LOGI("  LoopMerge -> %s\n", node->ir.merge_info.merge_block ? node->ir.merge_info.merge_block->name.c_str() : "N/A");
-			LOGI("    Continue -> %s\n", node->pred_back_edge ? node->pred_back_edge->name.c_str() : "N/A");
-			break;
-
-		default:
-			break;
-		}
-
-		LOGI("\n");
-	}
-	LOGI("\n=====================\n");
-}
-
-void CFGStructurizer::log_cfg_structurize_test(const char *path) const
-{
-	FILE *f = fopen(path, "w");
-	if (!f)
-		return;
-
-	UnorderedMap<const CFGNode *, String> names;
-	Vector<const CFGNode *> stack;
-
-	auto name = [&](const CFGNode *n) -> const char * {
-		auto itr = names.find(n);
-		if (itr == names.end())
-		{
-			String s = n == entry_block ? "entry" : ("n" + std::to_string(names.size())).c_str();
-			itr = names.insert({ n, s }).first;
-			stack.push_back(n);
-		}
-		return itr->second.c_str();
-	};
-
-	name(entry_block);
-
-	while (!stack.empty())
-	{
-		auto *n = stack.back();
-		stack.pop_back();
-		auto &t = n->ir.terminator;
-		if (t.type == Terminator::Type::Branch)
-			fprintf(f, "b %s %s\n", name(n), name(t.direct_block));
-		else if (t.type == Terminator::Type::Condition)
-			fprintf(f, "c %s %s %s\n", name(n), name(t.true_block), name(t.false_block));
-		else if (t.type == Terminator::Type::Switch)
-		{
-			// structurize-test takes the default target first.
-			fprintf(f, "switch %s", name(n));
-			for (auto &c : t.cases)
-				if (c.is_default)
-					fprintf(f, " %s", name(c.node));
-			for (auto &c : t.cases)
-				if (!c.is_default)
-					fprintf(f, " %s", name(c.node));
-			fprintf(f, "\n");
-		}
-	}
-	fclose(f);
-}
-#endif
-
-static void scrub_rov_begin_lock(CFGNode *node, bool preserve_first_begin)
-{
-	auto begin_itr = node->ir.operations.begin();
-	if (preserve_first_begin)
-	{
-		begin_itr = std::find_if(node->ir.operations.begin(), node->ir.operations.end(),
-		                         [](const Operation *op) { return op->op == spv::OpBeginInvocationInterlockEXT; });
-		assert(begin_itr != node->ir.operations.end());
-		++begin_itr;
-	}
-
-	auto itr = std::remove_if(begin_itr, node->ir.operations.end(),
-	                          [](const Operation *op) { return op->op == spv::OpBeginInvocationInterlockEXT; });
-	node->ir.operations.erase(itr, node->ir.operations.end());
-}
-
-static void scrub_rov_end_lock(CFGNode *node, bool preserve_last_end)
-{
-	auto end_itr = node->ir.operations.end();
-
-	if (preserve_last_end)
-	{
-		for (size_t i = node->ir.operations.size(); i; i--)
-		{
-			size_t index = i - 1;
-			auto &op = node->ir.operations[index];
-			if (op->op == spv::OpEndInvocationInterlockEXT)
-			{
-				end_itr = node->ir.operations.begin() + index;
-				break;
-			}
-		}
-	}
-
-	auto itr = std::remove_if(node->ir.operations.begin(), end_itr,
-	                          [](const Operation *op) { return op->op == spv::OpEndInvocationInterlockEXT; });
-	node->ir.operations.erase(itr, end_itr);
-}
-
-static void scrub_rov_lock_regions(CFGNode *node, bool preserve_first_begin, bool preserve_last_end)
-{
-	scrub_rov_begin_lock(node, preserve_first_begin);
-	scrub_rov_end_lock(node, preserve_last_end);
-}
-
-void CFGStructurizer::flatten_subgroup_shuffles()
-{
-	recompute_cfg();
-
-	// Look for cases where shuffles happen inside small branches.
-	// This comes up due to HLSL's short-cicruit rules.
-	for (auto *n : forward_post_visit_order)
-	{
-		// Only care about blocks which don't dominate anything.
-		if (n->succ.size() != 1 || n->dominance_frontier.size() != 1 || n->dominance_frontier.front() != n->succ.front())
-			continue;
-		if (n->pred.size() != 1)
-			continue;
-		if (!n->pred.front()->dominates(n->succ.front()))
-			continue;
-		if (n->pred.front()->succ.size() != 2)
-			continue;
-
-		// There's a limit to how much we want to peephole.
-		if (n->ir.operations.size() > 4)
-			continue;
-
-		// We don't want to hoist if both sides of the branch have meaningful work associated with them.
-		auto *succ = n->succ.front();
-		auto *pred = n->pred.front();
-		auto *sibling0 = pred->succ[0];
-		auto *sibling1 = pred->succ[1];
-
-		if (sibling0 != succ && sibling0 != n && !sibling0->ir.operations.empty())
-			continue;
-		if (sibling1 != succ && sibling1 != n && !sibling1->ir.operations.empty())
-			continue;
-
-		// Now we've detected:
-		// if (blah) { a = shuffle(); } phi(a);
-
-		bool has_dubious_shuffle = false;
-
-		for (auto *op : n->ir.operations)
-		{
-			if (op->op == spv::OpGroupNonUniformShuffle || op->op == spv::OpGroupNonUniformBroadcast)
-			{
-				for (auto &phi : n->succ.front()->ir.phi)
-				{
-					for (auto &incoming : phi.incoming)
-					{
-						if (incoming.id == op->id)
-						{
-							has_dubious_shuffle = true;
-							goto out;
-						}
-					}
-				}
-			}
-		}
-	out:
-
-		if (has_dubious_shuffle)
-		{
-			// Now the question is if it's safe to do this. There can be nothing control dependent (except for shuffles).
-			for (auto *op : n->ir.operations)
-			{
-				if (op->op == spv::OpGroupNonUniformShuffle ||
-				    op->op == spv::OpGroupNonUniformBroadcast)
-					continue;
-
-				if (op->op == spv::OpLoad)
-				{
-					// Only allow loads if it's loading from plain OpVariables.
-					// Hoisting a buffer read is not acceptable.
-					if (!module.get_builder().hasDecoration(op->argument(0), spv::DecorationBuiltIn))
-					{
-						has_dubious_shuffle = false;
-						break;
-					}
-				}
-
-				if (SPIRVModule::opcode_is_control_dependent(op->op) || op->id == 0 ||
-				    SPIRVModule::opcode_has_side_effect_and_result(op->op))
-				{
-					has_dubious_shuffle = false;
-					break;
-				}
-			}
-		}
-
-		if (has_dubious_shuffle)
-		{
-			for (auto *op : n->ir.operations)
-				n->pred.front()->ir.operations.push_back(op);
-			n->ir.operations.clear();
-		}
-	}
-}
-
-void CFGStructurizer::rewrite_auto_group_shared_barrier()
-{
-	assert(!forward_post_visit_order.empty());
-	if (limited_control_flow_analysis)
-	{
-		// Need full fat analysis with post-dominance, reachability, etc.
-		compute_full_control_flow_analysis();
-		limited_control_flow_analysis = false;
-	}
-
-	enum class Kind { None, Load, Store, Atomic };
-
-	struct Block
-	{
-		CFGNode *node;
-		const CFGNode *innermost_loop;
-		Kind pre_kind;
-		Kind post_kind;
-	};
-
-	// In linear traversal order, find all BBs that use group shared.
-	Vector<Block> shared_blocks;
-
-	for (size_t i = forward_post_visit_order.size(); i; i--)
-	{
-		auto *node = forward_post_visit_order[i - 1];
-		for (auto *op : node->ir.operations)
-		{
-			if ((op->flags & Operation::AutoGroupSharedBarrier) != 0)
-			{
-				shared_blocks.push_back({ node, get_innermost_loop_header_for(node), Kind::None, Kind::None });
-				break;
-			}
-		}
-	}
-
-	// Deal with intra-BB hazards.
-	for (auto &block : shared_blocks)
-	{
-		Kind pending = Kind::None;
-
-		// If we're the first BB to access shared, no need for a post block.
-		// Similar for the last block.
-		// Loops can complicate this analysis, but ... eh.
-		// This is a workaround, not required by spec or anything.
-
-		for (auto *op : block.node->ir.operations)
-		{
-			if ((op->flags & Operation::AutoGroupSharedBarrier) != 0)
-			{
-				if (op->op == spv::OpLoad || op->op == spv::PseudoOpMaskedLoad)
-				{
-					if (pending != Kind::Load && pending != Kind::None)
-						op->flags |= Operation::SubgroupSyncPre;
-					pending = Kind::Load;
-				}
-				else if (op->op == spv::OpStore || op->op == spv::PseudoOpMaskedStore)
-				{
-					if (pending != Kind::Store && pending != Kind::None)
-						op->flags |= Operation::SubgroupSyncPre;
-					pending = Kind::Store;
-				}
-				else
-				{
-					if (pending != Kind::Atomic && pending != Kind::None)
-						op->flags |= Operation::SubgroupSyncPre;
-					pending = Kind::Atomic;
-				}
-
-				if (block.pre_kind == Kind::None)
-					block.pre_kind = pending;
-			}
-		}
-
-		block.post_kind = pending;
-	}
-
-	for (size_t i = 0; i < shared_blocks.size(); i++)
-	{
-		auto &first = shared_blocks[i];
-
-		for (size_t j = i + 1; j < shared_blocks.size(); j++)
-		{
-			auto &second = shared_blocks[j];
-			if (!query_reachability(*first.node, *second.node))
-				continue;
-
-			if (first.post_kind != second.pre_kind)
-			{
-				// Find an intermediate block which:
-				// - post dominates the first
-				// - dominates the second
-				// Has the maximal number of invocations.
-				// The subgroup barrier should be run with as many threads as possible.
-				if (second.node->post_dominates(first.node))
-					second.node->ir.operations.front()->flags |= Operation::SubgroupSyncPre;
-				else if (first.node->dominates(second.node))
-					first.node->ir.operations.back()->flags |= Operation::SubgroupSyncPost;
-				else
-				{
-					// Try to find some intermediate node. If we cannot find it, just yolo in a barrier
-					// somewhere. This is just a workaround, so if it doesn't work 100%, it's not a big deal.
-					auto *pdom = first.node->immediate_post_dominator;
-					while (pdom && query_reachability(*pdom, *second.node) && !pdom->dominates(second.node) &&
-					       pdom->immediate_post_dominator && pdom->immediate_post_dominator != pdom)
-					{
-						pdom = pdom->immediate_post_dominator;
-					}
-
-					if (pdom && pdom != second.node)
-					{
-						if (pdom->ir.operations.empty())
-						{
-							auto *nop = module.allocate_op(spv::OpNop);
-							nop->flags |= Operation::SubgroupSyncPost;
-							pdom->ir.operations.push_back(nop);
-						}
-						else
-							pdom->ir.operations.back()->flags |= Operation::SubgroupSyncPost;
-					}
-					else if (pdom == second.node)
-					{
-						second.node->ir.operations.front()->flags |= Operation::SubgroupSyncPre;
-					}
-				}
-
-				// We've added appropriate barriers for this node now.
-				second.pre_kind = Kind::None;
-			}
-
-			break;
-		}
-
-		// Analyze re-entrant code. We may depend on memory coming from an earlier loop iteration.
-		if (first.pre_kind != Kind::None && first.innermost_loop != entry_block && first.innermost_loop->pred_back_edge)
-		{
-			bool has_complex_dependency = false;
-			// Other blocks within the loop may require a dependency.
-			for (size_t j = i + 1; j < shared_blocks.size() && !has_complex_dependency; j++)
-			{
-				if (query_reachability(*shared_blocks[j].node, *first.innermost_loop->pred_back_edge))
-				{
-					first.node->ir.operations.front()->flags |= Operation::SubgroupSyncPre;
-					has_complex_dependency = true;
-				}
-			}
-
-			if (!has_complex_dependency && first.pre_kind != first.post_kind)
-			{
-				// Self-dependency within the BB.
-				first.node->ir.operations.back()->flags |= Operation::SubgroupSyncPost;
-			}
-		}
-	}
-}
-
-bool CFGStructurizer::rewrite_rov_lock_region()
-{
-	assert(!forward_post_visit_order.empty());
-	if (limited_control_flow_analysis)
-	{
-		// Need full fat analysis with post-dominance, reachability, etc.
-		compute_full_control_flow_analysis();
-		limited_control_flow_analysis = false;
-	}
-
-	// First, find all BBs that use ROV.
-	Vector<CFGNode *> rov_blocks;
-
-	for (auto *node : forward_post_visit_order)
-	{
-		for (auto &op : node->ir.operations)
-		{
-			if (op->op == spv::OpBeginInvocationInterlockEXT)
-			{
-				rov_blocks.push_back(node);
-				break;
-			}
-		}
-	}
-
-	// If we declare ROVs but never actually use them ... *shrug*
-	if (rov_blocks.empty())
-		return true;
-
-	// Rules: OpBegin and OpEnd must be dynamically called exactly once.
-	// To simplify, we want to only emit one begin and one end that covers the entire shader.
-	// Usually ROV access is constrained to a single BB as a simple case.
-	// Simple BB case fails with control flow. E.g. a loop or conditional. In this case we must widen the range
-	// of the lock such that: end post-dominates begin. Begin post-dominates entry.
-	// If we cannot make this work, flag as non-trivial and wrap the entire shader in a big lock.
-
-	auto *idom = rov_blocks.front();
-	for (size_t i = 1; i < rov_blocks.size() && idom; i++)
-		idom = CFGNode::find_common_dominator(idom, rov_blocks[i]);
-
-	// Stretch scope as long as we don't post-dominate entry.
-	while (idom && idom != entry_block && !idom->post_dominates(entry_block))
-		idom = idom->immediate_dominator;
-
-	auto *pdom = find_common_post_dominator(rov_blocks);
-
-	if (!pdom || !idom || !idom->dominates(pdom))
-	{
-		idom = nullptr;
-		pdom = nullptr;
-	}
-
-	// Make sure we enclose the entire scope.
-	if (idom && pdom && idom->ir.merge_info.merge_type != MergeType::None)
-	{
-		if (idom->ir.merge_info.merge_block && (idom != pdom || idom->ir.merge_info.merge_type == MergeType::Loop))
-		{
-			pdom = CFGNode::find_common_post_dominator(pdom, idom->ir.merge_info.merge_block);
-		}
-		else
-		{
-			idom = nullptr;
-			pdom = nullptr;
-		}
-	}
-
-	while (idom && idom->pred_back_edge)
-	{
-		// We must insert the lock before entering loop.
-		// Hopefully the idom of the loop header is not a header.
-		if (idom->post_dominates(idom->immediate_dominator))
-		{
-			idom = idom->immediate_dominator;
-		}
-		else
-		{
-			idom = nullptr;
-			pdom = nullptr;
-		}
-	}
-
-	// Stretch post-dominator if we need to.
-	if (idom && pdom)
-		pdom = CFGNode::find_common_post_dominator(pdom, idom);
-
-	// It's possible idom is outside of a loop and pdom is inline a loop.
-	while (pdom)
-	{
-		auto *pdom_inner_loop = get_innermost_loop_header_for(pdom, idom);
-		if (pdom_inner_loop->ir.merge_info.merge_block)
-		{
-			auto *extended_pdom = CFGNode::find_common_post_dominator(pdom, pdom_inner_loop->ir.merge_info.merge_block);
-			if (pdom == extended_pdom)
-				break;
-			pdom = extended_pdom;
-		}
-		else
-			break;
-	}
-
-	bool internal_early_return = !pdom || pdom->immediate_post_dominator == pdom;
-
-	// Non trivial case.
-	if (!idom || !pdom || internal_early_return)
-	{
-		for (auto *node : rov_blocks)
-			scrub_rov_lock_regions(node, false, false);
-		return false;
-	}
-
-	bool begin_block_has_lock = std::find(rov_blocks.begin(), rov_blocks.end(), idom) != rov_blocks.end();
-	bool end_block_has_lock = std::find(rov_blocks.begin(), rov_blocks.end(), pdom) != rov_blocks.end();
-
-	for (auto *node : rov_blocks)
-		scrub_rov_lock_regions(node, node == idom, node == pdom);
-
-	if (!begin_block_has_lock)
-		idom->ir.operations.push_back(module.allocate_op(spv::OpBeginInvocationInterlockEXT));
-
-	if (!end_block_has_lock)
-		pdom->ir.operations.insert(pdom->ir.operations.begin(), module.allocate_op(spv::OpEndInvocationInterlockEXT));
-
-	return true;
-}
-
-void CFGStructurizer::rewrite_multiple_back_edges()
-{
-	reset_traversal();
-	visit_for_back_edge_analysis();
-}
-
-void CFGStructurizer::sink_ssa_constructs()
-{
-	sink_ssa_constructs_run(true);
-	sink_ssa_constructs_run(false);
-}
-
-void CFGStructurizer::sink_ssa_constructs_run(bool dry_run)
-{
-	// First, propagate sinkability state to any operation that uses a sinkable SSA.
-	// If an SSA expression is used in a BB, but that use of the SSA can be sunk, we need to
-	// sink everything as a group.
-	Vector<spv::Id> sinkable_ops;
-
-	struct RewriteState
-	{
-		CFGNode *consumed_block;
-		Operation *op;
-	};
-	UnorderedMap<spv::Id, RewriteState> sinks;
-
-	for (auto *n : forward_post_visit_order)
-	{
-		sinkable_ops.clear();
-
-		auto &ops = n->ir.operations;
-		for (auto *op : ops)
-		{
-			if ((op->flags & Operation::SinkableBit) != 0)
-			{
-				sinkable_ops.push_back(op->id);
-				sinks[op->id] = { nullptr, op };
-			}
-			else if (op->id && !SPIRVModule::opcode_is_control_dependent(op->op) &&
-			         !SPIRVModule::opcode_has_side_effect_and_result(op->op))
-			{
-				// We cannot sink any opcode which is control dependent, or has side effects.
-				for (uint32_t i = 0; i < op->num_arguments(); i++)
-				{
-					if (op->argument_is_literal(i))
-						continue;
-
-					spv::Id consumed_id = op->argument(i);
-					if (std::find(sinkable_ops.begin(), sinkable_ops.end(), consumed_id) != sinkable_ops.end())
-					{
-						sinkable_ops.push_back(op->id);
-						op->flags |= Operation::DependencySinkableBit;
-						sinks[op->id] = { nullptr, op };
-						break;
-					}
-				}
-			}
-			else if (op->op == spv::OpControlBarrier || op->op == spv::OpMemoryBarrier)
-			{
-				// We cannot sink beyond this barrier. Invalidate every sinkable op we saw so far.
-				for (spv::Id id : sinkable_ops)
-				{
-					auto *op_ptr = sinks[id].op;
-					assert(op_ptr);
-					op_ptr->flags &= ~(Operation::SinkableBit | Operation::DependencySinkableBit);
-				}
-				sinkable_ops.clear();
-			}
-		}
-	}
-
-	// If an expression is used as a PHI input assume we cannot sink.
-	// It gets a bit awkward to deal with this, and it's not required for this workaround pass.
-	for (auto *n : forward_post_visit_order)
-	{
-		for (auto &phi : n->ir.phi)
-		{
-			for (auto &incoming : phi.incoming)
-			{
-				auto itr = sinks.find(incoming.id);
-				if (itr != sinks.end())
-				{
-					auto *op_ptr = itr->second.op;
-					assert(op_ptr);
-					op_ptr->flags &= ~(Operation::SinkableBit | Operation::DependencySinkableBit);
-				}
-			}
-		}
-	}
-
-	const auto consume_id = [&](spv::Id consumed_id, CFGNode *n) {
-		auto itr = sinks.find(consumed_id);
-		if (itr != sinks.end())
-		{
-			if (!itr->second.consumed_block)
-				itr->second.consumed_block = n;
-			else if (itr->second.consumed_block != n)
-				itr->second.op->flags &= ~(Operation::SinkableBit | Operation::DependencySinkableBit);
-		}
-	};
-
-	const auto path_is_reorderable = [&](const CFGNode *src, const CFGNode *dst) {
-		// There cannot be any control or memory barriers along the way, or we have to be conservative.
-
-		// There is absolutely no point in sinking if dst ends up post-dominating src anyway.
-		// We cannot avoid any bug from happening.
-		if (dst->post_dominates(src))
-			return false;
-
-		// Never sink into a loop.
-		if (dst->pred_back_edge)
-			return false;
-
-		// Could deal with multiple preds, but we mostly just care about trivial sinks.
-		if (dst->pred.size() > 1)
-			return false;
-		dst = dst->immediate_dominator;
-
-		while (src != dst)
-		{
-			if (dst->pred.size() > 1 || dst->pred_back_edge)
-				return false;
-
-			for (auto *op : dst->ir.operations)
-				if (op->op == spv::OpControlBarrier || op->op == spv::OpMemoryBarrier)
-					return false;
-
-			dst = dst->pred.front();
-		}
-
-		// We reached src, and we validated that block already when deciding on what is sinkable or not, so we're good.
-		return true;
-	};
-
-	// Walk all instructions in reverse order.
-	// We can sink an instruction if:
-	// - An ID was only consumed in a BB != generating BB.
-	//   The consumed BB must be unique for us to consider it for simplicity.
-	for (auto *n : forward_post_visit_order)
-	{
-		if (n->ir.terminator.type == Terminator::Type::Condition ||
-		    n->ir.terminator.type == Terminator::Type::Switch)
-		{
-			consume_id(n->ir.terminator.conditional_id, n);
-		}
-		else if (n->ir.terminator.type == Terminator::Type::Return &&
-		         n->ir.terminator.return_value != 0)
-		{
-			consume_id(n->ir.terminator.return_value, n);
-		}
-
-		auto &ops = n->ir.operations;
-
-		for (size_t i = ops.size(); i; i--)
-		{
-			auto *op = ops[i - 1];
-			auto *target_block = n;
-
-			if (op->id && (op->flags & (Operation::SinkableBit | Operation::DependencySinkableBit)) != 0)
-			{
-				auto sink_itr = sinks.find(op->id);
-
-				if (sink_itr != sinks.end() &&
-				    sink_itr->second.consumed_block &&
-				    sink_itr->second.consumed_block != n &&
-				    path_is_reorderable(n, sink_itr->second.consumed_block))
-				{
-					// Move the operation to the beginning of the consumed block instead.
-					target_block = sink_itr->second.consumed_block;
-
-					// Don't actually move the instruction until we have confirmed the entire chain can be sunk,
-					// otherwise this exercise is meaningless.
-					if (!dry_run)
-					{
-						target_block->ir.operations.insert(target_block->ir.operations.begin(), op);
-						ops.erase(ops.begin() + int(i - 1));
-					}
-				}
-				else
-				{
-					// This failed to sink. Remember this for the next run.
-					op->flags &= ~Operation::SinkableBit;
-				}
-			}
-
-			// Mark uses after we have sunk the instruction. This allows us to sink a chain of SSA instructions.
-			for (uint32_t j = 0; j < op->num_arguments(); j++)
-				if (!op->argument_is_literal(j))
-					consume_id(op->argument(j), target_block);
-		}
-	}
-
-	if (dry_run)
-		for (auto *n : forward_post_visit_order)
-			for (auto *op : n->ir.operations)
-				op->flags &= ~Operation::DependencySinkableBit;
-}
-
 void CFGStructurizer::propagate_branch_control_hints()
 {
 	for (auto *n : forward_post_visit_order)
@@ -873,56 +64,6 @@ void CFGStructurizer::propagate_branch_control_hints()
 
 		// Both are possible if a selection construct is also a loop header.
 	}
-}
-
-void CFGStructurizer::remove_unused_ssa()
-{
-	UnorderedSet<spv::Id> removed_ids;
-	UnorderedSet<spv::Id> used_ids;
-
-	for (auto *node : forward_post_visit_order)
-	{
-		for (auto &phi : node->ir.phi)
-			for (auto &incoming : phi.incoming)
-				used_ids.insert(incoming.id);
-
-		for (auto *op : node->ir.operations)
-			for (unsigned i = 0; i < op->num_arguments(); i++)
-				if (!op->argument_is_literal(i))
-					used_ids.insert(op->argument(i));
-
-		if (node->ir.terminator.conditional_id)
-			used_ids.insert(node->ir.terminator.conditional_id);
-
-		if (node->ir.terminator.type == Terminator::Type::Return &&
-		    node->ir.terminator.return_value != 0)
-		{
-			used_ids.insert(node->ir.terminator.return_value);
-		}
-	}
-
-	for (auto *node : forward_post_visit_order)
-	{
-		node->ir.phi.erase(std::remove_if(node->ir.phi.begin(), node->ir.phi.end(),
-		                                  [&](const PHI &phi) { return used_ids.count(phi.id) == 0; }),
-		                   node->ir.phi.end());
-
-		node->ir.operations.erase(
-			std::remove_if(
-				node->ir.operations.begin(), node->ir.operations.end(),
-				[&](const Operation *op)
-				{
-					bool ret = op->id != 0 &&
-					           !SPIRVModule::opcode_has_side_effect_and_result(op->op) &&
-					           used_ids.count(op->id) == 0;
-					if (ret)
-						removed_ids.insert(op->id);
-					return ret;
-				}),
-			node->ir.operations.end());
-	}
-
-	module.get_builder().removeDecorations(removed_ids);
 }
 
 bool CFGStructurizer::run_trivial()
@@ -950,1073 +91,2776 @@ CFGNode *CFGStructurizer::get_entry_block() const
 	return entry_block;
 }
 
-static spv::Id get_remapped_id_for_duplicated_block(spv::Id id, const UnorderedMap<spv::Id, spv::Id> &remap)
+static bool has_store_to_variable(const Vector<Operation *> &operations, spv::Id id)
 {
-	auto itr = remap.find(id);
-	if (itr != remap.end())
-		return itr->second;
-	else
-		return id;
+	for (auto *op : operations)
+		if (op->op == spv::OpStore && op->argument(0) == id)
+			return true;
+	return false;
 }
 
-Operation *CFGStructurizer::duplicate_op(Operation *op, UnorderedMap<spv::Id, spv::Id> &id_remap)
+void CFGStructurizer::run_common_preamble()
 {
-	Operation *duplicated_op;
-	if (op->id)
-		duplicated_op = module.allocate_op(op->op, module.allocate_id(), op->type_id);
-	else
-		duplicated_op = module.allocate_op(op->op);
-
-	duplicated_op->reserve_arguments(op->num_arguments());
-	for (unsigned i = 0; i < op->num_arguments(); i++)
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	String graphviz_path;
+	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
 	{
-		if (op->argument_is_literal(i))
-			duplicated_op->add_literal(op->argument(i));
-		else
-			duplicated_op->add_id(get_remapped_id_for_duplicated_block(op->argument(i), id_remap));
+		graphviz_path = env;
+		debug_labels = true;
 	}
 
-	if (op->id)
-		id_remap[op->id] = duplicated_op->id;
+	// Debug only: dump the input CFG in the format structurize-test reads.
+	if (const char *env = getenv("DXIL_SPIRV_STRUCTURIZE_TEST_PATH"))
+		log_cfg_structurize_test(env);
+#endif
 
-	return duplicated_op;
+	// We make the assumption during traversal that there is only one back edge.
+	// Fix this up here.
+	rewrite_multiple_back_edges();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	//log_cfg("Input state");
+	if (!graphviz_path.empty())
+	{
+		reset_traversal();
+		forward_visit();
+		auto graphviz_input = graphviz_path + ".input";
+		log_cfg_graphviz(graphviz_input.c_str());
+	}
+#endif
+
+	recompute_cfg();
+	sink_ssa_constructs();
+	propagate_branch_control_hints();
 }
 
-void CFGStructurizer::fixup_partial_stage_output_writes()
+bool CFGStructurizer::ensure_valid_phi_rewrites(CFGNode *node)
 {
-	assert(!forward_post_visit_order.empty());
-	if (limited_control_flow_analysis)
+	Vector<std::pair<CFGNode *, CFGNode *>> interposing_nodes;
+	bool rewrote = false;
+
+	auto &incomings = node->ir.phi.front().incoming;
+	for (auto &incoming : incomings)
 	{
-		// Need full fat analysis with post-dominance, reachability, etc.
-		compute_full_control_flow_analysis();
-		limited_control_flow_analysis = false;
+		auto *ib = incoming.block;
+
+		// Back-edges should not have interposing blocks.
+		// We will rely on SSA PHI to get the behavior we want.
+		// If we introduce interposers we won't be able to reasonably do PHI fixup
+		// since the interposing block will be outside loop and continue block is inside loop,
+		// so dominance may break unintentionally.
+		// If we cannot do SSA PHI for some reason, the loop header will clear the PHI write to reset to default value.
+		// For normal DXIL driven PHI, all preds that can reach target will write explicit value anyway.
+		if (ib->succ_back_edge)
+			continue;
+
+		if (ib->ir.terminator.type != Terminator::Type::Branch)
+		{
+			auto *interposing = pool.create_helper_node();
+			interposing->interposing = true;
+			interposing->name = node->name + ".interposing." + std::to_string(&incoming - incomings.data()).c_str();
+			interposing->ir.terminator.type = Terminator::Type::Branch;
+
+			// We may have created interposing blocks to resolve multi-back-edge cases.
+			bool has_existing_interposing = !has_element(node->pred, ib) && node->pred_back_edge != ib;
+
+			if (ib == node->pred_back_edge)
+			{
+				interposing->add_branch(node);
+				interposing->ir.terminator.direct_block = node;
+
+				// Some special cases since the helpers don't know how to rewrite back-edges properly.
+				ib->add_branch(interposing);
+				if (ib->ir.terminator.true_block == node)
+					ib->ir.terminator.true_block = interposing;
+				if (ib->ir.terminator.false_block == node)
+					ib->ir.terminator.false_block = interposing;
+				for (auto &c : ib->ir.terminator.cases)
+					if (c.node == node)
+						c.node = interposing;
+
+				ib->succ_back_edge = nullptr;
+				node->pred_back_edge = nullptr;
+			}
+			else if (has_existing_interposing)
+			{
+				// Need to figure out which succ is the correct path and rewrite in that direction.
+				// If we have interposers it's all direct branches through helper blocks.
+				for (auto *succ : ib->succ)
+				{
+					auto *scan = succ;
+
+					// Do not traverse through user blocks. Multiple paths could lead to node, but only one path
+					// can lead there through helpers only.
+					while (scan != node && scan->succ.size() == 1 && scan->helper)
+						scan = scan->succ.front();
+
+					if (scan == node || scan->succ_back_edge == node)
+					{
+						interposing->add_branch(succ);
+						interposing->ir.terminator.direct_block = succ;
+						ib->retarget_branch_pre_traversal(succ, interposing);
+						break;
+					}
+				}
+
+				assert(!interposing->succ.empty());
+			}
+			else
+			{
+				interposing->add_branch(node);
+				interposing->ir.terminator.direct_block = node;
+				ib->retarget_branch_pre_traversal(node, interposing);
+			}
+
+			interposing_nodes.emplace_back(ib, interposing);
+			rewrote = true;
+		}
 	}
 
-	// This isn't a perfect check by any means, but it's good enough.
-	// D3D12 isn't entirely well defined in these situations,
-	// so do whatever is needed to fixup obviously broken games.
-	Vector<spv::Id> output_conditionally_written;
-	Vector<spv::Id> output_always_written;
-	Vector<CFGNode *> exit_blocks;
-	Vector<CFGNode *> demote_blocks;
+	if (!rewrote)
+		return false;
 
-	UnorderedMap<spv::Id, Vector<CFGNode *>> output_written_in_blocks;
+	const auto rewrite_incoming = [&](CFGNode *&n)
+	{
+		for (auto &pair : interposing_nodes)
+		{
+			if (pair.first == n)
+			{
+				n = pair.second;
+				return;
+			}
+		}
+	};
+
+	for (auto &phi : node->ir.phi)
+		for (auto &incoming : phi.incoming)
+			rewrite_incoming(incoming.block);
+
+	return true;
+}
+
+void CFGStructurizer::rewrite_degenerate_phi_constructs()
+{
+	bool rewrote_cfg = false;
 
 	for (auto *node : forward_post_visit_order)
 	{
-		for (auto *op : node->ir.operations)
-		{
-			// If we demote, any fragment outputs are irrelevant.
-			if (op->op == spv::OpDemoteToHelperInvocation && op->num_arguments() == 0 && !has_element(demote_blocks, node))
-				demote_blocks.push_back(node);
-
-			if ((op->flags & Operation::StageOutputWriteAnalysis) == 0)
-				continue;
-
-			spv::Id var_id = op->argument(0);
-
-			// Be conservative with outputs written inside loops.
-			// We have no great way to analyze it, and we assume app is correct.
-			if (get_innermost_loop_header_for(node) != entry_block || node->post_dominates(entry_block))
-				push_back_unique(output_always_written, var_id);
-			else
-				push_back_unique(output_conditionally_written, var_id);
-
-			auto &written_blocks = output_written_in_blocks[var_id];
-			push_back_unique(written_blocks, node);
-		}
-
-		if (node->ir.terminator.type == Terminator::Type::Return)
-			exit_blocks.push_back(node);
-	}
-
-	for (spv::Id var_id : output_conditionally_written)
-	{
-		if (has_element(output_always_written, var_id))
+		if (node->succ_back_edge || node->pred_back_edge)
 			continue;
 
-		bool has_uninitialized_path = false;
-
-		auto &written_blocks = output_written_in_blocks[var_id];
-		for (auto *demote_block : demote_blocks)
-			push_back_unique(written_blocks, demote_block);
-
-		// Analyze if there exists a code path from entry to exit that does not write to output.
-		// We don't analyze if all components or all array elements are written, just
-		// that the output is written *somehow*.
-		for (auto *exit_block : exit_blocks)
+		if (node->ir.operations.empty() && !node->ir.phi.empty() && node->idom_children.empty() &&
+			node->num_forward_preds() >= 2 &&
+			(node->ir.terminator.type == Terminator::Type::Branch ||
+			node->ir.terminator.type == Terminator::Type::Condition))
 		{
-			if (has_element(written_blocks, exit_block))
-				continue;
+			duplicate_node(node);
+			rewrote_cfg = true;
+		}
+	}
 
-			if (exit_block->can_backtrace_to_with_blockers(entry_block, written_blocks))
+	if (rewrote_cfg)
+		recompute_cfg();
+}
+
+void CFGStructurizer::rewrite_degenerate_interposing_frontiers()
+{
+	bool rewrote_cfg = false;
+
+	// This shouldn't normally happen, but could happen for some rare switch rewrites.
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->succ_back_edge || node->pred_back_edge)
+			continue;
+
+		if (node->interposing && node->num_forward_preds() >= 2 &&
+			node->idom_children.empty() &&
+			(node->ir.terminator.type == Terminator::Type::Branch ||
+			node->ir.terminator.type == Terminator::Type::Condition))
+		{
+			duplicate_node(node);
+			rewrote_cfg = true;
+		}
+	}
+
+	if (rewrote_cfg)
+		recompute_cfg();
+}
+
+void CFGStructurizer::convert_phi_to_variables()
+{
+	// Go out of SSA by writing to alloca variable on a branch.
+	bool rewrote_cfg = false;
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->ir.phi.empty())
+			continue;
+
+		// An incoming block must not have more than one successor,
+		// otherwise we cannot meaningfully write to a phi variable.
+		if (ensure_valid_phi_rewrites(node))
+			rewrote_cfg = true;
+
+		for (auto &phi : node->ir.phi)
+		{
+			spv::Id alloca_id = module.create_variable(spv::StorageClassFunction, phi.type_id);
+			if (phi.relaxed)
+				module.get_builder().addDecoration(alloca_id, spv::DecorationRelaxedPrecision);
+
+			for (auto &incoming : phi.incoming)
 			{
-				has_uninitialized_path = true;
+				assert(incoming.block->ir.terminator.type == Terminator::Type::Branch ||
+				       incoming.block->succ_back_edge);
+
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(alloca_id);
+				store_op->add_id(incoming.id);
+				incoming.block->ir.operations.push_back(store_op);
+			}
+
+			// Back to SSA since future opcodes depend on it.
+			auto *load_phi = module.allocate_op(spv::OpLoad, phi.id, phi.type_id);
+			load_phi->flags |= Operation::SSALoadStore;
+			load_phi->add_id(alloca_id);
+			node->ir.operations.insert(node->ir.operations.begin(), load_phi);
+		}
+
+		node->ir.phi.clear();
+	}
+
+	if (rewrote_cfg)
+		recompute_cfg();
+}
+
+spv::Id CFGStructurizer::build_conditional_for_switch_block(
+		CFGNode *node, CFGNode *target, const Vector<Terminator::Case> &cases, spv::Id cond_id)
+{
+	spv::Id cond = 0;
+
+	for (auto &c : cases)
+	{
+		if (c.node == target)
+		{
+			auto *iseq = module.allocate_op(spv::OpIEqual, module.allocate_id(), module.get_builder().makeBoolType());
+			iseq->add_id(cond_id);
+
+			// TODO: Are all switch statements 32-bit?
+			iseq->add_id(module.get_builder().makeUintConstant(c.value));
+			node->ir.operations.push_back(iseq);
+
+			if (cond)
+			{
+				auto *or_op = module.allocate_op(spv::OpLogicalOr, module.allocate_id(), module.get_builder().makeBoolType());
+				or_op->add_id(cond);
+				or_op->add_id(iseq->id);
+				node->ir.operations.push_back(or_op);
+
+				cond = or_op->id;
+			}
+			else
+			{
+				cond = iseq->id;
+			}
+		}
+	}
+
+	assert(cond);
+	return cond;
+}
+
+void CFGStructurizer::rewrite_complex_loop_successors()
+{
+	bool rewrote = false;
+
+	const auto is_innermost_loop_header = [](const CFGNode *header, const CFGNode *back_edge)
+	{
+		while (back_edge != header)
+		{
+			if (back_edge->pred_back_edge)
+				return false;
+
+			// Shouldn't happen unless we have a broken CFG.
+			if (back_edge->immediate_dominator && back_edge->immediate_dominator != back_edge)
+			{
+				back_edge = back_edge->immediate_dominator;
+			}
+			else
+			{
+				LOGE("Potentially irreducible CFG detected?\n");
+				abort();
+			}
+		}
+
+		return true;
+	};
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->pred_back_edge && node->succ_back_edge == node)
+		{
+			if (node->ir.terminator.type == Terminator::Type::Branch)
+			{
+				// Guaranteed infinite loop that will never terminate.
+				// This is UB, so replace with simple unreachable.
+				node->ir.terminator.type = Terminator::Type::Unreachable;
+				node->clear_branches();
+			}
+			else
+			{
+				auto *back_edge = pool.create_helper_node();
+				back_edge->interposing = true;
+				back_edge->name = node->name + ".back-edge";
+
+				std::swap(back_edge->succ, node->succ);
+				std::swap(back_edge->succ_back_edge, node->succ_back_edge);
+				std::swap(back_edge->ir.terminator, node->ir.terminator);
+				node->pred_back_edge = back_edge;
+				node->add_branch(back_edge);
+
+				node->ir.terminator.type = Terminator::Type::Branch;
+				node->ir.terminator.direct_block = back_edge;
+
+				retarget_succ_from(back_edge, node);
+			}
+
+			rewrote = true;
+		}
+		else if (node->ir.terminator.type == Terminator::Type::Condition &&
+		         node->succ_back_edge && !is_innermost_loop_header(node->succ_back_edge, node))
+		{
+			// Workaround a very awkward scenario where we're conditionally double-continuing and another path
+			// continues executing the loop.
+			// The traversal assumes that once we reach a back-edge we should stop, which breaks things,
+			// and dealing with it inline is too awkward.
+			// Workaround it by creating an interposing branch as always.
+			auto *back_edge = pool.create_helper_node();
+			back_edge->interposing = true;
+			back_edge->name = node->name + ".back-edge";
+			back_edge->ir.terminator.type = Terminator::Type::Branch;
+			back_edge->ir.terminator.direct_block = node->succ_back_edge;
+
+			if (node->ir.terminator.true_block == node->succ_back_edge)
+				node->ir.terminator.true_block = back_edge;
+			if (node->ir.terminator.false_block == node->succ_back_edge)
+				node->ir.terminator.false_block = back_edge;
+
+			node->succ_back_edge->pred_back_edge = back_edge;
+			back_edge->succ_back_edge = node->succ_back_edge;
+			node->succ_back_edge = nullptr;
+			node->add_branch(back_edge);
+
+			rewrote = true;
+		}
+	}
+
+	if (rewrote)
+		recompute_cfg();
+}
+
+bool CFGStructurizer::dominates_any_back_edge_on_dominance_path(CFGNode *node, CFGNode *end_node)
+{
+	if (node == end_node)
+		return false;
+
+	if (node->succ_back_edge)
+		return true;
+
+	for (auto *child : node->idom_children)
+		if (dominates_any_back_edge_on_dominance_path(child, end_node))
+			return true;
+
+	return false;
+}
+
+CFGNode *CFGStructurizer::switch_block_trivially_merges(CFGNode *node)
+{
+	if (node->idom_children.empty())
+		return nullptr;
+
+	// A candidate will have the lowest possible post visit order (since all other nodes will reach it).
+	CFGNode *direct_merge_candidate = node->idom_children.front();
+	for (auto *child : node->idom_children)
+		if (child->forward_post_visit_order < direct_merge_candidate->forward_post_visit_order)
+			direct_merge_candidate = child;
+
+	for (auto &c : node->ir.terminator.cases)
+	{
+		if (c.node == direct_merge_candidate)
+			continue;
+
+		if (c.node->dominance_frontier.size() != 1)
+			return nullptr;
+
+		auto *df = c.node->dominance_frontier.front();
+		if (df != direct_merge_candidate)
+			return nullptr;
+	}
+
+	// A switch cannot start inside a loop and end outside the loop.
+	// If we got here, the switch dominates all paths. If we dominate any back-edge, bail.
+	if (direct_merge_candidate && dominates_any_back_edge_on_dominance_path(node, direct_merge_candidate))
+		direct_merge_candidate = nullptr;
+
+	return direct_merge_candidate;
+}
+
+void CFGStructurizer::rewrite_switch_blocks()
+{
+	bool rewrote = false;
+
+	// Just like NIR, untangle a switch statement into a series of conditional branches.
+	// It should be possible to preserve the true switch in cases where there is nothing exciting happening w.r.t control flow.
+	// E.g. the case labels share one dominance frontier. We can merge there as a perfect self-contained construct.
+	// For now, always do the pessimized thing.
+
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->ir.terminator.type == Terminator::Type::Switch)
+		{
+			bool degenerate_switch = true;
+			for (auto &c : node->ir.terminator.cases)
+			{
+				if (c.node != node->ir.terminator.cases.front().node)
+				{
+					degenerate_switch = false;
+					break;
+				}
+			}
+
+			if (degenerate_switch)
+			{
+				// We only had one degenerate default branch somehow ...
+				node->ir.terminator.type = Terminator::Type::Branch;
+				node->ir.terminator.direct_block = node->ir.terminator.cases.front().node;
+				node->ir.terminator.conditional_id = 0;
+				node->ir.terminator.cases.clear();
+				rewrote = true;
+				continue;
+			}
+
+			if (CFGNode *merge = switch_block_trivially_merges(node))
+			{
+				// Do it early, otherwise we lose information about the switch merge target.
+				if (node->pred_back_edge)
+					node = create_helper_succ_block(node);
+
+				// If we have a trivial merge block, it's still possible for other blocks to return early.
+				// Early returns may manifest as breaking out of a loop.
+				node->ir.merge_info.merge_type = MergeType::Selection;
+				node->ir.merge_info.merge_block = merge;
+				rewrote = true;
+				continue;
+			}
+
+			Terminator::Case default_case = {};
+			Vector<Terminator::Case> cases;
+			std::swap(cases, node->ir.terminator.cases);
+
+			auto itr = std::find_if(cases.begin(), cases.end(), [&](const Terminator::Case &c)
+			{
+				return c.is_default;
+			});
+
+			if (itr != cases.end())
+			{
+				default_case = *itr;
+				cases.erase(itr);
+			}
+
+			// If a case label is a duplicate of default, just ignore it. It will be picked up by default path anyway.
+			auto erase_itr = std::remove_if(cases.begin(), cases.end(), [&](const Terminator::Case &c) {
+				return c.node == default_case.node;
+			});
+			cases.erase(erase_itr, cases.end());
+
+			// Pretty sure there must be a default case?
+			assert(default_case.node);
+			assert(!cases.empty());
+
+			node->clear_branches();
+
+			spv::Id cond_id = node->ir.terminator.conditional_id;
+
+			auto *current_node = node;
+			CFGNode *current_residual = nullptr;
+			current_node->ir.terminator.type = Terminator::Type::Condition;
+
+			while (!cases.empty())
+			{
+				auto *n = cases.front().node;
+				spv::Id conditional = build_conditional_for_switch_block(current_node, n, cases, cond_id);
+				cases.erase(std::remove_if(cases.begin(), cases.end(), [&](const Terminator::Case &candidate)
+				{
+					return candidate.node == n;
+				}), cases.end());
+
+				current_residual = pool.create_helper_node();
+				current_residual->name = node->name + ".residual";
+
+				current_node->ir.terminator.type = Terminator::Type::Condition;
+				current_node->ir.terminator.true_block = n;
+				current_node->ir.terminator.false_block = current_residual;
+				current_node->ir.terminator.conditional_id = conditional;
+
+				current_node->add_branch(n);
+				current_node->add_branch(current_residual);
+
+				current_node = current_residual;
+			}
+
+			assert(current_residual);
+
+			current_residual->ir.terminator.type = Terminator::Type::Branch;
+			current_residual->ir.terminator.direct_block = default_case.node;
+			current_residual->add_branch(default_case.node);
+			rewrote = true;
+		}
+	}
+
+	if (rewrote)
+		recompute_cfg();
+}
+
+const CFGStructurizer::SerializationLevel *
+CFGStructurizer::find_level_for_block(
+	const Vector<SerializationLevel> &levels, CFGNode *block)
+{
+	for (auto &level : levels)
+		if (has_element(level.paths, block))
+			return &level;
+	return nullptr;
+}
+
+const CFGStructurizer::SerializationLevel *
+CFGStructurizer::find_latest_level_dominating_block(const Vector<SerializationLevel> &levels, CFGNode *block)
+{
+	// From what I understand, a candidate block here is either a frontier in some form, in which case it should already
+	// be part of a level, or it is dominated by a path directly.
+	// Worst case, we have slightly less than optimal codegen.
+	for (auto &level : levels)
+		for (auto *path : level.paths)
+			if (path->dominates(block))
+				return &level;
+
+	return nullptr;
+}
+
+void CFGStructurizer::fixup_degenerate_conditional_branch(CFGNode *node)
+{
+	if (node->ir.terminator.type == Terminator::Type::Condition &&
+	    node->ir.terminator.true_block == node->ir.terminator.false_block)
+	{
+		node->collapse_conditional_to_direct(node->ir.terminator.true_block);
+	}
+}
+
+void CFGStructurizer::fixup_degenerate_conditional_branches()
+{
+	// This doesn't really rewrite anything interesting w.r.t succs/preds,
+	// just cleans up so that future passes don't have to worry.
+	for (auto *node : forward_post_visit_order)
+		fixup_degenerate_conditional_branch(node);
+}
+
+// Organizes a dominated sequence of code as a series of selection constructs.
+// Each sequence can be represented as:
+// if (path_is_not_skipped) {
+//     if (path_selector) {
+//         take(path[1]);
+//     } else {
+//         take(path[0]);
+//     }
+// }
+// If there are more than 2 parallel paths, a switch is used instead:
+// skip variable does not exist in this mode since we can just encode -1 as skip.
+// switch (path_selector) {
+//    case 0: take(path[0]);
+//    case 1: take(path[1]);
+//    case 2: take(path[2]);
+//    default: skip;
+// }
+//
+// outer_levels represents branch targets which break.
+
+// Basically a port of inside_outside in Mesa goto_if pass.
+// This is a little more clumsy than ideal.
+// Mesa's implementation seems to represent back-edges as a loop header being its own dominance frontier,
+// which automatically solves a lot of the edge cases here with inner loops, but that's too much of a rewrite,
+// so get our hands dirty instead by checking for back-edges more explicitly.
+void CFGStructurizer::split_loop_inner_outer(
+		CFGNode *node, CFGNode *back_edge, Vector<CFGNode *> &back_edge_candidates,
+		Vector<CFGNode *> &outer_dominated)
+{
+	Vector<CFGNode *> remaining;
+
+	remaining = node->idom_children;
+
+	// Also makes sure that back-edges are still considered in-loop.
+	// As long as the header remains, the back-edge (and therefore all its loop contents) will remain too.
+	// This is equivalent to Mesa since the loop header would be in the DF.
+	for (auto *child : node->idom_children)
+		if (child->pred_back_edge)
+			push_back_unique(remaining, child->pred_back_edge);
+
+	for (auto *remain : remaining)
+	{
+		if (remain->dominates(back_edge))
+		{
+			push_back_unique(back_edge_candidates, remain);
+			// Also makes sure that back-edges are still considered in-loop.
+			if (remain->pred_back_edge)
+				push_back_unique(back_edge_candidates, remain->pred_back_edge);
+		}
+	}
+
+	bool progress = true;
+	while (!remaining.empty() && progress)
+	{
+		progress = false;
+
+		for (auto itr = remaining.begin(); itr != remaining.end(); )
+		{
+			auto *remain = *itr;
+
+			// Basic idea is that we either dominate the back-edge,
+			// or we can form a chain of dominance frontiers that terminate at the back-edge.
+			// query_reachable would also work, but we'd like to avoid relying too much on that since we don't want to
+			// compute that all the time. It's also quite murky with the amount of CFG rewrites we're doing inline ...
+			bool can_jump_back = remain->dominates(back_edge);
+
+			const auto should_remain = [&](CFGNode *n)
+			{
+				return has_element(remaining, n) || has_element(back_edge_candidates, n) || n->dominates(back_edge);
+			};
+
+			if (!can_jump_back)
+			{
+				for (auto *front : remain->dominance_frontier)
+				{
+					if (should_remain(front))
+					{
+						can_jump_back = true;
+						break;
+					}
+				}
+			}
+
+			auto *top_level_header = back_edge->succ_back_edge;
+			// A back-edge will have loop header in the DF in Mesa's impl.
+			// Make sure we don't mistake a long back-edge as staying inside the construct.
+			if (!can_jump_back && remain->succ_back_edge &&
+				top_level_header->dominates(remain->succ_back_edge) &&
+				should_remain(remain->succ_back_edge))
+			{
+				can_jump_back = true;
+			}
+
+			// It's possible we dominate the back-edge of an inner loop.
+			// We will miss any dominance frontier analysis that way.
+			// Try to detect that case too. It's a bit awkward, and another goof of not using back-edge == frontier.
+			// Dominating the back-edge is equivalent to having loop header in the DF in Mesa's impl.
+			if (!can_jump_back)
+			{
+				const auto found_header_candidate = [&](CFGNode *candidate)
+				{
+					// Never accept our own block as ground-truth here.
+					return candidate != remain && candidate->pred_back_edge &&
+					       remain->dominates(candidate->pred_back_edge) && should_remain(candidate);
+				};
+
+				const auto can_iterate_idom = [top_level_header](const CFGNode *candidate)
+				{
+					return top_level_header->dominates(candidate) &&
+					       top_level_header != candidate &&
+					       candidate->immediate_dominator != candidate &&
+					       candidate->immediate_dominator;
+				};
+
+				// Cannot necessarily accept the innermost loop header here. We might pass the check for an outer loop instead.
+				for (auto *inner_loop_header = remain; ; inner_loop_header = inner_loop_header->immediate_dominator)
+				{
+					if (found_header_candidate(inner_loop_header))
+					{
+						can_jump_back = true;
+						break;
+					}
+
+					if (!can_iterate_idom(inner_loop_header))
+						break;
+				}
+			}
+
+			if (!can_jump_back)
+			{
+				// Never add a back-edge for an outer loop into the outer dominated set.
+				// We only added it temporarily as a hack to aid reachability analysis.
+				if (!remain->succ_back_edge)
+					push_back_unique(outer_dominated, remain);
+
+				*itr = remaining.back();
+				remaining.pop_back();
+				progress = true;
+			}
+			else
+			{
+				++itr;
+			}
+		}
+	}
+
+	for (auto *remain : remaining)
+		push_back_unique(back_edge_candidates, remain);
+
+	// Recurse through the CFG.
+	// Never process the back-edge before we have processed the header.
+	// The back-edge is merely added as a temporary node to aid analysis.
+	// If only the back-edge is seen here, it means the loop header has been processed.
+	for (auto *remain: remaining)
+		if (!remain->succ_back_edge || !has_element(remaining, remain->succ_back_edge))
+			split_loop_inner_outer(remain, back_edge, back_edge_candidates, outer_dominated);
+}
+
+void CFGStructurizer::filter_outer_idom_candidates(Vector<CFGNode *> &outer_idom)
+{
+	// Filter out outer_idom if it's actually dominated by another candidate.
+	// It would break level analysis, since they depend on dominance frontiers to work as expected.
+
+	for (auto itr = outer_idom.begin(); itr != outer_idom.end(); )
+	{
+		bool has_other_dominator = false;
+		for (auto &other : outer_idom)
+		{
+			if (other != *itr && other->dominates(*itr))
+			{
+				has_other_dominator = true;
 				break;
 			}
 		}
 
-		if (has_uninitialized_path)
+		if (has_other_dominator)
 		{
-			auto &builder = module.get_builder();
-			builder.addGlobalVariableZeroInitializer(var_id);
+			*itr = outer_idom.back();
+			outer_idom.pop_back();
+		}
+		else
+		{
+			++itr;
 		}
 	}
 }
 
-Vector<IncomingValue>::const_iterator CFGStructurizer::find_incoming_value(
-	const CFGNode *frontier_pred, const Vector<IncomingValue> &incoming)
+void CFGStructurizer::analyze_ssa_variable_access()
 {
-	// Find the incoming block which dominates frontier_pred and has the lowest post visit order.
-	// There are cases where two or more blocks dominate, but we want the most immediate dominator.
-	auto candidate = incoming.end();
-
-	for (auto itr = incoming.begin(); itr != incoming.end(); ++itr)
+	for (auto *node : forward_post_visit_order)
 	{
-		auto *block = itr->block;
-		if (block->dominates(frontier_pred))
-			if (candidate == incoming.end() || block->forward_post_visit_order < candidate->block->forward_post_visit_order)
-				candidate = itr;
+		for (auto &op : node->ir.operations)
+		{
+			if ((op->op == spv::OpLoad || op->op == spv::OpStore) && (op->flags & Operation::SSALoadStore) != 0)
+			{
+				auto &mapping = ssa_variable_access[op->argument(0)];
+				if (op->op == spv::OpLoad)
+				{
+					push_back_unique(mapping.readers, node);
+					mapping.type_id = op->type_id;
+				}
+				else
+				{
+					push_back_unique(mapping.writers, node);
+				}
+			}
+		}
+	}
+}
+
+bool CFGStructurizer::path_is_purely_through_helper_blocks(CFGNode *node, CFGNode *target)
+{
+	if (target->helper)
+		return node->reaches_direct_helper(target);
+	else if (target->immediate_dominator)
+		return node->reaches_direct_helper(target->immediate_dominator);
+	else
+		return false;
+}
+
+CFGNode *CFGStructurizer::find_forward_progress_dominance_frontier(
+		CFGNode *node, CFGNode *reader_idom, bool allow_user_blocks_on_path_to_frontier)
+{
+	CFGNode *candidate = nullptr;
+
+	for (auto *df : node->dominance_frontier)
+	{
+		// Any frontier we ponder must never be a user block.
+		if (!df->helper)
+			continue;
+
+		// Find at least one path from node to frontier that does not execute user blocks.
+		bool allow = allow_user_blocks_on_path_to_frontier || path_is_purely_through_helper_blocks(node, df);
+		if (allow && !path_is_purely_through_helper_blocks(df, reader_idom))
+			allow = false;
+
+		if (allow)
+		{
+			// Need to have one unique candidate, otherwise the algorithm is not working as intended.
+			if (candidate)
+				return nullptr;
+			else
+				candidate = df;
+		}
 	}
 
 	return candidate;
 }
 
-void CFGStructurizer::duplicate_node(CFGNode *node)
+bool CFGStructurizer::phi_frontiers_converge(
+		const Vector<CFGNode *> &writers, CFGNode *reader_idom,
+		Vector<CFGNode *> &frontiers)
 {
-	Vector<UnorderedMap<spv::Id, spv::Id>> rewritten_ids;
-	assert(node->ir.terminator.type == Terminator::Type::Branch || node->ir.terminator.type == Terminator::Type::Condition);
-	assert(node->pred.size() >= 2);
-	assert(std::all_of(node->succ.begin(), node->succ.end(), [node](const CFGNode *succ) { return !node->dominates(succ); }));
+	auto path = writers;
+	bool progress = true;
 
-	auto node_succs = node->succ;
-
-	Vector<CFGNode *> break_blocks(node->pred.size());
-	rewritten_ids.resize(node->pred.size());
-
-	auto tmp_pred = node->pred;
-	for (size_t i = 0, n = tmp_pred.size(); i < n; i++)
+	while (progress)
 	{
-		auto *pred = tmp_pred[i];
-		auto &remap = rewritten_ids[i];
-
-		// First, rewrite PHI inputs.
-		// Since we only have one pred now, we can resolve PHIs directly.
-		auto *block = pool.create_helper_node();
-		block->interposing = true;
-		block->name = node->name + ".dup." + pred->name;
-
-		block->immediate_post_dominator = node->immediate_post_dominator;
-		block->immediate_dominator = pred;
-
-		pred->idom_children.push_back(block);
-		pred->retarget_branch_pre_traversal(node, block);
-
-		for (auto *succ : node_succs)
-			block->add_branch(succ);
-
-		for (auto &phi : node->ir.phi)
+		progress = false;
+		for (auto itr = path.begin(); itr != path.end(); )
 		{
-			auto itr = find_incoming_value(pred, phi.incoming);
-			assert(itr != phi.incoming.end());
-			remap[phi.id] = itr->id;
-		}
+			auto *node = *itr;
 
-		UnorderedSet<spv::Id> remove_decoration_ids;
-
-		for (auto *op : node->ir.operations)
-		{
-			auto *dup_op = duplicate_op(op, remap);
-
-			bool nocontract = module.get_builder().hasDecoration(op->id, spv::DecorationNoContraction);
-			if (nocontract)
+			if (node->dominates(reader_idom))
 			{
-				remove_decoration_ids.insert(op->id);
-				module.get_builder().addDecoration(dup_op->id, spv::DecorationNoContraction);
-			}
-
-			bool fpmode = module.get_builder().hasDecoration(op->id, spv::DecorationFPFastMathMode);
-			if (fpmode)
-			{
-				// Reciprocals should always be allowed.
-				// Should not be needed, but some drivers might get confused if it's not set on an fdiv.
-				remove_decoration_ids.insert(op->id);
-				module.get_builder().addDecoration(dup_op->id, spv::DecorationFPFastMathMode,
-				                                   spv::FPFastMathModeAllowRecipMask);
-			}
-
-			block->ir.operations.push_back(dup_op);
-		}
-
-		module.get_builder().removeDecorations(remove_decoration_ids);
-
-		block->ir.terminator.type = node->ir.terminator.type;
-		block->ir.terminator.direct_block = node->ir.terminator.direct_block;
-		block->ir.terminator.true_block = node->ir.terminator.true_block;
-		block->ir.terminator.false_block = node->ir.terminator.false_block;
-		if (node->ir.terminator.conditional_id)
-		{
-			block->ir.terminator.conditional_id =
-				get_remapped_id_for_duplicated_block(node->ir.terminator.conditional_id, remap);
-		}
-
-		break_blocks[i] = block;
-	}
-
-	assert(node->pred.empty());
-
-	// Finally, look at succ. If it takes PHI inputs from node, we'll have to rewrite the PHIs.
-	// We know that node does not dominate succ,
-	// so succ cannot use any SSA variables node generated directly
-	// without using PHI nodes.
-
-	// We might have placed ladders in between so that we need to fixup PHI later than just plain succ.
-	// Chase down the chain and replace all PHIs.
-
-	// First, collect all the succs that we are supposed to examine.
-	// The list should also include succ_back_edge because it is not in the succ chain after recompute_cfg.
-	Vector<CFGNode *> succs;
-	for (auto *succ : node_succs)
-	{
-		while (succ)
-		{
-			if (succ->succ_back_edge)
-				succs.push_back(succ->succ_back_edge);
-			succs.push_back(succ);
-			if (succ->succ.size() == 1)
-				succ = succ->succ.front();
-			else
-				succ = nullptr;
-		}
-	}
-
-	for (auto *succ : succs)
-	{
-		for (auto &phi : succ->ir.phi)
-		{
-			// Find incoming ID from the block we're splitting up.
-			auto incoming_itr = std::find_if(phi.incoming.begin(), phi.incoming.end(), [&](const IncomingValue &incoming) {
-				return incoming.block == node;
-			});
-
-			if (incoming_itr != phi.incoming.end())
-			{
-				spv::Id incoming_from_node = incoming_itr->id;
-				phi.incoming.erase(incoming_itr);
-
-				for (size_t i = 0, n = tmp_pred.size(); i < n; i++)
+				// We might be strictly dominating another frontier, in which case we can eliminate this block.
+				bool dominates_other_frontier = false;
+				for (auto *front : frontiers)
 				{
-					auto &remap = rewritten_ids[i];
-					phi.incoming.push_back({ break_blocks[i], get_remapped_id_for_duplicated_block(incoming_from_node, remap) });
+					if (node != front && node->dominates(front))
+					{
+						dominates_other_frontier = true;
+						break;
+					}
+				}
+
+				if (dominates_other_frontier)
+				{
+					*itr = path.back();
+					path.pop_back();
+				}
+				else
+				{
+					// This is a candidate. Keep it around and hope it is the only remaining block.
+					++itr;
+				}
+			}
+			else
+			{
+				// There must be one code path that only traverses through helper blocks.
+				// Once we've written an SSA variable, we only consider paths
+				// that can reach reader_idom without traversing through user blocks.
+				// If SSA dominance is broken, this may not hold since there may be user code in between,
+				// but we're okay using OpVariable in that case.
+				// In first pass, allow non-helper code before reaching DF. After that, we must never execute user nodes on the way.
+				auto *df = find_forward_progress_dominance_frontier(node, reader_idom,
+				                                                    has_element(writers, node));
+
+#ifdef PHI_DEBUG
+				LOGI("Forward progress DF %s -> %s = %s\n",
+				     node->name.c_str(),
+				     reader_idom->name.c_str(), df ? df->name.c_str() : "null");
+#endif
+
+				if (has_element(frontiers, df))
+				{
+					// Already seen it, collapse.
+					*itr = path.back();
+					path.pop_back();
+				}
+				else if (df)
+				{
+					// New block, keep going.
+					*itr = df;
+					progress = true;
+					frontiers.push_back(df);
+				}
+				else
+				{
+					// Not making forward progress. Shouldn't normally happen, but bail if we do.
+					// Can keep the OpVariable if need be.
+					return false;
 				}
 			}
 		}
 	}
-}
 
-void CFGStructurizer::prune_dead_preds()
-{
-	// We do not want to see unreachable preds.
-	// Having a pred means we need to map it to an incoming value when dealing with PHI.
-	for (auto *node : forward_post_visit_order)
-	{
-		auto itr = std::remove_if(node->pred.begin(), node->pred.end(),
-		                          [&](const CFGNode *node) { return reachable_nodes.count(node) == 0; });
-		node->pred.erase(itr, node->pred.end());
-	}
-}
+	bool valid = !frontiers.empty() && path.size() == 1 && path.front()->dominates(reader_idom);
 
-static void rewrite_consumed_ids(IRBlock &ir, spv::Id from, spv::Id to)
-{
-	for (auto *op : ir.operations)
+	if (valid)
 	{
-		for (unsigned i = 0; i < op->num_arguments(); i++)
+		// Resolve frontiers top to bottom.
+		std::sort(frontiers.begin(), frontiers.end(), [](const CFGNode *a, const CFGNode *b)
 		{
-			if (!op->argument_is_literal(i))
-				if (op->argument(i) == from)
-					op->set_argument(i, to);
-		}
-	}
-
-	if (ir.terminator.conditional_id == from)
-		ir.terminator.conditional_id = to;
-	if (ir.terminator.return_value == from)
-		ir.terminator.return_value = to;
-}
-
-void CFGStructurizer::fixup_loop_header_undef_phis()
-{
-	auto &builder = module.get_builder();
-
-	recompute_cfg();
-
-	// If the incoming value to the loop is undef, something is deeply wrong.
-	// This is almost a guarantee that we will consume the value as undef, causing breakage in the wild.
-	// Observed in Dune.
-	for (auto *node : forward_post_visit_order)
-	{
-		if (!node->pred_back_edge)
-			continue;
-
-		for (auto &phi : node->ir.phi)
-			for (auto &incoming : phi.incoming)
-				if (incoming.block != node && incoming.block->dominates(node))
-					if (const auto *inst = builder.getInstruction(incoming.id))
-						if (inst->getOpCode() == spv::OpUndef)
-							incoming.id = builder.makeNullConstant(phi.type_id);
-	}
-}
-
-static bool type_class_is_opaque(spv::Op type_op)
-{
-	return type_op == spv::OpTypeImage || type_op == spv::OpTypeSampler ||
-	       type_op == spv::OpTypeAccelerationStructureKHR;
-}
-
-void CFGStructurizer::fixup_broken_value_dominance()
-{
-	struct Origin
-	{
-		CFGNode *node;
-		spv::Id type_id;
-		const Operation *rematerialize_op;
-	};
-
-	UnorderedMap<spv::Id, Origin> origin;
-	UnorderedMap<spv::Id, Vector<CFGNode *>> id_to_non_local_consumers;
-
-	// First, scan through all blocks and figure out which block creates an ID.
-	for (auto *node : forward_post_visit_order)
-	{
-		for (auto *op : node->ir.operations)
-		{
-			// OpVariable is always hoisted to function entry or above.
-			// It can never not have dominance relationship.
-			if (op->op != spv::OpVariable && op->id)
-				origin[op->id] = { node, op->type_id, op->op == spv::OpSampledImage ? op : nullptr };
-		}
-
-		for (auto &phi : node->ir.phi)
-			origin[phi.id] = { node, phi.type_id, nullptr };
-	}
-
-	const auto sort_unique_node_vector = [](Vector<CFGNode *> &nodes) {
-		// Fixup nodes in order.
-		std::sort(nodes.begin(), nodes.end(), [](const CFGNode *a, const CFGNode *b) -> bool {
 			return a->forward_post_visit_order > b->forward_post_visit_order;
 		});
-		nodes.erase(std::unique(nodes.begin(), nodes.end()), nodes.end());
-	};
 
-	const auto mark_node_value_access = [&](CFGNode *node, spv::Id id) {
-		auto origin_itr = origin.find(id);
-		if (origin_itr == origin.end())
-			return;
+		// The final frontier must dominate reader.
+		valid = frontiers.back()->dominates(reader_idom);
+	}
+	return valid;
+}
 
-		auto *origin_node = origin_itr->second.node;
-		if (!origin_node->dominates(node) || (origin_itr->second.rematerialize_op && node != origin_node))
-		{
-			// We have a problem. Mark that we need to rewrite a certain variable.
-			id_to_non_local_consumers[id].push_back(node);
-		}
-	};
+PHI *CFGStructurizer::insert_phi_frontiers(const Vector<CFGNode *> &frontiers, PHI &phi)
+{
+	// This is mostly a check for control flow variables where we assign a default value at the top node.
+	bool well_defined_on_all_paths = false;
+	PHI *inserted_phi = nullptr;
 
-	// Need value copy here since we might be updating node->ir.operations inline leading to iterator invalidation.
-	Vector<Operation> variable_pointer_like_operations[2];
-
-	// Now, scan through all blocks and figure out which values are consumed in different blocks.
-	for (auto *node : forward_post_visit_order)
+	for (auto &incoming : phi.incoming)
 	{
-		for (auto *op : node->ir.operations)
+		if (incoming.block->dominates(frontiers.back()))
 		{
-			for (unsigned i = 0; i < op->num_arguments(); i++)
-				if (!op->argument_is_literal(i))
-					mark_node_value_access(node, op->argument(i));
-
-			if (op->op == spv::OpLoad && type_class_is_opaque(module.get_builder().getTypeClass(op->type_id)))
-				variable_pointer_like_operations[0].push_back(*op);
-			else if (op->op == spv::OpAccessChain)
-				variable_pointer_like_operations[1].push_back(*op);
+			well_defined_on_all_paths = true;
+			break;
 		}
-
-		// Incoming PHI values are handled elsewhere by modifying the incoming block to the creating block.
-		// Ignore these kinds of usage here.
-
-		if (node->ir.terminator.conditional_id != 0)
-			mark_node_value_access(node, node->ir.terminator.conditional_id);
-		if (node->ir.terminator.return_value != 0)
-			mark_node_value_access(node, node->ir.terminator.return_value);
 	}
 
-	// First, sink any opaque objects which are accessed in unexpected blocks after CFG rewrite.
-
-	for (auto &rewrite_ordering : variable_pointer_like_operations)
+	for (auto *frontier : frontiers)
 	{
-		for (auto &variable_op : rewrite_ordering)
+		PHI frontier_phi;
+
+		if (frontier == frontiers.back())
+			frontier_phi.id = phi.id;
+		else
+			frontier_phi.id = module.allocate_id();
+
+		frontier_phi.type_id = phi.type_id;
+		frontier_phi.relaxed = phi.relaxed;
+
+		const auto find_incoming_dominator = [&](const CFGNode *node)
 		{
-			auto itr = id_to_non_local_consumers.find(variable_op.id);
-			if (itr != id_to_non_local_consumers.end())
+			auto candidate = phi.incoming.end();
+
+			for (auto itr = phi.incoming.begin(); itr != phi.incoming.end(); ++itr)
 			{
-				// We will need to sink the operation.
-				// Make sure all dependencies are also marked as used in potentially non-local block.
-
-				// Sort for deterministic output.
-				Vector<CFGNode *> local_consumers_sorted;
-				for (auto *non_local_node : itr->second)
-					local_consumers_sorted.push_back(non_local_node);
-
-				std::sort(local_consumers_sorted.begin(), local_consumers_sorted.end(),
-						  [](const CFGNode *a, const CFGNode *b) {
-							  return a->forward_post_visit_order < b->forward_post_visit_order;
-						  });
-
-				for (unsigned i = 0; i < variable_op.num_arguments(); i++)
-					if (!variable_op.argument_is_literal(i))
-						for (auto *non_local_node : local_consumers_sorted)
-							mark_node_value_access(non_local_node, variable_op.argument(i));
-
-				for (auto *non_local_node : local_consumers_sorted)
+				if (itr->block->dominates(node))
 				{
-					auto *sunk_chain = module.allocate_op();
-					*sunk_chain = variable_op;
-					sunk_chain->id = module.allocate_id();
+					if (candidate != phi.incoming.end())
+					{
+						// Conflict, need to validate.
 
-					if (module.get_builder().hasDecoration(variable_op.id, spv::DecorationNonUniform))
-						module.get_builder().addDecoration(sunk_chain->id, spv::DecorationNonUniform);
+						if (candidate->block->dominates(itr->block))
+						{
+							// This is the closer candidate. Pick itr.
+						}
+						else if (itr->block->dominates(candidate->block))
+						{
+							// We have a closer candidate already.
+							continue;
+						}
+						else
+						{
+							LOGE("Multiple dominators without dominance relationship ... ?\n");
+							abort();
+						}
+					}
 
-					auto &ops = non_local_node->ir.operations;
-					rewrite_consumed_ids(non_local_node->ir, variable_op.id, sunk_chain->id);
-					ops.insert(ops.begin(), sunk_chain);
+					candidate = itr;
+				}
+			}
+
+			return candidate;
+		};
+
+		const auto consumes_incoming_value = [&](CFGNode *incoming)
+		{
+			for (auto itr = frontiers.rbegin(); itr != frontiers.rend(); ++itr)
+			{
+				auto *later_frontier = *itr;
+				if (frontier == later_frontier)
+					break;
+
+				// If we either dominate frontier, or frontier is in the DF,
+				// we're guaranteed to dominate at least one predecessor of frontier.
+
+				// If the incoming block is a stronger block for a subsequent frontier,
+				// we have a false positive here, and we should just insert undef.
+				// We're likely resolving selection levels that have nothing to do with the target path we have in mind.
+				// If the dominance and frontier states match, we consume the incoming block.
+				// This can happen for stacked selection levels since every level dominates the subsequent level.
+				if ((incoming->dominates(later_frontier) &&
+				     !frontier->dominates(later_frontier)) ||
+				    (has_element(incoming->dominance_frontier, later_frontier) &&
+				     !has_element(frontier->dominance_frontier, later_frontier)))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		};
+
+		for (auto *pred : frontier->pred)
+		{
+			auto incoming_itr = find_incoming_dominator(pred);
+			bool has_incoming = incoming_itr != phi.incoming.end();
+
+			// Check for false positives. If this path doesn't meaningfully create a value, we use undef inputs.
+			if (has_incoming)
+				if (!well_defined_on_all_paths && !consumes_incoming_value(incoming_itr->block))
+					has_incoming  = false;
+
+			IncomingValue incoming = {};
+			incoming.block = pred;
+			incoming.id = has_incoming ? incoming_itr->id : module.get_builder().createUndefinedConstant(phi.type_id);
+			frontier_phi.incoming.push_back(incoming);
+
+#ifdef PHI_DEBUG
+			if (has_incoming)
+			{
+				LOGI("Frontier %s, pred %s, forwarding %s, value %u\n",
+				     frontier->name.c_str(),
+				     pred->name.c_str(),
+				     incoming_itr->block->name.c_str(), incoming_itr->id);
+			}
+			else
+			{
+				LOGI("Frontier %s, pred %s, undef\n",
+					 frontier->name.c_str(),
+					 pred->name.c_str());
+			}
+#endif
+		}
+
+		// It's possible all paths take the same value. Just replace the frontier with the constant instead.
+		// A loop header always needs a proper PHI since we may need to poke at it further.
+		bool degenerate_phi = frontier->pred_back_edge == nullptr;
+		for (auto &incoming : frontier_phi.incoming)
+		{
+			if (incoming.id != frontier_phi.incoming.front().id)
+			{
+				degenerate_phi = false;
+				break;
+			}
+		}
+
+		const auto is_constant = [&](spv::Id id)
+		{
+			auto *inst = module.get_builder().getInstruction(id);
+			return inst && module.get_builder().isConstantOpCode(inst->getOpCode());
+		};
+
+		if (degenerate_phi)
+			degenerate_phi = is_constant(frontier_phi.incoming.front().id);
+
+		IncomingValue frontier_incoming = {};
+		frontier_incoming.block = frontier;
+		frontier_incoming.id = frontier_phi.id;
+		if (degenerate_phi)
+			frontier_incoming.id = frontier_phi.incoming.front().id;
+
+		if (frontier == frontiers.back() && degenerate_phi)
+		{
+			// We cannot defer creating a value now. Just copy the object with new ID.
+			auto *copy_object = module.allocate_op(spv::OpCopyObject, frontier_phi.id, frontier_phi.type_id);
+			copy_object->add_id(frontier_phi.incoming.front().id);
+			frontier->ir.operations.insert(frontier->ir.operations.begin(), copy_object);
+		}
+
+		if (!degenerate_phi)
+		{
+			frontier->ir.phi.push_back(std::move(frontier_phi));
+			inserted_phi = &frontier->ir.phi.back();
+		}
+
+		phi.incoming.push_back(frontier_incoming);
+	}
+
+	return inserted_phi;
+}
+
+spv::Id CFGStructurizer::rewrite_local_variable_to_phi(spv::Id variable_id, const SSAVariableAccess &accesses,
+                                                       const Vector<CFGNode *> &frontiers,
+                                                       spv::Id back_edge_incoming_id)
+{
+	// We're good. Replace all load-store with PHI.
+	PHI phi;
+	phi.type_id = accesses.type_id;
+	phi.relaxed = module.get_builder().hasDecoration(variable_id, spv::DecorationRelaxedPrecision);
+
+	if (!accesses.readers.empty())
+	{
+		// Eliminate loads and stores.
+		auto *reader = accesses.readers.front();
+		auto itr = std::find_if(reader->ir.operations.begin(), reader->ir.operations.end(),
+		                        [&](const Operation *op)
+		                        {
+			                        return op->op == spv::OpLoad && op->argument(0) == variable_id;
+		                        });
+
+		assert(itr != reader->ir.operations.end());
+		auto *phi_load_op = *itr;
+		reader->ir.operations.erase(itr);
+		phi.id = phi_load_op->id;
+		module.get_builder().replaceNameTarget(variable_id, phi_load_op->id);
+	}
+	else
+	{
+		phi.id = module.allocate_id();
+	}
+
+	for (auto *writer : accesses.writers)
+	{
+		auto itr = std::find_if(writer->ir.operations.begin(), writer->ir.operations.end(),
+		                        [&](const Operation *op)
+		                        {
+			                        return op->op == spv::OpStore && op->argument(0) == variable_id;
+		                        });
+		assert(itr != writer->ir.operations.end());
+		auto *store_op = *itr;
+		writer->ir.operations.erase(itr);
+
+		IncomingValue incoming = {};
+		incoming.block = writer;
+		incoming.id = store_op->argument(1);
+		phi.incoming.push_back(incoming);
+	}
+
+	auto *inserted_phi = insert_phi_frontiers(frontiers, phi);
+
+	// Insert the back-edge incoming value.
+	if (back_edge_incoming_id)
+	{
+		Operation *copy_object_frontier = nullptr;
+		if (!inserted_phi)
+		{
+			assert(!frontiers.back()->ir.operations.empty());
+			copy_object_frontier = frontiers.back()->ir.operations.front();
+			assert(copy_object_frontier->id == phi.id);
+		}
+
+		assert(accesses.readers.size() == 1 && accesses.readers.front()->pred_back_edge);
+		assert(copy_object_frontier || inserted_phi);
+		assert(copy_object_frontier || inserted_phi->id == phi.id);
+		auto *header = accesses.readers.front();
+		auto *back_edge = header->pred_back_edge;
+
+		// It's possible the final frontier was placed before the loop header.
+		// In this case we may need a fixup PHI at the header that takes inserted_phi and combines with back-edge.
+		if (frontiers.back() != header)
+		{
+			PHI combined = {};
+			spv::Id pre_loop_input_id = module.allocate_id();
+
+			if (inserted_phi)
+				inserted_phi->id = pre_loop_input_id;
+			else
+				copy_object_frontier->id = pre_loop_input_id;
+
+			combined.id = phi.id;
+			combined.type_id = phi.type_id;
+			combined.relaxed = phi.relaxed;
+
+			for (auto *pred : header->pred)
+				combined.incoming.push_back({ pred, pre_loop_input_id });
+			combined.incoming.push_back({ back_edge, back_edge_incoming_id });
+
+			header->ir.phi.push_back(std::move(combined));
+		}
+		else
+		{
+			// Adjust in-place.
+			inserted_phi->incoming.push_back({ back_edge, back_edge_incoming_id });
+		}
+	}
+
+	return phi.id;
+}
+
+void CFGStructurizer::reintroduce_ssa_phi()
+{
+	// Using SSA PHI is a good way to "fix" liveness analysis issues.
+	// The fallback to use OpVariable + writing undef is ugly and looks very confusing
+	// when reading the output in SPIRV-Cross.
+
+	// Ensure stable codegen.
+	using Mapping = std::pair<uint32_t, SSAVariableAccess *>;
+	Vector<Mapping> ssa_ids;
+
+	ssa_ids.reserve(ssa_variable_access.size());
+	for (auto &id : ssa_variable_access)
+		ssa_ids.emplace_back(id.first, &id.second);
+
+	std::sort(ssa_ids.begin(), ssa_ids.end(), [](const Mapping &a, const Mapping &b)
+	{
+		return a.first < b.first;
+	});
+
+	// If we're going to use PHI, we need a simple behavior for blocks.
+	// We follow dominance frontiers of the writing blocks, and it should converge in the end
+	// to a block that dominates all uses of the variable.
+	// For loop header PHIs, we need to find convergence to back-edge, and convergence to header.
+	UnorderedSet<spv::Id> eliminated_ids;
+	Vector<CFGNode *> back_edge_frontiers;
+	Vector<CFGNode *> frontiers;
+	SSAVariableAccess pre_loop_access;
+	SSAVariableAccess back_edge_access;
+
+	for (auto &mapping : ssa_ids)
+	{
+		const auto &accesses = *mapping.second;
+		spv::Id id = mapping.first;
+		assert(!accesses.readers.empty());
+
+		CFGNode *reader_idom = accesses.readers.front();
+		for (auto *reader : accesses.readers)
+			reader_idom = CFGNode::find_common_dominator(reader_idom, reader);
+
+		// For now, don't deal with loop PHIs.
+		// Never deal with broken value dominance where there are multiple readers. Keep those as plain variables.
+		if (accesses.readers.size() > 1)
+			continue;
+
+#ifdef PHI_DEBUG
+		LOGI("Inserting phi for %s\n", accesses.readers.front()->name.c_str());
+#endif
+
+		// The final PHI node must be placed in a node that dominates reader_idom.
+		frontiers.clear();
+		back_edge_frontiers.clear();
+
+		const auto check_trivial_frontier = [](const SSAVariableAccess &access, Vector<CFGNode *> &fronts)
+		{
+			if (access.writers.size() == 1 && access.readers.size() == 1 &&
+			    access.writers.front()->dominates(access.readers.front()))
+			{
+				// Trivial PHI with single block which only really happens in fuzzer (it's legal code).
+				// Just fixup the PHI trivially.
+				fronts.push_back(access.readers.front());
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		};
+
+		if (reader_idom->pred_back_edge)
+		{
+			// Loop headers are special, since we have to resolve phis in two places.
+			// Incomings to header block, and one incoming must come from the back-edge.
+			// Fortunately, any preds that should enter the back-edge are dominated by the loop header,
+			// so we can split the analysis in two.
+			pre_loop_access.type_id = accesses.type_id;
+			pre_loop_access.writers.clear();
+			pre_loop_access.readers.clear();
+
+			back_edge_access.type_id = accesses.type_id;
+			back_edge_access.writers.clear();
+			back_edge_access.readers.clear();
+
+			for (auto *writer : accesses.writers)
+			{
+				if (reader_idom->dominates(writer))
+					back_edge_access.writers.push_back(writer);
+				else
+					pre_loop_access.writers.push_back(writer);
+			}
+
+			// Shouldn't happen, but if it does for some reason, bail ...
+			if (back_edge_access.writers.empty())
+				continue;
+
+			pre_loop_access.readers.push_back(reader_idom);
+
+			if (!check_trivial_frontier(pre_loop_access, frontiers) && !phi_frontiers_converge(pre_loop_access.writers, reader_idom, frontiers))
+				continue;
+
+			spv::Id back_edge_incoming_id;
+
+			// If there were multiple back-edges in the original code.
+			// Merging PHI for back-edges is rare.
+			bool non_trivial_back_edge =
+					back_edge_access.writers.size() > 1 ||
+					!back_edge_access.writers.front()->dominates(reader_idom->pred_back_edge);
+
+			if (non_trivial_back_edge)
+			{
+				if (!phi_frontiers_converge(back_edge_access.writers, reader_idom->pred_back_edge, back_edge_frontiers))
+					continue;
+				assert(!has_store_to_variable(reader_idom->pred_back_edge->ir.operations, id));
+				back_edge_incoming_id = rewrite_local_variable_to_phi(id, back_edge_access, back_edge_frontiers, 0);
+			}
+			else
+			{
+				auto &ops = back_edge_access.writers.front()->ir.operations;
+				auto itr = std::find_if(ops.begin(), ops.end(),
+				                        [&](const Operation *op)
+				                        {
+					                        return op->op == spv::OpStore && op->argument(0) == id;
+				                        });
+				assert(itr != ops.end());
+				auto *store_op = *itr;
+				back_edge_incoming_id = store_op->argument(1);
+				ops.erase(itr);
+			}
+
+			rewrite_local_variable_to_phi(id, pre_loop_access, frontiers, back_edge_incoming_id);
+		}
+		else
+		{
+			if (!check_trivial_frontier(accesses, frontiers) && !phi_frontiers_converge(accesses.writers, reader_idom, frontiers))
+				continue;
+			rewrite_local_variable_to_phi(id, accesses, frontiers, 0);
+		}
+
+		eliminated_ids.insert(id);
+	}
+
+	module.get_builder().removeDecorations(eliminated_ids);
+	module.get_builder().removeLocalVariables(eliminated_ids);
+}
+
+void CFGStructurizer::clamp_ssa_variable_lifetimes()
+{
+	for (auto *node : forward_post_visit_order)
+	{
+		for (auto &op : node->ir.operations)
+		{
+			if (op->op == spv::OpLoad && (op->flags & Operation::SSALoadStore) != 0)
+			{
+				// This is a PHI variable we couldn't (easily) turn back into SSA form again.
+				// If the variable partly lives inside a loop, this has a tendency to confuse compilers
+				// w.r.t. liveness if we're not very careful since if the PHI variable is not written
+				// at the loop header, there is a risk the value may have to survive through a loop iteration,
+				// which bloats register allocation.
+				// That is never the intent for SSALoadStore flagged load-stores since they were originally meant to be SSA values.
+				// Their effective lifetime starts at the innermost loop header.
+				auto *idom = node->immediate_dominator;
+				if (!idom)
+					break;
+
+				auto &access = ssa_variable_access[op->argument(0)];
+
+				assert(!access.readers.empty());
+
+				// If there are multiple readers (for e.g. SSA value dominance break),
+				// only handle this once.
+				if (access.readers.front() != node)
+					continue;
+
+				// Ensure that any undef we write dominates all uses of it.
+				for (auto *reader : access.readers)
+					if (reader != node)
+						idom = CFGNode::find_common_dominator(idom, reader);
+				for (auto *writer : access.writers)
+					idom = CFGNode::find_common_dominator(idom, writer);
+
+				auto *header = idom;
+				if (!header->pred_back_edge)
+					header = header->get_immediate_dominator_loop_header();
+
+				// Avoid false positive loop analysis. If we're dominated by a loop, but dominated by the merge block,
+				// we keep going up. We need to find the innermost loop header where we can potentially reach the back-edge.
+				while (header && header->pred_back_edge && header->ir.merge_info.merge_block->dominates(idom))
+					header = header->get_immediate_dominator_loop_header();
+
+				if (!header)
+					continue;
+
+				// It's possible the dominator already writes a PHI variable.
+				// In that case, we just skip this.
+				if (!has_store_to_variable(header->ir.operations, op->argument(0)))
+				{
+					auto *store_undef = module.allocate_op(spv::OpStore);
+					store_undef->add_id(op->argument(0));
+					store_undef->add_id(module.get_builder().createUndefinedConstant(op->type_id));
+					header->ir.operations.push_back(store_undef);
 				}
 			}
 		}
 	}
+}
 
-	// Resolve these broken PHIs by using OpVariable. It is the simplest solution, and this is a very rare case to begin with.
-	struct Rewrite
+void CFGStructurizer::analyze_levels_skippability(CFGNode *node,
+                                                  const Vector<SerializationLevel> &outer_levels,
+                                                  Vector<SerializationLevel> &levels)
+{
+	if (!levels.empty())
 	{
-		spv::Id id;
-		const Vector<CFGNode *> *consumers;
-	};
-	Vector<Rewrite> rewrites;
-	rewrites.reserve(id_to_non_local_consumers.size());
-
-	for (auto &pair : id_to_non_local_consumers)
-	{
-		sort_unique_node_vector(pair.second);
-		rewrites.push_back({ pair.first, &pair.second });
-	}
-
-	// Ensure ordering so that output remains stable.
-	std::sort(rewrites.begin(), rewrites.end(), [](const Rewrite &a, const Rewrite &b) {
-		return a.id < b.id;
-	});
-
-	for (auto &rewrite : rewrites)
-	{
-		auto &orig = origin[rewrite.id];
-
-		// We don't rely on VariablePointers, so if this comes up, we need to figure out something else.
-		// These kinds of ops are handled specially by re-creating them as needed.
-		bool rematerialized = module.get_builder().isPointerType(orig.type_id) ||
-		                      type_class_is_opaque(module.get_builder().getTypeClass(orig.type_id));
-
-		if (orig.rematerialize_op)
+		for (auto *df : node->dominance_frontier)
 		{
-			auto *rematerialize_op = module.allocate_op();
-			*rematerialize_op = *orig.rematerialize_op;
-			rematerialize_op->id = module.allocate_id();
+			// If df represents a direct continue or break in this scope, we do not have to keep executing all the levels.
+			// If this is a dominance frontier within a selection scope, we resolve it without breaks or continues as normal.
+			if (branch_requires_breaking_construct(outer_levels, df))
+				continue;
 
-			if (module.get_builder().hasDecoration(orig.rematerialize_op->id, spv::DecorationNonUniform))
-				module.get_builder().addDecoration(rematerialize_op->id, spv::DecorationNonUniform);
-
-			for (auto *consumer : *rewrite.consumers)
+			for (auto *pred : df->pred)
 			{
-				rewrite_consumed_ids(consumer->ir, rewrite.id, rematerialize_op->id);
-				consumer->ir.operations.insert(consumer->ir.operations.begin(), rematerialize_op);
+				// Only look for critical nodes inside this construct.
+				// Even if we dominate a block, it might be outside our scope for nested loops.
+				if (!node->dominates(pred))
+					continue;
+
+				// pred *can* exit the overall construct, so we must effectively skip all the way to the end if that happens.
+				// We could potentially model this as a big loop break, but ideally we don't.
+				auto *end_itr = find_latest_level_dominating_block(levels, pred);
+				if (!end_itr)
+					end_itr = levels.data() + levels.size();
+
+				for (auto *itr = levels.data(); itr != end_itr; ++itr)
+					itr->skippable = true;
 			}
 		}
-		else if (!rematerialized)
+
+		// Direct branches will either just write a path variable and branch to merge node, or keep iterating.
+		assert(node->ir.terminator.type == Terminator::Type::Condition ||
+			node->ir.terminator.type == Terminator::Type::Switch ||
+			node->pred_back_edge);
+	}
+
+	// Now, analyze if we can reach a level by skipping over previous levels.
+	// If so, we need to create a dummy skip block for all levels which could get skipped.
+	for (auto &level : levels)
+	{
+		assert(!level.paths.empty());
+
+		for (auto *path : level.paths)
 		{
-			// Invalid access chains are resolved above. We end up rewriting any non-dominated values instead.
-			spv::Id alloca_var_id = module.create_variable(spv::StorageClassFunction, orig.type_id);
+			for (auto *pred : path->pred)
+			{
+				// It's possible that we skipped across some levels to reach here.
+				// Try to deduce which level we came from.
+				auto *end_itr = find_latest_level_dominating_block(levels, pred);
+				if (!end_itr)
+					end_itr = levels.data() + levels.size();
+
+				assert(&level + 1 <= end_itr);
+
+				// Mark everything in the region skippable.
+				for (auto *itr = &level + 1; itr != end_itr; ++itr)
+					itr->skippable = true;
+			}
+		}
+
+		uint32_t num_potential_paths = level.paths.size() + level.skippable;
+		auto level_str = std::to_string(&level - levels.data());
+
+		if (num_potential_paths > 2)
+		{
+			level.path_selector_id = module.create_variable(
+				spv::StorageClassFunction, module.get_builder().makeIntType(32));
+
+			if (level.skippable)
+			{
+				// Unless we explicitly branch to a level, consider it skipped by default.
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(level.path_selector_id);
+				store_op->add_id(module.get_builder().makeIntConstant(-1));
+				node->ir.operations.push_back(store_op);
+			}
+		}
+		else if (num_potential_paths == 2)
+		{
+			level.path_selector_id = module.create_variable(
+				spv::StorageClassFunction, module.get_builder().makeBoolType());
+
+			if (level.skippable)
+			{
+				// Unless we explicitly branch to a level, consider it skipped by default.
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(level.path_selector_id);
+				store_op->add_id(module.get_builder().makeBoolConstant(false));
+				node->ir.operations.push_back(store_op);
+			}
+		}
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+		if (debug_labels && level.path_selector_id)
+		{
+			module.get_builder().addName(level.path_selector_id,
+				("sel_" + node->name + "_" + level_str.c_str()).c_str());
+		}
+#endif
+
+		level.input_node = pool.create_helper_node();
+		level.input_node->name = node->name + ".level.input." + level_str.c_str();
+
+		level.output_node = pool.create_helper_node();
+		level.output_node->name = node->name + ".level.output." + level_str.c_str();
+
+		for (auto *path: level.paths)
+			level.input_node->add_branch(path);
+		if (level.skippable || num_potential_paths > 2)
+			level.input_node->add_branch(level.output_node);
+
+		if (num_potential_paths >= 2)
+		{
+			level.input_node->ir.merge_info.merge_type = MergeType::Selection;
+			level.input_node->ir.merge_info.merge_block = level.output_node;
+
+			if (num_potential_paths > 2)
+			{
+				level.input_node->ir.terminator.type = Terminator::Type::Switch;
+
+				auto *load_op = module.allocate_op(
+					spv::OpLoad, module.allocate_id(), module.get_builder().makeIntType(32));
+				load_op->flags |= Operation::SSALoadStore;
+				load_op->add_id(level.path_selector_id);
+				level.input_node->ir.operations.push_back(load_op);
+				level.input_node->ir.terminator.conditional_id = load_op->id;
+
+				for (size_t i = 0, n = level.paths.size(); i < n; i++)
+				{
+					Terminator::Case c = {};
+					c.value = i;
+					c.node = level.paths[i];
+					level.input_node->ir.terminator.cases.push_back(c);
+				}
+
+				Terminator::Case c = {};
+				c.is_default = true;
+				c.node = level.output_node;
+				level.input_node->ir.terminator.cases.push_back(c);
+			}
+			else
+			{
+				level.input_node->ir.terminator.type = Terminator::Type::Condition;
+
+				auto *load_op = module.allocate_op(
+					spv::OpLoad, module.allocate_id(), module.get_builder().makeBoolType());
+				load_op->flags |= Operation::SSALoadStore;
+				load_op->add_id(level.path_selector_id);
+				level.input_node->ir.operations.push_back(load_op);
+				level.input_node->ir.terminator.conditional_id = load_op->id;
+
+				if (level.skippable)
+				{
+					level.input_node->ir.terminator.true_block = level.paths[0];
+					level.input_node->ir.terminator.false_block = level.output_node;
+				}
+				else
+				{
+					level.input_node->ir.terminator.true_block = level.paths[1];
+					level.input_node->ir.terminator.false_block = level.paths[0];
+				}
+			}
+		}
+		else
+		{
+			level.input_node->ir.terminator.type = Terminator::Type::Branch;
+			level.input_node->ir.terminator.direct_block = level.paths[0];
+		}
+	}
+}
+
+bool CFGStructurizer::branch_requires_redirection(const Vector<SerializationLevel> &levels, CFGNode *node)
+{
+	// Inner continues are handled through merging execution as normal.
+	return find_outer_continue_scope_for_block(node) || find_level_for_block(levels, node);
+}
+
+bool CFGStructurizer::branch_requires_breaking_construct(const Vector<SerializationLevel> &levels, CFGNode *node)
+{
+	if (find_outer_continue_scope_for_block(node))
+		return true;
+
+	if (auto *level = find_level_for_block(levels, node))
+		return level->breaking_branch != nullptr;
+	else
+		return false;
+}
+
+void CFGStructurizer::organize_levels(CFGNode *node, const Vector<CFGNode *> &children,
+                                      const Vector<SerializationLevel> &outer_levels,
+                                      Vector<SerializationLevel> &levels,
+                                      const Vector<CFGNode *> *allow_frontiers,
+                                      bool promote_children_to_frontier)
+{
+	Vector<CFGNode *> frontier_nodes;
+
+	// Only consider blocks that the header dominates and isn't already assigned to some other scope.
+	// If we're exiting a dominance relationship, those branches will be handled specially when we branch to them.
+	// Exiting means writing some path variables and potentially doing special breaks and continues
+	// if the situation calls for it.
+
+	// Used for loop exits. Make sure they are all represented by a level.
+	if (promote_children_to_frontier)
+	{
+		for (auto *child : children)
+		{
+			if (allow_frontiers && !has_element(*allow_frontiers, child))
+				continue;
+			if (branch_requires_redirection(outer_levels, child))
+				continue;
+
+			push_back_unique(frontier_nodes, child);
+		}
+	}
+
+	for (auto *child : children)
+	{
+		if (allow_frontiers && !has_element(*allow_frontiers, child))
+			continue;
+		if (branch_requires_redirection(outer_levels, child))
+			continue;
+
+		for (auto *front: child->dominance_frontier)
+		{
+			if (allow_frontiers && !has_element(*allow_frontiers, front))
+				continue;
+			if (branch_requires_redirection(outer_levels, front))
+				continue;
+
+			// Only consider new frontiers if we're the first scope to identify it.
+			// A block must only belong to one scope.
+			if (node->dominates(front))
+				push_back_unique(frontier_nodes, front);
+		}
+	}
+
+	// Any frontier node becomes a level in this dominance chain.
+	// Every level represents some kind of merge of execution.
+	std::sort(frontier_nodes.begin(), frontier_nodes.end(), [](const CFGNode *a, const CFGNode *b)
+	{
+		return a->forward_post_visit_order > b->forward_post_visit_order;
+	});
+
+	// Multiple nodes can be on the same level. This happens when there is no dominance frontier relationship
+	// and we're merging execution in multiple directions at once. Shouldn't happen often.
+	Vector<CFGNode *> level_blocks;
+
+	while (!frontier_nodes.empty())
+	{
+		auto *candidate = frontier_nodes.back();
+		frontier_nodes.pop_back();
+
+		bool ends_level = false;
+
+		for (auto *current_level_block : level_blocks)
+		{
+			// If a candidate is reachable, it must be as a frontier node.
+			// If it's not a frontier, it would be dominated and would not show up here.
+			if (has_element(candidate->dominance_frontier, current_level_block))
+			{
+				ends_level = true;
+				break;
+			}
+		}
+
+		if (ends_level)
+		{
+			levels.push_back({ std::move(level_blocks) });
+			level_blocks = { candidate };
+		}
+		else
+		{
+			level_blocks.push_back(candidate);
+		}
+	}
+
+	if (!level_blocks.empty())
+		levels.push_back({ std::move(level_blocks) });
+}
+
+CFGStructurizer::SerializeContinuation
+CFGStructurizer::traverse_routes_with_continuation(
+		Vector<SerializationLevel> &&levels,
+		size_t num_traverse_levels,
+		CFGNode *start_node, CFGNode *outer_merge)
+{
+	SerializeContinuation cont;
+
+	// All execution should have been collected at merge_node.
+	// Dispatch execution to those now.
+	for (size_t i = 0; i < num_traverse_levels; i++)
+	{
+		auto level = std::move(levels.back());
+		levels.pop_back();
+
+		// Link up level stages.
+		start_node->add_branch(level.input_node);
+		start_node->ir.terminator.type = Terminator::Type::Branch;
+		start_node->ir.terminator.direct_block = level.input_node;
+
+		// These paths should be quite shallow w.r.t. stack usage.
+		// The last level may continue on.
+		start_node = level.output_node;
+		for (auto *path : level.paths)
+		{
+			if (i + 1 == num_traverse_levels && path == level.paths.back())
+			{
+				// The last level is generally a single path that continues indefinitely can't risk recursing here.
+				cont = serialize_merge_levels_for_dominated_paths_with_continuation(path, levels, level.output_node);
+			}
+			else
+			{
+				assert(cont.kind == SerializeContinuation::Kind::None);
+				serialize_merge_levels_for_dominated_paths_recursive(path, levels, level.output_node);
+			}
+		}
+	}
+
+	link_nodes(start_node, outer_merge);
+	return cont;
+}
+
+bool CFGStructurizer::level_has_non_breaking_non_continue_path(CFGNode *succ, const SerializationLevel *level)
+{
+	// This is a continue block we're traversing from inside a loop. This is a proper continue.
+	// If the continue block is reached via a frontier, we treat it as a normal merge.
+	if (!level && succ->succ_back_edge)
+		return false;
+
+	// A loop break of some kind.
+	// If we're overwriting a branch targeting a level that is not in a different loop scope,
+	// we still need to merge control flow (and skip over code).
+	if (level && level->breaking_branch)
+		return false;
+
+	return true;
+}
+
+CFGStructurizer::SerializeContinuation
+CFGStructurizer::route_branches_with_continuation(
+	CFGNode *node,
+	const Vector<SerializationLevel> &outer_levels,
+	const Vector<SerializationLevel> &levels,
+	CFGNode *outer_merge)
+{
+	if (node->succ_back_edge)
+	{
+		// We must never merge anywhere other than the merge block.
+		outer_merge = node->succ_back_edge->ir.merge_info.merge_block;
+
+		if (node->ir.terminator.type == Terminator::Type::Condition)
+		{
+			auto *true_level = find_level_for_block(outer_levels, node->ir.terminator.true_block);
+			auto *false_level = find_level_for_block(outer_levels, node->ir.terminator.false_block);
+
+			// The path back to header will terminate traversal.
+			// The other path must be a loop exit, and will also terminate traversal,
+			// so there is no need to create a new merge scope.
+			enter_succ(node,
+					   node->ir.terminator.true_block,
+					   node->ir.terminator.false_block,
+					   node->ir.terminator.conditional_id,
+					   true_level, false_level,
+					   outer_levels, outer_merge);
+		}
+		else
+		{
+			SerializeContinuation cont;
+			cont.kind = SerializeContinuation::Kind::EnterSuccDirect;
+			cont.node = node;
+			cont.outer_levels = outer_levels;
+			cont.outer_merge = outer_merge;
+			return cont;
+		}
+
+		// Direct branches need not do anything since it can only branch backwards to header anyway.
+		return {};
+	}
+
+	if (node->ir.terminator.type == Terminator::Type::Switch)
+	{
+		// If we hit this path, we have a trivial setup.
+		assert(node->ir.merge_info.merge_type == MergeType::Selection);
+		assert(node->ir.merge_info.merge_block);
+		assert(node->dominates(node->ir.merge_info.merge_block));
+		// The merge block we found is the frontier we care about.
+		assert(levels.size() == 1 && !levels.back().skippable &&
+		       !levels.back().breaking_branch && levels.back().paths.size() == 1);
+
+		auto break_levels = outer_levels;
+		break_levels.insert(break_levels.end(), levels.begin(), levels.end());
+
+#ifndef NDEBUG
+		for (auto &c : node->ir.terminator.cases)
+		{
+			// The switch must dominate everything. At most, we can break towards the switch merge block.
+			// Or we can do a long break in some special cases, but this would only happen if we
+			// dominate the case block.
+			auto *case_level = find_level_for_block(break_levels, c.node);
+			assert(!case_level || (node->dominates(c.node) && case_level->breaking_branch) ||
+			       case_level == &break_levels.back());
+		}
+#endif
+
+		auto *merge_node = pool.create_helper_node();
+		// Reconvene execution at the merge node.
+		// This is mostly irrelevant, but it avoids special casing some other paths.
+		merge_node->name = node->name + ".merge";
+		node->ir.merge_info.merge_block = merge_node;
+
+		// We will never write to write complex path variables here, so can take easy paths.
+		Vector<CFGNode *> handled;
+		for (auto &c : node->ir.terminator.cases)
+		{
+			if (has_element(handled, c.node) || c.node == merge_node)
+				continue;
+			handled.push_back(c.node);
+			enter_succ_recursive(node, c.node, break_levels, merge_node);
+		}
+
+		// And now traverse post-merge paths.
+		SerializeContinuation cont;
+		cont.kind = SerializeContinuation::Kind::TraverseRoutes;
+		cont.levels = std::move(break_levels);
+		cont.num_traverse_levels = levels.size();
+		cont.merge_node = merge_node;
+		cont.outer_merge = outer_merge;
+		return cont;
+	}
+	else if (node->ir.terminator.type == Terminator::Type::Condition)
+	{
+		auto break_levels = outer_levels;
+		break_levels.insert(break_levels.end(), levels.begin(), levels.end());
+
+		// Be careful with back-edges.
+		// They will not see a level, but only a header.
+		// We never need to select control-flow when branching backwards, just terminate the recursion.
+		// If we're directly breaking or continuing in at least one path, we do not need selection merges.
+		auto *true_level = find_level_for_block(break_levels, node->ir.terminator.true_block);
+		auto *false_level = find_level_for_block(break_levels, node->ir.terminator.false_block);
+
+		auto true_non_trivial = level_has_non_breaking_non_continue_path(node->ir.terminator.true_block, true_level);
+		auto false_non_trivial = level_has_non_breaking_non_continue_path(node->ir.terminator.false_block, false_level);
+
+		CFGNode *merge_node = nullptr;
+		if (true_non_trivial && false_non_trivial)
+			merge_node = pool.create_helper_node();
+
+		// Cannot declare both selection merge and loop merge in same block.
+		// There is a risk that we may have to force a selection merge after resolving branches, so be conservative for now.
+		if (node->ir.merge_info.merge_type == MergeType::Loop)
+			node = create_helper_succ_block(node);
+
+		if (merge_node)
+		{
+			// Reconvene execution at the merge node.
+			assert(node->ir.merge_info.merge_type == MergeType::None);
+			node->ir.merge_info.merge_type = MergeType::Selection;
+			node->ir.merge_info.merge_block = merge_node;
+			merge_node->name = node->name + ".merge";
+		}
+		else if (true_non_trivial && node->dominates(node->ir.terminator.true_block))
+		{
+			// Technically we don't need to merge, but it makes the codegen a little neater since we can collapse scopes.
+			// Only do so if it's possible. We might not dominate the succ here.
+			assert(node->ir.merge_info.merge_type == MergeType::None);
+			node->ir.merge_info.merge_type = MergeType::Selection;
+			node->ir.merge_info.merge_block = node->ir.terminator.true_block;
+		}
+		else if (false_non_trivial && node->dominates(node->ir.terminator.false_block))
+		{
+			// Only do so if it's possible. We might not dominate the succ here.
+			assert(node->ir.merge_info.merge_type == MergeType::None);
+			node->ir.merge_info.merge_type = MergeType::Selection;
+			node->ir.merge_info.merge_block = node->ir.terminator.false_block;
+		}
+
+		if (!merge_node)
+			merge_node = outer_merge;
+
+		// Now we can either enter a path we dominate (and therefore we recursively keep structurizing),
+		// or we set path variables and stop.
+		// Execution must reconvene at the top level.
+		enter_succ(node,
+		           node->ir.terminator.true_block, node->ir.terminator.false_block,
+		           node->ir.terminator.conditional_id,
+		           true_level, false_level,
+		           break_levels, merge_node);
+
+		assert(merge_node || levels.empty());
+
+		// If this branch is a conditional continue or break, we don't need resolve any scopes.
+		if (merge_node)
+		{
+			SerializeContinuation cont;
+			cont.kind = SerializeContinuation::Kind::TraverseRoutes;
+			cont.levels = std::move(break_levels);
+			cont.num_traverse_levels = levels.size();
+			cont.merge_node = merge_node;
+			cont.outer_merge = outer_merge;
+			return cont;
+		}
+		else
+		{
+			return {};
+		}
+	}
+	else if (node->ir.terminator.type == Terminator::Type::Branch)
+	{
+		SerializeContinuation cont;
+		cont.kind = SerializeContinuation::Kind::EnterSuccDirect;
+		cont.node = node;
+		cont.outer_levels = outer_levels;
+		cont.outer_merge = outer_merge;
+		return cont;
+	}
+
+	return {};
+}
+
+void CFGStructurizer::move_interposing_nodes_into_loop(
+		CFGNode *header, const Vector<SerializationLevel> &outer_levels,
+		Vector<CFGNode *> &back_edge_candidates, Vector<CFGNode *> &outer_idom)
+{
+	// An optimization (runtime and readability).
+	// For conditional breaks or continues, the interposing nodes will be observed as loop exits,
+	// but this creates really stupid and potentially slow codegen since we now need to route through the merge block
+	// only to set some routing variables, which then need to route to other variables ...
+	// Interposing nodes never do anything that can observe maximal convergence, so it's a valid transform.
+	// Just move the interposing node into the loop and mark the idoms of interposer instead as outer_idom.
+
+	for (auto itr = outer_idom.begin(); itr != outer_idom.end(); )
+	{
+		auto *candidate = *itr;
+
+		// If the back-edge needs to interpose, we cannot do anything about that.
+		// The continue block is not allowed to keep interposers inside the loop in SPIR-V.
+		// In some extreme cases (switch blocks ...),
+		// the interposer is actually a frontier for some nodes, so need to keep it outside the loop.
+		if (candidate->interposing && candidate->immediate_dominator != header->pred_back_edge &&
+			candidate->num_forward_preds() == 1 &&
+		    has_element(back_edge_candidates, candidate->immediate_dominator))
+		{
+			assert(candidate->ir.terminator.type == Terminator::Type::Branch ||
+			       candidate->ir.terminator.type == Terminator::Type::Condition);
+			push_back_unique(back_edge_candidates, candidate);
+			*itr = outer_idom.back();
+			outer_idom.pop_back();
+
+			for (auto *succ : candidate->succ)
+				if (header->dominates(succ) && !find_level_for_block(outer_levels, succ))
+					push_back_unique(outer_idom, succ);
+
+			if (candidate->succ.size() > 1)
+			{
+				// Restart traversal if iterator may have been invalidated.
+				itr = outer_idom.begin();
+			}
+		}
+		else
+		{
+			++itr;
+		}
+	}
+}
+
+CFGStructurizer::SerializeContinuation
+CFGStructurizer::serialize_merge_levels_for_dominated_paths_with_continuation(
+		CFGNode *node, const Vector<SerializationLevel> &outer_levels, CFGNode *outer_merge)
+{
+	if (node->pred_back_edge)
+	{
+		// This is a loop header. As expected, this gets extremely painful in unstructured control flow.
+		// Split the blocks into two sets. One set that is inside the loop, and one set that is outside the loop, but we still dominate.
+		// We can exit from a loop in a way that we don't (structurally) dominate ourselves.
+		// This could mean a multi-level break or continue that needs to be resolved by punching through multiple ladders.
+		// The only saving grace is that DXIL does not allow irreducible control flow, so we don't have to ponder that hellscape fortunately.
+		Vector<CFGNode *> back_edge_candidates { node->pred_back_edge };
+		push_back_unique(back_edge_candidates, node);
+
+		Vector<CFGNode *> outer_idom;
+		split_loop_inner_outer(node, node->pred_back_edge, back_edge_candidates, outer_idom);
+		move_interposing_nodes_into_loop(node, outer_levels, back_edge_candidates, outer_idom);
+		filter_outer_idom_candidates(outer_idom);
+
+		// back_edge_candidates contains all nodes inside the construct.
+		// outer_idom contains all nodes outside the construct that we still dominate.
+		// exits contains all exits from the loop, but which we don't necessary dominate.
+		// All branches to exit must reroute to the loop's merge node.
+		// From there we dispatch control flow further.
+		Vector<SerializationLevel> in_loop_levels, out_loop_levels;
+
+		organize_levels(node, outer_idom, outer_levels, out_loop_levels, nullptr, true);
+		analyze_levels_skippability(node, outer_levels, out_loop_levels);
+
+		auto *merge_node = pool.create_helper_node();
+		merge_node->name = node->name + ".loop-merge";
+		node->ir.merge_info.merge_type = MergeType::Loop;
+		node->ir.merge_info.continue_block = node->pred_back_edge;
+		node->ir.merge_info.merge_block = merge_node;
+
+		// If an inner scope intends to directly branch here, it needs to untangle its own loop before it can branch there.
+		LoopScope scope = {};
+		scope.header_block = node;
+		scope.merge_block = node->ir.merge_info.merge_block;
+		scope.continue_block = node->ir.merge_info.continue_block;
+		loop_scopes.push_back(scope);
+
+		// Anything that exits the loop must do so through the merge node instead of inner merge.
+		// Make sure that any outer level sees a breaking branch.
+		// If there is no such break, it's reachable through the innermost break.
+		auto merge_levels = outer_levels;
+		merge_levels.insert(merge_levels.end(), out_loop_levels.begin(), out_loop_levels.end());
+		for (auto &outer_level : merge_levels)
+			if (!outer_level.breaking_branch)
+				outer_level.breaking_branch = merge_node;
+
+		organize_levels(node, node->idom_children, merge_levels, in_loop_levels, &back_edge_candidates, false);
+
+		// Inside the loop anything that reaches outside the loop must be a direct break no matter what,
+		// so we never infer skips inside the loop.
+		analyze_levels_skippability(node, merge_levels, in_loop_levels);
+
+		// Route the inner scope.
+		route_branches_recursive(node, merge_levels, in_loop_levels, merge_node);
+
+		assert(!loop_scopes.empty());
+
+		// It's possible we never visited the continue block in some cases. Force a visit now to make
+		// sure branches are re-directed to merge block properly.
+		if (!loop_scopes.back().visited_continue_block)
+			route_branches_recursive(node->ir.merge_info.continue_block, merge_levels, in_loop_levels, merge_node);
+
+		scope = loop_scopes.back();
+		loop_scopes.pop_back();
+		assert(scope.merge_block == node->ir.merge_info.merge_block);
+		assert(scope.continue_block == node->ir.merge_info.continue_block);
+		assert(scope.visited_continue_block);
+
+		// We're outside the loop now, so it's not a break anymore.
+		for (auto &merge_level : merge_levels)
+			if (merge_level.breaking_branch == merge_node)
+				merge_level.breaking_branch = nullptr;
+
+		if (!loop_scopes.empty())
+			merge_node = route_loop_bypass(node, merge_node, scope.bypass_break_id, scope.bypass_continue_id, loop_scopes.back());
+		else
+			assert(scope.bypass_break_id == 0 && scope.bypass_continue_id == 0);
+
+		// Resolve the outer branches. Do not use route_branches here since we've already dealt with branches.
+		// We're effectively starting routing from the merge node now.
+		SerializeContinuation cont;
+		cont.kind = SerializeContinuation::Kind::TraverseRoutes;
+		cont.levels = std::move(merge_levels);
+		cont.num_traverse_levels = out_loop_levels.size();
+		cont.merge_node = merge_node;
+		cont.outer_merge = outer_merge;
+		return cont;
+	}
+	else
+	{
+		Vector<SerializationLevel> levels;
+		organize_levels(node, node->idom_children, outer_levels, levels, nullptr, false);
+		analyze_levels_skippability(node, outer_levels, levels);
+
+		// Avoid deep recursion if possible. Stacked if/else would potentially trigger unbounded stack usage.
+		SerializeContinuation cont;
+		cont.kind = SerializeContinuation::Kind::RouteBranches;
+		cont.node = node;
+		cont.outer_levels = outer_levels;
+		cont.levels = std::move(levels);
+		cont.outer_merge = outer_merge;
+		return cont;
+	}
+}
+
+CFGNode *CFGStructurizer::route_conditional_break(CFGNode *node, spv::Id var_id, CFGNode *break_candidate, const char *tag)
+{
+	assert(var_id != 0);
+
+	auto *load_op = module.allocate_op(spv::OpLoad, module.allocate_id(), module.get_builder().makeBoolType());
+	load_op->flags |= Operation::SSALoadStore;
+	load_op->add_id(var_id);
+	node->ir.operations.push_back(load_op);
+
+	auto *merge = pool.create_helper_node();
+	merge->name = node->name + tag;
+
+	node->add_branch(break_candidate);
+	node->add_branch(merge);
+
+	node->ir.terminator.true_block = break_candidate;
+	node->ir.terminator.false_block = merge;
+	node->ir.terminator.type = Terminator::Type::Condition;
+	node->ir.terminator.conditional_id = load_op->id;
+	node->ir.merge_info.merge_type = MergeType::Selection;
+	node->ir.merge_info.merge_block = merge;
+
+	return merge;
+}
+
+CFGNode *CFGStructurizer::route_loop_bypass(CFGNode *header, CFGNode *merge,
+                                            spv::Id bypass_break_id, spv::Id bypass_continue_id,
+                                            const LoopScope &outer_scope)
+{
+	if (bypass_break_id != 0)
+	{
+		if (!has_store_to_variable(header->ir.operations, bypass_break_id))
+		{
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
+			store_op->add_id(bypass_break_id);
+			store_op->add_id(module.get_builder().makeBoolConstant(false));
+			header->ir.operations.push_back(store_op);
+		}
+
+		merge = route_conditional_break(merge, bypass_break_id, outer_scope.merge_block, ".post-break");
+	}
+
+	if (bypass_continue_id != 0)
+	{
+		if (!has_store_to_variable(header->ir.operations, bypass_continue_id))
+		{
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
+			store_op->add_id(bypass_continue_id);
+			store_op->add_id(module.get_builder().makeBoolConstant(false));
+			header->ir.operations.push_back(store_op);
+		}
+
+		merge = route_conditional_break(merge, bypass_continue_id, outer_scope.continue_block, ".post-continue");
+	}
+	return merge;
+}
+
+CFGStructurizer::LoopScope *CFGStructurizer::find_scope_for_block(CFGNode *node)
+{
+	for (auto &scope : loop_scopes)
+		if (scope.merge_block == node || scope.continue_block == node || scope.header_block == node)
+			return &scope;
+
+	return nullptr;
+}
+
+bool CFGStructurizer::is_backwards_branch(CFGNode *node) const
+{
+	for (auto &scope : loop_scopes)
+		if (scope.header_block == node)
+			return true;
+
+	return false;
+}
+
+CFGStructurizer::LoopScope *CFGStructurizer::find_outer_continue_scope_for_block(CFGNode *node)
+{
+	auto *scope = find_scope_for_block(node);
+	if (scope && scope == &loop_scopes.back())
+		scope = nullptr;
+	return scope && scope->continue_block == node ? scope : nullptr;
+}
+
+bool CFGStructurizer::resolve_complex_breaks(CFGNode *from, CFGNode *rerouted_succ)
+{
+	bool has_side_effect = false;
+
+	// Check if we're doing multiple levels of loops.
+	// Need to setup routing variables that are run after the loop(s) merge.
+	auto *scope = find_scope_for_block(rerouted_succ);
+	if (scope && scope != &loop_scopes.back())
+	{
+		auto *end_itr = loop_scopes.data() + loop_scopes.size();
+		assert(scope != end_itr);
+
+		if (scope->continue_block == rerouted_succ)
+		{
+			scope++;
+			if (scope->bypass_continue_id == 0)
+				scope->bypass_continue_id = module.create_variable(spv::StorageClassFunction, module.get_builder().makeBoolType());
+
+			if (from->succ_back_edge && !has_store_to_variable(from->succ_back_edge->ir.operations, scope->bypass_continue_id))
+			{
+				// If we don't take the branch after all, we will potentially falsely retain the SSA value.
+				// Clear the write in loop header.
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(scope->bypass_continue_id);
+				store_op->add_id(module.get_builder().makeBoolConstant(false));
+				from->succ_back_edge->ir.operations.insert(from->succ_back_edge->ir.operations.begin(), store_op);
+			}
 
 			auto *store_op = module.allocate_op(spv::OpStore);
 			store_op->flags |= Operation::SSALoadStore;
-			store_op->add_id(alloca_var_id);
-			store_op->add_id(rewrite.id);
-			orig.node->ir.operations.push_back(store_op);
+			store_op->add_id(scope->bypass_continue_id);
+			store_op->add_id(module.get_builder().makeBoolConstant(true));
+			from->ir.operations.push_back(store_op);
+			has_side_effect = true;
+		}
 
-			// For every non-local node which consumes ID, we load from the alloca'd variable instead.
-			// Rewrite all ID references to point to the loaded value.
-			for (auto *consumer : *rewrite.consumers)
+		scope++;
+
+		for (; scope != end_itr; scope++)
+		{
+			if (scope->bypass_break_id == 0)
+				scope->bypass_break_id = module.create_variable(spv::StorageClassFunction, module.get_builder().makeBoolType());
+
+			if (from->succ_back_edge && !has_store_to_variable(from->succ_back_edge->ir.operations, scope->bypass_break_id))
 			{
-				spv::Id loaded_id = module.allocate_id();
-				auto *load_op = module.allocate_op(spv::OpLoad, loaded_id, orig.type_id);
-				load_op->flags |= Operation::SSALoadStore;
-				load_op->add_id(alloca_var_id);
-
-				rewrite_consumed_ids(consumer->ir, rewrite.id, loaded_id);
-
-				consumer->ir.operations.insert(consumer->ir.operations.begin(), load_op);
+				// If we don't take the branch after all, we will potentially falsely retain the SSA value.
+				// Clear the write in loop header.
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(scope->bypass_break_id);
+				store_op->add_id(module.get_builder().makeBoolConstant(false));
+				from->succ_back_edge->ir.operations.insert(from->succ_back_edge->ir.operations.begin(), store_op);
 			}
-		}
-	}
-}
 
-void CFGStructurizer::compute_dominance_frontier()
-{
-	for (auto *node : forward_post_visit_order)
-		node->dominance_frontier.clear();
-	for (auto *node : forward_post_visit_order)
-		recompute_dominance_frontier(node);
-}
-
-void CFGStructurizer::compute_post_dominance_frontier()
-{
-	for (auto *node : backward_post_visit_order)
-		node->post_dominance_frontier.clear();
-	for (auto *node : backward_post_visit_order)
-		recompute_post_dominance_frontier(node);
-}
-
-void CFGStructurizer::build_immediate_dominators()
-{
-	for (auto i = forward_post_visit_order.size(); i; i--)
-	{
-		auto *block = forward_post_visit_order[i - 1];
-		block->recompute_immediate_dominator();
-
-		if (limited_control_flow_analysis && block->immediate_dominator && block->immediate_dominator != block)
-			block->immediate_dominator->idom_children.push_back(block);
-	}
-}
-
-void CFGStructurizer::build_immediate_post_dominators()
-{
-	for (auto i = backward_post_visit_order.size(); i; i--)
-	{
-		auto *block = backward_post_visit_order[i - 1];
-		block->recompute_immediate_post_dominator();
-	}
-}
-
-void CFGStructurizer::reset_traversal()
-{
-	reachable_nodes.clear();
-	forward_post_visit_order.clear();
-	backward_post_visit_order.clear();
-
-	pool.for_each_node([](CFGNode &node) {
-		node.visited = false;
-		node.backward_visited = false;
-		node.traversing = false;
-		node.immediate_dominator = nullptr;
-		node.immediate_post_dominator = nullptr;
-		node.idom_children.clear();
-		node.fake_pred.clear();
-		node.fake_succ.clear();
-		node.reachable_direct_helpers.clear();
-
-		if (node.succ_back_edge)
-			node.succ.push_back(node.succ_back_edge);
-		if (node.pred_back_edge)
-			node.pred.push_back(node.pred_back_edge);
-		node.succ_back_edge = nullptr;
-		node.pred_back_edge = nullptr;
-	});
-}
-
-void CFGStructurizer::backwards_visit()
-{
-	Vector<CFGNode *> leaf_nodes;
-
-	// Traverse from leaf nodes, back through their preds instead.
-	// Clear out some state set by forward visit earlier.
-	for (auto *node : forward_post_visit_order)
-	{
-		node->backward_visited = false;
-		node->traversing = false;
-
-		// For loops which can only exit from their header block,
-		// certain loops will be unreachable when doing a backwards traversal.
-		// Add fake branches so that backwards traversal still picks them up.
-		if (node->succ.empty() && !node->succ_back_edge)
-			leaf_nodes.push_back(node);
-		else if (node->succ.empty() && node->succ_back_edge && node->succ_back_edge->ir.merge_info.merge_block)
-			node->add_fake_branch(node->succ_back_edge->ir.merge_info.merge_block);
-	}
-
-	// Ensure stable shader caches compared to the recursive code.
-	const auto visit_nodes = [this](const Vector<CFGNode *> &nodes)
-	{
-		for (auto itr = nodes.rbegin(); itr != nodes.rend(); ++itr)
-			visit_stack.push_back(*itr);
-
-		recursive_visit(nullptr,
-		                [this](CFGNode *node) { backwards_visit_push(node); },
-		                [this](CFGNode *node) { backwards_visit_resolve(node); },
-		                [](CFGNode *node) { return node->backward_visited; });
-	};
-
-	visit_nodes(leaf_nodes);
-
-	exit_block->backward_post_visit_order = backward_post_visit_order.size();
-	exit_block->immediate_post_dominator = exit_block;
-	exit_block->backward_visited = true;
-	for (auto *leaf : leaf_nodes)
-		leaf->immediate_post_dominator = exit_block;
-}
-
-void CFGStructurizer::backwards_visit_push(CFGNode *node)
-{
-	node->backward_visited = true;
-	node->traversing = true;
-	for (auto *pred : node->pred)
-		push_visit_stack_backwards(pred);
-	for (auto *pred : node->fake_pred)
-		push_visit_stack_backwards(pred);
-}
-
-void CFGStructurizer::backwards_visit_resolve(CFGNode *entry)
-{
-	entry->backward_post_visit_order = backward_post_visit_order.size();
-	backward_post_visit_order.push_back(entry);
-}
-
-void CFGStructurizer::visit_for_back_edge_analysis_push(CFGNode *entry)
-{
-	forward_visit_push(entry);
-	// Just keep track of visit ordering somehow. Reuse visit order here.
-	entry->backward_post_visit_order = backward_post_visit_order.size();
-	backward_post_visit_order.push_back(entry);
-}
-
-void CFGStructurizer::visit_for_back_edge_analysis_resolve(CFGNode *entry)
-{
-	for (auto *succ : entry->succ)
-	{
-		// Reuse the existing vector to keep track of back edges.
-		if (succ->traversing)
-		{
-			succ->fake_pred.push_back(entry);
-			// We might have two different back-edges.
-			entry->fake_succ.push_back(succ);
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
+			store_op->add_id(scope->bypass_break_id);
+			store_op->add_id(module.get_builder().makeBoolConstant(true));
+			from->ir.operations.push_back(store_op);
+			has_side_effect = true;
 		}
 	}
 
-	// After we get here, we must have observed all back edges.
-	// If there is more than one back edge, merge them.
-	if (entry->fake_pred.size() >= 2)
-	{
-		auto *new_back_edge = pool.create_helper_node();
-		new_back_edge->name = entry->name + ".back-edge-merge";
-		for (auto *n : entry->fake_pred)
-			n->retarget_branch_pre_traversal(entry, new_back_edge);
-		new_back_edge->succ.push_back(entry);
-		new_back_edge->ir.terminator.type = Terminator::Type::Branch;
-		new_back_edge->ir.terminator.direct_block = entry;
-		new_back_edge->add_branch(entry);
-	}
-
-	if (entry->fake_succ.size() >= 2)
-	{
-		// A node cannot have more than one back-edge in our implementation. Add interposing blocks to disambiguate.
-		// Only the innermost node should remain.
-		std::sort(entry->fake_succ.begin(), entry->fake_succ.end(), [](const CFGNode *a, const CFGNode *b)
-		{
-			return a->backward_post_visit_order < b->backward_post_visit_order;
-		});
-
-		entry->fake_succ.pop_back();
-		Vector<CFGNode *> rewrites;
-		std::swap(rewrites, entry->fake_succ);
-
-		for (auto *succ : rewrites)
-		{
-			auto *new_back_edge = pool.create_helper_node();
-			entry->retarget_branch_pre_traversal(succ, new_back_edge);
-
-			auto itr = std::find(succ->fake_pred.begin(), succ->fake_pred.end(), entry);
-			assert(itr != succ->fake_pred.end());
-			*itr = new_back_edge;
-
-			new_back_edge->name = entry->name + ".long-edge";
-			new_back_edge->add_branch(succ);
-			new_back_edge->ir.terminator.type = Terminator::Type::Branch;
-			new_back_edge->ir.terminator.direct_block = succ;
-		}
-	}
+	return has_side_effect;
 }
 
-void CFGStructurizer::push_visit_stack(CFGNode *node)
+bool CFGStructurizer::resolve_direct_path(CFGNode *from, CFGNode *succ, const SerializationLevel *level)
 {
-	if (!node->visited)
-	{
-		visit_stack.push_back(node);
-		reachable_nodes.insert(node);
-	}
-}
+	bool has_side_effect = false;
 
-void CFGStructurizer::push_visit_stack_backwards(CFGNode *node)
-{
-	if (!node->backward_visited)
-		visit_stack.push_back(node);
-}
-
-void CFGStructurizer::forward_visit_resolve(CFGNode *entry)
-{
-	for (auto *succ : entry->succ)
+	for (size_t i = 0, n = (level ? level->paths.size() : 0); i < n; i++)
 	{
-		if (succ->traversing)
+		if (level->paths[i] != succ)
+			continue;
+
+		has_side_effect = resolve_complex_breaks(from, level->breaking_branch ? level->breaking_branch : succ);
+
+		uint32_t num_paths = level->paths.size() + level->skippable;
+
+		if (num_paths >= 3)
 		{
-			// For now, only support one back edge.
-			assert(experimental_unstructured_flow || !entry->succ_back_edge || entry->succ_back_edge == succ);
-			entry->succ_back_edge = succ;
-
-			// For now, only support one back edge.
-			// DXIL seems to obey this.
-			// For unstructured flow, we don't really do any passes, so just yolo it.
-			assert(experimental_unstructured_flow || !succ->pred_back_edge || succ->pred_back_edge == entry);
-			succ->pred_back_edge = entry;
-		}
-	}
-
-	// Any back edges need to be handled specifically, only keep forward edges in succ/pred lists.
-	// This avoids any infinite loop scenarios and needing to special case a lot of checks.
-	if (entry->succ_back_edge)
-	{
-		auto itr = std::find(entry->succ.begin(), entry->succ.end(), entry->succ_back_edge);
-		if (itr != entry->succ.end())
-			entry->succ.erase(itr);
-	}
-
-	if (entry->pred_back_edge)
-	{
-		auto itr = std::find(entry->pred.begin(), entry->pred.end(), entry->pred_back_edge);
-		if (itr != entry->pred.end())
-			entry->pred.erase(itr);
-	}
-
-	entry->forward_post_visit_order = forward_post_visit_order.size();
-	forward_post_visit_order.push_back(entry);
-}
-
-void CFGStructurizer::forward_visit_push(CFGNode *node)
-{
-	node->visited = true;
-	node->traversing = true;
-	for (auto *succ : node->succ)
-		push_visit_stack(succ);
-}
-
-template <typename PushOp, typename ResolveOp, typename VisitedOp>
-void CFGStructurizer::recursive_visit(CFGNode *node,
-                                      const PushOp &push_op, const ResolveOp &resolve_op,
-                                      const VisitedOp &is_visited_op)
-{
-	if (node)
-		push_visit_stack(node);
-
-	bool keep_iterating;
-
-	while (!visit_stack.empty())
-	{
-		// Fan-out.
-		do
-		{
-			CFGNode *to_visit = visit_stack.back();
-			size_t last_visited_size = visit_stack.size();
-
-			push_op(to_visit);
-
-			keep_iterating = last_visited_size != visit_stack.size();
-			// Reverse to avoid nuking shader caches. The first recursion entry will be picked first.
-			if (keep_iterating)
-				std::reverse(visit_stack.begin() + last_visited_size, visit_stack.end());
-		} while (keep_iterating);
-
-		// Resolve the stack.
-		while (!visit_stack.empty() && is_visited_op(visit_stack.back()))
-		{
-			auto *node = visit_stack.back();
-			if (node->traversing)
+			if (from->succ_back_edge && !has_store_to_variable(from->succ_back_edge->ir.operations, level->path_selector_id))
 			{
-				resolve_op(node);
-				node->traversing = false;
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(level->path_selector_id);
+
+				// If the level is not skippable, all paths leading to the target dispatch node must write a proper value.
+				// Use undef phi here if the loop header cannot take the branch to avoid false loop variable.
+				store_op->add_id(
+					level->skippable
+						? module.get_builder().makeIntConstant(-1)
+						: module.get_builder().createUndefinedConstant(module.get_builder().makeIntType(32)));
+				from->succ_back_edge->ir.operations.insert(from->succ_back_edge->ir.operations.begin(), store_op);
 			}
-			visit_stack.pop_back();
+
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
+			store_op->add_id(level->path_selector_id);
+			store_op->add_id(module.get_builder().makeIntConstant(i));
+
+			from->ir.operations.push_back(store_op);
+			has_side_effect = true;
+			break;
+		}
+		else if (num_paths == 2)
+		{
+			if (from->succ_back_edge && !has_store_to_variable(from->succ_back_edge->ir.operations, level->path_selector_id))
+			{
+				auto *store_op = module.allocate_op(spv::OpStore);
+				store_op->flags |= Operation::SSALoadStore;
+				store_op->add_id(level->path_selector_id);
+
+				// If the level is not skippable, all paths leading to the target dispatch node must write a proper value.
+				// Use undef phi here if the loop header cannot take the branch to avoid false loop variable.
+				store_op->add_id(
+					level->skippable
+						? module.get_builder().makeBoolConstant(false)
+						: module.get_builder().createUndefinedConstant(module.get_builder().makeBoolType()));
+				from->succ_back_edge->ir.operations.insert(from->succ_back_edge->ir.operations.begin(), store_op);
+			}
+
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
+			store_op->add_id(level->path_selector_id);
+
+			bool path_is_true = bool(i) || level->skippable;
+			store_op->add_id(module.get_builder().makeBoolConstant(path_is_true));
+
+			from->ir.operations.push_back(store_op);
+			has_side_effect = true;
+			break;
+		}
+	}
+
+	// We might be doing a complex backwards branch instead.
+	if (!level)
+		has_side_effect = resolve_complex_breaks(from, succ);
+
+	return has_side_effect;
+}
+
+CFGStructurizer::SerializeContinuation
+CFGStructurizer::enter_succ_with_continuation(
+	CFGNode *node, CFGNode *succ, const Vector<SerializationLevel> &levels, CFGNode *merge_node)
+{
+	if (node->succ_back_edge)
+		find_scope_for_block(node)->visited_continue_block = true;
+
+	auto *level = find_level_for_block(levels, succ);
+	if (level)
+	{
+		// Write path variables and leave.
+		resolve_direct_path(node, succ, level);
+		node->retarget_branch_pre_traversal(succ, level->breaking_branch ? loop_scopes.back().merge_block : merge_node);
+	}
+	else if (resolve_complex_breaks(node, succ))
+	{
+		// Could happen for direct continue to outer loop header. It won't show up as a level.
+		node->retarget_branch_pre_traversal(succ, loop_scopes.back().merge_block);
+	}
+	else if (!is_backwards_branch(succ))
+	{
+		assert(node->dominates(succ));
+		return serialize_merge_levels_for_dominated_paths_with_continuation(succ, levels, merge_node);
+	}
+
+	return {};
+}
+
+void CFGStructurizer::enter_succ(CFGNode *node, CFGNode *true_path, CFGNode *false_path, spv::Id cond,
+                                 const SerializationLevel *true_level, const SerializationLevel *false_level,
+                                 const Vector<SerializationLevel> &levels,
+                                 CFGNode *merge_node)
+{
+	if (node->succ_back_edge)
+		find_scope_for_block(node)->visited_continue_block = true;
+
+	auto *true_outer_continue = find_outer_continue_scope_for_block(true_path);
+	auto *false_outer_continue = find_outer_continue_scope_for_block(false_path);
+
+	if (!true_level && !false_level && !true_outer_continue && !false_outer_continue)
+	{
+		// It's possible that we dominate both paths, and therefore there are no associated break levels.
+		// Just walk the graph in both directions as normal.
+		// Never walk backwards though.
+		if (!is_backwards_branch(true_path))
+			serialize_merge_levels_for_dominated_paths_recursive(true_path, levels, merge_node);
+		if (!is_backwards_branch(false_path))
+			serialize_merge_levels_for_dominated_paths_recursive(false_path, levels, merge_node);
+	}
+	else if (true_level && true_level == false_level)
+	{
+		// We can be a little smarter and rewrite a selection into a direct branch with adjusted cond value.
+		auto &level = *true_level;
+		auto &builder = module.get_builder();
+
+		uint32_t num_paths = level.paths.size() + level.skippable;
+
+		// It should never happen that we get here with num_paths == 1.
+		// We already collapsed degenerate branches.
+		assert(num_paths >= 2);
+
+		if (num_paths >= 3)
+		{
+			auto true_value = std::find(level.paths.begin(), level.paths.end(), true_path) - level.paths.begin();
+			auto false_value = std::find(level.paths.begin(), level.paths.end(), false_path) - level.paths.begin();
+
+			auto *sel = module.allocate_op(spv::OpSelect, module.allocate_id(), builder.makeIntType(32));
+			sel->add_id(cond);
+			sel->add_id(builder.makeIntConstant(true_value));
+			sel->add_id(builder.makeIntConstant(false_value));
+			node->ir.operations.push_back(sel);
+
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
+			store_op->add_id(level.path_selector_id);
+			store_op->add_id(sel->id);
+			node->ir.operations.push_back(store_op);
+		}
+		else
+		{
+			auto true_value = std::find(level.paths.begin(), level.paths.end(), true_path) - level.paths.begin() + level.skippable;
+			assert(true_value < 2);
+
+			if (true_value == 0)
+			{
+				// Flip the condition.
+				auto *flip = module.allocate_op(spv::OpLogicalNot, module.allocate_id(), builder.makeBoolType());
+				flip->add_id(cond);
+				node->ir.operations.push_back(flip);
+
+				cond = flip->id;
+			}
+
+			auto *store_op = module.allocate_op(spv::OpStore);
+			store_op->flags |= Operation::SSALoadStore;
+			store_op->add_id(level.path_selector_id);
+			store_op->add_id(cond);
+			node->ir.operations.push_back(store_op);
+		}
+
+		// If we branch to same level, we must also take the same multi-break routing to get there.
+		if (level.breaking_branch)
+			resolve_complex_breaks(node, level.breaking_branch);
+
+		auto *rewrite_target = level.breaking_branch ? loop_scopes.back().merge_block : merge_node;
+		if (rewrite_target)
+			node->collapse_conditional_to_direct(rewrite_target);
+	}
+	else
+	{
+		// Divergence. Handle each branch separately.
+		bool true_block = select_path(node, true_level, true_path, ".sel-true", levels, merge_node);
+		bool false_block = select_path(node, false_level, false_path, ".sel-false", levels, merge_node);
+
+		// It's possible that we started off with assumption of not needing to merge selection control flow.
+		// When interposing blocks are introduced however, we are forced to merge *somewhere*.
+		if (node->ir.merge_info.merge_type == MergeType::None && (true_block || false_block))
+		{
+			// We could opt for merge to Unreachable if both paths were actually breaking paths.
+			node->ir.merge_info.merge_type = MergeType::Selection;
+
+			bool true_is_break = !level_has_non_breaking_non_continue_path(true_path, true_level);
+			bool false_is_break = !level_has_non_breaking_non_continue_path(false_path, false_level);
+
+			if (true_block && !true_is_break && false_is_break)
+				node->ir.merge_info.merge_block = node->ir.terminator.true_block;
+			else if (false_block && !false_is_break && true_is_break)
+				node->ir.merge_info.merge_block = node->ir.terminator.false_block;
 		}
 	}
 }
 
-void CFGStructurizer::forward_visit()
+bool CFGStructurizer::select_path(CFGNode *node, const SerializationLevel *level, CFGNode *path, const char *tag,
+                                  const Vector<SerializationLevel> &levels, CFGNode *merge_node)
 {
-	recursive_visit(entry_block,
-	                [this](CFGNode *node) { forward_visit_push(node); },
-	                [this](CFGNode *node) { forward_visit_resolve(node); },
-	                [this](CFGNode *node) { return node->visited; });
-}
+	// We're only interested in outer scopes here.
+	// Local merge needs to be handled, but local continue is done through normal structured path.
+	bool outer_continue = find_outer_continue_scope_for_block(path) != nullptr;
 
-void CFGStructurizer::visit_for_back_edge_analysis()
-{
-	recursive_visit(entry_block,
-	                [this](CFGNode *node) { visit_for_back_edge_analysis_push(node); },
-	                [this](CFGNode *node) { visit_for_back_edge_analysis_resolve(node); },
-	                [this](CFGNode *node) { return node->visited; });
-}
-
-bool CFGStructurizer::query_reachability(const CFGNode &from, const CFGNode &to) const
-{
-	if (&from == &to)
-		return true;
-
-	const uint32_t *src_reachability = &reachability_bitset[from.forward_post_visit_order * reachability_stride];
-	return (src_reachability[to.forward_post_visit_order / 32] & (1u << (to.forward_post_visit_order & 31u))) != 0;
-}
-
-void CFGStructurizer::visit_reachability(const CFGNode &node)
-{
-	uint32_t *dst_reachability = &reachability_bitset[node.forward_post_visit_order * reachability_stride];
-
-	for (auto *succ : node.succ)
+	if (level || outer_continue)
 	{
-		// Inherit reachability from all successors.
-		const uint32_t *src_reachability = &reachability_bitset[succ->forward_post_visit_order * reachability_stride];
-		for (unsigned i = 0; i < reachability_stride; i++)
-			dst_reachability[i] |= src_reachability[i];
+		auto *interposing = pool.create_helper_node();
+		interposing->name = node->name + tag;
+		interposing->ir.terminator.type = Terminator::Type::Branch;
+		interposing->ir.terminator.direct_block = path;
+		interposing->interposing = true;
+
+		// Breaking out of loop, or multiple continues is considered complex.
+		bool complex_break = branch_requires_breaking_construct(levels, path);
+
+		if (node->succ_back_edge)
+		{
+			// Due to SPIR-V structurization rules we cannot create an interposing block between back-edge and merge.
+			// The back-edge must branch directly to merge target or loop header in the end.
+			// We cannot unconditionally write the path variables either, since there may exist a path through the CFG
+			// that does not reset the path variable appropriately in some edge cases
+			// if continue tried to break to some weird scope. Be conservative and use a select + write.
+			// If we don't take the exit path, we keep the default value.
+			resolve_direct_path(node, path, level);
+			auto *rewrite_target = loop_scopes.back().merge_block;
+			node->retarget_branch_pre_traversal(path, rewrite_target);
+			return false;
+		}
+		else
+		{
+			// There is a risk that when we introduce interposing blocks in a different path
+			// we have to merge somewhere anyway, and that *anywhere* might have to be this very interposing block.
+			// Be conservative and keep it around.
+			bool need_interposing = resolve_direct_path(interposing, path, level) ||
+			                        node->ir.merge_info.merge_type == MergeType::None;
+
+			if (need_interposing)
+			{
+				interposing->add_branch(path);
+				node->retarget_branch_pre_traversal(path, interposing);
+			}
+			else
+			{
+				interposing = node;
+			}
+
+			auto *rewrite_target = complex_break ? loop_scopes.back().merge_block : merge_node;
+			if (rewrite_target)
+				interposing->retarget_branch_pre_traversal(path, rewrite_target);
+			return need_interposing;
+		}
+	}
+	else if (!is_backwards_branch(path))
+	{
+		serialize_merge_levels_for_dominated_paths_recursive(path, levels, merge_node);
 	}
 
-	// We can reach ourselves.
-	dst_reachability[node.forward_post_visit_order / 32] |= 1u << (node.forward_post_visit_order & 31u);
+	return false;
 }
 
-void CFGStructurizer::build_reachability()
+void CFGStructurizer::link_nodes(CFGNode *from, CFGNode *to)
 {
-	reachability_stride = (forward_post_visit_order.size() + 31) / 32;
-	reachability_bitset.clear();
-	reachability_bitset.resize(reachability_stride * forward_post_visit_order.size());
-	for (auto *node : forward_post_visit_order)
-		visit_reachability(*node);
-}
-
-void CFGStructurizer::recompute_cfg()
-{
-	reset_traversal();
-	forward_visit();
-	// Need to prune dead preds before computing dominance.
-	prune_dead_preds();
-	build_immediate_dominators();
-
-	compute_dominance_frontier();
-	if (!limited_control_flow_analysis)
-		compute_full_control_flow_analysis();
-}
-
-void CFGStructurizer::compute_full_control_flow_analysis()
-{
-	build_reachability();
-	backwards_visit();
-	build_immediate_post_dominators();
-	compute_post_dominance_frontier();
-}
-
-const CFGNode *CFGStructurizer::get_innermost_loop_header_for(const CFGNode *header, const CFGNode *other) const
-{
-	auto *node = other;
-
-	while (header != other)
+	if (from != to)
 	{
-		// Entry block case.
-		if (other->pred.empty())
+		if (to)
+		{
+			// Branch from last level to outer_merge.
+			// If we dominate everything in the path to exit, there is nothing to exit to.
+			// Need to do this after we have resolved the continuations otherwise it goes on too long.
+			from->add_branch(to);
+			from->ir.terminator.type = Terminator::Type::Branch;
+			from->ir.terminator.direct_block = to;
+		}
+		else
+		{
+			// Nowhere to branch, this must be a return.
+			from->ir.terminator.type = Terminator::Type::Return;
+		}
+	}
+}
+
+void CFGStructurizer::iterate_continuation(SerializeContinuation cont)
+{
+	while (cont.kind != SerializeContinuation::Kind::None)
+	{
+		switch (cont.kind)
+		{
+		case SerializeContinuation::Kind::RouteBranches:
+			cont = route_branches_with_continuation(
+				cont.node, cont.outer_levels, cont.levels, cont.outer_merge);
 			break;
 
-		// Found a loop header. This better be the one.
-		// Detect false positive if back-edge can reach the node, this means we just skip over
-		// the loop. We want to detect loops in a structured sense.
-		// Breaking constructs should still detect the loop header as we'd expect.
-		if (other->pred_back_edge && (other->pred_back_edge == node || !query_reachability(*other->pred_back_edge, *node)))
+		case SerializeContinuation::Kind::TraverseRoutes:
+			cont = traverse_routes_with_continuation(
+				std::move(cont.levels), cont.num_traverse_levels, cont.merge_node, cont.outer_merge);
 			break;
 
-		assert(other->immediate_dominator);
-		other = other->immediate_dominator;
-	}
-
-	return other;
-}
-
-const CFGNode *CFGStructurizer::get_innermost_loop_header_for(const CFGNode *other) const
-{
-	return get_innermost_loop_header_for(entry_block, other);
-}
-
-void CFGStructurizer::retarget_succ_from(CFGNode *new_node, CFGNode *old_pred)
-{
-	for (auto *s : new_node->succ)
-		for (auto &p : s->pred)
-			if (p == old_pred)
-				p = new_node;
-
-	for (auto *node : forward_post_visit_order)
-	{
-		if (node != old_pred)
-		{
-			// Don't override immediate dominator for entry block.
-			if (node->immediate_dominator == old_pred)
-				node->immediate_dominator = new_node;
-		}
-	}
-	new_node->immediate_dominator = old_pred;
-
-	// Do not swap back edges.
-}
-
-CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
-{
-	auto *succ_node = pool.create_helper_node();
-	succ_node->name = node->name + ".succ";
-
-	// Fixup visit order later.
-	succ_node->forward_post_visit_order = node->forward_post_visit_order;
-	succ_node->backward_post_visit_order = node->backward_post_visit_order;
-
-	std::swap(succ_node->succ, node->succ);
-	// Do not swap back edges, only forward edges.
-
-	succ_node->immediate_post_dominator = node->immediate_post_dominator;
-	node->immediate_post_dominator = succ_node;
-
-	succ_node->ir.terminator = node->ir.terminator;
-	node->ir.terminator.type = Terminator::Type::Branch;
-	node->ir.terminator.direct_block = succ_node;
-
-	// Inherit selection construct from parent since we're taking over any selection.
-	if (succ_node->ir.terminator.type == Terminator::Type::Condition)
-		succ_node->ir.merge_info.selection_control_mask = node->ir.merge_info.selection_control_mask;
-
-	retarget_succ_from(succ_node, node);
-
-	node->add_branch(succ_node);
-	return succ_node;
-}
-
-CFGNode *CFGStructurizer::find_common_post_dominator(const Vector<CFGNode *> &candidates)
-{
-	if (candidates.empty())
-		return nullptr;
-	else if (candidates.size() == 1)
-		return candidates.front();
-
-	CFGNode *common_post = CFGNode::find_common_post_dominator(candidates[0], candidates[1]);
-	for (size_t i = 2; i < candidates.size(); i++)
-		common_post = CFGNode::find_common_post_dominator(common_post, candidates[i]);
-	return common_post != common_post->immediate_post_dominator ? common_post : nullptr;
-}
-
-void CFGStructurizer::recompute_post_dominance_frontier(CFGNode *node)
-{
-	for (auto *pred : node->pred)
-	{
-		if (pred->immediate_post_dominator != node &&
-		    std::find(node->post_dominance_frontier.begin(),
-		              node->post_dominance_frontier.end(),
-		              pred) == node->post_dominance_frontier.end())
-		{
-			node->post_dominance_frontier.push_back(pred);
-		}
-
-		if (auto *ipdom = node->immediate_post_dominator)
-		{
-			for (auto *frontier_node : node->post_dominance_frontier)
-			{
-				if (!ipdom->post_dominates(frontier_node) &&
-				    std::find(ipdom->post_dominance_frontier.begin(),
-				              ipdom->post_dominance_frontier.end(),
-				              frontier_node) == ipdom->post_dominance_frontier.end())
-				{
-					ipdom->post_dominance_frontier.push_back(frontier_node);
-				}
-			}
-		}
-	}
-}
-
-void CFGStructurizer::recompute_dominance_frontier(CFGNode *node)
-{
-	for (auto *succ : node->succ)
-	{
-		if (succ->immediate_dominator != node &&
-		    std::find(node->dominance_frontier.begin(),
-		              node->dominance_frontier.end(),
-		              succ) == node->dominance_frontier.end())
-		{
-			node->dominance_frontier.push_back(succ);
-		}
-
-		if (auto *idom = node->immediate_dominator)
-		{
-			for (auto *frontier_node : node->dominance_frontier)
-			{
-				if (!idom->dominates(frontier_node) &&
-				    std::find(idom->dominance_frontier.begin(),
-				              idom->dominance_frontier.end(),
-				              frontier_node) == idom->dominance_frontier.end())
-				{
-					idom->dominance_frontier.push_back(frontier_node);
-				}
-			}
-		}
-	}
-}
-
-void CFGStructurizer::traverse(BlockEmissionInterface &iface)
-{
-	// Make sure all blocks are known to the backend before we emit code.
-	// Prefer that IDs grow the further down the function we go.
-	for (auto index = forward_post_visit_order.size(); index; index--)
-	{
-		auto *block = forward_post_visit_order[index - 1];
-		block->id = 0;
-		iface.register_block(block);
-	}
-
-	// Need to emit blocks such that dominating blocks come before dominated blocks.
-	for (auto index = forward_post_visit_order.size(); index; index--)
-	{
-		auto *block = forward_post_visit_order[index - 1];
-
-		auto &merge = block->ir.merge_info;
-
-		// We don't use the top-level merge stuff in the new structurizer.
-		switch (merge.merge_type)
-		{
-		case MergeType::Selection:
-			// Not reachable in the end, force merge to unreachable.
-			if (merge.merge_block && !merge.merge_block->userdata)
-				merge.merge_block = nullptr;
-
-			if (merge.merge_block)
-				iface.register_block(merge.merge_block);
-			iface.emit_basic_block(block);
-			break;
-
-		case MergeType::Loop:
-			if (merge.merge_block && !merge.merge_block->userdata)
-				merge.merge_block = nullptr;
-			if (merge.continue_block && !merge.continue_block->userdata)
-				merge.continue_block = nullptr;
-
-			if (merge.merge_block)
-				iface.register_block(merge.merge_block);
-			if (merge.continue_block)
-				iface.register_block(merge.continue_block);
-			iface.emit_basic_block(block);
+		case SerializeContinuation::Kind::EnterSuccDirect:
+			cont = enter_succ_with_continuation(
+				cont.node, cont.node->ir.terminator.direct_block, cont.outer_levels, cont.outer_merge);
 			break;
 
 		default:
-			iface.emit_basic_block(block);
 			break;
 		}
 	}
+}
+
+void CFGStructurizer::serialize_merge_levels_for_dominated_paths_recursive(
+		CFGNode *node, const Vector<SerializationLevel> &levels, CFGNode *merge_node)
+{
+	auto cont = serialize_merge_levels_for_dominated_paths_with_continuation(node, levels, merge_node);
+	iterate_continuation(std::move(cont));
+}
+
+void CFGStructurizer::serialize_merge_levels_for_dominated_paths_entry()
+{
+	Vector<SerializationLevel> levels;
+	serialize_merge_levels_for_dominated_paths_recursive(entry_block, levels, nullptr);
+}
+
+void CFGStructurizer::enter_succ_recursive(CFGNode *from, CFGNode *succ,
+                                           const Vector<SerializationLevel> &levels, CFGNode *merge_node)
+{
+	auto cont = enter_succ_with_continuation(from, succ, levels, merge_node);
+	iterate_continuation(std::move(cont));
+}
+
+void CFGStructurizer::route_branches_recursive(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
+                                               const Vector<SerializationLevel> &levels,
+                                               CFGNode *outer_merge)
+{
+	auto cont = route_branches_with_continuation(node, outer_levels, levels, outer_merge);
+	iterate_continuation(std::move(cont));
+}
+
+void CFGStructurizer::cleanup_degenerate_blocks()
+{
+	UnorderedSet<CFGNode *> merge_blocks_or_phi_incoming;
+
+	// We cannot remove blocks that are merge blocks for others.
+	for (auto *node : forward_post_visit_order)
+	{
+		if (node->ir.merge_info.merge_block)
+			merge_blocks_or_phi_incoming.insert(node->ir.merge_info.merge_block);
+		if (node->ir.merge_info.continue_block)
+			merge_blocks_or_phi_incoming.insert(node->ir.merge_info.continue_block);
+
+		if (!node->ir.phi.empty())
+			for (auto &incoming : node->ir.phi.front().incoming)
+				merge_blocks_or_phi_incoming.insert(incoming.block);
+	}
+
+	bool rewrote_cfg = false;
+
+	// In this process we will have generated a lot of redundant blocks that can be trivially removed.
+	// Remove blocks bottom-up.
+	for (auto *node : forward_post_visit_order)
+	{
+		// Never rewrite loop headers or back-edges. Too annoying and we don't expect anything useful to happen here.
+		if (node->succ_back_edge || node->pred_back_edge)
+			continue;
+
+		const auto try_remove_block = [&](CFGNode *succ)
+		{
+			// Don't mess with loops whatsoever.
+			if (succ->succ_back_edge || succ->pred_back_edge)
+				return;
+
+			// Rewriting PHIs is annoying at this point, and it's extremely unlikely we should remove this block anyway.
+			if (!succ->ir.phi.empty())
+				return;
+
+			if (node->dominates(succ) && !has_element(merge_blocks_or_phi_incoming, succ))
+			{
+				// Cannot fuse operations if it needs to be executed conditionally.
+				if (node->ir.terminator.type == Terminator::Type::Condition && !succ->ir.operations.empty())
+					return;
+
+				if (succ->ir.terminator.type == Terminator::Type::Branch)
+				{
+					if (has_element(node->succ, succ->ir.terminator.direct_block))
+					{
+						// Collapse the branch instead.
+						node->clear_branches();
+						node->ir.merge_info = {};
+						node->ir.terminator.type = Terminator::Type::Branch;
+						node->ir.terminator.direct_block = succ->ir.terminator.direct_block;
+						node->add_branch(succ->ir.terminator.direct_block);
+					}
+					else
+					{
+						node->retarget_branch_pre_traversal(succ, succ->ir.terminator.direct_block);
+					}
+
+					rewrote_cfg = true;
+				}
+				else if (node->ir.terminator.type == Terminator::Type::Branch &&
+				         (succ->ir.terminator.type == Terminator::Type::Condition ||
+				          succ->ir.terminator.type == Terminator::Type::Switch))
+				{
+					// Fuse the blocks.
+					auto *old_idom = node->immediate_dominator;
+					node->succ = succ->succ;
+					retarget_succ_from(node, succ);
+					node->immediate_dominator = old_idom;
+					node->ir.terminator = succ->ir.terminator;
+					node->ir.merge_info = succ->ir.merge_info;
+					rewrote_cfg = true;
+				}
+				else
+				{
+					return;
+				}
+
+				// Collapse the operations.
+				node->ir.operations.insert(node->ir.operations.end(), succ->ir.operations.begin(), succ->ir.operations.end());
+				succ->ir.operations.clear();
+			}
+		};
+
+		if (node->ir.terminator.type == Terminator::Type::Branch)
+		{
+			try_remove_block(node->ir.terminator.direct_block);
+		}
+		else if (node->ir.terminator.type == Terminator::Type::Condition)
+		{
+			try_remove_block(node->ir.terminator.true_block);
+			try_remove_block(node->ir.terminator.false_block);
+		}
+	}
+
+	if (rewrote_cfg)
+		recompute_cfg();
+}
+
+void CFGStructurizer::build_helper_node_direct_reachability_network()
+{
+	// Want a fast way to determine if we can reach a node through helper nodes only.
+	for (auto *node : forward_post_visit_order)
+	{
+		if (!node->helper)
+			continue;
+
+		node->reachable_direct_helpers.insert(node);
+		for (auto *succ : node->succ)
+			if (succ->helper)
+				for (auto *target : succ->reachable_direct_helpers)
+					node->reachable_direct_helpers.insert(target);
+	}
+}
+
+bool CFGStructurizer::run_structurizer()
+{
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	String graphviz_path;
+	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
+		graphviz_path = env;
+#endif
+
+	run_common_preamble();
+
+	// Shouldn't happen, but it's valid and fuzzer can hit it.
+	fixup_degenerate_conditional_branches();
+
+	// More frontier nodes is just annoying to deal with and could be a performance hazard.
+	// Eliminate nodes that only contain PHI constructs and nothing else.
+	rewrite_degenerate_phi_constructs();
+
+	// We will not rely on re-inserting PHI here, so convert everything back to plain old variables.
+	convert_phi_to_variables();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".phi";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+#endif
+
+	// Switch blocks complicate too many things.
+	// NIR does this too, which this implementation is heavily based on.
+	// Explode any non-trivial switch blocks into a series of conditional branches.
+	rewrite_switch_blocks();
+
+	// In some rare cases, interposing blocks can become merge frontiers, which is just dumb for performance.
+	// Just split those up.
+	rewrite_degenerate_interposing_frontiers();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".switch";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+#endif
+
+	// Single block loops are annoying to deal with. Ensure that back-edge != header.
+	rewrite_complex_loop_successors();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".single-block-loop";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+#endif
+
+	serialize_merge_levels_for_dominated_paths_entry();
+	recompute_cfg();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".struct";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+#endif
+
+	// It's possible SSA dominance is broken as a result of splitting loop scopes and maximal reconvergence.
+	// Fix this up now.
+	fixup_broken_value_dominance();
+
+	analyze_ssa_variable_access();
+	build_helper_node_direct_reachability_network();
+	reintroduce_ssa_phi();
+	clamp_ssa_variable_lifetimes();
+
+	// After dealing with PHI, it's possible we can cleanup some more blocks.
+	cleanup_degenerate_blocks();
+
+#ifdef DXIL_SPIRV_DEBUG_DUMPING
+	if (!graphviz_path.empty())
+	{
+		auto graphviz_split = graphviz_path + ".final";
+		log_cfg_graphviz(graphviz_split.c_str());
+	}
+#endif
+
+	return true;
 }
 } // namespace dxil_spv
