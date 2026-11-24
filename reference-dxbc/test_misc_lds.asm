@@ -60,11 +60,11 @@ SPIR-V:
     %uint_16 = OpConstant %uint 16
    %uint_264 = OpConstant %uint 264
        %bool = OpTypeBool
+         %50 = OpUndef %float
      %uint_1 = OpConstant %uint 1
        %main = OpFunction %void None %2
 
           %4 = OpLabel
-         %50 =   OpUndef %float
                  OpBranch %59
 
          %59 = OpLabel

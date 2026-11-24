@@ -2,7 +2,7 @@ SPIR-V:
 ; SPIR-V
 ; Version: 1.6
 ; Generator: Unknown(30017); 21022
-; Bound: 134
+; Bound: 135
 ; Schema: 0
                OpCapability Shader
                OpCapability Tessellation
@@ -111,14 +111,17 @@ SPIR-V:
                      OpBranch %131
 
         %131 = OpLabel
+                 OpBranch %132
+
+        %132 = OpLabel
                  OpReturn
                OpFunctionEnd
   %hull_main = OpFunction %void None %2
 
          %39 = OpLabel
-                 OpBranch %132
+                 OpBranch %133
 
-        %132 = OpLabel
+        %133 = OpLabel
          %44 =   OpLoad %uint %gl_InvocationID
          %46 =   OpAccessChain %_ptr_Input_float %SV_POSITION %44 %uint_0
          %48 =   OpLoad %float %46
@@ -160,9 +163,9 @@ SPIR-V:
  %patch_main = OpFunction %void None %2
 
          %41 = OpLabel
-                 OpBranch %133
+                 OpBranch %134
 
-        %133 = OpLabel
+        %134 = OpLabel
          %81 =   OpLoad %uint %gl_PrimitiveID
                  OpStore %INSTANCE_ID %81
          %82 =   OpAccessChain %_ptr_Input_float %FACTOR %uint_0
