@@ -17,7 +17,6 @@ GLSL:
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 u16vec2 _89;
-u16vec2 _117;
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
 {
@@ -69,20 +68,20 @@ u16vec2 UMod(u16vec2 num, u16vec2 den)
     {
         _116 = num.x % den.x;
     }
-    u16vec2 _118;
-    _118.x = _116;
-    uint16_t _126;
+    u16vec2 _117;
+    _117.x = _116;
+    uint16_t _125;
     SPIRV_CROSS_FLATTEN
     if (den.y == 0us)
     {
-        _126 = 65535us;
+        _125 = 65535us;
     }
     else
     {
-        _126 = num.y % den.y;
+        _125 = num.y % den.y;
     }
-    _118.y = _126;
-    return _118;
+    _117.y = _125;
+    return _117;
 }
 
 void main()
