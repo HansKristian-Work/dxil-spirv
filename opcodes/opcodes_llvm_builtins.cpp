@@ -1673,6 +1673,33 @@ static void get_dxbc_tgsm_gep_workaround(Converter::Impl &impl, const llvm::GetE
 	}
 }
 
+static bool addr_space_needs_explicit_bounds_check(DXIL::AddressSpace addr_space)
+{
+	switch (addr_space)
+	{
+	case DXIL::AddressSpace::GroupShared:
+	case DXIL::AddressSpace::Thread:
+	case DXIL::AddressSpace::ImmediateCBuffer:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
+static bool addr_space_is_per_thread(DXIL::AddressSpace addr_space)
+{
+	switch (addr_space)
+	{
+	case DXIL::AddressSpace::Thread:
+	case DXIL::AddressSpace::ImmediateCBuffer:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElementPtrInst *instruction)
 {
 	if (emit_ags_getelementptr(impl, instruction))
@@ -1755,12 +1782,12 @@ bool emit_getelementptr_instruction(Converter::Impl &impl, const llvm::GetElemen
 				if (auto *array_type = llvm::dyn_cast<llvm::ArrayType>(aggregate_type->getPointerElementType()))
 				{
 					auto address_space = DXIL::AddressSpace(aggregate_type->getPointerAddressSpace());
-					if (address_space == DXIL::AddressSpace::GroupShared || address_space == DXIL::AddressSpace::Thread)
+					if (addr_space_needs_explicit_bounds_check(address_space))
 					{
 						auto *global_var = llvm::dyn_cast<llvm::GlobalVariable>(instruction->getOperand(0));
 						if (global_var && global_var->hasInitializer() && global_var->isConstant() &&
 						    impl.options.extended_robustness.constant_lut &&
-						    !elementptr_shift && address_space == DXIL::AddressSpace::Thread)
+						    !elementptr_shift && addr_space_is_per_thread(address_space))
 						{
 							// Robustness for constant LUTs.
 							if (!impl.glsl_std450_ext)
@@ -1874,6 +1901,20 @@ static bool vkmm_requires_auto_visibility(Converter::Impl &impl, const llvm::Val
 	return false;
 }
 
+static bool addr_space_is_non_private(DXIL::AddressSpace addr_space)
+{
+	switch (addr_space)
+	{
+	case DXIL::AddressSpace::DeviceMemory:
+	case DXIL::AddressSpace::PhysicalNodeIO:
+	case DXIL::AddressSpace::GroupShared:
+		return true;
+
+	default:
+		return false;
+	}
+}
+
 bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruction)
 {
 	auto itr = impl.llvm_global_variable_to_resource_mapping.find(instruction->getPointerOperand());
@@ -1892,7 +1933,7 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 	                                                          instruction->getPointerOperand(), 0);
 
 	auto addr_space = DXIL::AddressSpace(instruction->getPointerOperand()->getType()->getPointerAddressSpace());
-	bool non_private = addr_space != DXIL::AddressSpace::Thread &&
+	bool non_private = addr_space_is_non_private(addr_space) &&
 	                   impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
 
 	if (remapped_type_id != 0)
@@ -2010,7 +2051,7 @@ bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instru
 
 	auto addr_space = DXIL::AddressSpace(instruction->getOperand(1)->getType()->getPointerAddressSpace());
 	auto storage = impl.get_effective_storage_class_fixed(instruction->getOperand(1), spv::StorageClassFunction);
-	bool non_private = addr_space != DXIL::AddressSpace::Thread &&
+	bool non_private = addr_space_is_non_private(addr_space) &&
 	                   storage != spv::StorageClassTaskPayloadWorkgroupEXT &&
 	                   impl.execution_mode_meta.memory_model == spv::MemoryModelVulkan;
 	bool auto_visibility = false;

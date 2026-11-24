@@ -638,7 +638,11 @@ enum BarrierModeBits : uint8_t
 enum class AddressSpace : uint8_t
 {
 	Thread = 0,
+	DeviceMemory = 1, // Never seen before
+	CBuffer = 2, // Never seen before
 	GroupShared = 3,
+	Generic = 4, // Never seen before
+	ImmediateCBuffer = 5, // Seen once in a dxbc2dxil module
 	PhysicalNodeIO = 6,
 	Invalid
 };
