@@ -47,7 +47,6 @@ public:
 
 	enum class Style
 	{
-		Legacy,
 		Unstructured,
 		Modern
 	};

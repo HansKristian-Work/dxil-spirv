@@ -50,13 +50,6 @@ void CFGNode::add_unique_fake_pred(CFGNode *node)
 		fake_pred.push_back(node);
 }
 
-void CFGNode::add_unique_header(CFGNode *node)
-{
-	auto itr = std::find(headers.begin(), headers.end(), node);
-	if (itr == headers.end())
-		headers.push_back(node);
-}
-
 void CFGNode::add_branch(CFGNode *to)
 {
 	add_unique_succ(to);
@@ -114,33 +107,6 @@ bool CFGNode::has_pred_back_edges() const
 	return pred_back_edge != nullptr;
 }
 
-bool CFGNode::reaches_domination_frontier_before_merge(const CFGNode *merge) const
-{
-	for (auto *frontier : dominance_frontier)
-		if (merge != frontier && merge->post_dominates(frontier))
-			return true;
-	return false;
-}
-
-bool CFGNode::dominates_outer_continue(const CFGNode *loop_header) const
-{
-	if (loop_header->pred.empty())
-		return false;
-
-	loop_header = loop_header->immediate_dominator;
-	while (loop_header)
-	{
-		if (loop_header->pred_back_edge && dominates(loop_header->pred_back_edge))
-			return true;
-
-		if (loop_header->pred.empty())
-			break;
-		loop_header = loop_header->immediate_dominator;
-	}
-
-	return false;
-}
-
 bool CFGNode::reaches_direct_helper(CFGNode *target)
 {
 	return reachable_direct_helpers.count(target) != 0;
@@ -157,50 +123,6 @@ bool CFGNode::dominates(const CFGNode *other) const
 	}
 
 	return this == other;
-}
-
-bool CFGNode::can_loop_merge_to(const CFGNode *other) const
-{
-	// Cannot merge directly to a continue block.
-	if (other->succ_back_edge)
-		return false;
-
-	if (!dominates(other))
-		return false;
-
-	auto *c = pred_back_edge;
-
-	if (c && !c->succ.empty())
-	{
-		// If the continue block branches to something which is not the loop header,
-		// it must be the merge block we're after, i.e., it must be a clean break (or we are kind of screwed).
-		// Detect a "fake" merge branch here.
-		// E.g., we have a fake merge branch if an escaping edge is branching to one block beyond the real merge block.
-		// This can happen after split_merge_scopes() transform where inner loop
-		// tries to break out of multiple loops and multiple selection scopes at the same time.
-		// We can still dominate this escape target, but it's still an escape which must be resolved some other way with ladders.
-		if (std::find(c->succ.begin(), c->succ.end(), other) == c->succ.end())
-			return false;
-	}
-
-	// Fallback to fake succ check for infinite loop.
-	if (c && c->succ.empty() && c->fake_succ.size() == 1 && c->fake_succ.front() != other)
-		return false;
-
-	return true;
-}
-
-bool CFGNode::can_backtrace_to(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const
-{
-	if (node_cache.count(this))
-		return false;
-	node_cache.insert(this);
-
-	for (auto *p : pred)
-		if (p == parent || p->can_backtrace_to(parent, node_cache))
-			return true;
-
-	return false;
 }
 
 bool CFGNode::can_backtrace_to_with_blockers(const CFGNode *parent, const Vector<CFGNode *> &block_nodes,
@@ -220,16 +142,6 @@ bool CFGNode::can_backtrace_to_with_blockers(const CFGNode *parent, const Vector
 	return false;
 }
 
-bool CFGNode::can_backtrace_to(const CFGNode *parent) const
-{
-	// If parent can branch to this, then post_order(parent) must be greater than post_order(this).
-	if (parent->forward_post_visit_order < forward_post_visit_order)
-		return false;
-
-	UnorderedSet<const CFGNode *> node_cache;
-	return can_backtrace_to(parent, node_cache);
-}
-
 bool CFGNode::can_backtrace_to_with_blockers(const CFGNode *parent, const Vector<CFGNode *> &block_nodes) const
 {
 	// If parent can branch to this, then post_order(parent) must be greater than post_order(this).
@@ -238,52 +150,6 @@ bool CFGNode::can_backtrace_to_with_blockers(const CFGNode *parent, const Vector
 
 	UnorderedSet<const CFGNode *> node_cache;
 	return can_backtrace_to_with_blockers(parent, block_nodes, node_cache);
-}
-
-bool CFGNode::post_dominates_any_work(const CFGNode *parent, UnorderedSet<const CFGNode *> &node_cache) const
-{
-	// If we reached this node before and didn't terminate, it must have returned false.
-	if (node_cache.count(parent))
-		return false;
-	node_cache.insert(parent);
-
-	// This is not a dummy block, we have an answer.
-	if (!parent->ir.operations.empty() || !parent->ir.phi.empty())
-		return post_dominates(parent);
-
-	for (auto *p : parent->pred)
-		if (post_dominates_any_work(p, node_cache))
-			return true;
-
-	return false;
-}
-
-unsigned CFGNode::count_post_dominates_work_from_incoming_preds() const
-{
-	auto *start_node = this;
-	// Trivial back-trace as far as we can go.
-	while (start_node->pred.size() == 1 &&
-	       start_node->ir.operations.empty() && start_node->ir.phi.empty() &&
-	       start_node->post_dominates(start_node->pred.front()))
-	{
-		start_node = start_node->pred.front();
-	}
-
-	if (!start_node->ir.operations.empty() || !start_node->ir.phi.empty())
-		return true;
-
-	unsigned num_post_dominated_preds = 0;
-	UnorderedSet<const CFGNode *> node_cache;
-
-	for (auto *p : start_node->pred)
-		if (start_node->post_dominates_any_work(p, node_cache))
-			num_post_dominated_preds++;
-	return num_post_dominated_preds;
-}
-
-bool CFGNode::post_dominates_any_work() const
-{
-	return count_post_dominates_work_from_incoming_preds() != 0;
 }
 
 bool CFGNode::post_dominates(const CFGNode *start_node) const
@@ -297,39 +163,6 @@ bool CFGNode::post_dominates(const CFGNode *start_node) const
 	}
 
 	return this == start_node;
-}
-
-bool CFGNode::post_dominates_perfect_structured_construct() const
-{
-	if (!post_dominates(immediate_dominator))
-		return false;
-
-	for (auto *p : pred)
-		if (!post_dominates(p))
-			return false;
-	return true;
-}
-
-bool CFGNode::dominates_all_reachable_exits(UnorderedSet<const CFGNode *> &completed, const CFGNode &header) const
-{
-	if (!completed.count(this))
-	{
-		completed.insert(this);
-		if (succ_back_edge && !header.dominates(succ_back_edge))
-			return false;
-
-		for (auto *node : succ)
-			if (!header.dominates(node) || !node->dominates_all_reachable_exits(completed, header))
-				return false;
-	}
-
-	return true;
-}
-
-bool CFGNode::dominates_all_reachable_exits() const
-{
-	UnorderedSet<const CFGNode *> completed;
-	return dominates_all_reachable_exits(completed, *this);
 }
 
 CFGNode *CFGNode::find_common_post_dominator(CFGNode *a, CFGNode *b)
@@ -466,34 +299,6 @@ CFGNode *CFGNode::get_immediate_dominator_loop_header()
 	return node;
 }
 
-CFGNode *CFGNode::rewrite_branch_through_intermediate_node(CFGNode *to_prev, CFGNode *to_next)
-{
-	assert(std::find(succ.begin(), succ.end(), to_next) != succ.end());
-
-	auto *intermediate = pool.create_node();
-	intermediate->name = name + ".intermediate." + to_next->name;
-	intermediate->ir.terminator.type = Terminator::Type::Branch;
-	intermediate->ir.terminator.direct_block = to_next;
-	intermediate->add_branch(to_next);
-	intermediate->immediate_post_dominator = to_next;
-	intermediate->immediate_dominator = this;
-	intermediate->forward_post_visit_order = forward_post_visit_order;
-	intermediate->backward_post_visit_order = backward_post_visit_order;
-	retarget_branch(to_prev, intermediate);
-	to_next->recompute_immediate_dominator();
-
-	return intermediate;
-}
-
-void CFGNode::retarget_branch_with_intermediate_node(CFGNode *to_prev, CFGNode *to_next)
-{
-	// If there is no duplication, just go ahead.
-	if (std::find(succ.begin(), succ.end(), to_next) == succ.end())
-		retarget_branch(to_prev, to_next);
-	else
-		rewrite_branch_through_intermediate_node(to_prev, to_next);
-}
-
 void CFGNode::collapse_conditional_to_direct(CFGNode *to_next)
 {
 	if (ir.terminator.true_block != to_next || ir.terminator.false_block != to_next)
@@ -554,68 +359,6 @@ void CFGNode::retarget_branch_pre_traversal(CFGNode *to_prev, CFGNode *to_next)
 			c.node = to_next;
 }
 
-void CFGNode::retarget_branch(CFGNode *to_prev, CFGNode *to_next)
-{
-	retarget_branch_pre_traversal(to_prev, to_next);
-
-	// Branch targets have changed, so recompute immediate dominators.
-	if (to_prev->forward_post_visit_order > to_next->forward_post_visit_order)
-	{
-		to_prev->recompute_immediate_dominator();
-		to_next->recompute_immediate_dominator();
-	}
-	else
-	{
-		to_next->recompute_immediate_dominator();
-		to_prev->recompute_immediate_dominator();
-	}
-
-	// ... and post dominator for ourself.
-	// I am not sure if it's technically possible that we have to recompute the entire post domination graph now?
-	recompute_immediate_post_dominator();
-}
-
-void CFGNode::retarget_fake_succ(CFGNode *to_prev, CFGNode *to_next)
-{
-	assert(std::find(to_prev->fake_pred.begin(), to_prev->fake_pred.end(), this) != to_prev->fake_pred.end());
-	auto succ_itr = std::find(fake_succ.begin(), fake_succ.end(), to_next);
-	auto prev_itr = std::find(fake_succ.begin(), fake_succ.end(), to_prev);
-	assert(prev_itr != fake_succ.end());
-
-	// It is valid to rewrite a fake succ to an existing one.
-	// It's possible that we need to rewrite from one loop exit to another.
-
-	if (succ_itr == fake_succ.end())
-	{
-		*prev_itr = to_next;
-		assert(std::find(to_next->fake_pred.begin(), to_next->fake_pred.end(), this) == to_next->fake_pred.end());
-	}
-	else
-	{
-		// We can invalidate iterators since we break out immediately when rewriting a fake succ.
-		fake_succ.erase(prev_itr);
-	}
-
-	to_next->add_unique_fake_pred(this);
-	recompute_immediate_post_dominator();
-}
-
-void CFGNode::fixup_merge_info_after_branch_rewrite(CFGNode *from, CFGNode *to)
-{
-	// If we end up re-seating merge sites, make sure we add it to headers in the target block, since we might have
-	// to keep splitting merge scopes in innermost scopes.
-	if (std::find(from->headers.begin(), from->headers.end(), this) != from->headers.end())
-	{
-		to->add_unique_header(this);
-		if (selection_merge_block == from)
-			selection_merge_block = to;
-		if (loop_merge_block == from)
-			loop_merge_block = to;
-		if (loop_ladder_block == from)
-			loop_ladder_block = to;
-	}
-}
-
 void CFGNode::recompute_immediate_dominator()
 {
 	if (pred.empty())
@@ -659,85 +402,5 @@ void CFGNode::recompute_immediate_post_dominator()
 				immediate_post_dominator = edge;
 		}
 	}
-}
-
-CFGNode *CFGNode::get_outer_selection_dominator()
-{
-	assert(immediate_dominator);
-	auto *node = immediate_dominator;
-
-	// We need to find an immediate dominator which we do not post-dominate.
-	// That first idom is considered the outer selection header.
-	while (node->ir.terminator.type != Terminator::Type::Switch && post_dominates(node))
-	{
-		if (node->pred.empty())
-			break;
-
-		// Skip from merge block to header.
-		while (std::find(node->headers.begin(), node->headers.end(), node->immediate_dominator) != node->headers.end())
-			node = node->immediate_dominator;
-
-		if (post_dominates(node))
-		{
-			assert(node->immediate_dominator);
-			node = node->immediate_dominator;
-		}
-	}
-
-	return node;
-}
-
-CFGNode *CFGNode::get_outer_header_dominator()
-{
-	assert(immediate_dominator);
-	auto *node = immediate_dominator;
-	while (node->succ.size() == 1 && node->ir.terminator.type != Terminator::Type::Switch && !node->pred_back_edge)
-	{
-		if (node->pred.empty())
-			break;
-
-		assert(node->immediate_dominator);
-		node = node->immediate_dominator;
-	}
-
-	return node;
-}
-
-bool CFGNode::block_is_jump_thread_ladder() const
-{
-	if (!ir.operations.empty() || ir.terminator.type != Terminator::Type::Condition || ir.phi.size() != 1)
-		return false;
-
-	auto &phi = ir.phi.front();
-
-	// Detect a jump thread block. If the branch target directly depends on the incoming blocks,
-	// we have this scenario.
-	return ir.terminator.conditional_id == phi.id;
-}
-
-bool CFGNode::reaches_backward_visited_node(UnorderedSet<const dxil_spv::CFGNode *> &completed) const
-{
-	if (completed.count(this))
-		return false;
-	completed.insert(this);
-
-	if (backward_visited)
-		return true;
-
-	for (auto *node : succ)
-		if (node->reaches_backward_visited_node(completed))
-			return true;
-
-	for (auto *node : fake_succ)
-		if (node->reaches_backward_visited_node(completed))
-			return true;
-
-	return false;
-}
-
-bool CFGNode::reaches_backward_visited_node() const
-{
-	UnorderedSet<const CFGNode *> visit;
-	return reaches_backward_visited_node(visit);
 }
 } // namespace dxil_spv

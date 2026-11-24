@@ -59,14 +59,10 @@ bool Emitter::finalize(Style style, Vector<uint32_t> &code, bool validate)
 	{
 		traverser.run_structurizer();
 	}
-	else if (style == Style::Unstructured)
+	else
 	{
 		module.get_builder().addExtension("SPV_FROG_unstructured_control_flow");
 		traverser.run_experimental_unstructured();
-	}
-	else
-	{
-		traverser.run_legacy_structurizer();
 	}
 
 	pool.for_each_node([](CFGNode &node) {

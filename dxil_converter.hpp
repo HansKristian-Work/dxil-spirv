@@ -45,7 +45,13 @@ struct ConvertedFunction
 		CFGNode *entry;
 		spv::Function *func;
 		bool is_structured;
-		bool needs_stage_io_analysis;
+
+		struct
+		{
+			bool stage_io_analysis;
+			bool rov_analysis;
+			bool rewrite_auto_group_shared_barrier;
+		} fixup_passes;
 	};
 	Function entry = {};
 	Vector<Function> leaf_functions;
@@ -280,7 +286,7 @@ enum class Option : uint32_t
 	FloatControls2 = 54,
 	ShaderAbort = 55,
 	ConservativeSSBOVectorization = 56,
-	LegacyStructurizer = 57,
+	// 57 is removed.
 	Count
 };
 
@@ -954,16 +960,6 @@ struct OptionConservativeSSBOVectorization : OptionBase
 	bool enabled = false;
 };
 
-struct OptionLegacyStructurizer : OptionBase
-{
-	OptionLegacyStructurizer()
-		: OptionBase(Option::LegacyStructurizer)
-	{
-	}
-
-	bool enabled = false;
-};
-
 struct DescriptorTableEntry
 {
 	ResourceClass type;
@@ -1073,6 +1069,7 @@ public:
 	Converter(LLVMBCParser &bitcode_parser, LLVMBCParser *bitcode_reflection_parser, SPIRVModule &module);
 	~Converter();
 	ConvertedFunction convert_entry_point();
+	ConvertedFunction::Function create_rov_main_wrapper(CFGNodePool &pool);
 	void set_resource_remapping_interface(ResourceRemappingInterface *iface);
 
 	static ShaderStage get_shader_stage(const LLVMBCParser &bitcode_parser, const char *entry = nullptr);

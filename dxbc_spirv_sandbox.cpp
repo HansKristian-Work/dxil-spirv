@@ -230,8 +230,21 @@ static Vector<uint32_t> run_test(const char *name, ir::Builder &builder)
 		if (entry.entry.is_structured)
 			structurizer.run_trivial();
 		else
-			structurizer.run_legacy_structurizer();
-		module.emit_entry_point_function_body(structurizer);
+			structurizer.run_structurizer();
+
+		if (entry.entry.fixup_passes.rov_analysis && !structurizer.rewrite_rov_lock_region())
+		{
+			auto wrapped_main = converter.create_rov_main_wrapper(*entry.node_pool);
+			module.emit_leaf_function_body(wrapped_main.func, structurizer);
+
+			CFGStructurizer dummy_struct(wrapped_main.entry, *entry.node_pool, module);
+			dummy_struct.run_trivial();
+			module.emit_entry_point_function_body(dummy_struct);
+		}
+		else
+		{
+			module.emit_entry_point_function_body(structurizer);
+		}
 	}
 
 	for (auto &leaf : entry.leaf_functions)
@@ -247,7 +260,7 @@ static Vector<uint32_t> run_test(const char *name, ir::Builder &builder)
 		if (leaf.is_structured)
 			structurizer.run_trivial();
 		else
-			structurizer.run_legacy_structurizer();
+			structurizer.run_structurizer();
 
 		module.emit_leaf_function_body(leaf.func, structurizer);
 	}

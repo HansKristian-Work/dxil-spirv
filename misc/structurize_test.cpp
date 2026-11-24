@@ -86,7 +86,7 @@ cleanup:
 
 static void print_help()
 {
-	LOGE("Usage: structurize-test [input] [--output out.spv] [--skip-validation] [--help] [--compile] [--unstructured] [--legacy]\n");
+	LOGE("Usage: structurize-test [input] [--output out.spv] [--skip-validation] [--help] [--compile] [--unstructured]\n");
 }
 
 static void compile_compute_shader(const Vector<uint32_t> &spirv)
@@ -203,7 +203,6 @@ int main(int argc, char **argv)
 	cbs.add("--skip-validation", [&](CLIParser &) { skip_validation = true; });
 	cbs.add("--compile", [&](CLIParser &) { compile = true; });
 	cbs.add("--unstructured", [&](CLIParser &) { style = Emitter::Style::Unstructured; skip_validation = true; });
-	cbs.add("--legacy", [&](CLIParser &) { style = Emitter::Style::Legacy; });
 
 	CLIParser parser(std::move(cbs), argc - 1, argv + 1);
 	if (!parser.parse())

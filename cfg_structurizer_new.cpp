@@ -1753,7 +1753,7 @@ bool CFGStructurizer::level_has_non_breaking_non_continue_path(CFGNode *succ, co
 {
 	// This is a continue block we're traversing from inside a loop. This is a proper continue.
 	// If the continue block is reached via a frontier, we treat it as a normal merge.
-	if (!level && (succ->succ_back_edge || !succ->headers.empty()))
+	if (!level && succ->succ_back_edge)
 		return false;
 
 	// A loop break of some kind.
@@ -2720,9 +2720,6 @@ void CFGStructurizer::build_helper_node_direct_reachability_network()
 
 bool CFGStructurizer::run_structurizer()
 {
-	limited_control_flow_analysis = true;
-	experimental_unstructured_flow = false;
-
 #ifdef DXIL_SPIRV_DEBUG_DUMPING
 	String graphviz_path;
 	if (const char *env = getenv("DXIL_SPIRV_GRAPHVIZ_PATH"))
