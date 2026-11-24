@@ -1,0 +1,71 @@
+// A hand written state machine: a loop whose following state only the data knows, a wave
+// lane read under a branch, and early exits. Flattening subgroup shuffles runs the
+// structure analysis over that unstructured CFG, and the lazy recomputation of the
+// immediate dominators used to follow a back edge into a node still being recomputed
+// (endless recursion, stack overflow before the fix).
+
+RWByteAddressBuffer buf : register(u0);
+cbuffer params : register(b0)
+{
+    uint limit;
+};
+
+[numthreads(64, 1, 1)]
+void main(uint3 tid : SV_DispatchThreadID, uint lane : SV_GroupIndex)
+{
+    uint acc = tid.x & 15;
+    uint i = tid.y + acc;
+    uint state = 0;
+    uint steps = 0;
+
+    [loop]
+    for (;;)
+    {
+        uint v = buf.Load(4 * (i & 63));
+
+        switch (state)
+        {
+        case 0:
+            acc += v;
+            state = v & 1 ? 1 : 2;
+            break;
+        case 1:
+            if (v & 2)
+            {
+                uint other = WaveReadLaneAt(v, (i + lane) & 63);
+                acc ^= other;
+                state = other & 3 ? 3 : 0;
+            }
+            else
+            {
+                state = 2;
+            }
+            i += 1;
+            break;
+        case 2:
+            acc -= v;
+            state = acc > v ? 1 : 4;
+            break;
+        case 3:
+            if ((acc + v) == 0x7fffffffu)
+            {
+                i |= 1;
+                state = 5;
+                break;
+            }
+            acc += 3;
+            state = 0;
+            break;
+        default:
+            acc ^= i;
+            i += 2;
+            state = 1;
+            break;
+        }
+
+        if (++steps >= limit)
+            break;
+    }
+
+    buf.Store(4 * (64 + lane), acc ^ i);
+}

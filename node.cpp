@@ -339,19 +339,14 @@ CFGNode *CFGNode::find_common_post_dominator(CFGNode *a, CFGNode *b)
 
 	while (a != b)
 	{
+		// A post dominator that is not known yet: the node is being recomputed right now (the
+		// flipped CFG reaches it again through a back edge), so there is nothing to walk to.
+		// The other side is the common one we know of. The recomputation itself is iterative
+		// (recompute_immediate_post_dominator()), so this cannot recurse.
 		if (!a->immediate_post_dominator)
-		{
-			for (auto *p : a->succ)
-				p->recompute_immediate_post_dominator();
-			a->recompute_immediate_post_dominator();
-		}
-
+			return b;
 		if (!b->immediate_post_dominator)
-		{
-			for (auto *p : b->succ)
-				p->recompute_immediate_post_dominator();
-			b->recompute_immediate_post_dominator();
-		}
+			return a;
 
 		if (a->backward_post_visit_order == b->backward_post_visit_order)
 		{
@@ -393,19 +388,12 @@ CFGNode *CFGNode::find_common_dominator(CFGNode *a, CFGNode *b)
 
 	while (a != b)
 	{
+		// As in find_common_post_dominator(): an immediate dominator that is not known yet
+		// belongs to a node being recomputed right now, and the recomputation is iterative.
 		if (!a->immediate_dominator)
-		{
-			for (auto *p : a->pred)
-				p->recompute_immediate_dominator();
-			a->recompute_immediate_dominator();
-		}
-
+			return b;
 		if (!b->immediate_dominator)
-		{
-			for (auto *p : b->pred)
-				p->recompute_immediate_dominator();
-			b->recompute_immediate_dominator();
-		}
+			return a;
 
 		if (a->forward_post_visit_order == b->forward_post_visit_order)
 		{
@@ -618,46 +606,157 @@ void CFGNode::fixup_merge_info_after_branch_rewrite(CFGNode *from, CFGNode *to)
 
 void CFGNode::recompute_immediate_dominator()
 {
-	if (pred.empty())
-	{
-		// For entry block only.
-		immediate_dominator = this;
-	}
-	else
-	{
-		immediate_dominator = nullptr;
+	// The node and, depth first, the predecessors whose immediate dominator is not known yet:
+	// those are the ones this needs, and computing them by recursing is what used to run away
+	// on a CFG whose back edge is such a predecessor (the recursive walk came back to a node
+	// whose immediate dominator it had just reset, forever). They are computed here instead,
+	// by iterating the definitions of the whole set until nothing changes.
+	Vector<CFGNode *> closure;
+	Vector<CFGNode *> work;
+	closure.push_back(this);
+	work.push_back(this);
+	recomputing_dominator = true;
 
-		for (auto *edge : pred)
+	while (!work.empty())
+	{
+		CFGNode *node = work.back();
+		work.pop_back();
+
+		for (auto *edge : node->pred)
 		{
-			if (immediate_dominator)
-				immediate_dominator = CFGNode::find_common_dominator(immediate_dominator, edge);
-			else
-				immediate_dominator = edge;
+			if (edge->immediate_dominator || edge->recomputing_dominator || edge->pred.empty())
+				continue;
+
+			if (std::find(closure.begin(), closure.end(), edge) == closure.end())
+			{
+				edge->recomputing_dominator = true;
+				closure.push_back(edge);
+				work.push_back(edge);
+			}
 		}
+	}
+
+	for (auto *node : closure)
+		node->immediate_dominator = nullptr;
+
+	bool changed = true;
+	for (size_t round = 0; changed && round <= closure.size(); round++)
+	{
+		changed = false;
+
+		for (auto *node : closure)
+		{
+			if (node->pred.empty())
+			{
+				// For entry block only.
+				if (node->immediate_dominator != node)
+				{
+					node->immediate_dominator = node;
+					changed = true;
+				}
+				continue;
+			}
+
+			CFGNode *dominator = nullptr;
+			for (auto *edge : node->pred)
+			{
+				if (!edge->immediate_dominator)
+					continue;
+
+				dominator = dominator ? CFGNode::find_common_dominator(dominator, edge) : edge;
+			}
+
+			if (dominator && node->immediate_dominator != dominator)
+			{
+				node->immediate_dominator = dominator;
+				changed = true;
+			}
+		}
+	}
+
+	for (auto *node : closure)
+	{
+		// Nothing this set could reach with a known dominator (only a cycle no entry reaches):
+		// the node is its own dominator, so that every walk stops there instead of on null.
+		if (!node->immediate_dominator)
+			node->immediate_dominator = node;
+
+		node->recomputing_dominator = false;
 	}
 }
 
 void CFGNode::recompute_immediate_post_dominator()
 {
-	if (!succ.empty() || !fake_succ.empty())
+	// As recompute_immediate_dominator(), over the successors (the flipped CFG).
+	if (succ.empty() && fake_succ.empty())
 	{
-		// For non-leaf blocks only. The immediate post dominator is already set up to be the exit node in leaf nodes.
-		immediate_post_dominator = nullptr;
-		for (auto *edge : succ)
-		{
-			if (immediate_post_dominator)
-				immediate_post_dominator = CFGNode::find_common_post_dominator(immediate_post_dominator, edge);
-			else
-				immediate_post_dominator = edge;
-		}
+		// For leaf blocks only: the exit node is already the immediate post dominator.
+		return;
+	}
 
-		for (auto *edge : fake_succ)
+	Vector<CFGNode *> closure;
+	Vector<CFGNode *> work;
+	closure.push_back(this);
+	work.push_back(this);
+	recomputing_post_dominator = true;
+
+	while (!work.empty())
+	{
+		CFGNode *node = work.back();
+		work.pop_back();
+
+		for (auto list : { &node->succ, &node->fake_succ })
+			for (auto *edge : *list)
+			{
+				if (edge->immediate_post_dominator || edge->recomputing_post_dominator)
+					continue;
+				if (edge->succ.empty() && edge->fake_succ.empty())
+					continue;
+
+				if (std::find(closure.begin(), closure.end(), edge) == closure.end())
+				{
+					edge->recomputing_post_dominator = true;
+					closure.push_back(edge);
+					work.push_back(edge);
+				}
+			}
+	}
+
+	for (auto *node : closure)
+		node->immediate_post_dominator = nullptr;
+
+	bool changed = true;
+	for (size_t round = 0; changed && round <= closure.size(); round++)
+	{
+		changed = false;
+
+		for (auto *node : closure)
 		{
-			if (immediate_post_dominator)
-				immediate_post_dominator = CFGNode::find_common_post_dominator(immediate_post_dominator, edge);
-			else
-				immediate_post_dominator = edge;
+			CFGNode *dominator = nullptr;
+			for (auto list : { &node->succ, &node->fake_succ })
+				for (auto *edge : *list)
+				{
+					if (!edge->immediate_post_dominator)
+						continue;
+
+					dominator = dominator ? CFGNode::find_common_post_dominator(dominator, edge) : edge;
+				}
+
+			if (dominator && node->immediate_post_dominator != dominator)
+			{
+				node->immediate_post_dominator = dominator;
+				changed = true;
+			}
 		}
+	}
+
+	for (auto *node : closure)
+	{
+		// As above: a node no known post dominator reaches is its own.
+		if (!node->immediate_post_dominator)
+			node->immediate_post_dominator = node;
+
+		node->recomputing_post_dominator = false;
 	}
 }
 

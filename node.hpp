@@ -116,6 +116,11 @@ private:
 	bool dominates_all_reachable_exits() const;
 	static CFGNode *find_common_dominator(CFGNode *a, CFGNode *b);
 	static CFGNode *find_common_post_dominator(CFGNode *a, CFGNode *b);
+
+	// Set while this node's immediate (post) dominator is being recomputed: a predecessor
+	// (successor) in this state is part of the same computation and is not recomputed again.
+	bool recomputing_dominator = false;
+	bool recomputing_post_dominator = false;
 	CFGNode *get_immediate_dominator_loop_header();
 	bool can_backtrace_to(const CFGNode *parent) const;
 	bool can_backtrace_to_with_blockers(const CFGNode *parent, const Vector<CFGNode *> &block_nodes) const;
