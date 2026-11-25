@@ -114,6 +114,8 @@ private:
 	void recompute_immediate_dominator();
 	void recompute_immediate_post_dominator();
 
+	void reset_immediate_dominator_after_interposing(CFGNode *node, bool direct_link);
+
 	Vector<CFGNode *> dominance_frontier;
 	Vector<CFGNode *> post_dominance_frontier;
 };
