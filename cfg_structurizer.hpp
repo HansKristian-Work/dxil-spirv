@@ -228,19 +228,19 @@ private:
 	bool ensure_valid_phi_rewrites(CFGNode *node);
 
 	void split_loop_inner_outer(
-		CFGNode *node, CFGNode *back_edge, Vector<CFGNode *> &back_edge_candidates,
+		CFGNode *node, CFGNode *back_edge, UnorderedSet<CFGNode *> &back_edge_candidates,
 		Vector<CFGNode *> &outer_dominated);
 
 	void move_interposing_nodes_into_loop(CFGNode *header,
 	                                      const Vector<SerializationLevel> &outer_levels,
-	                                      Vector<CFGNode *> &back_edge_candidates, Vector<CFGNode *> &outer_idom);
+	                                      UnorderedSet<CFGNode *> &back_edge_candidates, Vector<CFGNode *> &outer_idom);
 
 	void filter_outer_idom_candidates(Vector<CFGNode *> &outer_idom);
 
 	void organize_levels(CFGNode *node, const Vector<CFGNode *> &children,
 	                     const Vector<SerializationLevel> &outer_levels,
 	                     Vector<SerializationLevel> &levels,
-	                     const Vector<CFGNode *> *allow_frontiers,
+	                     const UnorderedSet<CFGNode *> *allow_frontiers,
 	                     bool promote_children_to_frontier);
 
 	void analyze_levels_skippability(CFGNode *node, const Vector<SerializationLevel> &outer_levels,
