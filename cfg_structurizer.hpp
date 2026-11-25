@@ -76,6 +76,7 @@ private:
 
 	Vector<uint32_t> reachability_bitset;
 	unsigned reachability_stride = 0;
+	uint32_t dominance_order_counter = 0;
 	bool experimental_unstructured_flow = false;
 	bool limited_control_flow_analysis = true;
 	bool debug_labels = false;
@@ -102,8 +103,12 @@ private:
 	void backwards_visit_push(CFGNode *node);
 	void backwards_visit_resolve(CFGNode *entry);
 
+	void forward_dominance_order_visit_push(CFGNode *node);
+	void forward_dominance_order_visit_resolve(CFGNode *node);
+
 	void build_immediate_dominators();
 	void build_immediate_post_dominators();
+	void build_forward_dominance_order();
 	void build_reachability();
 	void visit_reachability(const CFGNode &node);
 	bool query_reachability(const CFGNode &from, const CFGNode &to) const;

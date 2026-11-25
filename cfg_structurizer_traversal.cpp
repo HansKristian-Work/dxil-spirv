@@ -84,6 +84,8 @@ void CFGStructurizer::reset_traversal()
 		node.fake_pred.clear();
 		node.fake_succ.clear();
 		node.reachable_direct_helpers.clear();
+		node.forward_dominance_pre_order = 0;
+		node.forward_dominance_post_order = 0;
 
 		if (node.succ_back_edge)
 			node.succ.push_back(node.succ_back_edge);
@@ -374,6 +376,7 @@ void CFGStructurizer::recompute_cfg()
 	// Need to prune dead preds before computing dominance.
 	prune_dead_preds();
 	build_immediate_dominators();
+	build_forward_dominance_order();
 
 	compute_dominance_frontier();
 	if (!limited_control_flow_analysis)
@@ -535,5 +538,30 @@ void CFGStructurizer::traverse(BlockEmissionInterface &iface)
 			break;
 		}
 	}
+}
+
+void CFGStructurizer::forward_dominance_order_visit_push(CFGNode *node)
+{
+	node->forward_dominance_pre_order = ++dominance_order_counter;
+	node->traversing = true;
+
+	// We'll only visit each child once.
+	for (auto *child : node->idom_children)
+		visit_stack.push_back(child);
+}
+
+void CFGStructurizer::forward_dominance_order_visit_resolve(CFGNode *node)
+{
+	node->forward_dominance_post_order = ++dominance_order_counter;
+}
+
+void CFGStructurizer::build_forward_dominance_order()
+{
+	dominance_order_counter = 0;
+	visit_stack.push_back(entry_block);
+	recursive_visit(nullptr,
+	                [this](CFGNode *node) { forward_dominance_order_visit_push(node); },
+	                [this](CFGNode *node) { forward_dominance_order_visit_resolve(node); },
+	                [](CFGNode *node) { return node->forward_dominance_pre_order != 0; });
 }
 }
