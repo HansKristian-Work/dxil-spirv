@@ -465,27 +465,13 @@ void CFGStructurizer::recompute_dominance_frontier(CFGNode *node)
 {
 	for (auto *succ : node->succ)
 	{
-		if (succ->immediate_dominator != node &&
-		    std::find(node->dominance_frontier.begin(),
-		              node->dominance_frontier.end(),
-		              succ) == node->dominance_frontier.end())
-		{
-			node->dominance_frontier.push_back(succ);
-		}
+		if (succ->immediate_dominator != node)
+			push_back_unique(node->dominance_frontier, succ);
 
 		if (auto *idom = node->immediate_dominator)
-		{
 			for (auto *frontier_node : node->dominance_frontier)
-			{
-				if (!idom->dominates(frontier_node) &&
-				    std::find(idom->dominance_frontier.begin(),
-				              idom->dominance_frontier.end(),
-				              frontier_node) == idom->dominance_frontier.end())
-				{
-					idom->dominance_frontier.push_back(frontier_node);
-				}
-			}
-		}
+				if (!idom->dominates(frontier_node))
+					push_back_unique(idom->dominance_frontier, frontier_node);
 	}
 }
 
