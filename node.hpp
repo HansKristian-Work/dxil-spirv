@@ -63,6 +63,9 @@ private:
 	bool backward_visited = false;
 	bool traversing = false;
 
+	uint32_t forward_dominance_pre_order = 0;
+	uint32_t forward_dominance_post_order = 0;
+
 	// In new structurizer, marks the node as inheriting its loop scope from its lone pred.
 	// This ensures that we don't end up needing super awkward ladder resolves just to get to a block
 	// that intends to set a simple PHI variable.
