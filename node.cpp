@@ -114,15 +114,28 @@ bool CFGNode::reaches_direct_helper(CFGNode *target)
 
 bool CFGNode::dominates(const CFGNode *other) const
 {
-	// Follow immediate dominator graph. Either we end up at this, or entry block.
-	while (this != other)
+	if (!other->immediate_dominator)
+		return false;
+
+	assert(forward_dominance_pre_order && forward_dominance_post_order);
+	assert(other->forward_dominance_pre_order && other->forward_dominance_post_order);
+
+	if (this != other && forward_dominance_pre_order == other->forward_dominance_pre_order)
 	{
-		if (!other->immediate_dominator || other == other->immediate_dominator)
-			break;
-		other = other->immediate_dominator;
+		// If we did inline replacements. Just locally check it.
+		// Should never come up in practice.
+		while (this != other && other->immediate_dominator &&
+		       other->immediate_dominator->forward_dominance_pre_order == forward_dominance_pre_order)
+		{
+			other = other->immediate_dominator;
+		}
+
+		return this == other;
 	}
 
-	return this == other;
+	// See Mesa algorithm.
+	return forward_dominance_pre_order <= other->forward_dominance_pre_order &&
+	       forward_dominance_post_order >= other->forward_dominance_post_order;
 }
 
 bool CFGNode::can_backtrace_to_with_blockers(const CFGNode *parent, const Vector<CFGNode *> &block_nodes,
