@@ -54,7 +54,7 @@ void CFGStructurizer::build_immediate_dominators()
 		auto *block = forward_post_visit_order[i - 1];
 		block->recompute_immediate_dominator();
 
-		if (limited_control_flow_analysis && block->immediate_dominator && block->immediate_dominator != block)
+		if (block->immediate_dominator && block->immediate_dominator != block)
 			block->immediate_dominator->idom_children.push_back(block);
 	}
 }
