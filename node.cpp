@@ -372,6 +372,15 @@ void CFGNode::retarget_branch_pre_traversal(CFGNode *to_prev, CFGNode *to_next)
 			c.node = to_next;
 }
 
+void CFGNode::reset_immediate_dominator_after_interposing(CFGNode *node, bool direct_link)
+{
+	// Only intended to work for cases where we inserted a succ block right after node.
+	// For all intents and purposes, checking for node->dominates(N) is equal to this->dominates(N).
+	immediate_dominator = node;
+	forward_dominance_pre_order = direct_link ? node->forward_dominance_pre_order : 0;
+	forward_dominance_post_order = direct_link ? node->forward_dominance_post_order : 0;
+}
+
 void CFGNode::recompute_immediate_dominator()
 {
 	if (pred.empty())

@@ -93,7 +93,9 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 		block->name = node->name + ".dup." + pred->name;
 
 		block->immediate_post_dominator = node->immediate_post_dominator;
-		block->immediate_dominator = pred;
+
+		// The algorithm that uses duplicate_node does not bother with checking dominance really.
+		block->reset_immediate_dominator_after_interposing(pred, false);
 
 		pred->idom_children.push_back(block);
 		pred->retarget_branch_pre_traversal(node, block);
@@ -379,16 +381,11 @@ void CFGStructurizer::retarget_succ_from(CFGNode *new_node, CFGNode *old_pred)
 			if (p == old_pred)
 				p = new_node;
 
-	for (auto *node : forward_post_visit_order)
-	{
-		if (node != old_pred)
-		{
-			// Don't override immediate dominator for entry block.
-			if (node->immediate_dominator == old_pred)
-				node->immediate_dominator = new_node;
-		}
-	}
-	new_node->immediate_dominator = old_pred;
+	for (auto *node : new_node->idom_children)
+		if (node->immediate_dominator == old_pred)
+			node->immediate_dominator = new_node;
+
+	new_node->reset_immediate_dominator_after_interposing(old_pred, true);
 
 	// Do not swap back edges.
 }
