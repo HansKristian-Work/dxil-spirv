@@ -691,7 +691,7 @@ void CFGStructurizer::fixup_degenerate_conditional_branches()
 // which automatically solves a lot of the edge cases here with inner loops, but that's too much of a rewrite,
 // so get our hands dirty instead by checking for back-edges more explicitly.
 void CFGStructurizer::split_loop_inner_outer(
-		CFGNode *node, CFGNode *back_edge, Vector<CFGNode *> &back_edge_candidates,
+		CFGNode *node, CFGNode *back_edge, UnorderedSet<CFGNode *> &back_edge_candidates,
 		Vector<CFGNode *> &outer_dominated)
 {
 	Vector<CFGNode *> remaining;
@@ -709,10 +709,10 @@ void CFGStructurizer::split_loop_inner_outer(
 	{
 		if (remain->dominates(back_edge))
 		{
-			push_back_unique(back_edge_candidates, remain);
+			back_edge_candidates.insert(remain);
 			// Also makes sure that back-edges are still considered in-loop.
 			if (remain->pred_back_edge)
-				push_back_unique(back_edge_candidates, remain->pred_back_edge);
+				back_edge_candidates.insert(remain->pred_back_edge);
 		}
 	}
 
@@ -812,13 +812,13 @@ void CFGStructurizer::split_loop_inner_outer(
 	}
 
 	for (auto *remain : remaining)
-		push_back_unique(back_edge_candidates, remain);
+		back_edge_candidates.insert(remain);
 
 	// Recurse through the CFG.
 	// Never process the back-edge before we have processed the header.
 	// The back-edge is merely added as a temporary node to aid analysis.
 	// If only the back-edge is seen here, it means the loop header has been processed.
-	for (auto *remain: remaining)
+	for (auto *remain : remaining)
 		if (!remain->succ_back_edge || !has_element(remaining, remain->succ_back_edge))
 			split_loop_inner_outer(remain, back_edge, back_edge_candidates, outer_dominated);
 }
@@ -1674,7 +1674,7 @@ bool CFGStructurizer::branch_requires_breaking_construct(const Vector<Serializat
 void CFGStructurizer::organize_levels(CFGNode *node, const Vector<CFGNode *> &children,
                                       const Vector<SerializationLevel> &outer_levels,
                                       Vector<SerializationLevel> &levels,
-                                      const Vector<CFGNode *> *allow_frontiers,
+                                      const UnorderedSet<CFGNode *> *allow_frontiers,
                                       bool promote_children_to_frontier)
 {
 	Vector<CFGNode *> frontier_nodes;
@@ -2005,7 +2005,7 @@ CFGStructurizer::route_branches_with_continuation(
 
 void CFGStructurizer::move_interposing_nodes_into_loop(
 		CFGNode *header, const Vector<SerializationLevel> &outer_levels,
-		Vector<CFGNode *> &back_edge_candidates, Vector<CFGNode *> &outer_idom)
+		UnorderedSet<CFGNode *> &back_edge_candidates, Vector<CFGNode *> &outer_idom)
 {
 	// An optimization (runtime and readability).
 	// For conditional breaks or continues, the interposing nodes will be observed as loop exits,
@@ -2028,7 +2028,7 @@ void CFGStructurizer::move_interposing_nodes_into_loop(
 		{
 			assert(candidate->ir.terminator.type == Terminator::Type::Branch ||
 			       candidate->ir.terminator.type == Terminator::Type::Condition);
-			push_back_unique(back_edge_candidates, candidate);
+			back_edge_candidates.insert(candidate);
 			*itr = outer_idom.back();
 			outer_idom.pop_back();
 
@@ -2060,8 +2060,9 @@ CFGStructurizer::serialize_merge_levels_for_dominated_paths_with_continuation(
 		// We can exit from a loop in a way that we don't (structurally) dominate ourselves.
 		// This could mean a multi-level break or continue that needs to be resolved by punching through multiple ladders.
 		// The only saving grace is that DXIL does not allow irreducible control flow, so we don't have to ponder that hellscape fortunately.
-		Vector<CFGNode *> back_edge_candidates { node->pred_back_edge };
-		push_back_unique(back_edge_candidates, node);
+		UnorderedSet<CFGNode *> back_edge_candidates;
+		back_edge_candidates.insert(node->pred_back_edge);
+		back_edge_candidates.insert(node);
 
 		Vector<CFGNode *> outer_idom;
 		split_loop_inner_outer(node, node->pred_back_edge, back_edge_candidates, outer_idom);
