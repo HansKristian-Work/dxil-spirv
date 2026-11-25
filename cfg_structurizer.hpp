@@ -116,9 +116,6 @@ private:
 
 	static CFGNode *find_common_post_dominator(const Vector<CFGNode *> &candidates);
 
-	static Vector<IncomingValue>::const_iterator find_incoming_value(const CFGNode *frontier_pred,
-	                                                                 const Vector<IncomingValue> &incoming);
-
 	CFGNode *create_helper_succ_block(CFGNode *node);
 	void reset_traversal();
 

@@ -65,30 +65,15 @@ Operation *CFGStructurizer::duplicate_op(Operation *op, UnorderedMap<spv::Id, sp
 	return duplicated_op;
 }
 
-Vector<IncomingValue>::const_iterator CFGStructurizer::find_incoming_value(
-	const CFGNode *frontier_pred, const Vector<IncomingValue> &incoming)
-{
-	// Find the incoming block which dominates frontier_pred and has the lowest post visit order.
-	// There are cases where two or more blocks dominate, but we want the most immediate dominator.
-	auto candidate = incoming.end();
-
-	for (auto itr = incoming.begin(); itr != incoming.end(); ++itr)
-	{
-		auto *block = itr->block;
-		if (block->dominates(frontier_pred))
-			if (candidate == incoming.end() || block->forward_post_visit_order < candidate->block->forward_post_visit_order)
-				candidate = itr;
-	}
-
-	return candidate;
-}
-
 void CFGStructurizer::duplicate_node(CFGNode *node)
 {
 	Vector<UnorderedMap<spv::Id, spv::Id>> rewritten_ids;
 	assert(node->ir.terminator.type == Terminator::Type::Branch || node->ir.terminator.type == Terminator::Type::Condition);
 	assert(node->pred.size() >= 2);
 	assert(std::all_of(node->succ.begin(), node->succ.end(), [node](const CFGNode *succ) { return !node->dominates(succ); }));
+
+	// We have removed PHI when doing this pass already.
+	assert(node->ir.phi.empty());
 
 	auto node_succs = node->succ;
 
@@ -115,13 +100,6 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 
 		for (auto *succ : node_succs)
 			block->add_branch(succ);
-
-		for (auto &phi : node->ir.phi)
-		{
-			auto itr = find_incoming_value(pred, phi.incoming);
-			assert(itr != phi.incoming.end());
-			remap[phi.id] = itr->id;
-		}
 
 		UnorderedSet<spv::Id> remove_decoration_ids;
 
@@ -165,54 +143,6 @@ void CFGStructurizer::duplicate_node(CFGNode *node)
 	}
 
 	assert(node->pred.empty());
-
-	// Finally, look at succ. If it takes PHI inputs from node, we'll have to rewrite the PHIs.
-	// We know that node does not dominate succ,
-	// so succ cannot use any SSA variables node generated directly
-	// without using PHI nodes.
-
-	// We might have placed ladders in between so that we need to fixup PHI later than just plain succ.
-	// Chase down the chain and replace all PHIs.
-
-	// First, collect all the succs that we are supposed to examine.
-	// The list should also include succ_back_edge because it is not in the succ chain after recompute_cfg.
-	Vector<CFGNode *> succs;
-	for (auto *succ : node_succs)
-	{
-		while (succ)
-		{
-			if (succ->succ_back_edge)
-				succs.push_back(succ->succ_back_edge);
-			succs.push_back(succ);
-			if (succ->succ.size() == 1)
-				succ = succ->succ.front();
-			else
-				succ = nullptr;
-		}
-	}
-
-	for (auto *succ : succs)
-	{
-		for (auto &phi : succ->ir.phi)
-		{
-			// Find incoming ID from the block we're splitting up.
-			auto incoming_itr = std::find_if(phi.incoming.begin(), phi.incoming.end(), [&](const IncomingValue &incoming) {
-				return incoming.block == node;
-			});
-
-			if (incoming_itr != phi.incoming.end())
-			{
-				spv::Id incoming_from_node = incoming_itr->id;
-				phi.incoming.erase(incoming_itr);
-
-				for (size_t i = 0, n = tmp_pred.size(); i < n; i++)
-				{
-					auto &remap = rewritten_ids[i];
-					phi.incoming.push_back({ break_blocks[i], get_remapped_id_for_duplicated_block(incoming_from_node, remap) });
-				}
-			}
-		}
-	}
 }
 
 void CFGStructurizer::prune_dead_preds()
