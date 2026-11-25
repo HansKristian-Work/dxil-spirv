@@ -473,6 +473,7 @@ CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 	succ_node->backward_post_visit_order = node->backward_post_visit_order;
 
 	std::swap(succ_node->succ, node->succ);
+	std::swap(succ_node->idom_children, node->idom_children);
 	// Do not swap back edges, only forward edges.
 
 	succ_node->immediate_post_dominator = node->immediate_post_dominator;
@@ -489,6 +490,7 @@ CFGNode *CFGStructurizer::create_helper_succ_block(CFGNode *node)
 	retarget_succ_from(succ_node, node);
 
 	node->add_branch(succ_node);
+	node->idom_children.push_back(succ_node);
 	return succ_node;
 }
 }
