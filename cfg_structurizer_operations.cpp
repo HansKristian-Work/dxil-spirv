@@ -61,6 +61,7 @@ Operation *CFGStructurizer::duplicate_op(Operation *op, UnorderedMap<spv::Id, sp
 	if (op->id)
 		id_remap[op->id] = duplicated_op->id;
 
+	duplicated_op->flags = op->flags;
 	return duplicated_op;
 }
 
