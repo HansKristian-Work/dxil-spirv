@@ -663,6 +663,8 @@ bool CFGStructurizer::execution_path_is_single_entry_and_dominates_exit(CFGNode 
 
 void CFGStructurizer::flatten_subgroup_shuffles()
 {
+	// This runs on the input CFG, before run_common_preamble() would fix up multiple back edges.
+	rewrite_multiple_back_edges();
 	recompute_cfg();
 
 	// Look for cases where shuffles happen inside small branches.
@@ -758,6 +760,8 @@ void CFGStructurizer::flatten_subgroup_shuffles()
 
 void CFGStructurizer::rewrite_auto_group_shared_barrier()
 {
+	// This runs on the input CFG, before run_common_preamble() would fix up multiple back edges.
+	rewrite_multiple_back_edges();
 	recompute_cfg();
 
 	enum class Kind { None, Load, Store, Atomic };
@@ -908,6 +912,8 @@ void CFGStructurizer::rewrite_auto_group_shared_barrier()
 
 bool CFGStructurizer::rewrite_rov_lock_region()
 {
+	// This runs on the input CFG, before run_common_preamble() would fix up multiple back edges.
+	rewrite_multiple_back_edges();
 	recompute_cfg();
 
 	// First, find all BBs that use ROV.
@@ -2297,6 +2303,8 @@ void CFGStructurizer::fixup_loop_header_undef_phis()
 {
 	auto &builder = module.get_builder();
 
+	// This runs on the input CFG, before run_common_preamble() would fix up multiple back edges.
+	rewrite_multiple_back_edges();
 	recompute_cfg();
 
 	// If the incoming value to the loop is undef, something is deeply wrong.
