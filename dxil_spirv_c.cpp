@@ -851,7 +851,7 @@ dxil_spv_result dxil_spv_converter_run(dxil_spv_converter converter)
 			LOGE("Leaf function is nullptr!\n");
 			return DXIL_SPV_ERROR_GENERIC;
 		}
-		dxil_spv::CFGStructurizer structurizer(leaf.entry, *entry_point.node_pool, module);
+		CFGStructurizer structurizer(leaf.entry, *entry_point.node_pool, module);
 		module.set_entry_build_point(leaf.func);
 
 		if (leaf.is_structured)
