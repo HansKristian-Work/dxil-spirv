@@ -3375,6 +3375,14 @@ void CFGStructurizer::backwards_visit()
 					// that needs to link up to node->pred_back_edge.
 					node->pred_back_edge->backward_visited = true;
 				}
+				else
+				{
+					// A loop with no backwards-reachable exit is a true infinite loop.
+					// Treat its continue block as a backwards leaf so every block in the loop
+					// receives a valid backward_post_visit_order and immediate_post_dominator.
+					node->pred_back_edge->backward_visited = true;
+					leaf_nodes.push_back(node->pred_back_edge);
+				}
 
 				need_revisit = true;
 			}
