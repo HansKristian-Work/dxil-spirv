@@ -1705,7 +1705,7 @@ void CFGStructurizer::organize_levels(CFGNode *node, const Vector<CFGNode *> &ch
 		if (branch_requires_redirection(outer_levels, child))
 			continue;
 
-		for (auto *front: child->dominance_frontier)
+		for (auto *front : child->dominance_frontier)
 		{
 			if (allow_frontiers && !has_element(*allow_frontiers, front))
 				continue;
