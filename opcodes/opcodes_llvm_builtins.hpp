@@ -36,6 +36,7 @@ bool emit_load_instruction(Converter::Impl &impl, const llvm::LoadInst *instruct
 bool emit_store_instruction(Converter::Impl &impl, const llvm::StoreInst *instruction);
 bool emit_compare_instruction(Converter::Impl &impl, const llvm::CmpInst *instruction);
 bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractValueInst *instruction);
+bool emit_insert_value_instruction(Converter::Impl &impl, const llvm::InsertValueInst *instruction);
 bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *instruction);
 bool emit_select_instruction(Converter::Impl &impl, const llvm::SelectInst *instruction);
 bool emit_atomicrmw_instruction(Converter::Impl &impl, const llvm::AtomicRMWInst *instruction);

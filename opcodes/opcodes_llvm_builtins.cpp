@@ -2302,6 +2302,26 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 	return true;
 }
 
+bool emit_insert_value_instruction(Converter::Impl &impl, const llvm::InsertValueInst *instruction)
+{
+	// Composite return values of dx.op calls may be emitted as something other than a struct,
+	// so a struct insert into them cannot be expressed as OpCompositeInsert.
+	if (impl.llvm_composite_meta.count(instruction->getAggregateOperand()))
+	{
+		LOGE("insertvalue into a dx.op composite return value is not supported.\n");
+		return false;
+	}
+
+	Operation *op = impl.allocate(spv::OpCompositeInsert, instruction);
+	op->add_id(impl.get_id_for_value(instruction->getInsertedValueOperand()));
+	op->add_id(impl.get_id_for_value(instruction->getAggregateOperand()));
+	for (unsigned i = 0; i < instruction->getNumIndices(); i++)
+		op->add_literal(instruction->getIndices()[i]);
+
+	impl.add(op);
+	return true;
+}
+
 bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *instruction)
 {
 	// Remapped. Ignore.
@@ -3194,6 +3214,8 @@ bool emit_llvm_instruction(Converter::Impl &impl, const llvm::Instruction &instr
 		return emit_compare_instruction(impl, compare_inst);
 	else if (auto *extract_inst = llvm::dyn_cast<llvm::ExtractValueInst>(&instruction))
 		return emit_extract_value_instruction(impl, extract_inst);
+	else if (auto *insert_inst = llvm::dyn_cast<llvm::InsertValueInst>(&instruction))
+		return emit_insert_value_instruction(impl, insert_inst);
 	else if (auto *alloca_inst = llvm::dyn_cast<llvm::AllocaInst>(&instruction))
 		return emit_alloca_instruction(impl, alloca_inst);
 	else if (auto *select_inst = llvm::dyn_cast<llvm::SelectInst>(&instruction))

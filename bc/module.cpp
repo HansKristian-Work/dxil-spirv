@@ -1647,6 +1647,63 @@ bool ModuleParseContext::parse_record(const BlockOrRecord &entry)
 		break;
 	}
 
+	case FunctionRecord::INST_INSERTVAL:
+	{
+		// [opty, opval, opty, opval, n x indices]
+		unsigned index = 0;
+		auto aggregate = get_value_and_type(entry.ops, index);
+		if (!aggregate.first)
+			return false;
+		auto inserted = get_value_and_type(entry.ops, index);
+		if (!inserted.first)
+			return false;
+
+		if (index == entry.ops.size())
+			return false;
+
+		Vector<unsigned> indices;
+		indices.reserve(entry.ops.size() - index);
+		unsigned num_args = entry.ops.size();
+
+		Type *type = aggregate.second;
+		for (; index < num_args; index++)
+		{
+			auto element = unsigned(entry.ops[index]);
+			if (type->getTypeID() == Type::TypeID::StructTyID)
+			{
+				if (element >= cast<StructType>(type)->getNumElements())
+				{
+					LOGE("Struct element index out of range.\n");
+					return false;
+				}
+				type = cast<StructType>(type)->getElementType(element);
+			}
+			else if (type->getTypeID() == Type::TypeID::ArrayTyID)
+			{
+				type = type->getArrayElementType();
+			}
+			else if (type->getTypeID() == Type::TypeID::VectorTyID)
+			{
+				type = cast<VectorType>(type)->getElementType();
+			}
+			else
+				return false;
+
+			indices.push_back(element);
+		}
+
+		if (type != inserted.second)
+		{
+			LOGE("Inserted value type does not match the aggregate's element type.\n");
+			return false;
+		}
+
+		auto *value = context->construct<InsertValueInst>(aggregate.first, inserted.first, std::move(indices));
+		if (!add_instruction(value))
+			return false;
+		break;
+	}
+
 	case FunctionRecord::INST_BR:
 	{
 		if (entry.ops.size() < 1)

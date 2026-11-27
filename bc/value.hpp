@@ -57,6 +57,7 @@ enum class ValueKind
 	Cast,
 	Select,
 	ExtractValue,
+	InsertValue,
 	Alloca,
 	GetElementPtr,
 	Load,
