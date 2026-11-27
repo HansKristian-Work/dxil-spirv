@@ -2275,7 +2275,9 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 		return true;
 	}
 
-	uint32_t effective_access_mask = itr->second.access_mask & ~itr->second.access_mask_is_undef;
+	uint32_t effective_access_mask = 0;
+	if (itr != impl.llvm_composite_meta.end())
+		effective_access_mask = itr->second.access_mask & ~itr->second.access_mask_is_undef;
 
 	if (itr != impl.llvm_composite_meta.end() &&
 	    (effective_access_mask == 0x1 || itr->second.components == 1) &&
