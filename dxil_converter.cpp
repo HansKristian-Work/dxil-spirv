@@ -6581,10 +6581,20 @@ bool Converter::Impl::emit_instruction(CFGNode *block, const llvm::Instruction &
 		{
 			return emit_dxil_instruction(*this, call_inst);
 		}
+		else if (strncmp(called_function->getName().data(), "llvm.copysign.", 14) == 0)
+		{
+			return emit_llvm_copysign_instruction(*this, *call_inst);
+		}
 		else if (strncmp(called_function->getName().data(), "llvm.", 5) == 0)
 		{
 			// lib_6_6 sometimes emits llvm.lifetime.begin/end for some bizarre reason.
-			// Just ignore ...
+			// Just ignore those, but only calls that produce no value: a value left unwritten would be read
+			// as whatever is in memory.
+			if (call_inst->getType()->getTypeID() != llvm::Type::TypeID::VoidTyID)
+			{
+				LOGE("LLVM intrinsic %s is not supported.\n", called_function->getName().data());
+				return false;
+			}
 			return true;
 		}
 		else

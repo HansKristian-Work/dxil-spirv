@@ -2300,6 +2300,44 @@ bool emit_extract_value_instruction(Converter::Impl &impl, const llvm::ExtractVa
 	return true;
 }
 
+// llvm.copysign.f32(magnitude, sign): the magnitude of the first value with the sign bit of the second.
+bool emit_llvm_copysign_instruction(Converter::Impl &impl, const llvm::CallInst &inst)
+{
+	if (inst.getType()->getTypeID() != llvm::Type::TypeID::FloatTyID)
+	{
+		LOGE("llvm.copysign is only supported for 32-bit floats.\n");
+		return false;
+	}
+
+	auto &builder = impl.builder();
+	spv::Id uint_type = builder.makeUintType(32);
+
+	auto *mag = impl.allocate(spv::OpBitcast, uint_type);
+	mag->add_id(impl.get_id_for_value(inst.getOperand(0)));
+	impl.add(mag);
+	auto *sign = impl.allocate(spv::OpBitcast, uint_type);
+	sign->add_id(impl.get_id_for_value(inst.getOperand(1)));
+	impl.add(sign);
+
+	auto *mag_bits = impl.allocate(spv::OpBitwiseAnd, uint_type);
+	mag_bits->add_id(mag->id);
+	mag_bits->add_id(builder.makeUintConstant(0x7fffffffu));
+	impl.add(mag_bits);
+	auto *sign_bits = impl.allocate(spv::OpBitwiseAnd, uint_type);
+	sign_bits->add_id(sign->id);
+	sign_bits->add_id(builder.makeUintConstant(0x80000000u));
+	impl.add(sign_bits);
+	auto *bits = impl.allocate(spv::OpBitwiseOr, uint_type);
+	bits->add_id(mag_bits->id);
+	bits->add_id(sign_bits->id);
+	impl.add(bits);
+
+	auto *result = impl.allocate(spv::OpBitcast, &inst);
+	result->add_id(bits->id);
+	impl.add(result);
+	return true;
+}
+
 bool emit_alloca_instruction(Converter::Impl &impl, const llvm::AllocaInst *instruction)
 {
 	// Remapped. Ignore.
