@@ -120,6 +120,7 @@ bool Instruction::is_base_of_value_kind(ValueKind kind)
 	case ValueKind::Cast:
 	case ValueKind::Select:
 	case ValueKind::ExtractValue:
+	case ValueKind::InsertValue:
 	case ValueKind::Alloca:
 	case ValueKind::GetElementPtr:
 	case ValueKind::Load:
@@ -254,6 +255,33 @@ unsigned ExtractValueInst::getNumIndices() const
 }
 
 const unsigned *ExtractValueInst::getIndices() const
+{
+	return indices.data();
+}
+
+InsertValueInst::InsertValueInst(Value *aggregate, Value *value, Vector<unsigned> indices_)
+    : Instruction(aggregate->getType(), ValueKind::InsertValue)
+    , indices(std::move(indices_))
+{
+	set_operands({ aggregate, value });
+}
+
+Value *InsertValueInst::getAggregateOperand() const
+{
+	return Internal::resolve_proxy(operands[0]);
+}
+
+Value *InsertValueInst::getInsertedValueOperand() const
+{
+	return Internal::resolve_proxy(operands[1]);
+}
+
+unsigned InsertValueInst::getNumIndices() const
+{
+	return indices.size();
+}
+
+const unsigned *InsertValueInst::getIndices() const
 {
 	return indices.data();
 }

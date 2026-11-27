@@ -75,6 +75,7 @@ struct StreamState
 	void append(CastInst *value, bool decl = false);
 	void append(SelectInst *value, bool decl = false);
 	void append(ExtractValueInst *value, bool decl = false);
+	void append(InsertValueInst *value, bool decl = false);
 	void append(AllocaInst *value, bool decl = false);
 	void append(GetElementPtrInst *value, bool decl = false);
 	void append(LoadInst *value, bool decl = false);
@@ -652,6 +653,24 @@ void StreamState::append(ExtractValueInst *ext, bool decl)
 	}
 }
 
+void StreamState::append(InsertValueInst *ins, bool decl)
+{
+	if (decl)
+	{
+		append("%", ins->get_tween_id(), " = ", "insertvalue ", ins->getType(), " ", ins->getAggregateOperand(),
+		       ", ", ins->getInsertedValueOperand());
+		for (unsigned i = 0; i < ins->getNumIndices(); i++)
+		{
+			append(", ");
+			append(ins->getIndices()[i]);
+		}
+	}
+	else
+	{
+		append("%", ins->get_tween_id());
+	}
+}
+
 void StreamState::append(AllocaInst *alloca, bool decl)
 {
 	if (decl)
@@ -931,6 +950,8 @@ void StreamState::append(Value *value, bool decl)
 		return append(cast<SelectInst>(value), decl);
 	case ValueKind::ExtractValue:
 		return append(cast<ExtractValueInst>(value), decl);
+	case ValueKind::InsertValue:
+		return append(cast<InsertValueInst>(value), decl);
 	case ValueKind::Alloca:
 		return append(cast<AllocaInst>(value), decl);
 	case ValueKind::GetElementPtr:

@@ -280,6 +280,25 @@ private:
 	Vector<unsigned> indices;
 };
 
+class InsertValueInst : public Instruction
+{
+public:
+	static constexpr ValueKind get_value_kind()
+	{
+		return ValueKind::InsertValue;
+	}
+	InsertValueInst(Value *aggregate, Value *value, Vector<unsigned> indices);
+	Value *getAggregateOperand() const;
+	Value *getInsertedValueOperand() const;
+	unsigned getNumIndices() const;
+	const unsigned *getIndices() const;
+
+	LLVMBC_DEFAULT_VALUE_KIND_IMPL
+
+private:
+	Vector<unsigned> indices;
+};
+
 class AllocaInst : public Instruction
 {
 public:
