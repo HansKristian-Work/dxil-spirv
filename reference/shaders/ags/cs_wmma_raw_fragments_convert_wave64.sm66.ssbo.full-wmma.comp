@@ -1,0 +1,172 @@
+#version 460
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+#extension GL_EXT_shader_16bit_storage : require
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) restrict readonly buffer SSBO
+{
+    uint _m0[];
+} _9;
+
+layout(set = 0, binding = 0, std430) writeonly buffer _12_14
+{
+    uvec2 _m0[];
+} _14;
+
+uint ByteAddressMask(uint index, uint stride)
+{
+    return index & (4294967295u / stride);
+}
+
+void main()
+{
+    uint _18 = gl_LocalInvocationIndex * 12u;
+    _14._m0[ByteAddressMask(gl_LocalInvocationIndex, 8u)] = uvec2(packFloat2x16(f16vec2(float16_t(uintBitsToFloat(floatBitsToUint(uintBitsToFloat(_9._m0[ByteAddressMask(gl_LocalInvocationIndex * 3u, 4u)]) + 1.0))), float16_t(uintBitsToFloat(floatBitsToUint(uintBitsToFloat(_9._m0[ByteAddressMask((gl_LocalInvocationIndex * 3u) + 1u, 4u)]) + 1.0))))), packFloat2x16(f16vec2(float16_t(uintBitsToFloat(floatBitsToUint(uintBitsToFloat(_9._m0[ByteAddressMask((gl_LocalInvocationIndex * 3u) + 2u, 4u)]) + 1.0))), float16_t(uintBitsToFloat(0u)))) & 65535u);
+}
+
+
+#if 0
+// SPIR-V disassembly
+// WaveSize(64)
+; SPIR-V
+; Version: 1.6
+; Generator: Unknown(30017); 21022
+; Bound: 97
+; Schema: 0
+OpCapability Shader
+OpCapability Float16
+OpCapability DenormPreserve
+OpCapability VulkanMemoryModel
+OpExtension "SPV_KHR_float_controls"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %3 "main" %9 %14 %16
+OpExecutionMode %3 LocalSize 64 1 1
+OpExecutionMode %3 DenormPreserve 16
+OpName %3 "main"
+OpName %7 "SSBO"
+OpName %12 "SSBO"
+OpName %25 "ByteAddressMask"
+OpName %23 "index"
+OpName %24 "stride"
+OpDecorate %6 ArrayStride 4
+OpMemberDecorate %7 0 Offset 0
+OpDecorate %7 Block
+OpDecorate %9 DescriptorSet 0
+OpDecorate %9 Binding 0
+OpDecorate %9 NonWritable
+OpDecorate %9 Restrict
+OpDecorate %11 ArrayStride 8
+OpMemberDecorate %12 0 Offset 0
+OpDecorate %12 Block
+OpDecorate %14 DescriptorSet 0
+OpDecorate %14 Binding 0
+OpDecorate %14 NonReadable
+OpDecorate %16 BuiltIn LocalInvocationIndex
+%1 = OpTypeVoid
+%2 = OpTypeFunction %1
+%5 = OpTypeInt 32 0
+%6 = OpTypeRuntimeArray %5
+%7 = OpTypeStruct %6
+%8 = OpTypePointer StorageBuffer %7
+%9 = OpVariable %8 StorageBuffer
+%10 = OpTypeVector %5 2
+%11 = OpTypeRuntimeArray %10
+%12 = OpTypeStruct %11
+%13 = OpTypePointer StorageBuffer %12
+%14 = OpVariable %13 StorageBuffer
+%15 = OpTypePointer Input %5
+%16 = OpVariable %15 Input
+%19 = OpConstant %5 12
+%21 = OpConstant %5 3
+%22 = OpTypeFunction %5 %5 %5
+%28 = OpConstant %5 4294967295
+%31 = OpConstant %5 4
+%32 = OpTypePointer StorageBuffer %5
+%34 = OpConstant %5 0
+%36 = OpTypeFloat 32
+%39 = OpConstant %36 1
+%44 = OpConstant %5 1
+%52 = OpConstant %5 8
+%55 = OpConstant %5 2
+%64 = OpTypeFloat 16
+%80 = OpTypeVector %64 2
+%90 = OpConstant %5 65535
+%94 = OpTypePointer StorageBuffer %10
+%3 = OpFunction %1 None %2
+%4 = OpLabel
+OpBranch %96
+%96 = OpLabel
+%17 = OpLoad %5 %16
+%18 = OpIMul %5 %17 %19
+%20 = OpIMul %5 %17 %21
+%30 = OpFunctionCall %5 %25 %20 %31
+%33 = OpAccessChain %32 %9 %34 %30
+%35 = OpLoad %5 %33
+%37 = OpBitcast %36 %35
+%38 = OpFAdd %36 %37 %39
+%40 = OpBitcast %5 %38
+%41 = OpIAdd %5 %18 %31
+%42 = OpIMul %5 %17 %21
+%43 = OpIAdd %5 %42 %44
+%45 = OpFunctionCall %5 %25 %43 %31
+%46 = OpAccessChain %32 %9 %34 %45
+%47 = OpLoad %5 %46
+%48 = OpBitcast %36 %47
+%49 = OpFAdd %36 %48 %39
+%50 = OpBitcast %5 %49
+%51 = OpIAdd %5 %18 %52
+%53 = OpIMul %5 %17 %21
+%54 = OpIAdd %5 %53 %55
+%56 = OpFunctionCall %5 %25 %54 %31
+%57 = OpAccessChain %32 %9 %34 %56
+%58 = OpLoad %5 %57
+%59 = OpBitcast %36 %58
+%60 = OpFAdd %36 %59 %39
+%61 = OpBitcast %5 %60
+%63 = OpBitcast %36 %40
+%65 = OpFConvert %64 %63
+%66 = OpBitcast %36 %50
+%67 = OpFConvert %64 %66
+%68 = OpBitcast %36 %61
+%69 = OpFConvert %64 %68
+%70 = OpBitcast %36 %34
+%71 = OpFConvert %64 %70
+%72 = OpBitcast %36 %34
+%73 = OpFConvert %64 %72
+%74 = OpBitcast %36 %34
+%75 = OpFConvert %64 %74
+%76 = OpBitcast %36 %34
+%77 = OpFConvert %64 %76
+%78 = OpBitcast %36 %34
+%79 = OpFConvert %64 %78
+%81 = OpCompositeConstruct %80 %65 %67
+%82 = OpBitcast %5 %81
+%83 = OpCompositeConstruct %80 %69 %71
+%84 = OpBitcast %5 %83
+%85 = OpCompositeConstruct %80 %73 %75
+%86 = OpBitcast %5 %85
+%87 = OpCompositeConstruct %80 %77 %79
+%88 = OpBitcast %5 %87
+%89 = OpBitwiseAnd %5 %84 %90
+%91 = OpShiftLeftLogical %5 %17 %21
+%92 = OpFunctionCall %5 %25 %17 %52
+%93 = OpCompositeConstruct %10 %82 %89
+%95 = OpAccessChain %94 %14 %34 %92
+OpStore %95 %93 NonPrivatePointer
+OpReturn
+OpFunctionEnd
+%25 = OpFunction %5 None %22
+%23 = OpFunctionParameter %5
+%24 = OpFunctionParameter %5
+%26 = OpLabel
+%27 = OpUDiv %5 %28 %24
+%29 = OpBitwiseAnd %5 %23 %27
+OpReturnValue %29
+OpFunctionEnd
+#endif

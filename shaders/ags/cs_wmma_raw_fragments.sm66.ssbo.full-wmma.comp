@@ -1,0 +1,32 @@
+RWByteAddressBuffer Outputs : register(u0);
+ByteAddressBuffer Inputs : register(t0);
+RWByteAddressBuffer MAGIC : register(u0, space2147420894);
+
+#include "wmma_ags.h"
+
+// Fragments packed by the shader itself in the register layout (not WMMA_Load), and the results used as plain values.
+WMMA_Matrix LoadRaw(uint offset, uint count)
+{
+	WMMA_Matrix m;
+	[unroll] for (uint i = 0; i < 8; i++)
+		m.v[i] = i < count ? Inputs.Load(offset + 4 * i) : 0u;
+	return m;
+}
+
+[numthreads(32, 1, 1)]
+[WaveSize(32)]
+void main(uint thr : SV_GroupIndex)
+{
+	uint base = thr * 32;
+	WMMA_Matrix A = LoadRaw(base, 4);
+	WMMA_Matrix B = LoadRaw(base + 1024, 4);
+	WMMA_Matrix C = LoadRaw(base + 2048, 8);
+	WMMA_Matrix D = WMMA_MatMulAcc(WMMA_F32_16X16X16_F16, A, B, C);
+
+	WMMA_Matrix A8 = LoadRaw(base + 3072, 2);
+	WMMA_Matrix B8 = LoadRaw(base + 4096, 2);
+	WMMA_Matrix E = WMMA_MatMulAcc(WMMA_F32_16X16X16_FP8_FP8, A8, B8, D);
+
+	[unroll] for (uint i = 0; i < 8; i++)
+		Outputs.Store(base + 4 * i, asuint(asfloat(E.v[i]) * 0.5));
+}
